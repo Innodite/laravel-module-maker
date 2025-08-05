@@ -14,7 +14,7 @@ class {{ serviceName }} implements {{ serviceInterfaceName }}
         $this->{{ repositoryInstance }} = ${{ repositoryInstance }};
     }
 
-    public function all(): Collection
+    public function all()
     {
         return $this->{{ repositoryInstance }}->all();
     }
