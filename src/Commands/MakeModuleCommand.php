@@ -159,13 +159,23 @@ class MakeModuleCommand extends Command
         $components = $config['components'] ?? [];
 
         $this->createFolders($modulePath);
-        
+
         $isClean = false;
-        $this->createProvider($moduleNameFromConfig, $modulePath, $moduleNameFromConfig, $isClean);
+
+        // Pasamos los componentes para que el provider se genere correctamente
+        $this->createProvider($moduleNameFromConfig, $modulePath, $moduleNameFromConfig, $isClean, $components);
 
         foreach ($components as $component) {
             $modelName = Str::studly($component['name']);
-            $this->createModuleComponent($moduleNameFromConfig, $modulePath, $component);
+            $this->createModel($moduleNameFromConfig, $modulePath, $modelName, $isClean, $component);
+            $this->createController($moduleNameFromConfig, $modulePath, "{$modelName}Controller", $isClean, $modelName);
+            $this->createServiceAndInterface($moduleNameFromConfig, $modulePath, "{$modelName}Service", $isClean, $modelName);
+            $this->createRepositoryAndInterface($moduleNameFromConfig, $modulePath, "{$modelName}Repository", $isClean, $modelName);
+            $this->createRequest($moduleNameFromConfig, $modulePath, "{$modelName}StoreRequest", $isClean);
+            $this->createMigration($moduleNameFromConfig, $modulePath, $modelName, $component['attributes'] ?? [], $isClean);
+            $this->createSeeder($moduleNameFromConfig, $modulePath, $modelName, $isClean);
+            $this->createFactory($moduleNameFromConfig, $modulePath, $modelName, $isClean);
+            $this->createTest($moduleNameFromConfig, $modulePath, $modelName . 'Test', $isClean);
             $this->createRoutes($moduleNameFromConfig, $modulePath, "{$modelName}Controller", $isClean);
         }
 
@@ -187,298 +197,437 @@ class MakeModuleCommand extends Command
         if (File::exists($moduleConfigPath)) {
             return $moduleConfigPath;
         }
-
         // 2. Segunda opción: Buscar en la carpeta de configuración del paquete (la que crea el setup)
         $packageConfigPath = config('make-module.module_path')."/module-maker-config/{$configPath}";
         if (File::exists($packageConfigPath)) {
-             return $packageConfigPath;
+            return $packageConfigPath;
         }
-
         // 3. Tercera opción: Buscar en la carpeta 'config' de la raíz de la aplicación
         $rootConfigPath = config('make-module.module_path')."/../config/{$configPath}";
         if (File::exists($rootConfigPath)) {
             return $rootConfigPath;
         }
-
         // Si no se encuentra, devolvemos la ruta original para que el error sea claro.
         return $configPath;
     }
 
     /**
-     * Itera sobre la configuración de un componente para crear sus archivos.
+     * Crea un Service Provider para el módulo.
      *
      * @param string $module
-     * @param string $modulePath
-     * @param array $componentConfig
-     * @return void
-     */
-    protected function createModuleComponent(string $module, string $modulePath, array $componentConfig): void
-    {
-        $modelName = Str::studly($componentConfig['name']);
-        $isClean = false;
-        
-        $this->createModel($module, $modulePath, $modelName, $isClean, $componentConfig);
-        $this->createController($module, $modulePath, "{$modelName}Controller", $isClean, $modelName);
-        $this->createServiceAndInterface($module, $modulePath, "{$modelName}Service", $isClean, $modelName);
-        $this->createRepositoryAndInterface($module, $modulePath, "{$modelName}Repository", $isClean, $modelName);
-        $this->createRequest($module, $modulePath, "{$modelName}StoreRequest", $isClean);
-        $this->createMigration($module, $modulePath, $modelName, $componentConfig['attributes'] ?? [], $isClean);
-        $this->createSeeder($module, $modulePath, $modelName, $isClean);
-        $this->createFactory($module, $modulePath, $modelName, $isClean);
-        $this->createTest($module, $modulePath, $modelName . 'Test', $isClean);
-    }
-
-    /**
-     * Crea todas las carpetas necesarias para un módulo.
-     *
-     * @param string $modulePath
-     * @return void
-     */
-    protected function createFolders(string $modulePath): void
-    {
-        $folders = [
-            'Http/Controllers', 'Http/Requests', 'Models',
-            'Repositories/Contracts', 'Services/Contracts',
-            'Providers', 'Routes', 'resources/views',
-            'resources/lang/en', 'resources/lang/es',
-            'Database/Migrations', 'Database/Seeders', 'Database/Factories',
-            'Tests/Unit', 'Tests/Feature',
-        ];
-
-        foreach ($folders as $folder) {
-            File::makeDirectory("{$modulePath}/{$folder}", 0755, true);
-        }
-    }
-
-    /**
-     * Obtiene el contenido de un stub y reemplaza los placeholders.
-     *
-     * @param string $stubName
+     * @param string $path
+     * @param string $providerName
      * @param bool $isClean
-     * @param array $replacements
+     * @param array $components
+     * @return void
+     */
+    protected function createProvider(string $module, string $path, string $providerName, bool $isClean, array $components = []): void
+    {
+        $providerDir = config('make-module.module_path')."/{$module}/Providers";
+        File::ensureDirectoryExists($providerDir);
+
+        $stubFile = 'provider.stub';
+        $modelImports = '';
+        $modelBindings = '';
+
+        // Generar los imports y bindings si el módulo es dinámico y tiene componentes
+        if (!$isClean && !empty($components)) {
+            foreach ($components as $component) {
+                $modelName = Str::studly($component['name']);
+                $modelImports .= "use Modules\\{$module}\\Services\\Contracts\\{$modelName}ServiceInterface;\n";
+                $modelImports .= "use Modules\\{$module}\\Services\\{$modelName}Service;\n";
+                $modelImports .= "use Modules\\{$module}\\Repositories\\Contracts\\{$modelName}RepositoryInterface;\n";
+                $modelImports .= "use Modules\\{$module}\\Repositories\\{$modelName}Repository;\n";
+                $modelBindings .= "        \$this->app->bind(\n";
+                $modelBindings .= "            {$modelName}ServiceInterface::class,\n";
+                $modelBindings .= "            {$modelName}Service::class\n";
+                $modelBindings .= "        );\n";
+                $modelBindings .= "        \$this->app->bind(\n";
+                $modelBindings .= "            {$modelName}RepositoryInterface::class,\n";
+                $modelBindings .= "            {$modelName}Repository::class\n";
+                $modelBindings .= "        );\n";
+            }
+        }
+
+        $stub = $this->getStubContent($stubFile, $isClean, [
+            'module' => $module,
+            'modelImports' => trim($modelImports),
+            'modelBindings' => trim($modelBindings),
+        ]);
+
+        File::put("{$providerDir}/{$module}ServiceProvider.php", $stub);
+        $this->info("✅ Provider {$module}ServiceProvider.php creado en Modules/{$module}/Providers");
+    }
+
+    /**
+     * Obtiene el contenido de un stub y reemplaza los marcadores de posición.
+     *
+     * @param string $stubFile
+     * @param bool $isClean
+     * @param array $placeholders
      * @return string
      */
-    protected function getStubContent(string $stubName, bool $isClean, array $replacements = []): string
+    protected function getStubContent(string $stubFile, bool $isClean, array $placeholders = []): string
     {
-        $stubFolder = $isClean ? 'clean' : 'dynamic';
-        $customStubPath = config('make-module.stubs.path')."/{$stubFolder}/{$stubName}";
-        
-        if (File::exists($customStubPath)) {
-            $stubPath = $customStubPath;
-        } else {
-            // Se corrige la ruta de fallback para que sea consistente con el setup
-            $packageStubsPath = dirname(__DIR__, 2) . '/stubs';
-            $stubPath = "{$packageStubsPath}/{$stubFolder}/{$stubName}";
-        }
+        $stub = $this->getStub($stubFile, $isClean);
+        return $this->replacePlaceholders($stub, $placeholders);
+    }
 
+    /**
+     * Obtiene el contenido del archivo stub.
+     *
+     * @param string $stubFile
+     * @param bool $isClean
+     * @return string
+     */
+    protected function getStub(string $stubFile, bool $isClean): string
+    {
+        $stubPath = $this->getStubPath($stubFile, $isClean);
         if (!File::exists($stubPath)) {
-            $this->error("El stub '{$stubName}' no existe en ninguna de las ubicaciones para el modo '{$stubFolder}'.");
+            $this->error("El archivo stub '{$stubFile}' no se encuentra en '{$stubPath}'.");
             return '';
         }
-
-        $content = File::get($stubPath);
-        foreach ($replacements as $key => $value) {
-            if (is_array($value)) {
-                continue;
-            }
-            $content = str_replace("{{ {$key} }}", $value, $content);
-        }
-
-        return $content;
+        return File::get($stubPath);
     }
 
     /**
-     * Genera la estructura de la migración a partir de los atributos.
+     * Resuelve la ruta completa del archivo stub.
      *
-     * @param array $attributes
+     * @param string $stubFile
+     * @param bool $isClean
      * @return string
      */
-    protected function generateMigrationSchema(array $attributes): string
+    protected function getStubPath(string $stubFile, bool $isClean): string
     {
-        $schema = '';
-        foreach ($attributes as $attribute) {
-            $name = $attribute['name'];
-            $type = $attribute['type'];
-            $nullable = $attribute['nullable'] ?? false;
-            
-            $column = "\$table->{$type}('{$name}')";
-            if ($nullable) {
-                $column .= "->nullable()";
-            }
-            $schema .= "            {$column};\n";
-        }
-        return rtrim($schema);
+        $baseStubPath = config('make-module.stubs.path');
+        $subfolder = $isClean ? 'clean' : 'dynamic';
+        return "{$baseStubPath}/{$subfolder}/{$stubFile}";
     }
 
     /**
-     * Genera los métodos de relación del modelo a partir de la configuración.
+     * Reemplaza los marcadores de posición en el contenido del stub.
      *
-     * @param array $relationships
+     * @param string $stub
+     * @param array $placeholders
      * @return string
      */
-    protected function generateRelationships(array $relationships): string
+    protected function replacePlaceholders(string $stub, array $placeholders): string
     {
-        $rel = '';
-        foreach ($relationships as $relationship) {
-            $type = $relationship['type'];
-            $model = $relationship['model'];
-            $rel .= "    public function " . Str::camel($model) . "()\n";
-            $rel .= "    {\n";
-            $rel .= "        return \$this->{$type}(" . Str::studly($model) . "::class);\n";
-            $rel .= "    }\n";
+        foreach ($placeholders as $key => $value) {
+            $stub = str_replace("{{ {$key} }}", $value, $stub);
         }
-        return rtrim($rel);
+        return $stub;
     }
 
-    protected function createModel(string $module, string $path, string $modelName, bool $isClean, array $config = []): void
+    protected function createFolders(string $path): void
     {
+        File::ensureDirectoryExists($path);
+        File::ensureDirectoryExists("{$path}/config");
+        File::ensureDirectoryExists("{$path}/Http/Controllers");
+        File::ensureDirectoryExists("{$path}/Http/Requests");
+        File::ensureDirectoryExists("{$path}/Database/Migrations");
+        File::ensureDirectoryExists("{$path}/Database/Seeders");
+        File::ensureDirectoryExists("{$path}/Database/Factories");
+        File::ensureDirectoryExists("{$path}/routes");
+        File::ensureDirectoryExists("{$path}/Models");
+        // Nueva estructura para Services e Interfaces (Contracts)
+        File::ensureDirectoryExists("{$path}/Services/Contracts");
+        File::ensureDirectoryExists("{$path}/Repositories/Contracts");
+        File::ensureDirectoryExists("{$path}/Providers");
+        File::ensureDirectoryExists("{$path}/resources/views");
+        File::ensureDirectoryExists("{$path}/resources/lang");
+        File::ensureDirectoryExists("{$path}/Tests/Unit");
+    }
+
+    /**
+     * Crea un modelo para el módulo.
+     *
+     * @param string $module
+     * @param string $path
+     * @param string $modelName
+     * @param bool $isClean
+     * @param array $component
+     * @return void
+     */
+    protected function createModel(string $module, string $path, string $modelName, bool $isClean, array $component = []): void
+    {
+        $modelDir = config('make-module.module_path')."/{$module}/Models";
+        File::ensureDirectoryExists($modelDir);
+
         $stubFile = 'model.stub';
-        // Se corrige la lógica para obtener las relaciones de la configuración del componente
-        $relationships = $this->generateRelationships($config['relationships'] ?? []);
+        $fillable = $this->getFillableForModel($component);
+        // Pasamos el nombre del módulo a la función de relaciones
+        $relationships = $this->getRelationshipsForModel($component, $module);
+
         $stub = $this->getStubContent($stubFile, $isClean, [
             'namespace' => "Modules\\{$module}\\Models",
             'modelName' => $modelName,
+            'fillable' => $fillable,
             'relationships' => $relationships,
+            'module' => $module,
         ]);
-        File::put("{$path}/Models/{$modelName}.php", $stub);
+        File::put("{$modelDir}/{$modelName}.php", $stub);
         $this->info("✅ Modelo {$modelName}.php creado en Modules/{$module}/Models");
     }
 
-    protected function createController(string $module, string $path, string $controllerName, bool $isClean, string $modelName = ''): void
+    protected function getFillableForModel(array $component): string
     {
+        if (empty($component['attributes'])) {
+            return '';
+        }
+
+        $fillable = collect($component['attributes'])
+            ->filter(fn ($attr) => $attr['type'] !== 'relationship')
+            ->map(fn ($attr) => "'" . $attr['name'] . "'")
+            ->implode(', ');
+
+        return $fillable ? "protected \$fillable = [{$fillable}];" : '';
+    }
+
+    /**
+     * Genera el código para los métodos de relación del modelo.
+     *
+     * @param array $component
+     * @param string $module
+     * @return string
+     */
+    protected function getRelationshipsForModel(array $component, string $module): string
+    {
+        if (empty($component['attributes'])) {
+            return '';
+        }
+
+        $relationships = collect($component['attributes'])
+            ->filter(fn ($attr) => $attr['type'] === 'relationship')
+            ->map(function ($attr) use ($component, $module) {
+                $relationship = $attr['relationship'];
+                $modelName = Str::studly($relationship['model']);
+                $methodName = Str::camel($attr['name']);
+                $type = $relationship['type'];
+
+                // Usamos el nombre del módulo pasado como parámetro
+                $relatedModelClass = "Modules\\{$module}\\Models\\{$modelName}";
+
+                // Construye el código de la relación
+                $code = "    /**\n";
+                $code .= "     * Get the {$attr['name']} associated with the {$component['name']}.\n";
+                $code .= "     */\n";
+                $code .= "    public function {$methodName}(): \\Illuminate\\Database\\Eloquent\\Relations\\{$type}\n";
+                $code .= "    {\n";
+                $code .= "        return \$this->{$type}(" . $relatedModelClass . "::class);\n";
+                $code .= "    }\n\n";
+
+                return $code;
+            })
+            ->implode('');
+
+        return $relationships;
+    }
+
+    protected function createController(string $module, string $path, string $controllerName, bool $isClean, string $modelName = null): void
+    {
+        $controllerDir = config('make-module.module_path')."/{$module}/Http/Controllers";
+        File::ensureDirectoryExists($controllerDir);
+
         $stubFile = 'controller.stub';
-        $serviceName = Str::studly(str_replace('Controller', '', $controllerName));
-        $serviceInterface = "{$serviceName}ServiceInterface";
-        $serviceInstance = Str::camel($serviceName);
+        $modelStudly = Str::studly($modelName ?? $module);
+        $serviceInterface = "{$modelStudly}ServiceInterface";
+        $serviceInstance = Str::camel($modelStudly) . 'Service';
 
         $stub = $this->getStubContent($stubFile, $isClean, [
-            'namespace' => "Modules\\{$module}\\Http\\Controllers",
+            'namespace' =>  "Modules\\{$module}\\Http\\Controllers",
             'controllerName' => $controllerName,
+            'modelName' => $modelStudly,
+            'module' => $module,
             'serviceInterface' => $serviceInterface,
             'serviceInstance' => $serviceInstance,
-            'module' => $module,
         ]);
-        File::put("{$path}/Http/Controllers/{$controllerName}.php", $stub);
+
+        File::put("{$controllerDir}/{$controllerName}.php", $stub);
         $this->info("✅ Controlador {$controllerName}.php creado en Modules/{$module}/Http/Controllers");
     }
 
     protected function createRequest(string $module, string $path, string $requestName, bool $isClean): void
     {
+        $requestDir = config('make-module.module_path')."/{$module}/Http/Requests";
+        File::ensureDirectoryExists($requestDir);
+
         $stubFile = 'request.stub';
         $stub = $this->getStubContent($stubFile, $isClean, [
             'namespace' => "Modules\\{$module}\\Http\\Requests",
             'requestName' => $requestName,
         ]);
-        File::put("{$path}/Http/Requests/{$requestName}.php", $stub);
+        File::put("{$requestDir}/{$requestName}.php", $stub);
         $this->info("✅ Request {$requestName}.php creado en Modules/{$module}/Http/Requests");
     }
 
-    protected function createServiceAndInterface(string $module, string $path, string $serviceName, bool $isClean, string $modelName = ''): void
+    protected function createServiceAndInterface(string $module, string $path, string $serviceName, bool $isClean, string $modelName = null): void
     {
-        $serviceInterfaceName = "{$serviceName}Interface";
-        $repositoryInterfaceName = str_replace('Service', 'RepositoryInterface', $serviceName);
-        $repositoryInstance = Str::camel(str_replace('Service', 'Repository', $serviceName));
+        $serviceDir = config('make-module.module_path')."/{$module}/Services";
+        File::ensureDirectoryExists($serviceDir);
+        $serviceContractDir = "{$serviceDir}/Contracts";
+        File::ensureDirectoryExists($serviceContractDir);
 
-        $serviceInterfaceStubFile = 'service_interface.stub';
-        $serviceInterfaceStub = $this->getStubContent($serviceInterfaceStubFile, $isClean, [
+        $modelNameStudly = Str::studly($modelName ?? Str::replaceLast('Service', '', $serviceName));
+
+        // Crear la interfaz primero
+        $stubFileInterface = 'service-interface.stub';
+        $serviceInterfaceName = "{$serviceName}Interface";
+        $stubInterface = $this->getStubContent($stubFileInterface, $isClean, [
             'namespace' => "Modules\\{$module}\\Services\\Contracts",
             'serviceInterfaceName' => $serviceInterfaceName,
-        ]);
-        File::put("{$path}/Services/Contracts/{$serviceInterfaceName}.php", $serviceInterfaceStub);
-        $this->info("✅ Contrato {$serviceInterfaceName} creado en Modules/{$module}/Services/Contracts");
-
-        $serviceStubFile = 'service_implementation.stub';
-        $serviceStub = $this->getStubContent($serviceStubFile, $isClean, [
-            'namespace' => "Modules\\{$module}\\Services",
-            'repositoryInterfaceName' => $repositoryInterfaceName,
-            'serviceInterfaceName' => $serviceInterfaceName,
-            'modelName' => $modelName,
-            'repositoryInstance' => $repositoryInstance,
+            'modelName' => $modelNameStudly,
             'module' => $module,
         ]);
-        File::put("{$path}/Services/{$serviceName}.php", $serviceStub);
+        File::put("{$serviceContractDir}/{$serviceInterfaceName}.php", $stubInterface);
+        $this->info("✅ Interfaz {$serviceInterfaceName}.php creada en Modules/{$module}/Services/Contracts");
+
+        // Crear la implementación del servicio
+        $stubFileService = 'service.stub';
+        $repositoryName = Str::replaceLast('Service', 'Repository', $serviceName);
+        $repositoryInterfaceName = "{$repositoryName}Interface";
+        $repositoryInstance = Str::camel($repositoryName);
+        
+        $stubService = $this->getStubContent($stubFileService, $isClean, [
+            'namespace' => "Modules\\{$module}\\Services",
+            'serviceName' => $serviceName,
+            'modelName' => $modelNameStudly,
+            'module' => $module,
+            'serviceInterfaceName'=>$serviceInterfaceName,
+            'repositoryInterfaceName' => $repositoryInterfaceName,
+            'repositoryInstance' => $repositoryInstance,
+        ]);
+        File::put("{$serviceDir}/{$serviceName}.php", $stubService);
         $this->info("✅ Servicio {$serviceName}.php creado en Modules/{$module}/Services");
     }
 
-    protected function createRepositoryAndInterface(string $module, string $path, string $repositoryName, bool $isClean, string $modelName = ''): void
+    protected function createRepositoryAndInterface(string $module, string $path, string $repositoryName, bool $isClean, string $modelName = null): void
     {
+        $repositoryDir = config('make-module.module_path')."/{$module}/Repositories";
+        File::ensureDirectoryExists($repositoryDir);
+        $repositoryContractDir = "{$repositoryDir}/Contracts";
+        File::ensureDirectoryExists($repositoryContractDir);
+        
+        $modelNameStudly = Str::studly($modelName ?? $module); // Obtener el nombre del modelo
         $repositoryInterfaceName = "{$repositoryName}Interface";
 
-        $repositoryInterfaceStubFile = 'repository_interface.stub';
-        $repositoryInterfaceStub = $this->getStubContent($repositoryInterfaceStubFile, $isClean, [
+        // Crear la interfaz primero
+        $stubFileInterface = 'repository-interface.stub';
+        $stubInterface = $this->getStubContent($stubFileInterface, $isClean, [
             'namespace' => "Modules\\{$module}\\Repositories\\Contracts",
             'repositoryInterfaceName' => $repositoryInterfaceName,
-        ]);
-        File::put("{$path}/Repositories/Contracts/{$repositoryInterfaceName}.php", $repositoryInterfaceStub);
-        $this->info("✅ Contrato {$repositoryInterfaceName} creado en Modules/{$module}/Repositories/Contracts");
-
-        $repositoryStubFile = 'repository_implementation.stub';
-        $repositoryStub = $this->getStubContent($repositoryStubFile, $isClean, [
-            'namespace' => "Modules\\{$module}\\Repositories",
-            'modelName' => $modelName,
-            'repositoryInterfaceName' => $repositoryInterfaceName,
+            'modelName' => $modelNameStudly,
             'module' => $module,
         ]);
-        File::put("{$path}/Repositories/{$repositoryName}.php", $repositoryStub);
+        File::put("{$repositoryContractDir}/{$repositoryInterfaceName}.php", $stubInterface);
+        $this->info("✅ Interfaz {$repositoryInterfaceName}.php creada en Modules/{$module}/Repositories/Contracts");
+
+        // Crear la implementación del repositorio
+        $stubFileRepository = 'repository.stub';
+        // Generar el nombre de la variable del modelo en camelCase
+        $modelNameLowerCase = Str::camel($modelNameStudly);
+        
+        $stubRepository = $this->getStubContent($stubFileRepository, $isClean, [
+            'namespace' => "Modules\\{$module}\\Repositories",
+            'repositoryName' => $repositoryName,
+            'modelName' => $modelNameStudly,
+            'module' => $module,
+            'repositoryInterfaceName' => $repositoryInterfaceName,
+            'modelNameLowerCase' => $modelNameLowerCase,
+        ]);
+        File::put("{$repositoryDir}/{$repositoryName}.php", $stubRepository);
         $this->info("✅ Repositorio {$repositoryName}.php creado en Modules/{$module}/Repositories");
     }
 
-    protected function createProvider(string $module, string $path, string $modelName, bool $isClean): void
+    protected function createMigration(string $module, string $path, string $migrationName, array $attributes = [], bool $isClean = true): void
     {
-        $providerDir = config('make-module.module_path')."/{$module}/Providers";
-        File::ensureDirectoryExists($providerDir);
-        $stubFile = 'provider.stub';
+        $migrationDir = config('make-module.module_path')."/{$module}/Database/Migrations";
+        File::ensureDirectoryExists($migrationDir);
+
+        $stubFile = 'migration.stub';
+        $tableName = Str::snake(Str::plural($migrationName));
+        $className = 'Create' . Str::studly($tableName) . 'Table';
+        $tableSchema = $this->getMigrationSchema($attributes);
+
         $stub = $this->getStubContent($stubFile, $isClean, [
-            'namespace' => "Modules\\{$module}\\Providers",
-            'module' => $module,
-            'modelName' => $modelName,
+            'className' => $className,
+            'tableName' => $tableName,
+            'tableSchema' => $tableSchema,
         ]);
-        File::put("{$providerDir}/{$module}ServiceProvider.php", $stub);
-        $this->info("✅ Service Provider {$module}ServiceProvider.php creado en Modules/{$module}/Providers");
+
+        File::put("{$migrationDir}/".date('Y_m_d_His')."_create_{$tableName}_table.php", $stub);
+        $this->info("✅ Migración '{$tableName}' creada en Modules/{$module}/Database/Migrations");
+    }
+
+    protected function getMigrationSchema(array $attributes): string
+    {
+        if (empty($attributes)) {
+            return "\$table->id();\n \$table->timestamps();";
+        }
+
+        $schema = "\$table->id();\n";
+        foreach ($attributes as $attribute) {
+            $name = $attribute['name'];
+            $type = $attribute['type'];
+            $nullable = $attribute['nullable'] ?? false;
+            $length = $attribute['length'] ?? null;
+            $references = $attribute['references'] ?? null;
+            $on = $attribute['on'] ?? null;
+
+            if ($type === 'relationship') {
+                continue;
+            }
+
+            if ($type === 'foreignId') {
+                $schema .= "\$table->foreignId('{$name}')";
+                if ($references && $on) {
+                    $schema .= "->constrained('{$on}')";
+                }
+                if ($nullable) {
+                    $schema .= "->nullable()";
+                }
+                $schema .= ";\n";
+            } else {
+                $schema .= "\$table->{$type}('{$name}'";
+                if ($length) {
+                    $schema .= ", {$length}";
+                }
+                $schema .= ")";
+                if ($nullable) {
+                    $schema .= "->nullable()";
+                }
+                $schema .= ";\n";
+            }
+        }
+        $schema .= "\$table->timestamps();";
+
+        return $schema;
     }
 
     protected function createRoutes(string $module, string $path, string $controllerName, bool $isClean): void
     {
-        $routesDir = config('make-module.module_path')."/{$module}/Routes";
+        $routesDir = config('make-module.module_path')."/{$module}/routes";
         File::ensureDirectoryExists($routesDir);
-        $stub = $this->getStubContent('route-api.stub', $isClean, [
-            'namespace' => "Modules\\{$module}\\Http\\Controllers",
-            'module' => $module,
-            'controllerName' => $controllerName,
-        ]);
-        File::put("{$routesDir}/api.php", $stub);
-        $this->info("✅ Archivo de rutas API creado en Modules/{$module}/Routes");
 
-        $stubWeb = $this->getStubContent('route-web.stub', $isClean, [
-            'namespace' => "Modules\\{$module}\\Http\\Controllers",
-            'module' => $module,
-            'controllerName' => $controllerName,
-        ]);
-        File::put("{$routesDir}/web.php", $stubWeb);
-        $this->info("✅ Archivo de rutas web creado en Modules/{$module}/Routes");
-    }
-
-    protected function createMigration(string $module, string $path, string $migrationModelName, array $attributes = [], bool $isClean = false): void
-    {
-        $timestamp = now()->format('Y_m_d_His');
-        $filenameBase = 'create_' . Str::snake(Str::plural($migrationModelName)) . '_table';
-        $filename = "{$timestamp}_{$filenameBase}.php";
-        $migrationPath = config('make-module.module_path')."/{$module}/Database/Migrations";
-        File::ensureDirectoryExists($migrationPath);
-
-        $tableName = Str::snake(Str::plural($migrationModelName));
-        $migrationClassName = Str::studly($filenameBase);
-
-        $stubFile = 'migration.stub';
-        $schema = $this->generateMigrationSchema($attributes);
-
+        $stubFile = 'route-api.stub';
         $stub = $this->getStubContent($stubFile, $isClean, [
-            'tableName' => $tableName,
-            'schema' => $schema,
-            'migrationClassName' => $migrationClassName
+            'StudlyModule' => Str::studly($module),
+            'snakeModule' => Str::snake($module),
+            'controllerName' => $controllerName,
         ]);
-        File::put("{$migrationPath}/{$filename}", $stub);
-        $this->info("✅ Migración {$filename} creada en Modules/{$module}/Database/Migrations");
+
+        File::put("{$routesDir}/api.php", $stub);
+        $this->info("✅ Rutas API creadas en Modules/{$module}/routes/api.php");
+
+        $stubFileWeb = 'route-web.stub';
+        $stubWeb = $this->getStubContent($stubFileWeb, $isClean, [
+            'StudlyModule' => Str::studly($module),
+            'snakeModule' => Str::snake($module),
+            'controllerName' => $controllerName,
+        ]);
+
+        File::put("{$routesDir}/web.php", $stubWeb);
+        $this->info("✅ Rutas WEB creadas en Modules/{$module}/routes/web.php");
     }
 
     protected function createSeeder(string $module, string $path, string $seederName, bool $isClean): void
@@ -489,7 +638,6 @@ class MakeModuleCommand extends Command
         $stub = $this->getStubContent($stubFile, $isClean, [
             'namespace' => "Modules\\{$module}\\Database\\Seeders",
             'seederName' => $seederName,
-            'module' => $module,
         ]);
         File::put("{$seederDir}/{$seederName}Seeder.php", $stub);
         $this->info("✅ Seeder {$seederName}Seeder.php creado en Modules/{$module}/Database/Seeders");
@@ -517,6 +665,7 @@ class MakeModuleCommand extends Command
         $stub = $this->getStubContent($stubFile, $isClean, [
             'namespace' => "Modules\\{$module}\\Tests\\Unit",
             'testName' => $testName,
+            'module' => $module,
         ]);
         File::put("{$testDir}/{$testName}.php", $stub);
         $this->info("✅ Test {$testName}.php creado en Modules/{$module}/Tests/Unit");

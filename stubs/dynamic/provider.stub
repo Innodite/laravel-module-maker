@@ -1,12 +1,9 @@
 <?php
 
-namespace {{ namespace }};
+namespace Modules\{{ module }}\Providers;
 
 use Illuminate\Support\ServiceProvider;
-use Modules\{{ module }}\Repositories\Contracts\{{ modelName }}RepositoryInterface;
-use Modules\{{ module }}\Repositories\{{ modelName }}Repository;
-use Modules\{{ module }}\Services\Contracts\{{ modelName }}ServiceInterface;
-use Modules\{{ module }}\Services\{{ modelName }}Service;
+{{ modelImports }}
 
 class {{ module }}ServiceProvider extends ServiceProvider
 {
@@ -17,8 +14,7 @@ class {{ module }}ServiceProvider extends ServiceProvider
      */
     public function register()
     {
-        $this->app->bind({{ modelName }}ServiceInterface::class, {{ modelName }}Service::class);
-        $this->app->bind({{ modelName }}RepositoryInterface::class, {{ modelName }}Repository::class);
+{{ modelBindings }}
     }
 
     /**

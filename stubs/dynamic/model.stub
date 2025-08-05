@@ -1,4 +1,3 @@
-// model.stub
 <?php
 
 namespace {{ namespace }};
@@ -10,7 +9,7 @@ class {{ modelName }} extends Model
 {
     use HasFactory;
 
-    protected $guarded = [];
+    {{ fillable }}
 
 {{ relationships }}
 }

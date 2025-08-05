@@ -1,9 +1,8 @@
 <?php
 
 use Illuminate\Support\Facades\Route;
-use Modules\{{ module }}\Http\Controllers\{{ controllerName }};
+use Modules\{{ StudlyModule }}\Http\Controllers\{{ controllerName }};
 
-Route::prefix('{{ module }}')
-    ->group(function () {
-        Route::get('/', [{{ controllerName }}::class, 'index']);
-    });
+Route::middleware('web')->prefix('{{ snakeModule }}')->group(function () {
+    Route::get('/', [{{ controllerName }}::class, 'index']);
+});

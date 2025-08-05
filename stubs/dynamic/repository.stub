@@ -15,7 +15,7 @@ class {{ repositoryName }} implements {{ repositoryInterfaceName }}
         $this->{{ modelNameLowerCase }} = ${{ modelNameLowerCase }};
     }
     
-    public function all(): Collection
+    public function all()
     {
         return $this->{{ modelNameLowerCase }}->all();
     }
