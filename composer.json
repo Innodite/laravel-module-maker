@@ -6,7 +6,8 @@
     "authors": [
         {
             "name": "Anthony Filgueira",
-            "email": "innodite@gmail.com"
+            "email": "innodite@gmail.com",
+            "homepage": "https://www.innodite.com"
         }
     ],
     "autoload": {
