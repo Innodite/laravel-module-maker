@@ -4,6 +4,9 @@ Genera módulos y componentes para Laravel de forma rápida, limpia y estructura
 🚀 Instalación
 1. Instala el paquete vía Composer
 
+```
+composer require innodite/laravel-module-maker
+```
 Para comenzar a usar el paquete Laravel Module Maker en tu proyecto Laravel, sigue estos sencillos pasos:
 
     Instala el paquete vía Composer:
@@ -20,7 +23,7 @@ Para comenzar a usar el paquete Laravel Module Maker en tu proyecto Laravel, sig
 
         Publicación de stubs que puedes personalizar
 
-2. Configura el paquete y publica los stubs
+3. Configura el paquete y publica los stubs
 
 Después de la instalación, es crucial ejecutar el comando de configuración del paquete. Esto publicará los archivos de configuración de ejemplo y los "stubs" (plantillas) que el paquete utiliza para generar los diferentes componentes. Publicar los stubs te permite personalizarlos si deseas modificar la estructura o el contenido por defecto de los archivos generados.
 
@@ -190,5 +193,6 @@ php artisan innodite:make-module Analytics --service=ReportService
 ```
 
 ✅ ¡Listo para usar!
+
 
 Laravel Module Maker acelera tu desarrollo y mantiene tu código modular, limpio y profesional. ¡A crear sin límites!
