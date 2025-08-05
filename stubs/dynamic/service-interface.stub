@@ -1,0 +1,9 @@
+<?php
+
+namespace {{ namespace }};
+
+interface {{ serviceInterfaceName }}
+{
+    public function all(): Collection;
+    //... otros contratos de métodos CRUD
+}

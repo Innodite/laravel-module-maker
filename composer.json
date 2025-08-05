@@ -1,0 +1,29 @@
+{
+    "name": "innodite/laravel-module-maker",
+    "description": "A Laravel package to generate clean or dynamic modules with a single command.",
+    "type": "library",
+    "license": "MIT",
+    "authors": [
+        {
+            "name": "Anthony Filgueira",
+            "email": "innodite@gmail.com"
+        }
+    ],
+    "autoload": {
+        "psr-4": {
+            "Innodite\\LaravelModuleMaker\\": "src/"
+        }
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "Innodite\\LaravelModuleMaker\\LaravelModuleMakerServiceProvider"
+            ]
+        }
+    },
+   "require": {
+        "php": "^8.2",
+        "illuminate/support": "^10.0|^11.0|^12.0",
+        "illuminate/console": "^10.0|^11.0|^12.0"
+    }
+}

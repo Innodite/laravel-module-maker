@@ -1,0 +1,11 @@
+<?php
+
+namespace {{ namespace }};
+
+use Modules\{{ module }}\Repositories\Contracts\{{ repositoryInterfaceName }};
+use Illuminate\Database\Eloquent\Collection;
+
+class {{ repositoryName }} implements {{ repositoryInterfaceName }}
+{
+    // Implementa tus métodos aquí
+}

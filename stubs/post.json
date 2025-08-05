@@ -1,0 +1,21 @@
+{
+    "module_name": "Post",
+    "components": [
+        {
+            "name": "Post",
+            "table": "posts",
+            "attributes": [
+                {
+                    "name": "title",
+                    "type": "string",
+                    "length": 255
+                },
+                {
+                    "name": "body",
+                    "type": "text",
+                    "nullable": true
+                }
+            ]
+        }
+    ]
+}

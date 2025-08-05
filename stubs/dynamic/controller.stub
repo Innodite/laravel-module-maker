@@ -1,0 +1,25 @@
+// controller.stub
+<?php
+
+namespace {{ namespace }};
+
+use Illuminate\Http\Request;
+use Illuminate\Routing\Controller;
+use Modules\{{ module }}\Services\Contracts\{{ serviceInterface }};
+
+class {{ controllerName }} extends Controller
+{
+    protected ${{ serviceInstance }};
+
+    public function __construct({{ serviceInterface }} ${{ serviceInstance }})
+    {
+        $this->{{ serviceInstance }} = ${{ serviceInstance }};
+    }
+
+    public function index()
+    {
+        return $this->{{ serviceInstance }}->all();
+    }
+
+    //... otros métodos CRUD
+}

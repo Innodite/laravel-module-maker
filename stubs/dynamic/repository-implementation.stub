@@ -1,0 +1,24 @@
+<?php
+
+namespace {{ namespace }};
+
+use Modules\{{ module }}\Models\{{ modelName }};
+use Modules\{{ module }}\Repositories\Contracts\{{ repositoryInterfaceName }};
+use Illuminate\Database\Eloquent\Collection;
+
+class {{ repositoryName }} implements {{ repositoryInterfaceName }}
+{
+    protected ${{ modelNameLowerCase }};
+
+    public function __construct({{ modelName }} ${{ modelNameLowerCase }})
+    {
+        $this->{{ modelNameLowerCase }} = ${{ modelNameLowerCase }};
+    }
+    
+    public function all(): Collection
+    {
+        return $this->{{ modelNameLowerCase }}->all();
+    }
+
+    //... otros métodos CRUD
+}

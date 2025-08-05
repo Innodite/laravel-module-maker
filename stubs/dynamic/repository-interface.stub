@@ -1,0 +1,11 @@
+<?php
+
+namespace {{ namespace }};
+
+use Illuminate\Database\Eloquent\Collection;
+
+interface {{ repositoryInterfaceName }}
+{
+    public function all(): Collection;
+    //... otros contratos de métodos CRUD
+}

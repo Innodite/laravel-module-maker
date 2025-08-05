@@ -1,0 +1,51 @@
+{
+    "module_name": "Blog",
+    "components": [
+        {
+            "name": "Post",
+            "table": "posts",
+            "attributes": [
+                {
+                    "name": "title",
+                    "type": "string"
+                },
+                {
+                    "name": "body",
+                    "type": "text"
+                },
+                {
+                    "name": "comments",
+                    "type": "relationship",
+                    "relationship": {
+                        "type": "hasMany",
+                        "model": "Comment"
+                    }
+                }
+            ]
+        },
+        {
+            "name": "Comment",
+            "table": "comments",
+            "attributes": [
+                {
+                    "name": "body",
+                    "type": "string"
+                },
+                {
+                    "name": "post_id",
+                    "type": "foreignId",
+                    "references": "id",
+                    "on": "posts"
+                },
+                {
+                    "name": "post",
+                    "type": "relationship",
+                    "relationship": {
+                        "type": "belongsTo",
+                        "model": "Post"
+                    }
+                }
+            ]
+        }
+    ]
+}

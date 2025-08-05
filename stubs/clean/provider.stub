@@ -1,0 +1,33 @@
+<?php
+
+namespace {{ namespace }};
+
+use Illuminate\Support\ServiceProvider;
+use Modules\{{ module }}\Repositories\Contracts\{{ modelName }}RepositoryInterface;
+use Modules\{{ module }}\Repositories\{{ modelName }}Repository;
+use Modules\{{ module }}\Services\Contracts\{{ modelName }}ServiceInterface;
+use Modules\{{ module }}\Services\{{ modelName }}Service;
+
+class {{ module }}ServiceProvider extends ServiceProvider
+{
+    /**
+     * Register the service provider.
+     *
+     * @return void
+     */
+    public function register()
+    {
+        $this->app->bind({{ modelName }}ServiceInterface::class, {{ modelName }}Service::class);
+        $this->app->bind({{ modelName }}RepositoryInterface::class, {{ modelName }}Repository::class);
+    }
+
+    /**
+     * Boot the application events.
+     *
+     * @return void
+     */
+    public function boot()
+    {
+        //
+    }
+}
