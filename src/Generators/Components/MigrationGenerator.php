@@ -157,7 +157,8 @@ class MigrationGenerator extends AbstractComponentGenerator
         // Luego, genera los índices
         $schemaLines = array_merge($schemaLines, $this->getMigrationIndexes($indexes));
 
-        return implode("\n            ", $schemaLines);
+        // Unimos las líneas con un salto de línea y la indentación correcta
+        return implode("\n            ", $schemaLines);
     }
 
     /**
