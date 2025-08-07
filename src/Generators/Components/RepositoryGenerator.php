@@ -8,14 +8,26 @@ use Innodite\LaravelModuleMaker\Generators\Concerns\HasStubs;
 
 class RepositoryGenerator extends AbstractComponentGenerator
 {
-    protected string $repositoryName;
-    protected string $modelName; // Nombre del modelo asociado al repositorio
+    // Constantes para nombres de directorios y stubs, lo que facilita el mantenimiento
+    protected const REPOSITORY_DIRECTORY_NAME = 'Repositories';
+    protected const REPOSITORY_CONTRACT_DIRECTORY_NAME = 'Contracts';
+    protected const REPOSITORY_INTERFACE_STUB_FILE = 'repository-interface.stub';
+    protected const REPOSITORY_STUB_FILE = 'repository.stub';
 
-    public function __construct(string $moduleName, string $modulePath, bool $isClean, string $repositoryName, string $modelName, array $componentConfig = [])
-    {
+    protected string $repositoryClassName;
+    protected string $modelClassName; // Nombre de la clase del modelo asociado al repositorio
+
+    public function __construct(
+        string $moduleName, 
+        string $modulePath, 
+        bool $isClean, 
+        string $repositoryClassName, 
+        string $modelClassName, 
+        array $componentConfig = []
+    ) {
         parent::__construct($moduleName, $modulePath, $isClean, $componentConfig);
-        $this->repositoryName = Str::studly($repositoryName);
-        $this->modelName = Str::studly($modelName);
+        $this->repositoryClassName = Str::studly($repositoryClassName);
+        $this->modelClassName = Str::studly($modelClassName);
     }
 
     /**
@@ -25,35 +37,51 @@ class RepositoryGenerator extends AbstractComponentGenerator
      */
     public function generate(): void
     {
-        $repositoryDir = $this->getComponentBasePath() . "/Repositories";
-        $this->ensureDirectoryExists($repositoryDir);
-        $repositoryContractDir = "{$repositoryDir}/Contracts";
-        $this->ensureDirectoryExists($repositoryContractDir);
+        // Usamos constantes para definir las rutas de los directorios
+        $repositoryDirectoryPath = $this->getComponentBasePath() . '/' . self::REPOSITORY_DIRECTORY_NAME;
+        $this->ensureDirectoryExists($repositoryDirectoryPath);
+
+        $repositoryContractDirectoryPath = $repositoryDirectoryPath . '/' . self::REPOSITORY_CONTRACT_DIRECTORY_NAME;
+        $this->ensureDirectoryExists($repositoryContractDirectoryPath);
         
-        $repositoryInterfaceName = "{$this->repositoryName}Interface";
+        $repositoryInterfaceClassName = "{$this->repositoryClassName}Interface";
 
         // Crear la interfaz primero
-        $stubFileInterface = 'repository-interface.stub';
-        $stubInterface = $this->getStubContent($stubFileInterface, $this->isClean, [
-            'namespace' => "Modules\\{$this->moduleName}\\Repositories\\Contracts",
-            'repositoryInterfaceName' => $repositoryInterfaceName,
-            'modelName' => $this->modelName,
-            'module' => $this->moduleName,
-        ]);
-        $this->putFile("{$repositoryContractDir}/{$repositoryInterfaceName}.php", $stubInterface, "Interfaz {$repositoryInterfaceName}.php creada en Modules/{$this->moduleName}/Repositories/Contracts");
+        $stubInterfaceContent = $this->getStubContent(
+            self::REPOSITORY_INTERFACE_STUB_FILE, 
+            $this->isClean, 
+            [
+                'namespace' => "Modules\\{$this->moduleName}\\" . self::REPOSITORY_DIRECTORY_NAME . '\\' . self::REPOSITORY_CONTRACT_DIRECTORY_NAME,
+                'repositoryInterfaceName' => $repositoryInterfaceClassName,
+                'modelName' => $this->modelClassName,
+                'module' => $this->moduleName,
+            ]
+        );
+        $this->putFile(
+            "{$repositoryContractDirectoryPath}/{$repositoryInterfaceClassName}.php", 
+            $stubInterfaceContent, 
+            "Interfaz {$repositoryInterfaceClassName}.php creada en Modules/{$this->moduleName}/Repositories/Contracts"
+        );
 
         // Crear la implementación del repositorio
-        $stubFileRepository = 'repository.stub';
-        $modelNameLowerCase = Str::camel($this->modelName);
+        $modelVariableName = Str::camel($this->modelClassName);
         
-        $stubRepository = $this->getStubContent($stubFileRepository, $this->isClean, [
-            'namespace' => "Modules\\{$this->moduleName}\\Repositories",
-            'repositoryName' => $this->repositoryName,
-            'modelName' => $this->modelName,
-            'module' => $this->moduleName,
-            'repositoryInterfaceName' => $repositoryInterfaceName,
-            'modelNameLowerCase' => $modelNameLowerCase,
-        ]);
-        $this->putFile("{$repositoryDir}/{$this->repositoryName}.php", $stubRepository, "Repositorio {$this->repositoryName}.php creado en Modules/{$this->moduleName}/Repositories");
+        $stubRepositoryContent = $this->getStubContent(
+            self::REPOSITORY_STUB_FILE, 
+            $this->isClean, 
+            [
+                'namespace' => "Modules\\{$this->moduleName}\\" . self::REPOSITORY_DIRECTORY_NAME,
+                'repositoryName' => $this->repositoryClassName,
+                'modelName' => $this->modelClassName,
+                'module' => $this->moduleName,
+                'repositoryInterfaceName' => $repositoryInterfaceClassName,
+                'modelNameLowerCase' => $modelVariableName,
+            ]
+        );
+        $this->putFile(
+            "{$repositoryDirectoryPath}/{$this->repositoryClassName}.php", 
+            $stubRepositoryContent, 
+            "Repositorio {$this->repositoryClassName}.php creado en Modules/{$this->moduleName}/Repositories"
+        );
     }
 }
