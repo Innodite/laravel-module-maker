@@ -13,19 +13,22 @@ use InvalidArgumentException;
  * Esta versión incluye validación de atributos para evitar errores en la
  * generación de la migración y soporta más tipos de datos comunes, así como la
  * creación de índices simples y compuestos.
+ *
+ * Se ha corregido el problema de la marca de tiempo para asegurar que las
+ * migraciones se generen en un orden secuencial, evitando errores de
+ * dependencias de tablas.
  */
 class MigrationGenerator extends AbstractComponentGenerator
 {
-    // Constantes para nombres de directorios y archivos de stub
+    use HasStubs;
+
     protected const MIGRATION_DIRECTORY = 'Database/Migrations';
     protected const MIGRATION_STUB_FILE = 'migration.stub';
-
-    // Usamos el formato estándar de Laravel para el timestamp
-    protected const TIMESTAMP_FORMAT = 'Y_m_d_His';
 
     protected string $migrationName;
     protected array $attributes;
     protected array $indexes;
+    protected int $timestampOffset; // Propiedad para manejar el offset del timestamp
 
     /**
      * Define los atributos y modificadores válidos para cada tipo de dato.
@@ -86,12 +89,14 @@ class MigrationGenerator extends AbstractComponentGenerator
         string $migrationName,
         array $attributes = [],
         array $indexes = [],
-        array $componentConfig = []
+        array $componentConfig = [],
+        int $timestampOffset = 0 // Nuevo parámetro para el offset
     ) {
         parent::__construct($moduleName, $modulePath, $isClean, $componentConfig);
         $this->migrationName = Str::studly($migrationName);
         $this->attributes = $attributes;
         $this->indexes = $indexes;
+        $this->timestampOffset = $timestampOffset; // Asignamos el offset
     }
 
     /**
@@ -108,8 +113,9 @@ class MigrationGenerator extends AbstractComponentGenerator
         $className = 'Create' . Str::studly($tableName) . 'Table';
         $tableSchema = $this->getMigrationSchema($this->attributes, $this->indexes);
 
-        // Se usa el timestamp estándar sin un contador extra
-        $uniqueTimestamp = date(self::TIMESTAMP_FORMAT);
+        // Se usa el timestamp estándar con un offset para garantizar unicidad.
+        // El formato de timestamp es 'Y_m_d_His'.
+        $uniqueTimestamp = date('Y_m_d_His', time() + $this->timestampOffset);
 
         $stubContent = $this->getStubContent(self::MIGRATION_STUB_FILE, $this->isClean, [
             'className' => $className,
@@ -139,7 +145,7 @@ class MigrationGenerator extends AbstractComponentGenerator
         $schemaLines = array_merge($schemaLines, $this->getFilteredMigrationIndexes($attributes, $indexes));
 
         // Unimos las líneas con un salto de línea y la indentación correcta
-        return implode("\n            ", $schemaLines);
+        return implode("\n            ", $schemaLines);
     }
 
     /**
