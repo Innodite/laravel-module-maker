@@ -3,11 +3,20 @@
 namespace Innodite\LaravelModuleMaker\Generators\Components;
 
 use Illuminate\Support\Str;
-use Illuminate\Support\Facades\File;
-use Innodite\LaravelModuleMaker\Generators\Concerns\HasStubs;
+use InvalidArgumentException;
 
+/**
+ * Clase para generar archivos de modelo de Laravel de forma dinámica.
+ *
+ * Esta versión incluye refactorización para generar la propiedad $fillable
+ * y los métodos de relación de Eloquent de forma más robusta y legible.
+ */
 class ModelGenerator extends AbstractComponentGenerator
 {
+    // Constantes para nombres de directorios y archivos de stub
+    protected const MODEL_DIRECTORY = 'Models';
+    protected const MODEL_STUB_FILE = 'model.stub';
+
     protected string $modelName;
 
     public function __construct(string $moduleName, string $modulePath, bool $isClean, string $modelName, array $componentConfig = [])
@@ -23,12 +32,12 @@ class ModelGenerator extends AbstractComponentGenerator
      */
     public function generate(): void
     {
-        $modelDir = $this->getComponentBasePath() . "/Models";
+        $modelDir = $this->getComponentBasePath() . '/' . self::MODEL_DIRECTORY;
         $this->ensureDirectoryExists($modelDir);
 
-        $stubFile = 'model.stub';
-        $fillable = $this->getFillableForModel($this->componentConfig);
-        $relationships = $this->getRelationshipsForModel($this->componentConfig, $this->moduleName);
+        $stubFile = self::MODEL_STUB_FILE;
+        $fillable = $this->getFillableForModel($this->componentConfig['attributes'] ?? []);
+        $relationships = $this->getRelationshipsForModel($this->componentConfig['attributes'] ?? [], $this->moduleName);
 
         $stub = $this->getStubContent($stubFile, $this->isClean, [
             'namespace' => "Modules\\{$this->moduleName}\\Models",
@@ -42,60 +51,65 @@ class ModelGenerator extends AbstractComponentGenerator
     }
 
     /**
-     * Obtiene la cadena 'fillable' para el modelo a partir de la configuración del componente.
+     * Obtiene la cadena 'fillable' para el modelo a partir de la configuración de atributos.
      *
-     * @param array $componentConfig
+     * @param array $attributes
      * @return string
      */
-    protected function getFillableForModel(array $componentConfig): string
+    protected function getFillableForModel(array $attributes): string
     {
-        if (empty($componentConfig['attributes'])) {
+        if (empty($attributes)) {
             return '';
         }
 
-        $fillable = collect($componentConfig['attributes'])
-            ->filter(fn ($attr) => $attr['type'] !== 'relationship')
+        // Filtra los atributos que no son 'fillable' (p.ej. ID, relaciones, timestamps)
+        $fillableAttributes = collect($attributes)
+            ->filter(fn ($attr) => isset($attr['name']) && !in_array($attr['type'], ['id', 'bigIncrements', 'increments', 'foreignId', 'foreign', 'relationship']))
             ->map(fn ($attr) => "'" . $attr['name'] . "'")
             ->implode(', ');
 
-        return $fillable ? "protected \$fillable = [{$fillable}];" : '';
+        return $fillableAttributes ? "    protected \$fillable = [{$fillableAttributes}];" : '';
     }
 
     /**
      * Genera el código para los métodos de relación del modelo.
      *
-     * @param array $componentConfig
+     * @param array $attributes
      * @param string $module
      * @return string
      */
-    protected function getRelationshipsForModel(array $componentConfig, string $module): string
+    protected function getRelationshipsForModel(array $attributes, string $module): string
     {
-        if (empty($componentConfig['attributes'])) {
+        if (empty($attributes)) {
             return '';
         }
 
-        $relationships = collect($componentConfig['attributes'])
-            ->filter(fn ($attr) => $attr['type'] === 'relationship')
-            ->map(function ($attr) use ($componentConfig, $module) {
-                $relationship = $attr['relationship'];
-                $modelName = Str::studly($relationship['model']);
-                $methodName = Str::camel($attr['name']);
-                $type = $relationship['type'];
+        $relationshipMethods = collect($attributes)
+            ->filter(fn ($attr) => isset($attr['name']) && in_array($attr['type'], ['foreignId', 'foreign']))
+            ->map(function ($attr) use ($module) {
+                // El nombre de la relación será el nombre de la clave foránea sin _id
+                $methodName = Str::camel(Str::before($attr['name'], '_id'));
+                // El modelo relacionado se deduce del nombre de la clave foránea o del atributo 'on'
+                $relatedModel = Str::studly(Str::before($attr['name'], '_id'));
+                $relatedModelClass = "Modules\\{$module}\\Models\\{$relatedModel}";
 
-                $relatedModelClass = "Modules\\{$module}\\Models\\{$modelName}";
+                // El tipo de relación por defecto para una clave foránea es BelongsTo
+                $type = 'BelongsTo';
+                $relationCall = "\$this->{$type}(" . $relatedModelClass . "::class)";
 
+                // Añadimos la documentación del método
                 $code = "    /**\n";
-                $code .= "     * Get the {$attr['name']} associated with the {$componentConfig['name']}.\n";
+                $code .= "     * Obtiene el {$relatedModel} que posee este modelo.\n";
                 $code .= "     */\n";
                 $code .= "    public function {$methodName}(): \\Illuminate\\Database\\Eloquent\\Relations\\{$type}\n";
                 $code .= "    {\n";
-                $code .= "        return \$this->{$type}(" . $relatedModelClass . "::class);\n";
+                $code .= "        return {$relationCall};\n";
                 $code .= "    }\n\n";
 
                 return $code;
             })
             ->implode('');
 
-        return $relationships;
+        return $relationshipMethods;
     }
 }
