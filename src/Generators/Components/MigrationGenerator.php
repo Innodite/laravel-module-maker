@@ -6,6 +6,7 @@ use Illuminate\Support\Str;
 use Illuminate\Support\Facades\File;
 use Innodite\LaravelModuleMaker\Generators\Concerns\HasStubs;
 use InvalidArgumentException;
+use Carbon\Carbon; // Se añade la clase Carbon para un manejo preciso del tiempo
 
 /**
  * Clase para generar archivos de migración de Laravel de forma dinámica.
@@ -28,7 +29,6 @@ class MigrationGenerator extends AbstractComponentGenerator
     protected string $migrationName;
     protected array $attributes;
     protected array $indexes;
-    protected int $timestampOffset; // Propiedad para manejar el offset del timestamp
 
     /**
      * Define los atributos y modificadores válidos para cada tipo de dato.
@@ -89,14 +89,12 @@ class MigrationGenerator extends AbstractComponentGenerator
         string $migrationName,
         array $attributes = [],
         array $indexes = [],
-        array $componentConfig = [],
-        int $timestampOffset = 0 // Nuevo parámetro para el offset
+        array $componentConfig = []
     ) {
         parent::__construct($moduleName, $modulePath, $isClean, $componentConfig);
         $this->migrationName = Str::studly($migrationName);
         $this->attributes = $attributes;
         $this->indexes = $indexes;
-        $this->timestampOffset = $timestampOffset; // Asignamos el offset
     }
 
     /**
@@ -113,9 +111,9 @@ class MigrationGenerator extends AbstractComponentGenerator
         $className = 'Create' . Str::studly($tableName) . 'Table';
         $tableSchema = $this->getMigrationSchema($this->attributes, $this->indexes);
 
-        // Se usa el timestamp estándar con un offset para garantizar unicidad.
-        // El formato de timestamp es 'Y_m_d_His'.
-        $uniqueTimestamp = date('Y_m_d_His', time() + $this->timestampOffset);
+        // Se obtiene una marca de tiempo con precisión de microsegundos para evitar colisiones.
+        $uniqueTimestamp = Carbon::now()->format('Y_m_d_Hisu');
+        $fileName = "{$uniqueTimestamp}_create_{$tableName}_table.php";
 
         $stubContent = $this->getStubContent(self::MIGRATION_STUB_FILE, $this->isClean, [
             'className' => $className,
@@ -123,7 +121,6 @@ class MigrationGenerator extends AbstractComponentGenerator
             'tableSchema' => $tableSchema,
         ]);
 
-        $fileName = "{$uniqueTimestamp}_create_{$tableName}_table.php";
         $this->putFile("{$migrationDirectoryPath}/{$fileName}", $stubContent, "Migración '{$tableName}' creada en Modules/{$this->moduleName}/Database/Migrations");
     }
 
