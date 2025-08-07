@@ -157,7 +157,7 @@ class MigrationGenerator extends AbstractComponentGenerator
         // Luego, genera los índices
         $schemaLines = array_merge($schemaLines, $this->getMigrationIndexes($indexes));
 
-        return implode("\n            ", $schemaLines);
+        return implode("\n            ", $schemaLines);
     }
 
     /**
@@ -189,7 +189,8 @@ class MigrationGenerator extends AbstractComponentGenerator
             // Validación: asegura que el tipo y los atributos sean válidos
             $this->validateAttribute($attribute);
 
-            $schemaLines[] = $this->getSchemaLineForAttribute($attribute);
+            // Se añade el punto y coma aquí, al final de cada línea de columna.
+            $schemaLines[] = $this->getSchemaLineForAttribute($attribute) . ";";
         }
 
         // Se asume que la mayoría de las tablas tienen timestamps.
@@ -230,10 +231,10 @@ class MigrationGenerator extends AbstractComponentGenerator
             
             // Los índices de una sola columna se pueden definir de forma más simple
             if (is_string($index['columns']) || (is_array($index['columns']) && count($index['columns']) === 1)) {
-                 $columnName = is_array($index['columns']) ? $index['columns'][0] : $index['columns'];
-                 $schemaLines[] = "\$table->{$type}('{$columnName}');";
+                $columnName = is_array($index['columns']) ? $index['columns'][0] : $index['columns'];
+                $schemaLines[] = "\$table->{$type}('{$columnName}');";
             } else {
-                 $schemaLines[] = "\$table->{$type}({$columns});";
+                $schemaLines[] = "\$table->{$type}({$columns});";
             }
         }
         return $schemaLines;
