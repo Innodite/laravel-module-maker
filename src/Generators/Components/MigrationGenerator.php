@@ -9,7 +9,8 @@ use InvalidArgumentException;
 
 /**
  * Clase para generar archivos de migración de Laravel de forma dinámica.
- * * Esta versión incluye validación de atributos para evitar errores en la
+ *
+ * Esta versión incluye validación de atributos para evitar errores en la
  * generación de la migración y soporta más tipos de datos comunes, así como la
  * creación de índices simples y compuestos.
  */
@@ -18,15 +19,13 @@ class MigrationGenerator extends AbstractComponentGenerator
     // Constantes para nombres de directorios y archivos de stub
     protected const MIGRATION_DIRECTORY = 'Database/Migrations';
     protected const MIGRATION_STUB_FILE = 'migration.stub';
+
+    // Usamos el formato estándar de Laravel para el timestamp
     protected const TIMESTAMP_FORMAT = 'Y_m_d_His';
 
     protected string $migrationName;
     protected array $attributes;
     protected array $indexes;
-
-    // Propiedades estáticas para asegurar un timestamp único por segundo
-    protected static int $migrationCounter = 0;
-    protected static ?string $lastTimestamp = null;
 
     /**
      * Define los atributos y modificadores válidos para cada tipo de dato.
@@ -57,7 +56,7 @@ class MigrationGenerator extends AbstractComponentGenerator
         'float' => ['name', 'type', 'total', 'places', 'nullable', 'unique', 'default', 'after'],
         'enum' => ['name', 'type', 'options', 'nullable', 'default', 'after'],
         'unsignedBigInteger' => ['name', 'type', 'nullable', 'unique', 'default', 'after'],
-        'foreignId' => ['name', 'type', 'on', 'onDelete', 'onUpdate', 'nullable', 'after'],
+        'foreignId' => ['name', 'type', 'on', 'onDelete', 'onUpdate', 'nullable', 'after', 'constrained'],
         'foreign' => ['name', 'type', 'references', 'on', 'onDelete', 'onUpdate', 'nullable', 'after'],
         'softDeletes' => ['type', 'name'],
         'softDeletesTz' => ['type', 'name'],
@@ -109,7 +108,8 @@ class MigrationGenerator extends AbstractComponentGenerator
         $className = 'Create' . Str::studly($tableName) . 'Table';
         $tableSchema = $this->getMigrationSchema($this->attributes, $this->indexes);
 
-        $uniqueTimestamp = $this->getUniqueMigrationTimestamp();
+        // Se usa el timestamp estándar sin un contador extra
+        $uniqueTimestamp = date(self::TIMESTAMP_FORMAT);
 
         $stubContent = $this->getStubContent(self::MIGRATION_STUB_FILE, $this->isClean, [
             'className' => $className,
@@ -119,25 +119,6 @@ class MigrationGenerator extends AbstractComponentGenerator
 
         $fileName = "{$uniqueTimestamp}_create_{$tableName}_table.php";
         $this->putFile("{$migrationDirectoryPath}/{$fileName}", $stubContent, "Migración '{$tableName}' creada en Modules/{$this->moduleName}/Database/Migrations");
-    }
-
-    /**
-     * Genera un timestamp único para el nombre del archivo de migración.
-     *
-     * @return string
-     */
-    protected function getUniqueMigrationTimestamp(): string
-    {
-        $currentTimestamp = date(self::TIMESTAMP_FORMAT);
-
-        if (self::$lastTimestamp !== $currentTimestamp) {
-            self::$migrationCounter = 0;
-            self::$lastTimestamp = $currentTimestamp;
-        } else {
-            self::$migrationCounter++;
-        }
-
-        return $currentTimestamp . sprintf('_%06d', self::$migrationCounter);
     }
 
     /**
@@ -151,14 +132,13 @@ class MigrationGenerator extends AbstractComponentGenerator
     {
         $schemaLines = [];
 
-        // Genera las columnas primero
+        // Primero, generamos las columnas, manejando los modificadores de columna
         $schemaLines = array_merge($schemaLines, $this->getMigrationColumns($attributes));
 
-        // Luego, genera los índices
-        $schemaLines = array_merge($schemaLines, $this->getMigrationIndexes($indexes));
+        // Luego, generamos los índices, verificando que no sean redundantes
+        $schemaLines = array_merge($schemaLines, $this->getFilteredMigrationIndexes($attributes, $indexes));
 
         // Unimos las líneas con un salto de línea y la indentación correcta
-        // Usamos una indentación estándar de 12 espacios para mayor claridad
         return implode("\n            ", $schemaLines);
     }
 
@@ -172,7 +152,6 @@ class MigrationGenerator extends AbstractComponentGenerator
     {
         $schemaLines = [];
         
-        // Se asume que no siempre la tabla tendrá un ID, pero es lo más común.
         $hasId = false;
         foreach ($attributes as $attribute) {
             if (isset($attribute['type']) && in_array($attribute['type'], ['increments', 'bigIncrements', 'id'])) {
@@ -189,14 +168,12 @@ class MigrationGenerator extends AbstractComponentGenerator
                 continue;
             }
 
-            // Validación: asegura que el tipo y los atributos sean válidos
             $this->validateAttribute($attribute);
-
-            // Se añade el punto y coma aquí, al final de cada línea de columna.
+            
+            // Añadimos el punto y coma aquí
             $schemaLines[] = $this->getSchemaLineForAttribute($attribute) . ";";
         }
 
-        // Se asume que la mayoría de las tablas tienen timestamps.
         $hasTimestamps = false;
         foreach ($attributes as $attribute) {
             if (isset($attribute['type']) && in_array($attribute['type'], ['timestamp', 'timestamps'])) {
@@ -212,14 +189,30 @@ class MigrationGenerator extends AbstractComponentGenerator
     }
 
     /**
-     * Genera las líneas de código para los índices de la migración.
+     * Genera las líneas de código para los índices, filtrando los redundantes.
      *
+     * @param array $attributes
      * @param array $indexes
      * @return array
      */
-    protected function getMigrationIndexes(array $indexes): array
+    protected function getFilteredMigrationIndexes(array $attributes, array $indexes): array
     {
         $schemaLines = [];
+        $indexedColumns = [];
+
+        // Identificamos las columnas que ya tendrán un índice por defecto.
+        foreach ($attributes as $attribute) {
+            if (isset($attribute['name']) && isset($attribute['type'])) {
+                // Las columnas con 'unique' y las 'foreignId' con 'constrained' ya tienen un índice.
+                if (
+                    (isset($attribute['unique']) && $attribute['unique'] === true) ||
+                    ($attribute['type'] === 'foreignId' && isset($attribute['constrained']) && $attribute['constrained'] === true)
+                ) {
+                    $indexedColumns[] = $attribute['name'];
+                }
+            }
+        }
+
         foreach ($indexes as $index) {
             if (!isset($index['columns']) || empty($index['columns'])) {
                 throw new InvalidArgumentException("Un índice debe tener un array 'columns' no vacío.");
@@ -229,9 +222,13 @@ class MigrationGenerator extends AbstractComponentGenerator
             if (!in_array($type, self::VALID_INDEX_TYPES)) {
                 throw new InvalidArgumentException("Tipo de índice '{$type}' no válido.");
             }
-
-            // Manejo de índices simples y compuestos de forma consistente.
+            
             $columns = is_array($index['columns']) ? $index['columns'] : [$index['columns']];
+
+            // Si es un índice de una sola columna y ya está indexado, lo ignoramos.
+            if (count($columns) === 1 && in_array($columns[0], $indexedColumns)) {
+                continue;
+            }
             
             // Si es un índice de una sola columna, se usa la sintaxis simple.
             if (count($columns) === 1) {
@@ -244,6 +241,7 @@ class MigrationGenerator extends AbstractComponentGenerator
         }
         return $schemaLines;
     }
+
 
     /**
      * Valida un atributo del JSON contra los atributos permitidos para su tipo.
@@ -285,7 +283,6 @@ class MigrationGenerator extends AbstractComponentGenerator
     {
         $type = $attribute['type'];
         
-        // Los helpers como softDeletes, morphs, increments no tienen un nombre de columna, así que se manejan diferente.
         $helperTypes = ['softDeletes', 'softDeletesTz', 'bigIncrements', 'increments', 'morphs', 'nullableMorphs', 'id'];
         if (in_array($type, $helperTypes)) {
             $methodName = Str::camel($type);
@@ -296,7 +293,6 @@ class MigrationGenerator extends AbstractComponentGenerator
             return $definition;
         }
 
-        // Para tipos de datos que requieren un nombre de columna
         if (!isset($attribute['name'])) {
             throw new InvalidArgumentException("El tipo de dato '{$type}' requiere un atributo 'name'.");
         }
@@ -307,7 +303,6 @@ class MigrationGenerator extends AbstractComponentGenerator
             return $this->{$columnMethod}($attribute);
         }
         
-        // Si no hay un método especializado, generar una definición genérica
         $name = $attribute['name'] ?? '';
         $definition = "\$table->{$type}('{$name}')";
         return $this->addModifiersToDefinition($definition, $attribute);
@@ -541,7 +536,7 @@ class MigrationGenerator extends AbstractComponentGenerator
         $name = $attribute['name'];
         $definition = "\$table->foreignId('{$name}')";
         
-        if (isset($attribute['on'])) {
+        if (isset($attribute['on']) && isset($attribute['constrained']) && $attribute['constrained']) {
             $definition .= "->constrained('{$attribute['on']}')";
             if (isset($attribute['onDelete'])) {
                 $definition .= "->onDelete('{$attribute['onDelete']}')";
