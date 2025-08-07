@@ -1,51 +1,61 @@
 {
     "module_name": "Blog",
     "components": [
-        {
-            "name": "Post",
-            "table": "posts",
-            "attributes": [
-                {
-                    "name": "title",
-                    "type": "string"
-                },
-                {
-                    "name": "body",
-                    "type": "text"
-                },
-                {
-                    "name": "comments",
-                    "type": "relationship",
-                    "relationship": {
-                        "type": "hasMany",
-                        "model": "Comment"
-                    }
-                }
-            ]
-        },
-        {
-            "name": "Comment",
-            "table": "comments",
-            "attributes": [
-                {
-                    "name": "body",
-                    "type": "string"
-                },
-                {
-                    "name": "post_id",
-                    "type": "foreignId",
-                    "references": "id",
-                    "on": "posts"
-                },
-                {
-                    "name": "post",
-                    "type": "relationship",
-                    "relationship": {
-                        "type": "belongsTo",
-                        "model": "Post"
-                    }
-                }
-            ]
-        }
+      {
+        "name": "Post",
+        "table": "posts",
+        "attributes": [
+          {
+            "name": "title",
+            "type": "string",
+            "length": 255
+          },
+          {
+            "name": "slug",
+            "type": "string",
+            "unique": true
+          },
+          {
+            "name": "body",
+            "type": "text"
+          },
+          {
+            "name": "user_id",
+            "type": "foreignId",
+            "on": "users",
+            "onDelete": "cascade"
+          }
+        ],
+        "indexes": [
+          {
+            "columns": "user_id",
+            "type": "index"
+          }
+        ]
+      },
+      {
+        "name": "Comment",
+        "table": "comments",
+        "attributes": [
+          {
+            "name": "body",
+            "type": "string",
+            "length": 500
+          },
+          {
+            "name": "post_id",
+            "type": "foreignId",
+            "on": "posts",
+            "onDelete": "cascade"
+          }
+        ],
+        "indexes": [
+          {
+            "columns": "post_id",
+            "type": "index"
+          }
+        ]
+      }
     ]
-}
+  }
+  

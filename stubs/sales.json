@@ -1,0 +1,59 @@
+{
+    "module_name": "Sales",
+    "components": [
+      {
+        "name": "Order",
+        "table": "orders",
+        "attributes": [
+          {
+            "name": "user_id",
+            "type": "foreignId",
+            "on": "users",
+            "onDelete": "cascade"
+          },
+          {
+            "name": "order_number",
+            "type": "string",
+            "unique": true
+          },
+          {
+            "name": "total_amount",
+            "type": "decimal",
+            "total": 10,
+            "places": 2
+          },
+          {
+            "name": "status",
+            "type": "enum",
+            "options": [
+              "pending",
+              "completed",
+              "cancelled"
+            ],
+            "default": "pending"
+          },
+          {
+            "name": "shipped_at",
+            "type": "timestamp",
+            "nullable": true
+          }
+        ],
+        "indexes": [
+          {
+            "columns": "user_id"
+          },
+          {
+            "columns": [
+              "user_id",
+              "status"
+            ]
+          },
+          {
+            "columns": "order_number",
+            "type": "unique"
+          }
+        ]
+      }
+    ]
+  }
+  
