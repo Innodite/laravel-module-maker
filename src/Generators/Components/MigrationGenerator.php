@@ -81,11 +81,11 @@ class MigrationGenerator extends AbstractComponentGenerator
     ];
 
     public function __construct(
-        string $moduleName, 
-        string $modulePath, 
-        bool $isClean, 
-        string $migrationName, 
-        array $attributes = [], 
+        string $moduleName,
+        string $modulePath,
+        bool $isClean,
+        string $migrationName,
+        array $attributes = [],
         array $indexes = [],
         array $componentConfig = []
     ) {
@@ -137,7 +137,7 @@ class MigrationGenerator extends AbstractComponentGenerator
             self::$migrationCounter++;
         }
 
-        return $currentTimestamp . sprintf('_%02d', self::$migrationCounter);
+        return $currentTimestamp . sprintf('_%06d', self::$migrationCounter);
     }
 
     /**
@@ -158,6 +158,7 @@ class MigrationGenerator extends AbstractComponentGenerator
         $schemaLines = array_merge($schemaLines, $this->getMigrationIndexes($indexes));
 
         // Unimos las líneas con un salto de línea y la indentación correcta
+        // Usamos una indentación estándar de 12 espacios para mayor claridad
         return implode("\n            ", $schemaLines);
     }
 
@@ -170,6 +171,7 @@ class MigrationGenerator extends AbstractComponentGenerator
     protected function getMigrationColumns(array $attributes): array
     {
         $schemaLines = [];
+        
         // Se asume que no siempre la tabla tendrá un ID, pero es lo más común.
         $hasId = false;
         foreach ($attributes as $attribute) {
@@ -228,14 +230,16 @@ class MigrationGenerator extends AbstractComponentGenerator
                 throw new InvalidArgumentException("Tipo de índice '{$type}' no válido.");
             }
 
-            $columns = is_array($index['columns']) ? "['" . implode("', '", $index['columns']) . "']" : "'{$index['columns']}'";
+            // Manejo de índices simples y compuestos de forma consistente.
+            $columns = is_array($index['columns']) ? $index['columns'] : [$index['columns']];
             
-            // Los índices de una sola columna se pueden definir de forma más simple
-            if (is_string($index['columns']) || (is_array($index['columns']) && count($index['columns']) === 1)) {
-                $columnName = is_array($index['columns']) ? $index['columns'][0] : $index['columns'];
-                $schemaLines[] = "\$table->{$type}('{$columnName}');";
+            // Si es un índice de una sola columna, se usa la sintaxis simple.
+            if (count($columns) === 1) {
+                $schemaLines[] = "\$table->{$type}('{$columns[0]}');";
             } else {
-                $schemaLines[] = "\$table->{$type}({$columns});";
+                // Si es un índice compuesto, se usa el array de columnas.
+                $columnsString = "['" . implode("', '", $columns) . "']";
+                $schemaLines[] = "\$table->{$type}({$columnsString});";
             }
         }
         return $schemaLines;
