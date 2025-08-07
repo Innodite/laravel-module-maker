@@ -10,7 +10,8 @@ use InvalidArgumentException;
 /**
  * Clase para generar archivos de migración de Laravel de forma dinámica.
  * * Esta versión incluye validación de atributos para evitar errores en la
- * generación de la migración y soporta más tipos de datos comunes.
+ * generación de la migración y soporta más tipos de datos comunes, así como la
+ * creación de índices simples y compuestos.
  */
 class MigrationGenerator extends AbstractComponentGenerator
 {
@@ -21,6 +22,7 @@ class MigrationGenerator extends AbstractComponentGenerator
 
     protected string $migrationName;
     protected array $attributes;
+    protected array $indexes;
 
     // Propiedades estáticas para asegurar un timestamp único por segundo
     protected static int $migrationCounter = 0;
@@ -35,14 +37,47 @@ class MigrationGenerator extends AbstractComponentGenerator
     protected const VALID_ATTRIBUTES = [
         'string' => ['name', 'type', 'length', 'nullable', 'unique', 'default', 'after'],
         'text' => ['name', 'type', 'nullable', 'default', 'after'],
+        'char' => ['name', 'type', 'length', 'nullable', 'unique', 'default', 'after'],
+        'uuid' => ['name', 'type', 'nullable', 'unique', 'default', 'after'],
         'integer' => ['name', 'type', 'nullable', 'unique', 'default', 'after'],
+        'tinyInteger' => ['name', 'type', 'nullable', 'unique', 'default', 'after'],
+        'smallInteger' => ['name', 'type', 'nullable', 'unique', 'default', 'after'],
+        'mediumInteger' => ['name', 'type', 'nullable', 'unique', 'default', 'after'],
+        'bigInteger' => ['name', 'type', 'nullable', 'unique', 'default', 'after'],
         'boolean' => ['name', 'type', 'nullable', 'default', 'after'],
         'timestamp' => ['name', 'type', 'nullable', 'default', 'after'],
+        'date' => ['name', 'type', 'nullable', 'default', 'after'],
+        'dateTime' => ['name', 'type', 'nullable', 'default', 'after'],
+        'time' => ['name', 'type', 'nullable', 'default', 'after'],
+        'year' => ['name', 'type', 'nullable', 'default', 'after'],
         'json' => ['name', 'type', 'nullable', 'default', 'after'],
+        'jsonb' => ['name', 'type', 'nullable', 'default', 'after'],
+        'decimal' => ['name', 'type', 'total', 'places', 'nullable', 'unique', 'default', 'after'],
+        'double' => ['name', 'type', 'total', 'places', 'nullable', 'unique', 'default', 'after'],
+        'float' => ['name', 'type', 'total', 'places', 'nullable', 'unique', 'default', 'after'],
         'enum' => ['name', 'type', 'options', 'nullable', 'default', 'after'],
         'unsignedBigInteger' => ['name', 'type', 'nullable', 'unique', 'default', 'after'],
         'foreignId' => ['name', 'type', 'on', 'onDelete', 'onUpdate', 'nullable', 'after'],
         'foreign' => ['name', 'type', 'references', 'on', 'onDelete', 'onUpdate', 'nullable', 'after'],
+        'softDeletes' => ['type', 'name'],
+        'softDeletesTz' => ['type', 'name'],
+        'bigIncrements' => ['type', 'name'],
+        'increments' => ['type', 'name'],
+        'morphs' => ['type', 'name', 'index'],
+        'nullableMorphs' => ['type', 'name', 'index'],
+    ];
+
+    /**
+     * Define los tipos de índices válidos y sus atributos.
+     *
+     * @var array
+     */
+    protected const VALID_INDEX_TYPES = [
+        'index',
+        'unique',
+        'primary',
+        'fulltext',
+        'spatial',
     ];
 
     public function __construct(
@@ -51,11 +86,13 @@ class MigrationGenerator extends AbstractComponentGenerator
         bool $isClean, 
         string $migrationName, 
         array $attributes = [], 
+        array $indexes = [],
         array $componentConfig = []
     ) {
         parent::__construct($moduleName, $modulePath, $isClean, $componentConfig);
         $this->migrationName = Str::studly($migrationName);
         $this->attributes = $attributes;
+        $this->indexes = $indexes;
     }
 
     /**
@@ -70,7 +107,7 @@ class MigrationGenerator extends AbstractComponentGenerator
 
         $tableName = Str::snake(Str::plural($this->migrationName));
         $className = 'Create' . Str::studly($tableName) . 'Table';
-        $tableSchema = $this->getMigrationSchema($this->attributes);
+        $tableSchema = $this->getMigrationSchema($this->attributes, $this->indexes);
 
         $uniqueTimestamp = $this->getUniqueMigrationTimestamp();
 
@@ -104,15 +141,45 @@ class MigrationGenerator extends AbstractComponentGenerator
     }
 
     /**
-     * Genera el esquema de la tabla de migración a partir de los atributos.
+     * Genera el esquema de la tabla de migración a partir de los atributos e índices.
      *
      * @param array $attributes
+     * @param array $indexes
      * @return string
      */
-    protected function getMigrationSchema(array $attributes): string
+    protected function getMigrationSchema(array $attributes, array $indexes): string
     {
         $schemaLines = [];
-        $schemaLines[] = "\$table->id();";
+
+        // Genera las columnas primero
+        $schemaLines = array_merge($schemaLines, $this->getMigrationColumns($attributes));
+
+        // Luego, genera los índices
+        $schemaLines = array_merge($schemaLines, $this->getMigrationIndexes($indexes));
+
+        return implode("\n            ", $schemaLines);
+    }
+
+    /**
+     * Genera las líneas de código para las columnas de la migración.
+     *
+     * @param array $attributes
+     * @return array
+     */
+    protected function getMigrationColumns(array $attributes): array
+    {
+        $schemaLines = [];
+        // Se asume que no siempre la tabla tendrá un ID, pero es lo más común.
+        $hasId = false;
+        foreach ($attributes as $attribute) {
+            if (isset($attribute['type']) && in_array($attribute['type'], ['increments', 'bigIncrements', 'id'])) {
+                $hasId = true;
+                break;
+            }
+        }
+        if (!$hasId) {
+            $schemaLines[] = "\$table->id();";
+        }
 
         foreach ($attributes as $attribute) {
             if (($attribute['type'] ?? null) === 'relationship') {
@@ -125,8 +192,51 @@ class MigrationGenerator extends AbstractComponentGenerator
             $schemaLines[] = $this->getSchemaLineForAttribute($attribute);
         }
 
-        $schemaLines[] = "\$table->timestamps();";
-        return implode("\n            ", $schemaLines);
+        // Se asume que la mayoría de las tablas tienen timestamps.
+        $hasTimestamps = false;
+        foreach ($attributes as $attribute) {
+            if (isset($attribute['type']) && in_array($attribute['type'], ['timestamp', 'timestamps'])) {
+                $hasTimestamps = true;
+                break;
+            }
+        }
+        if (!$hasTimestamps) {
+            $schemaLines[] = "\$table->timestamps();";
+        }
+        
+        return $schemaLines;
+    }
+
+    /**
+     * Genera las líneas de código para los índices de la migración.
+     *
+     * @param array $indexes
+     * @return array
+     */
+    protected function getMigrationIndexes(array $indexes): array
+    {
+        $schemaLines = [];
+        foreach ($indexes as $index) {
+            if (!isset($index['columns']) || empty($index['columns'])) {
+                throw new InvalidArgumentException("Un índice debe tener un array 'columns' no vacío.");
+            }
+
+            $type = $index['type'] ?? 'index';
+            if (!in_array($type, self::VALID_INDEX_TYPES)) {
+                throw new InvalidArgumentException("Tipo de índice '{$type}' no válido.");
+            }
+
+            $columns = is_array($index['columns']) ? "['" . implode("', '", $index['columns']) . "']" : "'{$index['columns']}'";
+            
+            // Los índices de una sola columna se pueden definir de forma más simple
+            if (is_string($index['columns']) || (is_array($index['columns']) && count($index['columns']) === 1)) {
+                 $columnName = is_array($index['columns']) ? $index['columns'][0] : $index['columns'];
+                 $schemaLines[] = "\$table->{$type}('{$columnName}');";
+            } else {
+                 $schemaLines[] = "\$table->{$type}({$columns});";
+            }
+        }
+        return $schemaLines;
     }
 
     /**
@@ -153,6 +263,10 @@ class MigrationGenerator extends AbstractComponentGenerator
         if ($type === 'enum' && !isset($attribute['options'])) {
             throw new InvalidArgumentException("El tipo de dato 'enum' requiere el atributo 'options' (array de valores).");
         }
+        
+        if (in_array($type, ['decimal', 'double', 'float']) && (!isset($attribute['total']) || !isset($attribute['places']))) {
+            throw new InvalidArgumentException("Los tipos 'decimal', 'double' y 'float' requieren los atributos 'total' y 'places'.");
+        }
     }
 
     /**
@@ -164,6 +278,23 @@ class MigrationGenerator extends AbstractComponentGenerator
     protected function getSchemaLineForAttribute(array $attribute): string
     {
         $type = $attribute['type'];
+        
+        // Los helpers como softDeletes, morphs, increments no tienen un nombre de columna, así que se manejan diferente.
+        $helperTypes = ['softDeletes', 'softDeletesTz', 'bigIncrements', 'increments', 'morphs', 'nullableMorphs', 'id'];
+        if (in_array($type, $helperTypes)) {
+            $methodName = Str::camel($type);
+            $definition = "\$table->{$methodName}()";
+            if (isset($attribute['name'])) {
+                $definition = "\$table->{$methodName}('{$attribute['name']}')";
+            }
+            return $definition;
+        }
+
+        // Para tipos de datos que requieren un nombre de columna
+        if (!isset($attribute['name'])) {
+            throw new InvalidArgumentException("El tipo de dato '{$type}' requiere un atributo 'name'.");
+        }
+        
         $columnMethod = Str::camel($type) . 'Column';
         
         if (method_exists($this, $columnMethod)) {
@@ -175,6 +306,10 @@ class MigrationGenerator extends AbstractComponentGenerator
         $definition = "\$table->{$type}('{$name}')";
         return $this->addModifiersToDefinition($definition, $attribute);
     }
+    
+    //---------------------------------------------------------
+    // Métodos para generar columnas específicas
+    //---------------------------------------------------------
 
     /**
      * Genera la definición de una columna de tipo string.
@@ -187,6 +322,35 @@ class MigrationGenerator extends AbstractComponentGenerator
         $name = $attribute['name'];
         $length = $attribute['length'] ?? null;
         $definition = $length ? "\$table->string('{$name}', {$length})" : "\$table->string('{$name}')";
+
+        return $this->addModifiersToDefinition($definition, $attribute);
+    }
+    
+    /**
+     * Genera la definición de una columna de tipo char.
+     *
+     * @param array $attribute
+     * @return string
+     */
+    protected function charColumn(array $attribute): string
+    {
+        $name = $attribute['name'];
+        $length = $attribute['length'] ?? 255;
+        $definition = "\$table->char('{$name}', {$length})";
+
+        return $this->addModifiersToDefinition($definition, $attribute);
+    }
+    
+    /**
+     * Genera la definición de una columna de tipo uuid.
+     *
+     * @param array $attribute
+     * @return string
+     */
+    protected function uuidColumn(array $attribute): string
+    {
+        $name = $attribute['name'];
+        $definition = "\$table->uuid('{$name}')";
 
         return $this->addModifiersToDefinition($definition, $attribute);
     }
@@ -220,6 +384,52 @@ class MigrationGenerator extends AbstractComponentGenerator
     }
 
     /**
+     * Genera la definición de una columna de tipo bigInteger.
+     *
+     * @param array $attribute
+     * @return string
+     */
+    protected function bigIntegerColumn(array $attribute): string
+    {
+        $name = $attribute['name'];
+        $definition = "\$table->bigInteger('{$name}')";
+
+        return $this->addModifiersToDefinition($definition, $attribute);
+    }
+
+    /**
+     * Genera la definición de una columna de tipo decimal.
+     *
+     * @param array $attribute
+     * @return string
+     */
+    protected function decimalColumn(array $attribute): string
+    {
+        $name = $attribute['name'];
+        $total = $attribute['total'];
+        $places = $attribute['places'];
+        $definition = "\$table->decimal('{$name}', {$total}, {$places})";
+
+        return $this->addModifiersToDefinition($definition, $attribute);
+    }
+
+    /**
+     * Genera la definición de una columna de tipo float.
+     *
+     * @param array $attribute
+     * @return string
+     */
+    protected function floatColumn(array $attribute): string
+    {
+        $name = $attribute['name'];
+        $total = $attribute['total'] ?? 8;
+        $places = $attribute['places'] ?? 2;
+        $definition = "\$table->float('{$name}', {$total}, {$places})";
+        
+        return $this->addModifiersToDefinition($definition, $attribute);
+    }
+    
+    /**
      * Genera la definición de una columna de tipo boolean.
      *
      * @param array $attribute
@@ -232,7 +442,59 @@ class MigrationGenerator extends AbstractComponentGenerator
 
         return $this->addModifiersToDefinition($definition, $attribute);
     }
+
+    /**
+     * Genera la definición de una columna de tipo date.
+     *
+     * @param array $attribute
+     * @return string
+     */
+    protected function dateColumn(array $attribute): string
+    {
+        $name = $attribute['name'];
+        $definition = "\$table->date('{$name}')";
+        return $this->addModifiersToDefinition($definition, $attribute);
+    }
     
+    /**
+     * Genera la definición de una columna de tipo datetime.
+     *
+     * @param array $attribute
+     * @return string
+     */
+    protected function dateTimeColumn(array $attribute): string
+    {
+        $name = $attribute['name'];
+        $definition = "\$table->dateTime('{$name}')";
+        return $this->addModifiersToDefinition($definition, $attribute);
+    }
+
+    /**
+     * Genera la definición de una columna de tipo time.
+     *
+     * @param array $attribute
+     * @return string
+     */
+    protected function timeColumn(array $attribute): string
+    {
+        $name = $attribute['name'];
+        $definition = "\$table->time('{$name}')";
+        return $this->addModifiersToDefinition($definition, $attribute);
+    }
+    
+    /**
+     * Genera la definición de una columna de tipo year.
+     *
+     * @param array $attribute
+     * @return string
+     */
+    protected function yearColumn(array $attribute): string
+    {
+        $name = $attribute['name'];
+        $definition = "\$table->year('{$name}')";
+        return $this->addModifiersToDefinition($definition, $attribute);
+    }
+
     /**
      * Genera la definición de una columna de tipo unsignedBigInteger.
      *
@@ -261,7 +523,7 @@ class MigrationGenerator extends AbstractComponentGenerator
         
         return $this->addModifiersToDefinition($definition, $attribute);
     }
-
+    
     /**
      * Genera la definición de una columna de tipo foreignId (constrained).
      *

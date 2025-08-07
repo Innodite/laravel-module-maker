@@ -8,12 +8,25 @@
                 {
                     "name": "title",
                     "type": "string",
-                    "length": 255
+                    "length": 255,
+                    "nullable": false,
+                    "unique": true
                 },
                 {
                     "name": "body",
                     "type": "text",
                     "nullable": true
+                },
+                {
+                    "name": "is_published",
+                    "type": "boolean",
+                    "default": false
+                },
+                {
+                    "name": "author_id",
+                    "type": "foreignId",
+                    "on": "users",
+                    "onDelete": "cascade"
                 }
             ]
         }
