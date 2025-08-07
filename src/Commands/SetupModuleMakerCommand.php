@@ -92,7 +92,7 @@ class SetupModuleMakerCommand extends Command
         }
 
         // Copia los archivos de configuración de ejemplo
-        $filesToCopy = ['post.json', 'blog.json'];
+        $filesToCopy = ['post.json', 'blog.json','core.json','sales.json','shop.json'];
         foreach ($filesToCopy as $file) {
             $sourceFile = "{$packageStubsPath}/{$file}";
             $destinationFile = "{$configPath}/{$file}";
