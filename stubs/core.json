@@ -1,0 +1,37 @@
+{
+    "module_name": "Core",
+    "components": [
+      {
+        "name": "UserProfile",
+        "table": "user_profiles",
+        "attributes": [
+          {
+            "name": "id",
+            "type": "bigIncrements"
+          },
+          {
+            "name": "user_uuid",
+            "type": "uuid",
+            "unique": true
+          },
+          {
+            "name": "status",
+            "type": "enum",
+            "options": [
+              "active",
+              "pending",
+              "inactive"
+            ],
+            "default": "pending"
+          },
+          {
+            "name": "last_login_at",
+            "type": "dateTime",
+            "nullable": true
+          }
+        ],
+        "indexes": []
+      }
+    ]
+  }
+  

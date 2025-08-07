@@ -1,0 +1,39 @@
+{
+    "module_name": "Shop",
+    "components": [
+      {
+        "name": "Product",
+        "table": "products",
+        "attributes": [
+          {
+            "name": "name",
+            "type": "string",
+            "length": 255
+          },
+          {
+            "name": "description",
+            "type": "text",
+            "nullable": true
+          },
+          {
+            "name": "price",
+            "type": "decimal",
+            "total": 8,
+            "places": 2
+          },
+          {
+            "name": "is_active",
+            "type": "boolean",
+            "default": true
+          }
+        ],
+        "indexes": [
+          {
+            "columns": "name",
+            "type": "index"
+          }
+        ]
+      }
+    ]
+  }
+  
