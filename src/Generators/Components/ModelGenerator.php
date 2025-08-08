@@ -16,7 +16,7 @@ use InvalidArgumentException;
  * - Validación exhaustiva de la estructura de las relaciones en el JSON.
  * - Soporte para definir el nombre de la tabla del modelo.
  * - Generación correcta del namespace del archivo y las sentencias 'use'.
- * - Inclusión de las sentencias 'use' de las clases de relación de Eloquent.
+ * - Inclusión de las sentencias 'use' de las clases de relación de Eloquent con formato correcto.
  */
 class ModelGenerator extends AbstractComponentGenerator
 {
@@ -191,7 +191,8 @@ class ModelGenerator extends AbstractComponentGenerator
 
             // Recolecta los tipos de relación de Eloquent.
             if (isset($relation['type'])) {
-                $relationTypes[] = self::RELATION_CLASS_NAMESPACE . Str::studly($relation['type']);
+                $relationClassName = Str::studly($relation['type']);
+                $relationTypes[] = "use " . self::RELATION_CLASS_NAMESPACE . $relationClassName . ";";
             }
         }
         
