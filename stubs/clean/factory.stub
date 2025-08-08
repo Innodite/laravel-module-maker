@@ -1,9 +1,10 @@
 <?php
 
-namespace {{ namespace }};
+namespace Modules\{{ module }}\Database\Factories;
 
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Modules\{{ module }}\Models\{{ modelName }};
+{{ modelUses }}
 
 class {{ factoryName }}Factory extends Factory
 {
@@ -22,7 +23,7 @@ class {{ factoryName }}Factory extends Factory
     public function definition(): array
     {
         return [
-            //
+            {{ definitionAttributes }}
         ];
     }
 }
