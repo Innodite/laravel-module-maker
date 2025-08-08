@@ -12,6 +12,7 @@ use Innodite\LaravelModuleMaker\Generators\Components\Factory\Strategies\Factory
 use Innodite\LaravelModuleMaker\Generators\Components\Factory\Strategies\Factory\ForeignStrategy;
 use Innodite\LaravelModuleMaker\Generators\Components\Factory\Strategies\Factory\IntegerStrategy;
 use Innodite\LaravelModuleMaker\Generators\Components\Factory\Strategies\Factory\TextStrategy;
+use Innodite\LaravelModuleMaker\Generators\Components\AbstractComponentGenerator;
 
 class FactoryGenerator extends AbstractComponentGenerator
 {
