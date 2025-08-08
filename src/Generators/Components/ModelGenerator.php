@@ -158,7 +158,7 @@ class ModelGenerator extends AbstractComponentGenerator
         return '';
     }
 
-    /**
+     /**
      * Genera las declaraciones 'use' para los modelos relacionados y las clases de relación.
      *
      * @return string
@@ -179,23 +179,20 @@ class ModelGenerator extends AbstractComponentGenerator
             self::RELATION_TYPE_MORPH_TO_MANY => self::RELATION_CLASS_MORPH_TO_MANY_NAME,
         ];
         
-        // Extrae los nombres de los componentes del módulo para una verificación más simple
-        $componentNames = array_map(function($component) {
-            return $component['name'];
-        }, $this->allComponents);
+        // Extrae los nombres de los componentes del módulo para la verificación.
+        $componentNames = collect($this->allComponents)
+            ->pluck('name')
+            ->toArray();
 
 
         foreach ($this->relations as $relation) {
             // Recolecta los modelos relacionados.
-            if (isset($relation['model'])) {
+            if (isset($relation['model']) && !empty($relation['model'])) {
                 $relatedModel = $relation['model'];
                 
-                // Utiliza la lista de nombres de componentes para determinar el namespace
-                if (in_array($relatedModel, $componentNames)) {
-                    $relatedModelNamespace = "Modules\\{$this->moduleName}\\Models\\{$relatedModel}";
-                } else {
-                    $relatedModelNamespace = "App\\Models\\{$relatedModel}";
-                }
+                // Siempre usa el namespace del módulo para los modelos, ya que la herramienta
+                // está diseñada para generarlos dentro de la estructura de módulos.
+                $relatedModelNamespace = "Modules\\{$this->moduleName}\\Models\\{$relatedModel}";
                 
                 $useStatements[] = "use {$relatedModelNamespace};";
             }
@@ -219,6 +216,7 @@ class ModelGenerator extends AbstractComponentGenerator
 
         return implode("\n", $uniqueStatements);
     }
+
 
     /**
      * Genera los métodos de relaciones de Eloquent, con validación de entrada.
