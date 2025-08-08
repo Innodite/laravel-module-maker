@@ -4,14 +4,14 @@ namespace Innodite\LaravelModuleMaker\Generators\Components\Factory;
 
 use Illuminate\Support\Str;
 use Innodite\LaravelModuleMaker\Generators\Concerns\HasStubs;
-use Innodite\LaravelModuleMaker\Generators\Components\Factory\Strategies\Factory\Contracts\AttributeValueStrategy;
-use Innodite\LaravelModuleMaker\Generators\Components\Factory\Strategies\Factory\BooleanStrategy;
-use Innodite\LaravelModuleMaker\Generators\Components\Factory\Strategies\Factory\DateStrategy;
-use Innodite\LaravelModuleMaker\Generators\Components\Factory\Strategies\Factory\EnumStrategy;
-use Innodite\LaravelModuleMaker\Generators\Components\Factory\Strategies\Factory\ForeignIdStrategy;
-use Innodite\LaravelModuleMaker\Generators\Components\Factory\Strategies\Factory\ForeignStrategy;
-use Innodite\LaravelModuleMaker\Generators\Components\Factory\Strategies\Factory\IntegerStrategy;
-use Innodite\LaravelModuleMaker\Generators\Components\Factory\Strategies\Factory\TextStrategy;
+use Innodite\LaravelModuleMaker\Generators\Components\Factory\Strategies\Contracts\AttributeValueStrategy;
+use Innodite\LaravelModuleMaker\Generators\Components\Factory\Strategies\BooleanStrategy;
+use Innodite\LaravelModuleMaker\Generators\Components\Factory\Strategies\DateStrategy;
+use Innodite\LaravelModuleMaker\Generators\Components\Factory\Strategies\EnumStrategy;
+use Innodite\LaravelModuleMaker\Generators\Components\Factory\Strategies\ForeignIdStrategy;
+use Innodite\LaravelModuleMaker\Generators\Components\Factory\Strategies\ForeignStrategy;
+use Innodite\LaravelModuleMaker\Generators\Components\Factory\Strategies\IntegerStrategy;
+use Innodite\LaravelModuleMaker\Generators\Components\Factory\Strategies\TextStrategy;
 use Innodite\LaravelModuleMaker\Generators\Components\AbstractComponentGenerator;
 
 class FactoryGenerator extends AbstractComponentGenerator
