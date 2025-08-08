@@ -6,7 +6,18 @@ use Illuminate\Support\Str;
 use Innodite\LaravelModuleMaker\Generators\Concerns\HasStubs;
 use InvalidArgumentException;
 
-
+/**
+ * Clase refactorizada para generar un modelo Eloquent para un módulo.
+ *
+ * Esta versión incluye:
+ * - Uso de constantes para una mejor mantenibilidad.
+ * - Lógica de relaciones separada para hasOne y hasMany.
+ * - Soporte para relaciones polimórficas (morphOne y morphMany).
+ * - Validación exhaustiva de la estructura de las relaciones en el JSON.
+ * - Soporte para definir el nombre de la tabla del modelo.
+ * - Generación correcta del namespace del archivo y las sentencias 'use'.
+ * - Inclusión de las sentencias 'use' de las clases de relación de Eloquent.
+ */
 class ModelGenerator extends AbstractComponentGenerator
 {
     use HasStubs;
@@ -27,6 +38,17 @@ class ModelGenerator extends AbstractComponentGenerator
     protected const RELATION_TYPE_MORPH_MANY = 'morphMany';
     protected const RELATION_TYPE_MORPH_TO = 'morphTo';
     protected const RELATION_TYPE_MORPH_TO_MANY = 'morphToMany';
+
+    // Constantes para las clases de relación de Eloquent.
+    protected const RELATION_CLASS_NAMESPACE = 'Illuminate\\Database\\Eloquent\\Relations\\';
+    protected const RELATION_CLASS_BELONGS_TO_NAME = 'BelongsTo';
+    protected const RELATION_CLASS_HAS_MANY_NAME = 'HasMany';
+    protected const RELATION_CLASS_HAS_ONE_NAME = 'HasOne';
+    protected const RELATION_CLASS_MORPH_ONE_NAME = 'MorphOne';
+    protected const RELATION_CLASS_MORPH_MANY_NAME = 'MorphMany';
+    protected const RELATION_CLASS_MORPH_TO_NAME = 'MorphTo';
+    protected const RELATION_CLASS_MORPH_TO_MANY_NAME = 'MorphToMany';
+
 
     protected string $modelName;
     protected array $fillableAttributes;
@@ -80,6 +102,7 @@ class ModelGenerator extends AbstractComponentGenerator
         $relationsMethods = $this->getRelationsMethods();
 
         $stubContent = $this->getStubContent(self::MODEL_STUB_FILE, $this->isClean, [
+            'namespace' => $this->getNamespace(),
             'modelName' => $this->modelName,
             'table' => $this->getTableProperty(),
             'fillable' => $this->getFillableProperty(),
@@ -88,6 +111,16 @@ class ModelGenerator extends AbstractComponentGenerator
         ]);
 
         $this->putFile("{$modelDirectoryPath}/{$this->modelName}.php", $stubContent, "Modelo '{$this->modelName}' creado en Modules/{$this->moduleName}/Models");
+    }
+
+    /**
+     * Obtiene el namespace correcto para el modelo.
+     *
+     * @return string
+     */
+    protected function getNamespace(): string
+    {
+        return "Modules\\{$this->moduleName}\\Models";
     }
 
     /**
@@ -138,27 +171,38 @@ class ModelGenerator extends AbstractComponentGenerator
     }
 
     /**
-     * Genera las declaraciones 'use' para los modelos relacionados.
+     * Genera las declaraciones 'use' para los modelos relacionados y las clases de relación.
      *
      * @return string
      */
     protected function getUseStatements(): string
     {
         $useStatements = [];
+        $relationTypes = [];
+
         foreach ($this->relations as $relation) {
+            // Recolecta los modelos relacionados.
             if (isset($relation['model'])) {
                 $relatedModel = $relation['model'];
                 $relatedComponent = collect($this->allComponents)->firstWhere('name', $relatedModel);
                 $relatedModelNamespace = $relatedComponent ? "Modules\\{$this->moduleName}\\Models\\{$relatedModel}" : "App\\Models\\{$relatedModel}";
                 $useStatements[] = "use {$relatedModelNamespace};";
             }
+
+            // Recolecta los tipos de relación de Eloquent.
+            if (isset($relation['type'])) {
+                $relationTypes[] = self::RELATION_CLASS_NAMESPACE . Str::studly($relation['type']);
+            }
         }
         
-        if (empty($useStatements)) {
+        $allStatements = array_merge($useStatements, $relationTypes);
+        $uniqueStatements = array_unique($allStatements);
+
+        if (empty($uniqueStatements)) {
             return '';
         }
 
-        return implode("\n", array_unique($useStatements));
+        return implode("\n", $uniqueStatements);
     }
 
     /**
@@ -179,7 +223,8 @@ class ModelGenerator extends AbstractComponentGenerator
             
             $relatedModel = $relation['model'] ?? null;
 
-            $relationBaseClass = "\\Illuminate\\Database\\Eloquent\\Relations\\" . Str::studly($relationType);
+            // Obtiene el nombre corto de la clase de relación
+            $relationClassName = Str::studly($relationType);
             
             $relationBody = '';
             switch ($relationType) {
@@ -207,8 +252,8 @@ class ModelGenerator extends AbstractComponentGenerator
                 default:
                     throw new InvalidArgumentException("Tipo de relación '{$relationType}' no reconocido para la relación '{$methodName}' en el componente '{$this->componentName}'.");
             }
-
-            $methodSignature = "public function {$methodName}(): " . ($relationType === self::RELATION_TYPE_MORPH_TO ? '\Illuminate\Database\Eloquent\Relations\MorphTo' : $relationBaseClass);
+            
+            $methodSignature = "public function {$methodName}(): " . ($relationType === self::RELATION_TYPE_MORPH_TO ? self::RELATION_CLASS_MORPH_TO_NAME : $relationClassName);
 
             $methods[] = "
     /**
