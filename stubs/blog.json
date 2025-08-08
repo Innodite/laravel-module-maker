@@ -1,61 +1,85 @@
 {
-    "module_name": "Blog",
-    "components": [
+  "module_name": "Blog",
+  "components": [
       {
-        "name": "Post",
-        "table": "posts",
-        "attributes": [
-          {
-            "name": "title",
-            "type": "string",
-            "length": 255
-          },
-          {
-            "name": "slug",
-            "type": "string",
-            "unique": true
-          },
-          {
-            "name": "body",
-            "type": "text"
-          },
-          {
-            "name": "user_id",
-            "type": "foreignId",
-            "on": "users",
-            "onDelete": "cascade"
-          }
-        ],
-        "indexes": [
-          {
-            "columns": "user_id",
-            "type": "index"
-          }
-        ]
+          "name": "Post",
+          "table": "posts",
+          "attributes": [
+              {
+                  "name": "title",
+                  "type": "string",
+                  "length": 255
+              },
+              {
+                  "name": "slug",
+                  "type": "string",
+                  "unique": true
+              },
+              {
+                  "name": "body",
+                  "type": "text"
+              },
+              {
+                  "name": "post_owner_id",
+                  "type": "foreignId",
+                  "on": "users",
+                  "onDelete": "cascade"
+              }
+          ],
+          "indexes": [
+              {
+                  "columns": "post_owner_id",
+                  "type": "index"
+              }
+          ],
+          "relations": [
+              {
+                  "name": "comments",
+                  "type": "hasMany",
+                  "model": "Comment",
+                  "foreignKey": "post_id",
+                  "localKey": "id"
+              },
+              {
+                  "name": "author",
+                  "type": "belongsTo",
+                  "model": "User",
+                  "foreignKey": "post_owner_id",
+                  "ownerKey": "id"
+              }
+          ]
       },
       {
-        "name": "Comment",
-        "table": "comments",
-        "attributes": [
-          {
-            "name": "body",
-            "type": "string",
-            "length": 500
-          },
-          {
-            "name": "post_id",
-            "type": "foreignId",
-            "on": "posts",
-            "onDelete": "cascade"
-          }
-        ],
-        "indexes": [
-          {
-            "columns": "post_id",
-            "type": "index"
-          }
-        ]
+          "name": "Comment",
+          "table": "comments",
+          "attributes": [
+              {
+                  "name": "body",
+                  "type": "string",
+                  "length": 500
+              },
+              {
+                  "name": "post_id",
+                  "type": "foreignId",
+                  "on": "posts",
+                  "onDelete": "cascade"
+              }
+          ],
+          "indexes": [
+              {
+                  "columns": "post_id",
+                  "type": "index"
+              }
+          ],
+          "relations": [
+              {
+                  "name": "post",
+                  "type": "belongsTo",
+                  "model": "Post",
+                  "foreignKey": "post_id",
+                  "ownerKey": "id"
+              }
+          ]
       }
-    ]
-  }
-  
+  ]
+}
