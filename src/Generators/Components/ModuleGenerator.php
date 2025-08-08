@@ -157,7 +157,7 @@ class ModuleGenerator
             $factoryName = $modelName;
             $testName = "{$modelName}Test";
 
-            (new ModelGenerator($this->moduleName, $this->modulePath, false, $modelName, $component['attributes'] ?? [],$component['relations'] ?? [],[],$component['table']))->generate();
+            (new ModelGenerator($this->moduleName, $this->modulePath, false, $modelName, $component['attributes'] ?? [],$component['relations'] ?? [],[],$component))->generate();
             (new ControllerGenerator($this->moduleName, $this->modulePath, false, $controllerName, $modelName))->generate();
             (new ServiceGenerator($this->moduleName, $this->modulePath, false, $serviceName, $modelName))->generate();
             (new RepositoryGenerator($this->moduleName, $this->modulePath, false, $repositoryName, $modelName))->generate();
