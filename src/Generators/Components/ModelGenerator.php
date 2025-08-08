@@ -9,10 +9,8 @@ use InvalidArgumentException;
 /**
  * Clase para generar un modelo Eloquent para un módulo.
  *
- * Esta versión se ha mejorado para manejar relaciones explícitamente definidas
- * en el archivo de configuración JSON, permitiendo relaciones complejas
- * como One-to-Many (`hasMany`) y la definición de las claves foráneas
- * si no siguen las convenciones de Laravel.
+ * Esta versión incluye validación para asegurar que las relaciones definidas
+ * en el archivo de configuración JSON sean correctas.
  */
 class ModelGenerator extends AbstractComponentGenerator
 {
@@ -111,24 +109,34 @@ class ModelGenerator extends AbstractComponentGenerator
     }
 
     /**
-     * Genera los métodos de relaciones de Eloquent.
+     * Genera los métodos de relaciones de Eloquent, con validación de entrada.
      *
      * @return string
+     * @throws InvalidArgumentException
      */
     protected function getRelationsMethods(): string
     {
         $methods = [];
         
         foreach ($this->relations as $relation) {
-            $methodName = $relation['name'] ?? null;
-            $relationType = $relation['type'] ?? null;
-            $relatedModel = $relation['model'] ?? null;
-            
-            if (!$methodName || !$relationType || !$relatedModel) {
-                continue;
+            // --- INICIO DE LA VALIDACIÓN AÑADIDA ---
+            if (!isset($relation['name']) || empty($relation['name'])) {
+                throw new InvalidArgumentException("La relación en el componente '{$this->componentName}' no tiene un 'name' válido definido. Por favor, revisa tu archivo de configuración JSON.");
             }
+            if (!isset($relation['type']) || empty($relation['type'])) {
+                throw new InvalidArgumentException("La relación '{$relation['name']}' en el componente '{$this->componentName}' no tiene un tipo de relación ('type') válido definido. Por favor, revisa tu archivo de configuración JSON.");
+            }
+            if (!isset($relation['model']) || empty($relation['model'])) {
+                throw new InvalidArgumentException("La relación '{$relation['name']}' en el componente '{$this->componentName}' no tiene un modelo ('model') válido definido. Por favor, revisa tu archivo de configuración JSON.");
+            }
+            // --- FIN DE LA VALIDACIÓN AÑADIDA ---
+
+            $methodName = $relation['name'];
+            $relationType = $relation['type'];
+            $relatedModel = $relation['model'];
             
             $relatedComponent = collect($this->allComponents)->firstWhere('name', $relatedModel);
+            // Si el modelo relacionado no está en el módulo actual, asumimos que es del namespace App\Models
             $relatedModelNamespace = $relatedComponent ? "Modules\\{$this->moduleName}\\Models\\{$relatedModel}" : "App\\Models\\{$relatedModel}";
             
             $relationBaseClass = "\\Illuminate\\Database\\Eloquent\\Relations\\" . Str::studly($relationType);
@@ -143,15 +151,18 @@ class ModelGenerator extends AbstractComponentGenerator
             }
             
             // Añadir localKey o ownerKey si se proporciona
-            if (isset($relation['localKey']) || isset($relation['ownerKey'])) {
-                if ($relationType === 'hasMany' || $relationType === 'hasOne' || $relationType === 'morphMany' || $relationType === 'morphOne') {
-                    if (isset($relation['localKey'])) {
-                        $params[] = "'{$relation['localKey']}'";
-                    }
-                } else if ($relationType === 'belongsTo' || $relationType === 'morphTo') {
-                    if (isset($relation['ownerKey'])) {
-                        $params[] = "'{$relation['ownerKey']}'";
-                    }
+            if (isset($relation['localKey']) && ($relationType === 'hasMany' || $relationType === 'hasOne')) {
+                $params[] = "'{$relation['localKey']}'";
+            }
+            
+            if (isset($relation['ownerKey']) && $relationType === 'belongsTo') {
+                // Si ya existe foreignKey, añadimos ownerKey como tercer parámetro
+                if (isset($relation['foreignKey'])) {
+                    $params[] = "'{$relation['ownerKey']}'";
+                } else {
+                    // Si no, lo añadimos como segundo parámetro, pero necesitamos un placeholder para la foreignKey
+                    $params[] = "null"; // Eloquent puede inferir, pero lo hacemos explícito para el generador
+                    $params[] = "'{$relation['ownerKey']}'";
                 }
             }
             
