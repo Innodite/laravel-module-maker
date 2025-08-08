@@ -178,13 +178,25 @@ class ModelGenerator extends AbstractComponentGenerator
             self::RELATION_TYPE_MORPH_TO => self::RELATION_CLASS_MORPH_TO_NAME,
             self::RELATION_TYPE_MORPH_TO_MANY => self::RELATION_CLASS_MORPH_TO_MANY_NAME,
         ];
+        
+        // Extrae los nombres de los componentes del módulo para una verificación más simple
+        $componentNames = array_map(function($component) {
+            return $component['name'];
+        }, $this->allComponents);
+
 
         foreach ($this->relations as $relation) {
             // Recolecta los modelos relacionados.
             if (isset($relation['model'])) {
                 $relatedModel = $relation['model'];
-                $relatedComponent = collect($this->allComponents)->firstWhere('name', $relatedModel);
-                $relatedModelNamespace = $relatedComponent ? "Modules\\{$this->moduleName}\\Models\\{$relatedModel}" : "App\\Models\\{$relatedModel}";
+                
+                // Utiliza la lista de nombres de componentes para determinar el namespace
+                if (in_array($relatedModel, $componentNames)) {
+                    $relatedModelNamespace = "Modules\\{$this->moduleName}\\Models\\{$relatedModel}";
+                } else {
+                    $relatedModelNamespace = "App\\Models\\{$relatedModel}";
+                }
+                
                 $useStatements[] = "use {$relatedModelNamespace};";
             }
 
