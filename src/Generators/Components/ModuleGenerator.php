@@ -6,7 +6,7 @@ namespace Innodite\LaravelModuleMaker\Generators\Components;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Str;
 use Innodite\LaravelModuleMaker\Generators\Components\ControllerGenerator;
-use Innodite\LaravelModuleMaker\Generators\Components\FactoryGenerator;
+use Innodite\LaravelModuleMaker\Generators\Components\Factory\FactoryGenerator;
 use Innodite\LaravelModuleMaker\Generators\Components\MigrationGenerator;
 use Innodite\LaravelModuleMaker\Generators\Components\ModelGenerator;
 use Innodite\LaravelModuleMaker\Generators\Components\ProviderGenerator;

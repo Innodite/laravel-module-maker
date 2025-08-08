@@ -7,7 +7,6 @@ use Innodite\LaravelModuleMaker\Generators\Concerns\HasStubs;
 
 class SeederGenerator extends AbstractComponentGenerator
 {
-    // Constantes para valores que no cambian.
     protected const SEEDER_PATH_SUFFIX = "/Database/Seeders";
     protected const SEEDER_FILE_SUFFIX = "Seeder.php";
     protected const STUB_FILE = 'seeder.stub';
