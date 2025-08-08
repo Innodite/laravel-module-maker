@@ -1,11 +1,11 @@
 <?php
 
-namespace {{ namespace }};
+namespace Modules\{{ module }}\Database\Seeders;
 
 use Illuminate\Database\Seeder;
-use Modules\{{ module }}\Models\{{ seederName }};
+use Modules\{{ module }}\Models\{{ modelName }};
 
-class {{ seederName }}Seeder extends Seeder
+class {{ seederName }} extends Seeder
 {
     /**
      * Run the database seeds.
@@ -14,6 +14,6 @@ class {{ seederName }}Seeder extends Seeder
      */
     public function run()
     {
-        {{ seederName }}::factory()->count(10)->create();
+        {{ modelName }}::factory()->count({{ factoryCount }})->create();
     }
 }

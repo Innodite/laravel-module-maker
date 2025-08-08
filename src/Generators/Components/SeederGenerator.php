@@ -3,17 +3,27 @@
 namespace Innodite\LaravelModuleMaker\Generators\Components;
 
 use Illuminate\Support\Str;
-use Illuminate\Support\Facades\File;
 use Innodite\LaravelModuleMaker\Generators\Concerns\HasStubs;
 
 class SeederGenerator extends AbstractComponentGenerator
 {
+    // Constantes para valores que no cambian.
+    protected const SEEDER_PATH_SUFFIX = "/Database/Seeders";
+    protected const SEEDER_FILE_SUFFIX = "Seeder.php";
+    protected const STUB_FILE = 'seeder.stub';
+    protected const DEFAULT_FACTORY_COUNT = 50;
+
+    protected string $moduleName;
     protected string $seederName;
+    protected string $modelName;
 
     public function __construct(string $moduleName, string $modulePath, bool $isClean, string $seederName, array $componentConfig = [])
     {
         parent::__construct($moduleName, $modulePath, $isClean, $componentConfig);
+        
         $this->seederName = Str::studly($seederName);
+        $this->moduleName = $moduleName;
+        $this->modelName = $componentConfig['name'] ?? Str::studly(str_replace('Seeder', '', $this->seederName));
     }
 
     /**
@@ -23,15 +33,17 @@ class SeederGenerator extends AbstractComponentGenerator
      */
     public function generate(): void
     {
-        $seederDir = $this->getComponentBasePath() . "/Database/Seeders";
+        $seederDir = $this->getComponentBasePath() . self::SEEDER_PATH_SUFFIX;
         $this->ensureDirectoryExists($seederDir);
 
-        $stubFile = 'seeder.stub';
-        $stub = $this->getStubContent($stubFile, $this->isClean, [
+        $stub = $this->getStubContent(self::STUB_FILE, $this->isClean, [
+            'module' => $this->moduleName,
             'namespace' => "Modules\\{$this->moduleName}\\Database\\Seeders",
             'seederName' => $this->seederName,
+            'modelName' => $this->modelName,
+            'factoryCount' => self::DEFAULT_FACTORY_COUNT,
         ]);
 
-        $this->putFile("{$seederDir}/{$this->seederName}Seeder.php", $stub, "Seeder {$this->seederName}Seeder.php creado en Modules/{$this->moduleName}/Database/Seeders");
+        $this->putFile("{$seederDir}/{$this->seederName}" . self::SEEDER_FILE_SUFFIX, $stub, "Seeder {$this->seederName} creado en Modules/{$this->moduleName}/Database/Seeders");
     }
 }

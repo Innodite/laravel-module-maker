@@ -163,7 +163,7 @@ class ModuleGenerator
             (new RepositoryGenerator($this->moduleName, $this->modulePath, false, $repositoryName, $modelName))->generate();
             (new RequestGenerator($this->moduleName, $this->modulePath, false, $requestName))->generate();
             (new MigrationGenerator($this->moduleName, $this->modulePath, false, $migrationName, $component['attributes'] ?? [], $component['indexes'] ?? [],$component))->generate();
-            (new SeederGenerator($this->moduleName, $this->modulePath, false, $seederName))->generate();
+            (new SeederGenerator($this->moduleName, $this->modulePath, false, $seederName,$component))->generate();
             (new FactoryGenerator($this->moduleName, $this->modulePath, false, $factoryName, $modelName))->generate();
             (new TestGenerator($this->moduleName, $this->modulePath, false, $testName))->generate();
             (new RouteGenerator($this->moduleName, $this->modulePath, false, $controllerName))->generate();
