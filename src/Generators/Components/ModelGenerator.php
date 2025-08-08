@@ -6,15 +6,7 @@ use Illuminate\Support\Str;
 use Innodite\LaravelModuleMaker\Generators\Concerns\HasStubs;
 use InvalidArgumentException;
 
-/**
- * Clase refactorizada para generar un modelo Eloquent para un módulo.
- *
- * Esta versión incluye:
- * - Uso de constantes para una mejor mantenibilidad.
- * - Lógica de relaciones separada para hasOne y hasMany.
- * - Soporte para relaciones polimórficas (morphOne y morphMany).
- * - Validación exhaustiva de la estructura de las relaciones en el JSON.
- */
+
 class ModelGenerator extends AbstractComponentGenerator
 {
     use HasStubs;
@@ -41,6 +33,7 @@ class ModelGenerator extends AbstractComponentGenerator
     protected array $relations;
     protected array $allComponents;
     protected string $componentName;
+    protected ?string $tableName = null;
 
     /**
      * Constructor para el generador de modelos.
@@ -70,6 +63,7 @@ class ModelGenerator extends AbstractComponentGenerator
         $this->relations = $relations;
         $this->allComponents = $allComponents;
         $this->componentName = $componentName;
+        $this->tableName = $componentConfig['table'] ?? null;
     }
 
     /**
@@ -87,6 +81,7 @@ class ModelGenerator extends AbstractComponentGenerator
 
         $stubContent = $this->getStubContent(self::MODEL_STUB_FILE, $this->isClean, [
             'modelName' => $this->modelName,
+            'table' => $this->getTableProperty(),
             'fillable' => $this->getFillableProperty(),
             'useStatements' => $useStatements,
             'relations' => $relationsMethods,
@@ -126,6 +121,20 @@ class ModelGenerator extends AbstractComponentGenerator
         return empty($this->fillableAttributes)
             ? 'protected $guarded = [];'
             : "protected \$fillable = ['" . implode("', '", $this->fillableAttributes) . "'];";
+    }
+
+    /**
+     * Genera la propiedad `$table` si se ha definido en la configuración.
+     *
+     * @return string
+     */
+    protected function getTableProperty(): string
+    {
+        if ($this->tableName) {
+            return "protected \$table = '{$this->tableName}';\n";
+        }
+
+        return '';
     }
 
     /**
