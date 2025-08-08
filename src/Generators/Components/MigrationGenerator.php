@@ -89,7 +89,7 @@ class MigrationGenerator extends AbstractComponentGenerator
         $this->migrationName = Str::studly($migrationName);
         $this->attributes = $attributes;
         $this->indexes = $indexes;
-        $this->tableName = $componentConfig['table'] ?? null; 
+        $this->tableName = $componentConfig['table'] ?? null;
     }
 
     /**
@@ -101,7 +101,7 @@ class MigrationGenerator extends AbstractComponentGenerator
     {
         $migrationDirectoryPath = $this->getComponentBasePath() . '/' . self::MIGRATION_DIRECTORY;
         $this->ensureDirectoryExists($migrationDirectoryPath);
-        
+
         $tableName = $this->tableName ?: Str::snake(Str::plural($this->migrationName));
         $className = 'Create' . Str::studly($tableName) . 'Table';
         $tableSchema = $this->getMigrationSchema($this->attributes, $this->indexes);
@@ -134,7 +134,7 @@ class MigrationGenerator extends AbstractComponentGenerator
         $schemaLines = array_merge($schemaLines, $this->getFilteredMigrationIndexes($attributes, $indexes));
 
         // Se ha ajustado la indentación para que sea de 4 espacios.
-        return implode("\n            ", $schemaLines);
+        return implode("\n            ", $schemaLines);
     }
 
     /**
@@ -146,7 +146,7 @@ class MigrationGenerator extends AbstractComponentGenerator
     protected function getMigrationColumns(array $attributes): array
     {
         $schemaLines = [];
-        
+
         $hasId = false;
         foreach ($attributes as $attribute) {
             if (isset($attribute['type']) && in_array($attribute['type'], ['increments', 'bigIncrements', 'id'])) {
@@ -164,7 +164,7 @@ class MigrationGenerator extends AbstractComponentGenerator
             }
 
             $this->validateAttribute($attribute);
-            
+
             $schemaLines[] = $this->getSchemaLineForAttribute($attribute) . ";";
         }
 
@@ -178,7 +178,7 @@ class MigrationGenerator extends AbstractComponentGenerator
         if (!$hasTimestamps) {
             $schemaLines[] = "\$table->timestamps();";
         }
-        
+
         return $schemaLines;
     }
 
@@ -214,13 +214,13 @@ class MigrationGenerator extends AbstractComponentGenerator
             if (!in_array($type, self::VALID_INDEX_TYPES)) {
                 throw new InvalidArgumentException("Tipo de índice '{$type}' no válido.");
             }
-            
+
             $columns = is_array($index['columns']) ? $index['columns'] : [$index['columns']];
 
             if (count($columns) === 1 && in_array($columns[0], $indexedColumns)) {
                 continue;
             }
-            
+
             if (count($columns) === 1) {
                 $schemaLines[] = "\$table->{$type}('{$columns[0]}');";
             } else {
@@ -251,11 +251,11 @@ class MigrationGenerator extends AbstractComponentGenerator
                 throw new InvalidArgumentException("El atributo '{$key}' no es válido para el tipo de dato '{$type}'.");
             }
         }
-        
+
         if ($type === 'enum' && !isset($attribute['options'])) {
             throw new InvalidArgumentException("El tipo de dato 'enum' requiere el atributo 'options' (array de valores).");
         }
-        
+
         if (in_array($type, ['decimal', 'double', 'float']) && (!isset($attribute['total']) || !isset($attribute['places']))) {
             throw new InvalidArgumentException("Los tipos 'decimal', 'double' y 'float' requieren los atributos 'total' y 'places'.");
         }
@@ -270,7 +270,7 @@ class MigrationGenerator extends AbstractComponentGenerator
     protected function getSchemaLineForAttribute(array $attribute): string
     {
         $type = $attribute['type'];
-        
+
         $helperTypes = ['softDeletes', 'softDeletesTz', 'bigIncrements', 'increments', 'morphs', 'nullableMorphs', 'id'];
         if (in_array($type, $helperTypes)) {
             $methodName = Str::camel($type);
@@ -284,18 +284,18 @@ class MigrationGenerator extends AbstractComponentGenerator
         if (!isset($attribute['name'])) {
             throw new InvalidArgumentException("El tipo de dato '{$type}' requiere un atributo 'name'.");
         }
-        
+
         $columnMethod = Str::camel($type) . 'Column';
-        
+
         if (method_exists($this, $columnMethod)) {
             return $this->{$columnMethod}($attribute);
         }
-        
+
         $name = $attribute['name'] ?? '';
         $definition = "\$table->{$type}('{$name}')";
         return $this->addModifiersToDefinition($definition, $attribute);
     }
-    
+
     //---------------------------------------------------------
     // Métodos para generar columnas específicas
     //---------------------------------------------------------
@@ -308,7 +308,7 @@ class MigrationGenerator extends AbstractComponentGenerator
 
         return $this->addModifiersToDefinition($definition, $attribute);
     }
-    
+
     protected function charColumn(array $attribute): string
     {
         $name = $attribute['name'];
@@ -317,7 +317,7 @@ class MigrationGenerator extends AbstractComponentGenerator
 
         return $this->addModifiersToDefinition($definition, $attribute);
     }
-    
+
     protected function uuidColumn(array $attribute): string
     {
         $name = $attribute['name'];
@@ -333,7 +333,7 @@ class MigrationGenerator extends AbstractComponentGenerator
 
         return $this->addModifiersToDefinition($definition, $attribute);
     }
-    
+
     protected function integerColumn(array $attribute): string
     {
         $name = $attribute['name'];
@@ -366,10 +366,10 @@ class MigrationGenerator extends AbstractComponentGenerator
         $total = $attribute['total'] ?? 8;
         $places = $attribute['places'] ?? 2;
         $definition = "\$table->float('{$name}', {$total}, {$places})";
-        
+
         return $this->addModifiersToDefinition($definition, $attribute);
     }
-    
+
     protected function booleanColumn(array $attribute): string
     {
         $name = $attribute['name'];
@@ -384,7 +384,7 @@ class MigrationGenerator extends AbstractComponentGenerator
         $definition = "\$table->date('{$name}')";
         return $this->addModifiersToDefinition($definition, $attribute);
     }
-    
+
     protected function dateTimeColumn(array $attribute): string
     {
         $name = $attribute['name'];
@@ -398,7 +398,7 @@ class MigrationGenerator extends AbstractComponentGenerator
         $definition = "\$table->time('{$name}')";
         return $this->addModifiersToDefinition($definition, $attribute);
     }
-    
+
     protected function yearColumn(array $attribute): string
     {
         $name = $attribute['name'];
@@ -419,15 +419,15 @@ class MigrationGenerator extends AbstractComponentGenerator
         $name = $attribute['name'];
         $options = json_encode($attribute['options']);
         $definition = "\$table->enum('{$name}', {$options})";
-        
+
         return $this->addModifiersToDefinition($definition, $attribute);
     }
-    
+
     protected function foreignIdColumn(array $attribute): string
     {
         $name = $attribute['name'];
         $definition = "\$table->foreignId('{$name}')";
-        
+
         if (isset($attribute['on']) && isset($attribute['constrained']) && $attribute['constrained']) {
             $definition .= "->constrained('{$attribute['on']}')";
             if (isset($attribute['onDelete'])) {
@@ -437,7 +437,7 @@ class MigrationGenerator extends AbstractComponentGenerator
                 $definition .= "->onUpdate('{$attribute['onUpdate']}')";
             }
         }
-        
+
         return $this->addModifiersToDefinition($definition, $attribute, ['nullable', 'after']);
     }
 
@@ -446,11 +446,11 @@ class MigrationGenerator extends AbstractComponentGenerator
         $name = $attribute['name'];
         $references = $attribute['references'] ?? 'id';
         $on = $attribute['on'] ?? '';
-        
+
         if (empty($on)) {
             throw new InvalidArgumentException("El tipo de dato 'foreign' requiere el atributo 'on' (nombre de la tabla).");
         }
-        
+
         $definition = "\$table->foreign('{$name}')->references('{$references}')->on('{$on}')";
 
         if (isset($attribute['onDelete'])) {
@@ -459,7 +459,7 @@ class MigrationGenerator extends AbstractComponentGenerator
         if (isset($attribute['onUpdate'])) {
             $definition .= "->onUpdate('{$attribute['onUpdate']}')";
         }
-        
+
         return $this->addModifiersToDefinition($definition, $attribute, ['nullable', 'after']);
     }
 
