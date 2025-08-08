@@ -6,18 +6,6 @@ use Illuminate\Support\Str;
 use Innodite\LaravelModuleMaker\Generators\Concerns\HasStubs;
 use InvalidArgumentException;
 
-/**
- * Clase refactorizada para generar un modelo Eloquent para un módulo.
- *
- * Esta versión incluye:
- * - Uso de constantes para una mejor mantenibilidad.
- * - Lógica de relaciones separada para hasOne y hasMany.
- * - Soporte para relaciones polimórficas (morphOne y morphMany).
- * - Validación exhaustiva de la estructura de las relaciones en el JSON.
- * - Soporte para definir el nombre de la tabla del modelo.
- * - Generación correcta del namespace del archivo y las sentencias 'use'.
- * - Inclusión de las sentencias 'use' de las clases de relación de Eloquent con formato correcto.
- */
 class ModelGenerator extends AbstractComponentGenerator
 {
     use HasStubs;
@@ -178,7 +166,18 @@ class ModelGenerator extends AbstractComponentGenerator
     protected function getUseStatements(): string
     {
         $useStatements = [];
-        $relationTypes = [];
+        $relationClasses = [];
+
+        // Mapeo de tipos de relación a nombres de clase de Eloquent
+        $relationTypeMap = [
+            self::RELATION_TYPE_BELONGS_TO => self::RELATION_CLASS_BELONGS_TO_NAME,
+            self::RELATION_TYPE_HAS_MANY => self::RELATION_CLASS_HAS_MANY_NAME,
+            self::RELATION_TYPE_HAS_ONE => self::RELATION_CLASS_HAS_ONE_NAME,
+            self::RELATION_TYPE_MORPH_ONE => self::RELATION_CLASS_MORPH_ONE_NAME,
+            self::RELATION_TYPE_MORPH_MANY => self::RELATION_CLASS_MORPH_MANY_NAME,
+            self::RELATION_TYPE_MORPH_TO => self::RELATION_CLASS_MORPH_TO_NAME,
+            self::RELATION_TYPE_MORPH_TO_MANY => self::RELATION_CLASS_MORPH_TO_MANY_NAME,
+        ];
 
         foreach ($this->relations as $relation) {
             // Recolecta los modelos relacionados.
@@ -189,15 +188,18 @@ class ModelGenerator extends AbstractComponentGenerator
                 $useStatements[] = "use {$relatedModelNamespace};";
             }
 
-            // Recolecta los tipos de relación de Eloquent.
-            if (isset($relation['type'])) {
-                $relationClassName = Str::studly($relation['type']);
-                $relationTypes[] = "use " . self::RELATION_CLASS_NAMESPACE . $relationClassName . ";";
+            // Recolecta los tipos de relación de Eloquent usando el mapeo.
+            if (isset($relation['type']) && isset($relationTypeMap[$relation['type']])) {
+                $relationClassName = $relationTypeMap[$relation['type']];
+                $relationClasses[] = "use " . self::RELATION_CLASS_NAMESPACE . $relationClassName . ";";
             }
         }
         
-        $allStatements = array_merge($useStatements, $relationTypes);
+        $allStatements = array_merge($useStatements, $relationClasses);
         $uniqueStatements = array_unique($allStatements);
+        
+        // Retorna las sentencias 'use' ordenadas para una mejor legibilidad.
+        sort($uniqueStatements);
 
         if (empty($uniqueStatements)) {
             return '';
