@@ -4,12 +4,15 @@ namespace {{ namespace }};
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+{{ useStatements }}
 
 class {{ modelName }} extends Model
 {
     use HasFactory;
 
+    {{ table }}
+
     {{ fillable }}
 
-{{ relations }}
+    {{ relations }}
 }
