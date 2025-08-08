@@ -13,6 +13,7 @@ use InvalidArgumentException;
  * - Uso de constantes para una mejor mantenibilidad.
  * - Lógica de relaciones separada para hasOne y hasMany.
  * - Soporte para relaciones polimórficas (morphOne y morphMany).
+ * - Validación exhaustiva de la estructura de las relaciones en el JSON.
  */
 class ModelGenerator extends AbstractComponentGenerator
 {
@@ -32,6 +33,8 @@ class ModelGenerator extends AbstractComponentGenerator
     protected const RELATION_TYPE_HAS_ONE = 'hasOne';
     protected const RELATION_TYPE_MORPH_ONE = 'morphOne';
     protected const RELATION_TYPE_MORPH_MANY = 'morphMany';
+    protected const RELATION_TYPE_MORPH_TO = 'morphTo';
+    protected const RELATION_TYPE_MORPH_TO_MANY = 'morphToMany';
 
     protected string $modelName;
     protected array $fillableAttributes;
@@ -134,13 +137,11 @@ class ModelGenerator extends AbstractComponentGenerator
     {
         $useStatements = [];
         foreach ($this->relations as $relation) {
-            $relatedModel = $relation['model'];
-            $relatedComponent = collect($this->allComponents)->firstWhere('name', $relatedModel);
-            $relatedModelNamespace = $relatedComponent ? "Modules\\{$this->moduleName}\\Models\\{$relatedModel}" : "App\\Models\\{$relatedModel}";
-            
-            // Para relaciones morph, el modelo no está en el mismo namespace que el módulo.
-            if (!in_array($relation['type'], [self::RELATION_TYPE_MORPH_ONE, self::RELATION_TYPE_MORPH_MANY])) {
-                 $useStatements[] = "use {$relatedModelNamespace};";
+            if (isset($relation['model'])) {
+                $relatedModel = $relation['model'];
+                $relatedComponent = collect($this->allComponents)->firstWhere('name', $relatedModel);
+                $relatedModelNamespace = $relatedComponent ? "Modules\\{$this->moduleName}\\Models\\{$relatedModel}" : "App\\Models\\{$relatedModel}";
+                $useStatements[] = "use {$relatedModelNamespace};";
             }
         }
         
@@ -166,8 +167,9 @@ class ModelGenerator extends AbstractComponentGenerator
 
             $methodName = $relation['name'];
             $relationType = $relation['type'];
-            $relatedModel = $relation['model'];
             
+            $relatedModel = $relation['model'] ?? null;
+
             $relationBaseClass = "\\Illuminate\\Database\\Eloquent\\Relations\\" . Str::studly($relationType);
             
             $relationBody = '';
@@ -182,20 +184,26 @@ class ModelGenerator extends AbstractComponentGenerator
                     $relationBody = $this->generateBelongsToMethodBody($relation, $relatedModel);
                     break;
                 case self::RELATION_TYPE_MORPH_ONE:
-                    $relationBody = $this->generateMorphOneMethodBody($relation);
+                    $relationBody = $this->generateMorphOneMethodBody($relation, $relatedModel);
                     break;
                 case self::RELATION_TYPE_MORPH_MANY:
-                    $relationBody = $this->generateMorphManyMethodBody($relation);
+                    $relationBody = $this->generateMorphManyMethodBody($relation, $relatedModel);
+                    break;
+                case self::RELATION_TYPE_MORPH_TO:
+                    $relationBody = $this->generateMorphToMethodBody($relation);
+                    break;
+                case self::RELATION_TYPE_MORPH_TO_MANY:
+                    $relationBody = $this->generateMorphToManyMethodBody($relation, $relatedModel);
                     break;
                 default:
-                    $relationBody = '';
+                    throw new InvalidArgumentException("Tipo de relación '{$relationType}' no reconocido para la relación '{$methodName}' en el componente '{$this->componentName}'.");
             }
 
-            $methodSignature = "public function {$methodName}(): {$relationBaseClass}";
-            
+            $methodSignature = "public function {$methodName}(): " . ($relationType === self::RELATION_TYPE_MORPH_TO ? '\Illuminate\Database\Eloquent\Relations\MorphTo' : $relationBaseClass);
+
             $methods[] = "
     /**
-     * Obtiene el/los modelo(s) '{$relatedModel}' relacionado(s).
+     * Obtiene el/los modelo(s) relacionado(s).
      */
     {$methodSignature}
     {
@@ -221,11 +229,57 @@ class ModelGenerator extends AbstractComponentGenerator
         if (!isset($relation['type']) || empty($relation['type'])) {
             throw new InvalidArgumentException("La relación '{$relation['name']}' en el componente '{$this->componentName}' no tiene un tipo de relación ('type') válido definido. Por favor, revisa tu archivo de configuración JSON.");
         }
-        if (!isset($relation['model']) || empty($relation['model'])) {
-            // La validación del modelo es diferente para relaciones polimórficas.
-            if (!in_array($relation['type'], [self::RELATION_TYPE_MORPH_ONE, self::RELATION_TYPE_MORPH_MANY])) {
-                 throw new InvalidArgumentException("La relación '{$relation['name']}' en el componente '{$this->componentName}' no tiene un modelo ('model') válido definido. Por favor, revisa tu archivo de configuración JSON.");
+
+        $relationType = $relation['type'];
+        $relationName = $relation['name'];
+
+        // Validación para relaciones polimórficas que no requieren 'model'
+        $polymorphicWithoutModel = [self::RELATION_TYPE_MORPH_TO];
+        
+        // Validación de la presencia de 'model'
+        if (!in_array($relationType, $polymorphicWithoutModel)) {
+            if (!isset($relation['model']) || empty($relation['model'])) {
+                throw new InvalidArgumentException("La relación '{$relationName}' en el componente '{$this->componentName}' de tipo '{$relationType}' requiere un atributo 'model'. Por favor, revisa tu archivo de configuración JSON.");
             }
+        }
+        
+        // Validación específica para relaciones polimórficas que requieren 'morphName'
+        $polymorphicWithMorphName = [self::RELATION_TYPE_MORPH_ONE, self::RELATION_TYPE_MORPH_MANY, self::RELATION_TYPE_MORPH_TO, self::RELATION_TYPE_MORPH_TO_MANY];
+        if (in_array($relationType, $polymorphicWithMorphName)) {
+            // `morphTo` no requiere `morphName` si el nombre de la relación coincide con el nombre de la columna.
+            // Para simplificar la validación, lo hacemos opcional en este caso.
+            if ($relationType !== self::RELATION_TYPE_MORPH_TO) {
+                if (!isset($relation['morphName']) || empty($relation['morphName'])) {
+                    throw new InvalidArgumentException("La relación '{$relationName}' en el componente '{$this->componentName}' de tipo '{$relationType}' requiere un atributo 'morphName'. Por favor, revisa tu archivo de configuración JSON.");
+                }
+            }
+        }
+
+        // Validación de atributos incorrectos para tipos específicos
+        switch ($relationType) {
+            case self::RELATION_TYPE_BELONGS_TO:
+                if (isset($relation['morphName'])) {
+                    throw new InvalidArgumentException("El atributo 'morphName' no es válido para la relación '{$relationName}' de tipo 'belongsTo' en el componente '{$this->componentName}'.");
+                }
+                break;
+            case self::RELATION_TYPE_HAS_MANY:
+            case self::RELATION_TYPE_HAS_ONE:
+                if (isset($relation['ownerKey']) || isset($relation['morphName'])) {
+                    throw new InvalidArgumentException("Los atributos 'ownerKey' y 'morphName' no son válidos para la relación '{$relationName}' de tipo '{$relationType}' en el componente '{$this->componentName}'.");
+                }
+                break;
+            case self::RELATION_TYPE_MORPH_ONE:
+            case self::RELATION_TYPE_MORPH_MANY:
+            case self::RELATION_TYPE_MORPH_TO_MANY:
+                if (isset($relation['localKey']) || isset($relation['ownerKey'])) {
+                    throw new InvalidArgumentException("Los atributos 'localKey' y 'ownerKey' no son válidos para la relación '{$relationName}' de tipo '{$relationType}' en el componente '{$this->componentName}'.");
+                }
+                break;
+            case self::RELATION_TYPE_MORPH_TO:
+                if (isset($relation['model']) || isset($relation['foreignKey']) || isset($relation['localKey']) || isset($relation['ownerKey'])) {
+                    throw new InvalidArgumentException("Los atributos 'model', 'foreignKey', 'localKey' y 'ownerKey' no son válidos para la relación '{$relationName}' de tipo 'morphTo' en el componente '{$this->componentName}'.");
+                }
+                break;
         }
     }
 
@@ -305,16 +359,12 @@ class ModelGenerator extends AbstractComponentGenerator
      * Genera el cuerpo del método para la relación morphOne.
      *
      * @param array $relation
+     * @param string $relatedModel
      * @return string
      */
-    private function generateMorphOneMethodBody(array $relation): string
+    private function generateMorphOneMethodBody(array $relation, string $relatedModel): string
     {
-        // Se valida el nombre de la relación polimórfica, que es el "morph name".
-        if (!isset($relation['morphName'])) {
-            throw new InvalidArgumentException("La relación '{$relation['name']}' es de tipo 'morphOne' pero no tiene el parámetro 'morphName' definido.");
-        }
-        
-        $params = ["'{$relation['morphName']}'"];
+        $params = ["{$relatedModel}::class", "'{$relation['morphName']}'"];
         
         $eloquentMethod = Str::camel($relation['type']);
         return "return \$this->{$eloquentMethod}(" . implode(', ', $params) . ");";
@@ -324,17 +374,59 @@ class ModelGenerator extends AbstractComponentGenerator
      * Genera el cuerpo del método para la relación morphMany.
      *
      * @param array $relation
+     * @param string $relatedModel
      * @return string
      */
-    private function generateMorphManyMethodBody(array $relation): string
+    private function generateMorphManyMethodBody(array $relation, string $relatedModel): string
     {
-        // Se valida el nombre de la relación polimórfica, que es el "morph name".
-        if (!isset($relation['morphName'])) {
-            throw new InvalidArgumentException("La relación '{$relation['name']}' es de tipo 'morphMany' pero no tiene el parámetro 'morphName' definido.");
+        $params = ["{$relatedModel}::class", "'{$relation['morphName']}'"];
+        
+        $eloquentMethod = Str::camel($relation['type']);
+        return "return \$this->{$eloquentMethod}(" . implode(', ', $params) . ");";
+    }
+
+    /**
+     * Genera el cuerpo del método para la relación morphTo.
+     *
+     * @param array $relation
+     * @return string
+     */
+    private function generateMorphToMethodBody(array $relation): string
+    {
+        $params = [];
+
+        // El `morphName` es opcional, ya que puede inferirse del nombre del método.
+        if (isset($relation['morphName'])) {
+            $params[] = "'{$relation['morphName']}'";
+        } else {
+            $params[] = "'{$relation['name']}'";
         }
+
+        $eloquentMethod = Str::camel($relation['type']);
+        return "return \$this->{$eloquentMethod}(" . implode(', ', $params) . ");";
+    }
+    
+    /**
+     * Genera el cuerpo del método para la relación morphToMany.
+     *
+     * @param array $relation
+     * @param string $relatedModel
+     * @return string
+     */
+    private function generateMorphToManyMethodBody(array $relation, string $relatedModel): string
+    {
+        $params = ["{$relatedModel}::class", "'{$relation['morphName']}'"];
         
-        $params = ["'{$relation['morphName']}'"];
-        
+        if (isset($relation['table'])) {
+            $params[] = "'{$relation['table']}'";
+        }
+        if (isset($relation['foreignPivotKey'])) {
+            $params[] = "'{$relation['foreignPivotKey']}'";
+        }
+        if (isset($relation['relatedPivotKey'])) {
+            $params[] = "'{$relation['relatedPivotKey']}'";
+        }
+
         $eloquentMethod = Str::camel($relation['type']);
         return "return \$this->{$eloquentMethod}(" . implode(', ', $params) . ");";
     }
