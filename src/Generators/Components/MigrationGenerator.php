@@ -11,9 +11,7 @@ use Carbon\Carbon;
 /**
  * Clase para generar archivos de migración de Laravel de forma dinámica.
  *
- * Esta versión se ha optimizado para generar un formato de migración más limpio
- * y consistente, eliminando los problemas de indentación y caracteres extraños
- * que se habían reportado.
+ *
  */
 class MigrationGenerator extends AbstractComponentGenerator
 {
@@ -25,6 +23,7 @@ class MigrationGenerator extends AbstractComponentGenerator
     protected string $migrationName;
     protected array $attributes;
     protected array $indexes;
+    protected ?string $tableName = null; // Nueva propiedad para el nombre de la tabla
 
     /**
      * Define los atributos y modificadores válidos para cada tipo de dato.
@@ -90,6 +89,7 @@ class MigrationGenerator extends AbstractComponentGenerator
         $this->migrationName = Str::studly($migrationName);
         $this->attributes = $attributes;
         $this->indexes = $indexes;
+        $this->tableName = $componentConfig['table'] ?? null; // Obtiene el nombre de la tabla de la configuración
     }
 
     /**
@@ -101,8 +101,8 @@ class MigrationGenerator extends AbstractComponentGenerator
     {
         $migrationDirectoryPath = $this->getComponentBasePath() . '/' . self::MIGRATION_DIRECTORY;
         $this->ensureDirectoryExists($migrationDirectoryPath);
-
-        $tableName = Str::snake(Str::plural($this->migrationName));
+        
+        $tableName = $this->tableName ?: Str::snake(Str::plural($this->migrationName));
         $className = 'Create' . Str::studly($tableName) . 'Table';
         $tableSchema = $this->getMigrationSchema($this->attributes, $this->indexes);
 
@@ -133,8 +133,8 @@ class MigrationGenerator extends AbstractComponentGenerator
 
         $schemaLines = array_merge($schemaLines, $this->getFilteredMigrationIndexes($attributes, $indexes));
 
-        // Se ha ajustado la indentación para que sea de 4 espacios y se ha eliminado el carácter de tabulación.
-        return implode("\n            ", $schemaLines);
+        // Se ha ajustado la indentación para que sea de 4 espacios.
+        return implode("\n            ", $schemaLines);
     }
 
     /**
