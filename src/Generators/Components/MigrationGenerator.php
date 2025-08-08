@@ -89,7 +89,7 @@ class MigrationGenerator extends AbstractComponentGenerator
         $this->migrationName = Str::studly($migrationName);
         $this->attributes = $attributes;
         $this->indexes = $indexes;
-        $this->tableName = $componentConfig['table'] ?? null; // Obtiene el nombre de la tabla de la configuración
+        $this->tableName = $componentConfig['table'] ?? null; 
     }
 
     /**
