@@ -1,9 +1,9 @@
 <?php
 
-namespace Modules\{{ module }}\Database\Seeders;
+namespace {{ namespace }};
 
 use Illuminate\Database\Seeder;
-use Modules\{{ module }}\Models\{{ modelName }};
+use Modules\{{ moduleName }}\Models\{{ modelName }};
 
 class {{ seederName }} extends Seeder
 {
