@@ -153,7 +153,7 @@ class ModuleGenerator
             $repositoryName = "{$modelName}Repository";
             $requestName = "{$modelName}StoreRequest";
             $migrationName = $modelName;
-            $seederName = $modelName;
+            $seederName = "{$modelName}Seeder";
             $factoryName = $modelName;
             $testName = "{$modelName}Test";
 
