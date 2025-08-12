@@ -59,7 +59,7 @@ class SetupModuleMakerCommand extends Command
         $this->modifyDatabaseSeeder();
 
         $this->info("\n🎉 ¡Configuración completa! Ahora puedes personalizar los stubs y el archivo de configuración en 'Modules/module-maker-config'.");
-        $this->info("Para generar un módulo dinámico, edita 'post.json' y ejecuta: php artisan innodite:make-module Post --config=post.json");
+        $this->info("Para generar un módulo dinámico, edita 'blog.json' y ejecuta: php artisan innodite:make-module Blog --config=blog.json");
     }
 
     /**
@@ -124,25 +124,35 @@ class SetupModuleMakerCommand extends Command
         }
 
         $seederContent = File::get($seederPath);
-        $searchLine = "\$this->call(app('innodite.module_seeder'));";
+        $callLine = "        \$this->call(InnoditeModuleSeeder::class);";
+        $useStatement = "use Innodite\\LaravelModuleMaker\\Database\\Seeders\\InnoditeModuleSeeder;";
         
-        // El comentario que queremos agregar para la trazabilidad
-        $comment = "        // Código generado por LaravelModuleMaker para ejecutar los seeders de los módulos";
-
-        // Si la línea ya existe, no hacemos nada y notificamos al usuario
-        if (str_contains($seederContent, $searchLine)) {
+        // Revisa si ya existe el use statement o la llamada para no duplicar
+        if (str_contains($seederContent, $useStatement) && str_contains($seederContent, $callLine)) {
             $this->warn("El archivo DatabaseSeeder.php ya está configurado para ejecutar los seeders de los módulos. No se realizaron cambios.");
             return;
         }
 
-        // Inyecta el código al final del método run() antes del '}'
-        $newContent = str_replace(
-            "public function run(): void\n    {\n",
-            "public function run(): void\n    {\n" . $comment . "\n" . "        " . $searchLine . "\n",
-            $seederContent
-        );
+        // Inyecta el use statement si no existe
+        if (!str_contains($seederContent, $useStatement)) {
+            $seederContent = str_replace(
+                "use Illuminate\\Database\\Seeder;",
+                "use Illuminate\\Database\\Seeder;\n{$useStatement}",
+                $seederContent
+            );
+        }
+        
+        // Inyecta la llamada si no existe
+        if (!str_contains($seederContent, $callLine)) {
+            $comment = "        // Código generado por LaravelModuleMaker para ejecutar los seeders de los módulos";
+            $seederContent = str_replace(
+                "public function run(): void\n    {\n",
+                "public function run(): void\n    {\n" . $comment . "\n" . $callLine . "\n",
+                $seederContent
+            );
+        }
 
-        File::put($seederPath, $newContent);
+        File::put($seederPath, $seederContent);
         $this->info("✅ Archivo DatabaseSeeder.php modificado para incluir los seeders de los módulos. ¡Revisa el archivo!");
     }
 }

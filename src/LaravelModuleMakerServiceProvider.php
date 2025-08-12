@@ -10,6 +10,7 @@ use Innodite\LaravelModuleMaker\Commands\MakeModuleCommand;
 use Innodite\LaravelModuleMaker\Commands\SetupModuleMakerCommand;
 use Illuminate\Support\Str;
 use Illuminate\Database\Seeder;
+use Innodite\LaravelModuleMaker\Database\Seeders\InnoditeModuleSeeder;
 
 class LaravelModuleMakerServiceProvider extends ServiceProvider
 {
@@ -18,6 +19,28 @@ class LaravelModuleMakerServiceProvider extends ServiceProvider
         $this->mergeConfigFrom(
             __DIR__.'/../config/make-module.php', 'make-module'
         );
+
+        // Vinculamos el seeder principal al contenedor de servicios.
+        $this->app->singleton('innodite.module_seeder', function ($app) {
+            $modulesPath = base_path('Modules');
+            $allModuleSeeders = [];
+
+            if (File::exists($modulesPath)) {
+                foreach (File::directories($modulesPath) as $modulePath) {
+                    $moduleName = basename($modulePath);
+                    $moduleName = Str::studly($moduleName);
+                    
+                    $seederClass = "Modules\\{$moduleName}\\Database\\Seeders\\{$moduleName}DatabaseSeeder";
+                    if (class_exists($seederClass)) {
+                        $allModuleSeeders[] = $seederClass;
+                    }
+                }
+            }
+
+            $seeder = new InnoditeModuleSeeder();
+            $seeder->setModuleSeeders($allModuleSeeders);
+            return $seeder;
+        });
     }
 
     public function boot(): void
@@ -33,8 +56,6 @@ class LaravelModuleMakerServiceProvider extends ServiceProvider
         if (!File::exists($modulesPath)) {
             return;
         }
-
-        $allModuleSeeders = [];
 
         foreach (File::directories($modulesPath) as $modulePath) {
             $moduleName = basename($modulePath);
@@ -80,26 +101,7 @@ class LaravelModuleMakerServiceProvider extends ServiceProvider
             if (File::isDirectory($migrationsPath)) {
                 $this->loadMigrationsFrom($migrationsPath);
             }
-
-            // NUEVO: Recopilar los seeders principales de los módulos
-            $seederClass = "Modules\\{$moduleName}\\Database\\Seeders\\{$moduleName}DatabaseSeeder";
-            if (class_exists($seederClass)) {
-                $allModuleSeeders[] = $seederClass;
-            }
         }
-
-        // Registrar un Seeder maestro que contiene todos los seeders de los módulos
-        $this->app->singleton('innodite.module_seeder', function ($app) use ($allModuleSeeders) {
-            return new class extends Seeder
-            {
-                public function run()
-                {
-                    foreach ($allModuleSeeders as $seederClass) {
-                        $this->call($seederClass);
-                    }
-                }
-            };
-        });
 
         // Factories
         Factory::guessFactoryNamesUsing(function (string $modelName) {
