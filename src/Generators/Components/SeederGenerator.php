@@ -31,63 +31,8 @@ class SeederGenerator extends AbstractComponentGenerator
         $seederDir = $this->getComponentBasePath() . self::SEEDER_PATH_SUFFIX;
         $this->ensureDirectoryExists($seederDir);
 
-        // Genera el seeder principal del módulo si no existe
-        $this->generateMainModuleSeeder($seederDir);
-
         // Genera el seeder de la tabla específica
         $this->generateTableSeeder($seederDir);
-    }
-
-    protected function generateMainModuleSeeder(string $seederDir): void
-    {
-        $mainSeederName = "{$this->moduleName}DatabaseSeeder";
-        $seederFile = "{$seederDir}/{$mainSeederName}.php";
-
-        // Si el seeder principal ya existe, lo actualiza para agregar el nuevo seeder
-        if (File::exists($seederFile)) {
-            $this->updateMainModuleSeeder($seederFile);
-            return;
-        }
-
-        // Si no existe, lo crea
-        $stub = $this->getStubContent(self::STUB_MAIN_SEEDER, $this->isClean, [
-            'namespace' => "Modules\\{$this->moduleName}\\Database\\Seeders",
-            'mainSeederName' => $mainSeederName,
-            'uses' => "use Modules\\{$this->moduleName}\\Database\\Seeders\\{$this->seederName};",
-            'calls' => "            {$this->seederName}::class,",
-        ]);
-
-        $this->putFile($seederFile, $stub, "Seeder principal {$mainSeederName} creado en '{$seederFile}'.");
-    }
-
-    protected function updateMainModuleSeeder(string $seederFile): void
-    {
-        $content = File::get($seederFile);
-        $newSeederClass = "{$this->seederName}::class,";
-        $newUseStatement = "use Modules\\{$this->moduleName}\\Database\\Seeders\\{$this->seederName};";
-
-        // 1. Evita duplicados en el array de llamadas
-        if (str_contains($content, $newSeederClass)) {
-            $this->warn("El seeder '{$this->seederName}' ya está incluido en el seeder principal.");
-            return;
-        }
-
-        // 2. Inyecta el `use` statement
-        $content = str_replace(
-            "use Illuminate\\Database\\Seeder;", 
-            "use Illuminate\\Database\\Seeder;\n{$newUseStatement}",
-            $content
-        );
-
-        // 3. Inyecta la llamada dentro del array $this->call([])
-        $content = str_replace(
-            '        $this->call([',
-            "        \$this->call([\n            {$newSeederClass}",
-            $content
-        );
-
-        File::put($seederFile, $content);
-        $this->info("Seeder principal '{$this->moduleName}DatabaseSeeder' actualizado para incluir '{$this->seederName}'.");
     }
 
     protected function generateTableSeeder(string $seederDir): void
