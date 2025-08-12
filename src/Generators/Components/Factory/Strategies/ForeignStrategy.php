@@ -4,25 +4,29 @@ namespace Innodite\LaravelModuleMaker\Generators\Components\Factory\Strategies;
 
 use Illuminate\Support\Str;
 use Innodite\LaravelModuleMaker\Generators\Components\Factory\Contracts\AttributeValueStrategy;
+use Innodite\LaravelModuleMaker\Generators\Components\AbstractComponentGenerator;
 use Illuminate\Support\Facades\File;
 
-class ForeignIdStrategy implements AttributeValueStrategy
+class ForeignStrategy implements AttributeValueStrategy
 {
     protected string $moduleName;
     protected array $modelUses;
     protected array $componentConfig;
+    protected AbstractComponentGenerator $generator;
     protected array $allModules;
 
     /**
      * @param string $moduleName El nombre del módulo.
      * @param array $modelUses Referencia al array de declaraciones 'use'.
      * @param array $componentConfig El array de configuración completo del componente.
+     * @param AbstractComponentGenerator $generator La instancia del generador principal para la salida de la consola.
      */
-    public function __construct(string $moduleName, array &$modelUses, array $componentConfig)
+    public function __construct(string $moduleName, array &$modelUses, array $componentConfig, AbstractComponentGenerator $generator)
     {
         $this->moduleName = $moduleName;
         $this->modelUses = &$modelUses;
         $this->componentConfig = $componentConfig;
+        $this->generator = $generator;
         $this->allModules = $this->getAllModules();
     }
 
@@ -51,8 +55,15 @@ class ForeignIdStrategy implements AttributeValueStrategy
         if ($fullModelNamespace) {
             $this->modelUses[] = "use {$fullModelNamespace};";
         } else {
+            // Mostrar un mensaje de advertencia detallado en la consola
+            $factoryPath = "Modules/{$this->moduleName}/Database/Factories/{$this->generator->factoryName}Factory.php";
+            $message = "⚠️ Advertencia en el factory: {$factoryPath}\n"
+                     . "No se pudo encontrar el modelo '{$modelName}' en el módulo actual, otros módulos o App\Models. "
+                     . "Por favor, ajuste el namespace manualmente en el archivo generado.";
+            $this->generator->warn($message);
+
+            // Dejar el comentario en el código
             $this->modelUses[] = "/* TODO: Ajustar el namespace para el modelo '{$modelName}' */";
-            // Lógica para mostrar un mensaje atractivo en la consola
         }
 
         return "{$modelName}::factory()";
@@ -87,13 +98,12 @@ class ForeignIdStrategy implements AttributeValueStrategy
 
     protected function getAllModules(): array
     {
-        // Asumiendo que la clase tiene acceso al helper `File` de Laravel
         if (File::exists(base_path('Modules'))) {
             return array_map('basename', File::directories(base_path('Modules')));
         }
         return [];
     }
-    
+
     protected function classExists(string $class): bool
     {
         return class_exists($class);

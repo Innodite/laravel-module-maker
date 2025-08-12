@@ -48,8 +48,8 @@ class FactoryGenerator extends AbstractComponentGenerator
             'date' => new DateStrategy(),
             'dateTime' => new DateStrategy(),
             'enum' => new EnumStrategy(),
-            'foreignId' => new ForeignIdStrategy($this->moduleName, $this->modelUses, $componentConfig),
-            'foreign' => new ForeignStrategy($this->moduleName, $this->modelUses, $componentConfig),
+            'foreignId' => new ForeignIdStrategy($this->moduleName, $this->modelUses, $componentConfig,$this->factoryName),
+            'foreign' => new ForeignStrategy($this->moduleName, $this->modelUses, $componentConfig,$this->factoryName),
         ];
     }
 

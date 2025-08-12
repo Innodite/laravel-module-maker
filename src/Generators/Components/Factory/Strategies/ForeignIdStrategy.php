@@ -4,39 +4,71 @@ namespace Innodite\LaravelModuleMaker\Generators\Components\Factory\Strategies;
 
 use Illuminate\Support\Str;
 use Innodite\LaravelModuleMaker\Generators\Components\Factory\Contracts\AttributeValueStrategy;
+use Innodite\LaravelModuleMaker\Generators\Components\AbstractComponentGenerator;
+use Illuminate\Support\Facades\File;
 
 class ForeignIdStrategy implements AttributeValueStrategy
 {
-    // ...
-    // Constructor y propiedades se mantienen igual
-    // ...
+    protected string $moduleName;
+    protected array $modelUses;
+    protected array $componentConfig;
+    protected AbstractComponentGenerator $generator;
+    protected array $allModules;
+
+    /**
+     * @param string $moduleName El nombre del módulo.
+     * @param array $modelUses Referencia al array de declaraciones 'use'.
+     * @param array $componentConfig El array de configuración completo del componente.
+     * @param AbstractComponentGenerator $generator La instancia del generador principal para la salida de la consola.
+     */
+    public function __construct(string $moduleName, array &$modelUses, array $componentConfig, AbstractComponentGenerator $generator)
+    {
+        $this->moduleName = $moduleName;
+        $this->modelUses = &$modelUses;
+        $this->componentConfig = $componentConfig;
+        $this->generator = $generator;
+        $this->allModules = $this->getAllModules();
+    }
 
     public function generate(array $attribute): string
     {
-        // ... (Lógica para determinar el nombre del modelo, se mantiene igual)
+        $foreignKeyName = $attribute['name'];
+        $modelName = null;
 
-        // Nuevo: Buscar el namespace en la nueva jerarquía
-        $allModules = $this->getAllModules(); // Asume que tienes un método para obtener todos los módulos
-        $fullModelNamespace = $this->findModelNamespace($modelName, $this->moduleName, $allModules);
-        
+        // Paso 1: Buscar el nombre del modelo en el nodo 'relations' del JSON
+        foreach ($this->componentConfig['relations'] ?? [] as $relation) {
+            if (isset($relation['foreignKey']) && $relation['foreignKey'] === $foreignKeyName) {
+                $modelName = $relation['model'];
+                break;
+            }
+        }
+
+        // Paso 2: Si no se encuentra, usar el atributo 'on' o inferir de la convención
+        if (is_null($modelName)) {
+            $relatedTableName = $attribute['on'] ?? Str::before($foreignKeyName, '_id');
+            $modelName = Str::studly(Str::singular($relatedTableName));
+        }
+
+        // Paso 3: Buscar el namespace del modelo
+        $fullModelNamespace = $this->findModelNamespace($modelName, $this->moduleName, $this->allModules);
+
         if ($fullModelNamespace) {
             $this->modelUses[] = "use {$fullModelNamespace};";
         } else {
+            // Mostrar un mensaje de advertencia detallado en la consola
+            $factoryPath = "Modules/{$this->moduleName}/Database/Factories/{$this->generator->factoryName}Factory.php";
+            $message = "⚠️ Advertencia en el factory: {$factoryPath}\n"
+                     . "No se pudo encontrar el modelo '{$modelName}' en el módulo actual, otros módulos o App\Models. "
+                     . "Por favor, ajuste el namespace manualmente en el archivo generado.";
+            $this->generator->warn($message);
+            
+            // Dejar el comentario en el código
             $this->modelUses[] = "/* TODO: Ajustar el namespace para el modelo '{$modelName}' */";
-            // Lógica para mostrar un mensaje atractivo en la consola
         }
 
         return "{$modelName}::factory()";
     }
 
-    /**
-     * Busca el namespace completo de un modelo en el módulo actual, otros módulos o el proyecto.
-     *
-     * @param string $modelName El nombre del modelo.
-     * @param string $currentModuleName El nombre del módulo actual.
-     * @param array $allModules La lista de todos los módulos.
-     * @return string|null El namespace completo del modelo o null.
-     */
     protected function findModelNamespace(string $modelName, string $currentModuleName, array $allModules): ?string
     {
         // 1. Buscar en el módulo actual
@@ -54,7 +86,7 @@ class ForeignIdStrategy implements AttributeValueStrategy
                 }
             }
         }
-        
+
         // 3. Buscar en el namespace global del proyecto
         $appModelNamespace = "App\\Models\\{$modelName}";
         if ($this->classExists($appModelNamespace)) {
@@ -64,21 +96,14 @@ class ForeignIdStrategy implements AttributeValueStrategy
         return null;
     }
 
-    /**
-     * Este método debería ser proporcionado por la clase base o un trait.
-     * Por ejemplo, podría usar File::directories('path/to/modules').
-     */
     protected function getAllModules(): array
     {
-        // Implementación de ejemplo
-        // return array_map('basename', File::directories(base_path('Modules')));
-        return ['UserManagement', 'Blog', 'Shop']; // Ejemplo de módulos
+        if (File::exists(base_path('Modules'))) {
+            return array_map('basename', File::directories(base_path('Modules')));
+        }
+        return [];
     }
-
-    /**
-     * Verifica si una clase existe.
-     * ... (se mantiene igual)
-     */
+    
     protected function classExists(string $class): bool
     {
         return class_exists($class);
