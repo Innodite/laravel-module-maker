@@ -55,8 +55,11 @@ class SetupModuleMakerCommand extends Command
         // Publica los stubs y los archivos de configuración de ejemplo
         $this->publishStubsAndConfig($configPath);
 
+        // NUEVO: Modifica el DatabaseSeeder automáticamente
+        $this->modifyDatabaseSeeder();
+
         $this->info("\n🎉 ¡Configuración completa! Ahora puedes personalizar los stubs y el archivo de configuración en 'Modules/module-maker-config'.");
-        $this->info("Para generar un módulo dinámico, edita 'post.json' y ejecuta: php artisan innodite:make-module --config=post.json");
+        $this->info("Para generar un módulo dinámico, edita 'post.json' y ejecuta: php artisan innodite:make-module Post --config=post.json");
     }
 
     /**
@@ -104,5 +107,42 @@ class SetupModuleMakerCommand extends Command
                 $this->error("El archivo de configuración de ejemplo '{$file}' no existe en: '{$sourceFile}'.");
             }
         }
+    }
+    
+    /**
+     * Modifica el archivo DatabaseSeeder.php para incluir los seeders de los módulos.
+     *
+     * @return void
+     */
+    protected function modifyDatabaseSeeder(): void
+    {
+        $seederPath = database_path('seeders/DatabaseSeeder.php');
+
+        if (!File::exists($seederPath)) {
+            $this->error("No se encontró el archivo DatabaseSeeder.php. Por favor, asegúrate de que el proyecto está inicializado correctamente.");
+            return;
+        }
+
+        $seederContent = File::get($seederPath);
+        $searchLine = "\$this->call(app('innodite.module_seeder'));";
+        
+        // El comentario que queremos agregar para la trazabilidad
+        $comment = "        // Código generado por LaravelModuleMaker para ejecutar los seeders de los módulos";
+
+        // Si la línea ya existe, no hacemos nada y notificamos al usuario
+        if (str_contains($seederContent, $searchLine)) {
+            $this->warn("El archivo DatabaseSeeder.php ya está configurado para ejecutar los seeders de los módulos. No se realizaron cambios.");
+            return;
+        }
+
+        // Inyecta el código al final del método run() antes del '}'
+        $newContent = str_replace(
+            "public function run(): void\n    {\n",
+            "public function run(): void\n    {\n" . $comment . "\n" . "        " . $searchLine . "\n",
+            $seederContent
+        );
+
+        File::put($seederPath, $newContent);
+        $this->info("✅ Archivo DatabaseSeeder.php modificado para incluir los seeders de los módulos. ¡Revisa el archivo!");
     }
 }
