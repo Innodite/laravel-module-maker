@@ -9,8 +9,7 @@ use Illuminate\Support\Facades\File;
 class SeederGenerator extends AbstractComponentGenerator
 {
     protected const SEEDER_PATH_SUFFIX = "/Database/Seeders";
-    protected const STUB_MAIN_SEEDER = 'main_seeder.stub';
-    protected const STUB_TABLE_SEEDER = 'table_seeder.stub';
+    protected const STUB_SEEDER = 'seeder.stub';
     protected const DEFAULT_FACTORY_COUNT = 50;
 
     protected string $seederName;
