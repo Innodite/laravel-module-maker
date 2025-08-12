@@ -92,7 +92,7 @@ class SeederGenerator extends AbstractComponentGenerator
 
     protected function generateTableSeeder(string $seederDir): void
     {
-        $seederFile = "{$seederDir}/{$this->seederName}";
+        $seederFile = "{$seederDir}/{$this->seederName}.php";
 
         $stub = $this->getStubContent(self::STUB_TABLE_SEEDER, $this->isClean, [
             'namespace' => "Modules\\{$this->moduleName}\\Database\\Seeders",
