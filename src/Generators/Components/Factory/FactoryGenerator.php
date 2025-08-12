@@ -48,8 +48,8 @@ class FactoryGenerator extends AbstractComponentGenerator
             'date' => new DateStrategy(),
             'dateTime' => new DateStrategy(),
             'enum' => new EnumStrategy(),
-            'foreignId' => new ForeignIdStrategy($this->moduleName),
-            'foreign' => new ForeignStrategy($this->moduleName),
+            'foreignId' => new ForeignIdStrategy($this->moduleName, $this->modelUses, $componentConfig),
+            'foreign' => new ForeignStrategy($this->moduleName, $this->modelUses, $componentConfig),
         ];
     }
 
@@ -98,12 +98,6 @@ class FactoryGenerator extends AbstractComponentGenerator
         // Obtiene la estrategia adecuada.
         $strategy = $this->strategies[$type] ?? null;
         if ($strategy instanceof AttributeValueStrategy) {
-            // Si es una clave foránea, guarda la declaración 'use'.
-            if (in_array($type, ['foreignId', 'foreign'])) {
-                $tableName = $type === 'foreignId' ? Str::before($name, '_id') : ($attribute['on'] ?? 'users');
-                $modelName = Str::studly(Str::singular($tableName));
-                $this->modelUses[] = "use Modules\\{$this->moduleName}\\Models\\{$modelName};";
-            }
             return $strategy->generate($attribute);
         }
 
