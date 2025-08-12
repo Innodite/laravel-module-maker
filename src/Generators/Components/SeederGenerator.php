@@ -64,22 +64,28 @@ class SeederGenerator extends AbstractComponentGenerator
     protected function updateMainModuleSeeder(string $seederFile): void
     {
         $content = File::get($seederFile);
-        $newSeederName = "{$this->seederName}::class,";
+        $newSeederClass = "{$this->seederName}::class,";
         $newUseStatement = "use Modules\\{$this->moduleName}\\Database\\Seeders\\{$this->seederName};";
 
         // 1. Evita duplicados en el array de llamadas
-        if (str_contains($content, $newSeederName)) {
+        if (str_contains($content, $newSeederClass)) {
             $this->warn("El seeder '{$this->seederName}' ya está incluido en el seeder principal.");
             return;
         }
 
         // 2. Inyecta el `use` statement
-        $useReplacement = "use Illuminate\\Database\\Seeder;\n{$newUseStatement}";
-        $content = str_replace("use Illuminate\\Database\\Seeder;", $useReplacement, $content);
+        $content = str_replace(
+            "use Illuminate\\Database\\Seeder;", 
+            "use Illuminate\\Database\\Seeder;\n{$newUseStatement}",
+            $content
+        );
 
         // 3. Inyecta la llamada dentro del array $this->call([])
-        $callReplacement = "        \$this->call([\n" . "            {$newSeederName}";
-        $content = str_replace('        $this->call([', $callReplacement, $content);
+        $content = str_replace(
+            '        $this->call([',
+            "        \$this->call([\n            {$newSeederClass}",
+            $content
+        );
 
         File::put($seederFile, $content);
         $this->info("Seeder principal '{$this->moduleName}DatabaseSeeder' actualizado para incluir '{$this->seederName}'.");
@@ -93,7 +99,7 @@ class SeederGenerator extends AbstractComponentGenerator
             'namespace' => "Modules\\{$this->moduleName}\\Database\\Seeders",
             'seederName' => $this->seederName,
             'modelName' => $this->modelName,
-            'moduleName' => $this->moduleName,
+            'moduleName'=>$this->moduleName,
             'factoryCount' => self::DEFAULT_FACTORY_COUNT,
         ]);
 
