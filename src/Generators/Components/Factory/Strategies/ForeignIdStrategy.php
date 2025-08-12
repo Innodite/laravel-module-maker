@@ -3,7 +3,7 @@
 namespace Innodite\LaravelModuleMaker\Generators\Components\Factory\Strategies;
 
 use Innodite\LaravelModuleMaker\Generators\Components\Factory\Contracts\AttributeValueStrategy;
- 
+use Illuminate\Support\Str;
 
 class ForeignIdStrategy implements AttributeValueStrategy
 {
