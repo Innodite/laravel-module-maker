@@ -80,6 +80,7 @@ class SeederGenerator extends AbstractComponentGenerator
             'namespace' => "Modules\\{$this->moduleName}\\Database\\Seeders",
             'seederName' => $this->seederName,
             'modelName' => $this->modelName,
+            'moduleName'=>$this->moduleName,
             'factoryCount' => self::DEFAULT_FACTORY_COUNT,
         ]);
 
