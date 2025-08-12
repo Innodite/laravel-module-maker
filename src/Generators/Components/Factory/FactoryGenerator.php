@@ -20,7 +20,7 @@ class FactoryGenerator extends AbstractComponentGenerator
     protected const FACTORY_FILE_SUFFIX = "Factory.php";
     protected const STUB_FILE = 'factory.stub';
 
-    protected string $factoryName;
+    public string $factoryName;
     protected string $modelName;
     protected array $attributes;
     protected array $modelUses = [];
@@ -35,6 +35,8 @@ class FactoryGenerator extends AbstractComponentGenerator
         $this->attributes = $componentConfig['attributes'] ?? [];
 
         // Inicializa el mapa de estrategias.
+        // Las estrategias de clave foránea ahora reciben el generador completo
+        // para poder usar sus métodos de salida de consola.
         $this->strategies = [
             'text' => new TextStrategy(),
             'integer' => new IntegerStrategy(),
@@ -48,8 +50,8 @@ class FactoryGenerator extends AbstractComponentGenerator
             'date' => new DateStrategy(),
             'dateTime' => new DateStrategy(),
             'enum' => new EnumStrategy(),
-            'foreignId' => new ForeignIdStrategy($this->moduleName, $this->modelUses, $componentConfig,$this->factoryName),
-            'foreign' => new ForeignStrategy($this->moduleName, $this->modelUses, $componentConfig,$this->factoryName),
+            'foreignId' => new ForeignIdStrategy($this->moduleName, $this->modelUses, $componentConfig, $this),
+            'foreign' => new ForeignStrategy($this->moduleName, $this->modelUses, $componentConfig, $this),
         ];
     }
 
@@ -69,7 +71,7 @@ class FactoryGenerator extends AbstractComponentGenerator
             'definitionAttributes' => $definitionAttributes,
         ]);
 
-        $this->putFile("{$factoryDir}/{$this->factoryName}" . self::FACTORY_FILE_SUFFIX, $stub, "Factory {$this->factoryName} creado en Modules/{$this->moduleName}/Database/Factories");
+        $this->putFile("{$factoryDir}/{$this->factoryName}" . self::FACTORY_FILE_SUFFIX, $stub, "Factory {$this->factoryName} creada en Modules/{$this->moduleName}/Database/Factories");
     }
 
     protected function generateDefinitionAttributes(): string
@@ -83,7 +85,7 @@ class FactoryGenerator extends AbstractComponentGenerator
             $fakerMethod = $this->generateAttributeValue($attribute);
             $lines[] = "'{$name}' => {$fakerMethod},";
         }
-        return "            " . implode("\n            ", $lines);    }
+        return "" . implode("\n", $lines);    }
 
     protected function generateAttributeValue(array $attribute): string
     {
@@ -118,6 +120,8 @@ class FactoryGenerator extends AbstractComponentGenerator
         }
         if (Str::contains($name, 'name')) {
             return '$this->faker->name()';
+        }if (Str::contains($name, 'slug')) {
+            return '$this->faker->slug()';
         }
         return null;
     }
