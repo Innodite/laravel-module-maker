@@ -34,9 +34,6 @@ class FactoryGenerator extends AbstractComponentGenerator
         $this->modelName = Str::studly($modelName);
         $this->attributes = $componentConfig['attributes'] ?? [];
 
-        // Inicializa el mapa de estrategias.
-        // Las estrategias de clave foránea ahora reciben el generador completo
-        // para poder usar sus métodos de salida de consola.
         $this->strategies = [
             'text' => new TextStrategy(),
             'integer' => new IntegerStrategy(),
@@ -85,7 +82,8 @@ class FactoryGenerator extends AbstractComponentGenerator
             $fakerMethod = $this->generateAttributeValue($attribute);
             $lines[] = "'{$name}' => {$fakerMethod},";
         }
-        return "" . implode("\n    ", $lines);    }
+        return "            " . implode("\n            ", $lines)    
+    }
 
     protected function generateAttributeValue(array $attribute): string
     {
@@ -121,7 +119,7 @@ class FactoryGenerator extends AbstractComponentGenerator
         if (Str::contains($name, 'name')) {
             return '$this->faker->name()';
         }if (Str::contains($name, 'slug')) {
-            return '$this->faker->slug()';
+            return '$this->faker->name()';
         }
         return null;
     }
