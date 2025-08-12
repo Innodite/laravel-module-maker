@@ -38,7 +38,7 @@ class SeederGenerator extends AbstractComponentGenerator
     {
         $seederFile = "{$seederDir}/{$this->seederName}.php";
 
-        $stub = $this->getStubContent(self::STUB_TABLE_SEEDER, $this->isClean, [
+        $stub = $this->getStubContent(self::STUB_SEEDER, $this->isClean, [
             'namespace' => "Modules\\{$this->moduleName}\\Database\\Seeders",
             'seederName' => $this->seederName,
             'modelName' => $this->modelName,
