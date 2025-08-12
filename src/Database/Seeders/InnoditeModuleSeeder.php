@@ -22,9 +22,19 @@ class InnoditeModuleSeeder extends Seeder
                 $moduleName = basename($modulePath);
                 $moduleName = Str::studly($moduleName);
 
-                $seederClass = "Modules\\{$moduleName}\\Database\\Seeders\\{$moduleName}DatabaseSeeder";
-                if (class_exists($seederClass)) {
-                    $this->call($seederClass);
+                $seedersPath = "{$modulePath}/Database/Seeders";
+                if (File::exists($seedersPath)) {
+                    foreach (File::files($seedersPath) as $file) {
+                        
+                        if (Str::endsWith($fileName, 'Seeder.php')) {
+                            $seederClassName = str_replace('.php', '', $fileName);
+                            $seederClass = "Modules\\{$moduleName}\\Database\\Seeders\\{$seederClassName}";
+                            
+                            if (class_exists($seederClass)) {
+                                $this->call($seederClass);
+                            }
+                        }
+                    }
                 }
             }
         }
