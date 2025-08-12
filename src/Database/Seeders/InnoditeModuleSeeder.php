@@ -3,25 +3,11 @@
 namespace Innodite\LaravelModuleMaker\Database\Seeders;
 
 use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\File;
+use Illuminate\Support\Str;
 
 class InnoditeModuleSeeder extends Seeder
 {
-    /**
-     * @var array
-     */
-    protected array $moduleSeeders = [];
-
-    /**
-     * Set the module seeders to be called.
-     *
-     * @param array $seeders
-     * @return void
-     */
-    public function setModuleSeeders(array $seeders): void
-    {
-        $this->moduleSeeders = $seeders;
-    }
-
     /**
      * Run the database seeds.
      *
@@ -29,8 +15,18 @@ class InnoditeModuleSeeder extends Seeder
      */
     public function run(): void
     {
-        foreach ($this->moduleSeeders as $seederClass) {
-            $this->call($seederClass);
+        $modulesPath = base_path('Modules');
+
+        if (File::exists($modulesPath)) {
+            foreach (File::directories($modulesPath) as $modulePath) {
+                $moduleName = basename($modulePath);
+                $moduleName = Str::studly($moduleName);
+
+                $seederClass = "Modules\\{$moduleName}\\Database\\Seeders\\{$moduleName}DatabaseSeeder";
+                if (class_exists($seederClass)) {
+                    $this->call($seederClass);
+                }
+            }
         }
     }
 }
