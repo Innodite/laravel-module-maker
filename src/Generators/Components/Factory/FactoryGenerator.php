@@ -4,7 +4,7 @@ namespace Innodite\LaravelModuleMaker\Generators\Components\Factory;
 
 use Illuminate\Support\Str;
 use Innodite\LaravelModuleMaker\Generators\Concerns\HasStubs;
-use Innodite\LaravelModuleMaker\Generators\Components\Factory\Strategies\Contracts\AttributeValueStrategy;
+use Innodite\LaravelModuleMaker\Generators\Components\Factory\Contracts\AttributeValueStrategy;
 use Innodite\LaravelModuleMaker\Generators\Components\Factory\Strategies\BooleanStrategy;
 use Innodite\LaravelModuleMaker\Generators\Components\Factory\Strategies\DateStrategy;
 use Innodite\LaravelModuleMaker\Generators\Components\Factory\Strategies\EnumStrategy;
