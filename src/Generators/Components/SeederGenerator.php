@@ -16,6 +16,7 @@ class SeederGenerator extends AbstractComponentGenerator
 
     protected string $seederName;
     protected string $modelName;
+    protected string $moduleName;
 
     public function __construct(string $moduleName, string $modulePath, bool $isClean, string $seederName, array $componentConfig = [])
     {
@@ -23,6 +24,7 @@ class SeederGenerator extends AbstractComponentGenerator
         
         $this->seederName = Str::studly($seederName);
         $this->modelName = $componentConfig['name'] ?? Str::studly(str_replace('Seeder', '', $this->seederName));
+        $this->moduleName = Str::studly($moduleName);
     }
 
     public function generate(): void
@@ -53,7 +55,7 @@ class SeederGenerator extends AbstractComponentGenerator
             'namespace' => "Modules\\{$this->moduleName}\\Database\\Seeders",
             'mainSeederName' => $mainSeederName,
             'uses' => "use Modules\\{$this->moduleName}\\Database\\Seeders\\{$this->seederName};",
-            'calls' => "            {$this->seederName}::class,\n",
+            'calls' => "            {$this->seederName}::class,",
         ]);
 
         $this->putFile($seederFile, $stub, "Seeder principal {$mainSeederName} creado en '{$seederFile}'.");
@@ -62,25 +64,35 @@ class SeederGenerator extends AbstractComponentGenerator
     protected function updateMainModuleSeeder(string $seederFile): void
     {
         $content = File::get($seederFile);
-        $search = '        $this->call([';
-        $replace = "{$search}\n            {$this->seederName}::class,";
-        
-        if (!str_contains($content, "{$this->seederName}::class,")) {
-             $newContent = str_replace($search, $replace, $content);
-             File::put($seederFile, $newContent);
-             $this->info("Seeder principal actualizado para incluir {$this->seederName}.");
+        $newSeederName = "{$this->seederName}::class,";
+        $newUseStatement = "use Modules\\{$this->moduleName}\\Database\\Seeders\\{$this->seederName};";
+
+        // 1. Evita duplicados en el array de llamadas
+        if (str_contains($content, $newSeederName)) {
+            $this->warn("El seeder '{$this->seederName}' ya está incluido en el seeder principal.");
+            return;
         }
+
+        // 2. Inyecta el `use` statement
+        $useReplacement = "use Illuminate\\Database\\Seeder;\n{$newUseStatement}";
+        $content = str_replace("use Illuminate\\Database\\Seeder;", $useReplacement, $content);
+
+        // 3. Inyecta la llamada dentro del array $this->call([])
+        $callReplacement = "        \$this->call([\n" . "            {$newSeederName}";
+        $content = str_replace('        $this->call([', $callReplacement, $content);
+
+        File::put($seederFile, $content);
+        $this->info("Seeder principal '{$this->moduleName}DatabaseSeeder' actualizado para incluir '{$this->seederName}'.");
     }
 
     protected function generateTableSeeder(string $seederDir): void
     {
-        $seederFile = "{$seederDir}/{$this->seederName}.php";
+        $seederFile = "{$seederDir}/{$this->seederName}" . self::SEEDER_FILE_SUFFIX;
 
         $stub = $this->getStubContent(self::STUB_TABLE_SEEDER, $this->isClean, [
             'namespace' => "Modules\\{$this->moduleName}\\Database\\Seeders",
             'seederName' => $this->seederName,
             'modelName' => $this->modelName,
-            'moduleName'=>$this->moduleName,
             'factoryCount' => self::DEFAULT_FACTORY_COUNT,
         ]);
 
