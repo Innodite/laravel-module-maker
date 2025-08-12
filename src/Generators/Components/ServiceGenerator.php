@@ -43,7 +43,7 @@ class ServiceGenerator extends AbstractComponentGenerator
         $this->putFile("{$serviceContractDir}/{$serviceInterfaceName}.php", $stubInterface, "Interfaz {$serviceInterfaceName}.php creada en Modules/{$this->moduleName}/Services/Contracts");
 
         // Crear la implementación del servicio
-        $stubFileService = 'service.stub';
+        $stubFileService = 'service-implementation.stub';
         $repositoryName = Str::replaceLast('Service', 'Repository', $this->serviceName);
         $repositoryInterfaceName = "{$repositoryName}Interface";
         $repositoryInstance = Str::camel($repositoryName);

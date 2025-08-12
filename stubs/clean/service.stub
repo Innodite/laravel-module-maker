@@ -1,0 +1,16 @@
+<?php
+
+namespace {{ namespace }};
+
+use Modules\{{ module }}\Repositories\Contracts\{{ repositoryInterfaceName }};
+use Modules\{{ module }}\Services\Contracts\{{ serviceInterfaceName }};
+
+class {{ serviceName }} implements {{ serviceInterfaceName }}
+{
+    protected ${{ repositoryInstance }};
+
+    public function __construct({{ repositoryInterfaceName }} ${{ repositoryInstance }})
+    {
+        $this->{{ repositoryInstance }} = ${{ repositoryInstance }};
+    }
+}

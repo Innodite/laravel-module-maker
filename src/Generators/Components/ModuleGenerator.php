@@ -103,7 +103,7 @@ class ModuleGenerator
         $repositoryName = "{$modelName}Repository";
         $requestName = "{$modelName}StoreRequest";
         $migrationName = $modelName;
-        $seederName = $modelName;
+        $seederName = "{$modelName}Seeder";
         $factoryName = $modelName;
         $testName = "{$modelName}Test";
 
@@ -116,7 +116,7 @@ class ModuleGenerator
         (new RouteGenerator($this->moduleName, $this->modulePath, true, $controllerName))->generate();
         (new MigrationGenerator($this->moduleName, $this->modulePath, true, $migrationName))->generate();
         (new SeederGenerator($this->moduleName, $this->modulePath, true, $seederName))->generate();
-        (new FactoryGenerator($this->moduleName, $this->modulePath, true, $factoryName, $modelName,))->generate();
+        (new FactoryGenerator($this->moduleName, $this->modulePath, true, $factoryName, $modelName))->generate();
         (new TestGenerator($this->moduleName, $this->modulePath, true, $testName))->generate();
 
         if ($this->command) {
