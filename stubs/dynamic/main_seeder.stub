@@ -15,7 +15,7 @@ class {{ mainSeederName }} extends Seeder
     public function run()
     {
         $this->call([
-            {{ calls }}
+    {{ calls }}
         ]);
     }
 }
