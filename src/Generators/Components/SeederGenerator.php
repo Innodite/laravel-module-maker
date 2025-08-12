@@ -9,7 +9,6 @@ use Illuminate\Support\Facades\File;
 class SeederGenerator extends AbstractComponentGenerator
 {
     protected const SEEDER_PATH_SUFFIX = "/Database/Seeders";
-    protected const SEEDER_FILE_SUFFIX = "Seeder.php";
     protected const STUB_MAIN_SEEDER = 'main_seeder.stub';
     protected const STUB_TABLE_SEEDER = 'table_seeder.stub';
     protected const DEFAULT_FACTORY_COUNT = 50;
@@ -93,7 +92,7 @@ class SeederGenerator extends AbstractComponentGenerator
 
     protected function generateTableSeeder(string $seederDir): void
     {
-        $seederFile = "{$seederDir}/{$this->seederName}" . self::SEEDER_FILE_SUFFIX;
+        $seederFile = "{$seederDir}/{$this->seederName}";
 
         $stub = $this->getStubContent(self::STUB_TABLE_SEEDER, $this->isClean, [
             'namespace' => "Modules\\{$this->moduleName}\\Database\\Seeders",
