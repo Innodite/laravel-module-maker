@@ -4,7 +4,8 @@ namespace Innodite\LaravelModuleMaker\Generators\Components;
 
 use Illuminate\Support\Str;
 use Innodite\LaravelModuleMaker\Generators\Concerns\HasStubs;
-use Illuminate\Support\Facades\File; // Asegúrate de que File esté importado si se usa en los métodos concretos.
+use Illuminate\Support\Facades\File;
+use Symfony\Component\Console\Output\OutputInterface;
 
 abstract class AbstractComponentGenerator
 {
@@ -13,14 +14,33 @@ abstract class AbstractComponentGenerator
     protected string $moduleName;
     protected string $modulePath;
     protected bool $isClean;
-    protected array $componentConfig; // Para configuraciones dinámicas de componentes
+    protected array $componentConfig;
+    protected ?OutputInterface $output = null;
 
+    /**
+     * @param string $moduleName El nombre del módulo.
+     * @param string $modulePath La ruta base al directorio de módulos.
+     * @param bool $isClean Indica si el módulo se está creando desde cero.
+     * @param array $componentConfig La configuración específica para el componente.
+     */
     public function __construct(string $moduleName, string $modulePath, bool $isClean, array $componentConfig = [])
     {
-        $this->moduleName = Str::studly($moduleName); // Aseguramos StudlyCase para el nombre del módulo
+        $this->moduleName = Str::studly($moduleName);
         $this->modulePath = $modulePath;
         $this->isClean = $isClean;
         $this->componentConfig = $componentConfig;
+    }
+
+    /**
+     * Establece el objeto de salida de la consola.
+     *
+     * @param OutputInterface $output La interfaz de salida de Symfony Console.
+     * @return self
+     */
+    public function setOutput(OutputInterface $output): self
+    {
+        $this->output = $output;
+        return $this;
     }
 
     /**
@@ -63,22 +83,45 @@ abstract class AbstractComponentGenerator
     protected function putFile(string $filePath, string $content, string $message): void
     {
         File::put($filePath, $content);
-        // En un entorno real, esto se pasaría a un logger o al comando de consola.
-        // Por ahora, lo dejamos como comentario o un simple echo para fines de demostración.
-        // echo "✅ {$message}\n";
+        $this->info("✅ {$message}");
     }
 
     /**
-     * Muestra un mensaje de información (simulado para la refactorización).
-     * En el comando real, esto se pasaría al método info() del comando.
+     * Muestra un mensaje de información en la consola.
      *
-     * @param string $message
+     * @param string $message El mensaje a mostrar.
      * @return void
      */
     protected function info(string $message): void
     {
-        // Esto será inyectado por el comando MakeModuleCommand
-        // o se puede usar un logger si se desea una solución más desacoplada.
-        // echo "INFO: {$message}\n";
+        if ($this->output) {
+            $this->output->writeln("<info>{$message}</info>");
+        }
+    }
+
+    /**
+     * Muestra un mensaje de advertencia en la consola.
+     *
+     * @param string $message El mensaje a mostrar.
+     * @return void
+     */
+    protected function warn(string $message): void
+    {
+        if ($this->output) {
+            $this->output->writeln("<comment>{$message}</comment>");
+        }
+    }
+
+    /**
+     * Muestra un mensaje de error en la consola.
+     *
+     * @param string $message El mensaje a mostrar.
+     * @return void
+     */
+    protected function error(string $message): void
+    {
+        if ($this->output) {
+            $this->output->writeln("<error>{$message}</error>");
+        }
     }
 }
