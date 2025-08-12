@@ -1,6 +1,6 @@
 <?php
 
-namespace Innodite\LaravelModuleMaker\Generators\Factory\Contracts;
+namespace Innodite\LaravelModuleMaker\Generators\Components\Factory\Contracts;
 
 interface AttributeValueStrategy
 {
