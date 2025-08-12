@@ -116,7 +116,7 @@ class ModuleGenerator
         (new RouteGenerator($this->moduleName, $this->modulePath, true, $controllerName))->generate();
         (new MigrationGenerator($this->moduleName, $this->modulePath, true, $migrationName))->generate();
         (new SeederGenerator($this->moduleName, $this->modulePath, true, $seederName))->generate();
-        (new FactoryGenerator($this->moduleName, $this->modulePath, true, $factoryName, $modelName))->generate();
+        (new FactoryGenerator($this->moduleName, $this->modulePath, true, $factoryName, $modelName,))->generate();
         (new TestGenerator($this->moduleName, $this->modulePath, true, $testName))->generate();
 
         if ($this->command) {
@@ -164,7 +164,7 @@ class ModuleGenerator
             (new RequestGenerator($this->moduleName, $this->modulePath, false, $requestName))->generate();
             (new MigrationGenerator($this->moduleName, $this->modulePath, false, $migrationName, $component['attributes'] ?? [], $component['indexes'] ?? [],$component))->generate();
             (new SeederGenerator($this->moduleName, $this->modulePath, false, $seederName,$component))->generate();
-            (new FactoryGenerator($this->moduleName, $this->modulePath, false, $factoryName, $modelName))->generate();
+            (new FactoryGenerator($this->moduleName, $this->modulePath, false, $factoryName, $modelName,$component))->generate();
             (new TestGenerator($this->moduleName, $this->modulePath, false, $testName))->generate();
             (new RouteGenerator($this->moduleName, $this->modulePath, false, $controllerName))->generate();
         }
