@@ -82,6 +82,8 @@ class FactoryGenerator extends AbstractComponentGenerator
             $fakerMethod = $this->generateAttributeValue($attribute);
             $lines[] = "'{$name}' => {$fakerMethod},";
         }
+        $firstLine = array_shift($lines);
+        $otherLines = implode("\n            ", $lines);
         return $firstLine."            " . "\n            " . $otherLines;
     }
 
