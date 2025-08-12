@@ -25,6 +25,7 @@ class InnoditeModuleSeeder extends Seeder
                 $seedersPath = "{$modulePath}/Database/Seeders";
                 if (File::exists($seedersPath)) {
                     foreach (File::files($seedersPath) as $file) {
+                        $fileName = $file->getFilename();
                         
                         if (Str::endsWith($fileName, 'Seeder.php')) {
                             $seederClassName = str_replace('.php', '', $fileName);
