@@ -1,8 +1,5 @@
 <?php
 
-// Innodite\LaravelModuleMaker\Commands\SetupModuleMakerCommand.php
-// Código corregido para el comando de configuración del paquete.
-
 namespace Innodite\LaravelModuleMaker\Commands;
 
 use Illuminate\Console\Command;
