@@ -3,66 +3,14 @@
 namespace Innodite\LaravelModuleMaker\Generators\Components;
 
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\File;
 use Innodite\LaravelModuleMaker\Generators\Concerns\HasStubs;
 
-/**
- * Class ServiceGenerator
- *
- * Genera una interfaz y una clase de servicio para un modelo dado, siguiendo el patrón de diseño Repository/Service.
- * La clase ServiceGenerator se encarga de crear la estructura de archivos y el contenido del código.
- */
 class ServiceGenerator extends AbstractComponentGenerator
 {
-    /**
-     * Directorio base para los servicios.
-     */
-    protected const SERVICES_DIRECTORY = 'Services';
-
-    /**
-     * Directorio para las interfaces de servicio.
-     */
-    protected const CONTRACTS_DIRECTORY = 'Services/Contracts';
-
-    /**
-     * Suffix para las interfaces de servicio.
-     */
-    protected const INTERFACE_SUFFIX = 'Interface';
-
-    /**
-     * Suffix para los repositorios.
-     */
-    protected const REPOSITORY_SUFFIX = 'Repository';
-
-    /**
-     * Stub para la interfaz del servicio.
-     */
-    protected const SERVICE_INTERFACE_STUB = 'service-interface.stub';
-
-    /**
-     * Stub para la implementación del servicio.
-     */
-    protected const SERVICE_IMPLEMENTATION_STUB = 'service.stub';
-
-    /**
-     * @var string Nombre del servicio.
-     */
     protected string $serviceName;
+    protected string $modelName; // Nombre del modelo asociado al servicio
 
-    /**
-     * @var string Nombre del modelo asociado al servicio.
-     */
-    protected string $modelName;
-
-    /**
-     * ServiceGenerator constructor.
-     *
-     * @param string $moduleName Nombre del módulo.
-     * @param string $modulePath Ruta del módulo.
-     * @param bool $isClean Indica si el generador debe usar stubs "limpios".
-     * @param string $serviceName Nombre del servicio a generar.
-     * @param string $modelName Nombre del modelo asociado.
-     * @param array $componentConfig Configuración adicional del componente.
-     */
     public function __construct(string $moduleName, string $modulePath, bool $isClean, string $serviceName, string $modelName, array $componentConfig = [])
     {
         parent::__construct($moduleName, $modulePath, $isClean, $componentConfig);
@@ -73,69 +21,35 @@ class ServiceGenerator extends AbstractComponentGenerator
     /**
      * Genera el archivo del servicio y su interfaz.
      *
-     * Este método actúa como un "Template Method", orquestando los pasos de la generación.
-     *
      * @return void
      */
     public function generate(): void
     {
-        $this->createDirectoryStructure();
-        $this->generateServiceInterface();
-        $this->generateServiceImplementation();
-    }
+        $serviceDir = $this->getComponentBasePath() . "/Services";
+        $this->ensureDirectoryExists($serviceDir);
+        $serviceContractDir = "{$serviceDir}/Contracts";
+        $this->ensureDirectoryExists($serviceContractDir);
 
-    /**
-     * Crea la estructura de directorios necesaria para los servicios.
-     *
-     * @return void
-     */
-    protected function createDirectoryStructure(): void
-    {
-        $servicesDir = $this->getComponentBasePath(self::SERVICES_DIRECTORY);
-        $this->ensureDirectoryExists($servicesDir);
+        $serviceInterfaceName = "{$this->serviceName}Interface";
 
-        $contractsDir = $this->getComponentBasePath(self::CONTRACTS_DIRECTORY);
-        $this->ensureDirectoryExists($contractsDir);
-    }
-
-    /**
-     * Genera la interfaz del servicio.
-     *
-     * @return void
-     */
-    protected function generateServiceInterface(): void
-    {
-        $serviceInterfaceName = $this->serviceName . self::INTERFACE_SUFFIX;
-        $contractsDir = $this->getComponentBasePath(self::CONTRACTS_DIRECTORY);
-
-        $stubContent = $this->getStubContent(self::SERVICE_INTERFACE_STUB, $this->isClean, [
-            'namespace' => $this->getNamespace(self::CONTRACTS_DIRECTORY),
+        // Crear la interfaz primero
+        $stubFileInterface = 'service-interface.stub';
+        $stubInterface = $this->getStubContent($stubFileInterface, $this->isClean, [
+            'namespace' => "Modules\\{$this->moduleName}\\Services\\Contracts",
             'serviceInterfaceName' => $serviceInterfaceName,
             'modelName' => $this->modelName,
             'module' => $this->moduleName,
         ]);
+        $this->putFile("{$serviceContractDir}/{$serviceInterfaceName}.php", $stubInterface, "Interfaz {$serviceInterfaceName}.php creada en Modules/{$this->moduleName}/Services/Contracts");
 
-        $outputPath = "{$contractsDir}/{$serviceInterfaceName}.php";
-        $successMessage = "Interfaz {$serviceInterfaceName}.php creada en Modules/{$this->moduleName}/Services/Contracts";
-
-        $this->putFile($outputPath, $stubContent, $successMessage);
-    }
-
-    /**
-     * Genera la implementación del servicio.
-     *
-     * @return void
-     */
-    protected function generateServiceImplementation(): void
-    {
-        $servicesDir = $this->getComponentBasePath(self::SERVICES_DIRECTORY);
-        $serviceInterfaceName = $this->serviceName . self::INTERFACE_SUFFIX;
-        $repositoryName = Str::replaceLast('Service', self::REPOSITORY_SUFFIX, $this->serviceName);
+        // Crear la implementación del servicio
+        $stubFileService = 'service.stub';
+        $repositoryName = Str::replaceLast('Service', 'Repository', $this->serviceName);
         $repositoryInterfaceName = "{$repositoryName}Interface";
         $repositoryInstance = Str::camel($repositoryName);
-
-        $stubContent = $this->getStubContent(self::SERVICE_IMPLEMENTATION_STUB, $this->isClean, [
-            'namespace' => $this->getNamespace(self::SERVICES_DIRECTORY),
+        
+        $stubService = $this->getStubContent($stubFileService, $this->isClean, [
+            'namespace' => "Modules\\{$this->moduleName}\\Services",
             'serviceName' => $this->serviceName,
             'modelName' => $this->modelName,
             'module' => $this->moduleName,
@@ -143,25 +57,6 @@ class ServiceGenerator extends AbstractComponentGenerator
             'repositoryInterfaceName' => $repositoryInterfaceName,
             'repositoryInstance' => $repositoryInstance,
         ]);
-
-        $outputPath = "{$servicesDir}/{$this->serviceName}.php";
-        $successMessage = "Servicio {$this->serviceName}.php creado en Modules/{$this->moduleName}/Services";
-
-        $this->putFile($outputPath, $stubContent, $successMessage);
-    }
-
-    /**
-     * Obtiene el namespace completo para un subdirectorio.
-     *
-     * @param string $subDirectory
-     * @return string
-     */
-    protected function getNamespace(string $subDirectory): string
-    {
-        // Reemplazamos los slashes con backslashes y eliminamos el Services si es el caso.
-        $subDirectory = str_replace(self::SERVICES_DIRECTORY . '/', '', $subDirectory);
-        $subDirectory = str_replace('/', '\\', $subDirectory);
-
-        return "Modules\\{$this->moduleName}\\Services" . ($subDirectory ? "\\{$subDirectory}" : '');
+        $this->putFile("{$serviceDir}/{$this->serviceName}.php", $stubService, "Servicio {$this->serviceName}.php creado en Modules/{$this->moduleName}/Services");
     }
 }
