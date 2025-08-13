@@ -3,7 +3,6 @@
 namespace Innodite\LaravelModuleMaker\Generators\Components;
 
 use Illuminate\Support\Str;
-use Illuminate\Support\Facades\File;
 use Innodite\LaravelModuleMaker\Generators\Concerns\HasStubs;
 
 /**
@@ -14,6 +13,7 @@ use Innodite\LaravelModuleMaker\Generators\Concerns\HasStubs;
  */
 class ServiceGenerator extends AbstractComponentGenerator
 {
+    use HasStubs;
     /**
      * Directorio base para las implementaciones de servicios.
      */
@@ -91,7 +91,7 @@ class ServiceGenerator extends AbstractComponentGenerator
         $this->generateServiceImplementation($serviceDirectory);
     }
 
-    **
+    /**
      * Genera la interfaz del servicio.
      *
      * @param string $serviceContractDirectory El directorio donde se guardarán los contratos.
@@ -118,17 +118,17 @@ class ServiceGenerator extends AbstractComponentGenerator
     /**
      * Genera la implementación de la clase de servicio.
      *
-     * @param string $servicesDirectory El directorio donde se guardarán las implementaciones.
+     * @param string $serviceDirectory El directorio donde se guardarán las implementaciones.
      * @return void
      */
-    protected function generateServiceImplementation(string $servicesDirectory): void
+    protected function generateServiceImplementation(string $serviceDirectory): void
     {
          $serviceInterfaceName = $this->serviceName . self::INTERFACE_SUFFIX;
          $repositoryName = Str::replaceLast('Service', self::REPOSITORY_SUFFIX, $this->serviceName);
          $repositoryInterfaceName = "{$repositoryName}Interface";
          $repositoryInstance = Str::camel($repositoryName);
          
-         $stubService = $this->getStubContent((self::SERVICE_IMPLEMENTATION_STUB, $this->isClean, [
+         $stubService = $this->getStubContent(self::SERVICE_IMPLEMENTATION_STUB, $this->isClean, [
              'namespace' => "Modules\\{$this->moduleName}\\Services",
              'serviceName' => $this->serviceName,
              'modelName' => $this->modelName,
@@ -138,7 +138,7 @@ class ServiceGenerator extends AbstractComponentGenerator
              'repositoryInstance' => $repositoryInstance,
          ]);
          $this->putFile(
-            "{$serviceDir}/{$this->serviceName}.php", 
+            "{$serviceDirectory}/{$this->serviceName}.php", 
             $stubService, 
             "Servicio {$this->serviceName}.php creado en Modules/{$this->moduleName}/Services"
         );
