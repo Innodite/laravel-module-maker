@@ -1,85 +1,90 @@
 {
-  "module_name": "Blog",
-  "components": [
+    "module_name": "Blog",
+    "components": [
       {
-          "name": "Post",
-          "table": "posts",
-          "attributes": [
-              {
-                  "name": "title",
-                  "type": "string",
-                  "length": 255
-              },
-              {
-                  "name": "slug",
-                  "type": "string",
-                  "unique": true
-              },
-              {
-                  "name": "body",
-                  "type": "text"
-              },
-              {
-                  "name": "post_owner_id",
-                  "type": "foreignId",
-                  "on": "users",
-                  "onDelete": "cascade"
-              }
-          ],
-          "indexes": [
-              {
-                  "columns": "post_owner_id",
-                  "type": "index"
-              }
-          ],
-          "relations": [
-              {
-                  "name": "comments",
-                  "type": "hasMany",
-                  "model": "Comment",
-                  "foreignKey": "post_id",
-                  "localKey": "id"
-              },
-              {
-                  "name": "author",
-                  "type": "belongsTo",
-                  "model": "User",
-                  "foreignKey": "post_owner_id",
-                  "ownerKey": "id"
-              }
-          ]
+        "name": "Post",
+        "table": "posts",
+        "attributes": [
+          { "name": "uuid", "type": "uuid", "unique": true },
+          { "name": "title", "type": "string", "length": 255 },
+          { "name": "slug", "type": "string", "unique": true },
+          { "name": "body", "type": "text", "nullable": true },
+          { "name": "user_id", "type": "foreignId", "on": "users", "onDelete": "cascade" },
+          { "name": "status", "type": "enum", "options": ["draft", "published", "archived"], "default": "draft" },
+          { "name": "meta", "type": "json" },
+          { "name": "is_published", "type": "boolean", "default": false },
+          { "name": "published_at", "type": "timestamp", "nullable": true }
+        ],
+        "indexes": [
+          { "columns": "user_id", "type": "index" },
+          { "columns": ["title", "slug"], "type": "index" }
+        ],
+        "relations": [
+          { "name": "user", "type": "belongsTo", "model": "User" },
+          { "name": "comments", "type": "hasMany", "model": "Comment" },
+          { "name": "tags", "type": "morphToMany", "model": "Tag", "morphName": "taggable" }
+        ]
       },
       {
-          "name": "Comment",
-          "table": "comments",
-          "attributes": [
-              {
-                  "name": "body",
-                  "type": "string",
-                  "length": 500
-              },
-              {
-                  "name": "post_id",
-                  "type": "foreignId",
-                  "on": "posts",
-                  "onDelete": "cascade"
-              }
-          ],
-          "indexes": [
-              {
-                  "columns": "post_id",
-                  "type": "index"
-              }
-          ],
-          "relations": [
-              {
-                  "name": "post",
-                  "type": "belongsTo",
-                  "model": "Post",
-                  "foreignKey": "post_id",
-                  "ownerKey": "id"
-              }
-          ]
+        "name": "User",
+        "table": "users",
+        "attributes": [
+          { "name": "username", "type": "string", "unique": true },
+          { "name": "email", "type": "string", "unique": true },
+          { "name": "password", "type": "string" },
+          { "name": "user_unique_id", "type": "string", "length": 16, "unique": true }
+        ],
+        "relations": [
+          { "name": "posts", "type": "hasMany", "model": "Post" },
+          { "name": "profile", "type": "hasOne", "model": "Profile", "foreignKey": "user_unique_id", "localKey": "user_unique_id" }
+        ]
+      },
+      {
+        "name": "Profile",
+        "table": "profiles",
+        "attributes": [
+          { "name": "bio", "type": "text" },
+          { "name": "website", "type": "string", "nullable": true },
+          { "name": "user_unique_id", "type": "string", "length": 16, "unique": true }
+        ],
+        "relations": [
+          { "name": "user", "type": "belongsTo", "model": "User", "foreignKey": "user_unique_id", "ownerKey": "user_unique_id" }
+        ]
+      },
+      {
+        "name": "Comment",
+        "table": "comments",
+        "attributes": [
+          { "name": "body", "type": "string" },
+          { "name": "post_id", "type": "foreignId", "on": "posts", "onDelete": "cascade" },
+          { "name": "commentable", "type": "morphs" }
+        ],
+        "relations": [
+          { "name": "post", "type": "belongsTo", "model": "Post" },
+          { "name": "commentable", "type": "morphTo" }
+        ]
+      },
+      {
+        "name": "Image",
+        "table": "images",
+        "attributes": [
+          { "name": "url", "type": "string" },
+          { "name": "imageable", "type": "morphs" }
+        ],
+        "relations": [
+          { "name": "imageable", "type": "morphTo" }
+        ]
+      },
+      {
+        "name": "Tag",
+        "table": "tags",
+        "attributes": [
+          { "name": "name", "type": "string", "unique": true }
+        ],
+        "relations": [
+          { "name": "posts", "type": "morphToMany", "model": "Post", "morphName": "taggable" }
+        ]
       }
-  ]
+    ]
 }
+  
