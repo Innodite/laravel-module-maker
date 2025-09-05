@@ -329,6 +329,7 @@ class ModelGenerator extends AbstractComponentGenerator
         }
 
         // Validación de atributos incorrectos para tipos específicos
+
         switch ($relationType) {
             case self::RELATION_TYPE_BELONGS_TO:
                 if (isset($relation['morphName'])) {
@@ -359,7 +360,6 @@ class ModelGenerator extends AbstractComponentGenerator
                 }
                 break;
         }
-
     /**
      * Genera el cuerpo del método para la relación belongsToMany.
      *
