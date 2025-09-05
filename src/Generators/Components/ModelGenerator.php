@@ -275,13 +275,13 @@ class ModelGenerator extends AbstractComponentGenerator
             $methodSignature = "public function {$methodName}(): " . ($relationType === self::RELATION_TYPE_MORPH_TO ? self::RELATION_CLASS_MORPH_TO_NAME : $relationClassName);
 
             $methods[] = "
-    /**
-     * Obtiene el/los modelo(s) relacionado(s).
-     */
-    {$methodSignature}
-    {
-        {$relationBody}
-    }";
+            /**
+             * Obtiene el/los modelo(s) relacionado(s).
+             */
+            {$methodSignature}
+            {
+                {$relationBody}
+            }";
         }
         
         return implode("\n\n", $methods);
