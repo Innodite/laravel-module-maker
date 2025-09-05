@@ -359,6 +359,7 @@ class ModelGenerator extends AbstractComponentGenerator
                 }
                 break;
         }
+
     /**
      * Genera el cuerpo del método para la relación belongsToMany.
      *
@@ -386,7 +387,6 @@ class ModelGenerator extends AbstractComponentGenerator
         }
         $eloquentMethod = 'belongsToMany';
         return "return \$this->{$eloquentMethod}(" . implode(', ', $params) . ");";
-    }
     }
 
     /**
