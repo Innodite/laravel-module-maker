@@ -92,7 +92,7 @@ abstract class AbstractComponentGenerator
      * @param string $message El mensaje a mostrar.
      * @return void
      */
-    protected function info(string $message): void
+    public function info(string $message): void
     {
         if ($this->output) {
             $this->output->writeln("<info>{$message}</info>");
@@ -105,7 +105,7 @@ abstract class AbstractComponentGenerator
      * @param string $message El mensaje a mostrar.
      * @return void
      */
-    protected function warn(string $message): void
+    public function warn(string $message): void
     {
         if ($this->output) {
             $this->output->writeln("<comment>{$message}</comment>");
@@ -118,7 +118,7 @@ abstract class AbstractComponentGenerator
      * @param string $message El mensaje a mostrar.
      * @return void
      */
-    protected function error(string $message): void
+    public function error(string $message): void
     {
         if ($this->output) {
             $this->output->writeln("<error>{$message}</error>");
