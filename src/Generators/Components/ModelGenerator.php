@@ -307,7 +307,7 @@ class ModelGenerator extends AbstractComponentGenerator
         $relationName = $relation['name'];
 
         // Validación para relaciones polimórficas que no requieren 'model'
-    $polymorphicWithoutModel = [self::RELATION_TYPE_MORPH_TO];
+        $polymorphicWithoutModel = [self::RELATION_TYPE_MORPH_TO];
         
         // Validación de la presencia de 'model'
         if (!in_array($relationType, $polymorphicWithoutModel)) {
@@ -360,6 +360,8 @@ class ModelGenerator extends AbstractComponentGenerator
                 }
                 break;
         }
+    }
+
     /**
      * Genera el cuerpo del método para la relación belongsToMany.
      *
