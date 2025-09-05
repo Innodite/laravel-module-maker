@@ -26,6 +26,7 @@ class ModelGenerator extends AbstractComponentGenerator
     protected const RELATION_TYPE_MORPH_MANY = 'morphMany';
     protected const RELATION_TYPE_MORPH_TO = 'morphTo';
     protected const RELATION_TYPE_MORPH_TO_MANY = 'morphToMany';
+    protected const RELATION_TYPE_BELONGS_TO_MANY = 'belongsToMany';
 
     // Constantes para las clases de relación de Eloquent.
     protected const RELATION_CLASS_NAMESPACE = 'Illuminate\\Database\\Eloquent\\Relations\\';
@@ -36,6 +37,7 @@ class ModelGenerator extends AbstractComponentGenerator
     protected const RELATION_CLASS_MORPH_MANY_NAME = 'MorphMany';
     protected const RELATION_CLASS_MORPH_TO_NAME = 'MorphTo';
     protected const RELATION_CLASS_MORPH_TO_MANY_NAME = 'MorphToMany';
+    protected const RELATION_CLASS_BELONGS_TO_MANY_NAME = 'BelongsToMany';
 
 
     protected string $modelName;
@@ -177,6 +179,7 @@ class ModelGenerator extends AbstractComponentGenerator
             self::RELATION_TYPE_MORPH_MANY => self::RELATION_CLASS_MORPH_MANY_NAME,
             self::RELATION_TYPE_MORPH_TO => self::RELATION_CLASS_MORPH_TO_NAME,
             self::RELATION_TYPE_MORPH_TO_MANY => self::RELATION_CLASS_MORPH_TO_MANY_NAME,
+            self::RELATION_TYPE_BELONGS_TO_MANY => self::RELATION_CLASS_BELONGS_TO_MANY_NAME,
         ];
         
         // Extrae los nombres de los componentes del módulo para la verificación.
@@ -250,6 +253,9 @@ class ModelGenerator extends AbstractComponentGenerator
                 case self::RELATION_TYPE_BELONGS_TO:
                     $relationBody = $this->generateBelongsToMethodBody($relation, $relatedModel);
                     break;
+                case self::RELATION_TYPE_BELONGS_TO_MANY:
+                    $relationBody = $this->generateBelongsToManyMethodBody($relation, $relatedModel);
+                    break;
                 case self::RELATION_TYPE_MORPH_ONE:
                     $relationBody = $this->generateMorphOneMethodBody($relation, $relatedModel);
                     break;
@@ -301,7 +307,7 @@ class ModelGenerator extends AbstractComponentGenerator
         $relationName = $relation['name'];
 
         // Validación para relaciones polimórficas que no requieren 'model'
-        $polymorphicWithoutModel = [self::RELATION_TYPE_MORPH_TO];
+    $polymorphicWithoutModel = [self::RELATION_TYPE_MORPH_TO];
         
         // Validación de la presencia de 'model'
         if (!in_array($relationType, $polymorphicWithoutModel)) {
@@ -329,6 +335,11 @@ class ModelGenerator extends AbstractComponentGenerator
                     throw new InvalidArgumentException("El atributo 'morphName' no es válido para la relación '{$relationName}' de tipo 'belongsTo' en el componente '{$this->componentName}'.");
                 }
                 break;
+            case self::RELATION_TYPE_BELONGS_TO_MANY:
+                if (isset($relation['localKey']) || isset($relation['ownerKey']) || isset($relation['morphName'])) {
+                    throw new InvalidArgumentException("Los atributos 'localKey', 'ownerKey' y 'morphName' no son válidos para la relación '{$relationName}' de tipo 'belongsToMany' en el componente '{$this->componentName}'.");
+                }
+                break;
             case self::RELATION_TYPE_HAS_MANY:
             case self::RELATION_TYPE_HAS_ONE:
                 if (isset($relation['ownerKey']) || isset($relation['morphName'])) {
@@ -348,6 +359,34 @@ class ModelGenerator extends AbstractComponentGenerator
                 }
                 break;
         }
+    /**
+     * Genera el cuerpo del método para la relación belongsToMany.
+     *
+     * @param array $relation
+     * @param string $relatedModel
+     * @return string
+     */
+    private function generateBelongsToManyMethodBody(array $relation, string $relatedModel): string
+    {
+        $params = ["{$relatedModel}::class"];
+        if (isset($relation['table'])) {
+            $params[] = "'{$relation['table']}'";
+        }
+        if (isset($relation['foreignPivotKey'])) {
+            $params[] = "'{$relation['foreignPivotKey']}'";
+        }
+        if (isset($relation['relatedPivotKey'])) {
+            $params[] = "'{$relation['relatedPivotKey']}'";
+        }
+        if (isset($relation['parentKey'])) {
+            $params[] = "'{$relation['parentKey']}'";
+        }
+        if (isset($relation['relatedKey'])) {
+            $params[] = "'{$relation['relatedKey']}'";
+        }
+        $eloquentMethod = 'belongsToMany';
+        return "return \$this->{$eloquentMethod}(" . implode(', ', $params) . ");";
+    }
     }
 
     /**
