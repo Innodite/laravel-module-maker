@@ -1,0 +1,117 @@
+{
+    "_readme": "Fuente de verdad de contextos para el generador de módulos. Cada clave es un contexto. Configura prefix, name, permission_middleware y route_middleware según tu proyecto.",
+
+    "central": {
+        "label": "App Central",
+        "class_prefix": "Central",
+        "folder": "Central",
+        "namespace_path": "Central",
+        "route_prefix": "central",
+        "route_name": "central.",
+        "permission_prefix": "central",
+        "permission_middleware": "central-permission",
+        "route_middleware": ["web", "auth"],
+        "is_tenant": false,
+        "generates_routes_for_all_tenants": false,
+        "wrap_central_domains": true
+    },
+
+    "shared": {
+        "label": "Shared",
+        "class_prefix": "Shared",
+        "folder": "Shared",
+        "namespace_path": "Shared",
+        "route_prefix": "shared",
+        "route_name": "shared.",
+        "permission_prefix": "shared",
+        "permission_middleware": "central-permission",
+        "route_middleware": ["web", "auth"],
+        "is_tenant": false,
+        "generates_routes_for_all_tenants": false,
+        "wrap_central_domains": false
+    },
+
+    "tenant_shared": {
+        "label": "Tenant Shared",
+        "class_prefix": "TenantShared",
+        "folder": "Tenant/Shared",
+        "namespace_path": "Tenant\\Shared",
+        "route_prefix": null,
+        "route_name": null,
+        "permission_prefix": null,
+        "permission_middleware": "tenant-permission",
+        "route_middleware": [
+            "web",
+            "Stancl\\Tenancy\\Middleware\\InitializeTenancyByDomain::class",
+            "Stancl\\Tenancy\\Middleware\\PreventAccessFromCentralDomains::class",
+            "auth",
+            "tenant-auth"
+        ],
+        "is_tenant": true,
+        "generates_routes_for_all_tenants": true,
+        "wrap_central_domains": false
+    },
+
+    "energy_spain": {
+        "label": "Energía España",
+        "class_prefix": "TenantEnergySpain",
+        "folder": "Tenant/EnergySpain",
+        "namespace_path": "Tenant\\EnergySpain",
+        "route_prefix": "energy-spain",
+        "route_name": "energy-spain.",
+        "permission_prefix": "energy_spain",
+        "permission_middleware": "tenant-permission",
+        "route_middleware": [
+            "web",
+            "Stancl\\Tenancy\\Middleware\\InitializeTenancyByDomain::class",
+            "Stancl\\Tenancy\\Middleware\\PreventAccessFromCentralDomains::class",
+            "auth",
+            "tenant-auth"
+        ],
+        "is_tenant": true,
+        "generates_routes_for_all_tenants": false,
+        "wrap_central_domains": false
+    },
+
+    "telephony_spain": {
+        "label": "Telefonía España",
+        "class_prefix": "TenantTelephonySpain",
+        "folder": "Tenant/TelephonySpain",
+        "namespace_path": "Tenant\\TelephonySpain",
+        "route_prefix": "telephony-spain",
+        "route_name": "telephony-spain.",
+        "permission_prefix": "telephony_spain",
+        "permission_middleware": "tenant-permission",
+        "route_middleware": [
+            "web",
+            "Stancl\\Tenancy\\Middleware\\InitializeTenancyByDomain::class",
+            "Stancl\\Tenancy\\Middleware\\PreventAccessFromCentralDomains::class",
+            "auth",
+            "tenant-auth"
+        ],
+        "is_tenant": true,
+        "generates_routes_for_all_tenants": false,
+        "wrap_central_domains": false
+    },
+
+    "telephony_peru": {
+        "label": "Telefonía Perú",
+        "class_prefix": "TenantTelephonyPeru",
+        "folder": "Tenant/TelephonyPeru",
+        "namespace_path": "Tenant\\TelephonyPeru",
+        "route_prefix": "telephony-peru",
+        "route_name": "telephony-peru.",
+        "permission_prefix": "telephony_peru",
+        "permission_middleware": "tenant-permission",
+        "route_middleware": [
+            "web",
+            "Stancl\\Tenancy\\Middleware\\InitializeTenancyByDomain::class",
+            "Stancl\\Tenancy\\Middleware\\PreventAccessFromCentralDomains::class",
+            "auth",
+            "tenant-auth"
+        ],
+        "is_tenant": true,
+        "generates_routes_for_all_tenants": false,
+        "wrap_central_domains": false
+    }
+}

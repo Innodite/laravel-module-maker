@@ -1,46 +1,78 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Innodite\LaravelModuleMaker\Generators\Components;
 
 use Illuminate\Support\Str;
-use Illuminate\Support\Facades\File;
-use Innodite\LaravelModuleMaker\Generators\Concerns\HasStubs;
 
+/**
+ * Genera el archivo del controlador respetando la convención de contextos.
+ *
+ * El nombre de la clase y la carpeta de destino se derivan automáticamente
+ * del campo 'context' en la configuración del componente.
+ *
+ * Ejemplos de salida según contexto:
+ *   central        → Http/Controllers/Central/CentralUserController.php
+ *   tenant_shared  → Http/Controllers/Tenant/Shared/TenantSharedUserController.php
+ *   energy_spain   → Http/Controllers/Tenant/EnergySpain/TenantEnergySpainUserController.php
+ */
 class ControllerGenerator extends AbstractComponentGenerator
 {
-    protected string $controllerName;
-    protected string $modelName; // Nombre del modelo asociado al controlador
+    /**
+     * Nombre base del modelo asociado al controlador (StudlyCase, sin prefijo de contexto).
+     *
+     * @var string
+     */
+    protected string $modelName;
 
-    public function __construct(string $moduleName, string $modulePath, bool $isClean, string $controllerName, string $modelName, array $componentConfig = [])
-    {
+    /**
+     * @param  string  $moduleName       Nombre del módulo
+     * @param  string  $modulePath       Ruta absoluta al directorio del módulo
+     * @param  bool    $isClean          true = stubs clean, false = stubs dynamic
+     * @param  string  $modelName        Nombre del modelo en StudlyCase (ej: 'User', 'Product')
+     * @param  array   $componentConfig  Configuración del componente (debe incluir 'context')
+     */
+    public function __construct(
+        string $moduleName,
+        string $modulePath,
+        bool $isClean,
+        string $modelName,
+        array $componentConfig = []
+    ) {
         parent::__construct($moduleName, $modulePath, $isClean, $componentConfig);
-        $this->controllerName = Str::studly($controllerName);
         $this->modelName = Str::studly($modelName);
     }
 
     /**
-     * Genera el archivo del controlador.
+     * Genera el archivo del controlador en la carpeta correcta según el contexto.
      *
      * @return void
      */
     public function generate(): void
     {
-        $controllerDir = $this->getComponentBasePath() . "/Http/Controllers";
+        $controllerName     = $this->prefixClass("{$this->modelName}Controller");
+        $serviceInterface   = $this->prefixClass("{$this->modelName}ServiceInterface");
+        $serviceInstance    = Str::camel($this->prefixClass("{$this->modelName}Service"));
+        $namespace          = $this->buildNamespace('Http\\Controllers');
+        $controllerDir      = $this->buildPath('Http/Controllers');
+
         $this->ensureDirectoryExists($controllerDir);
 
-        $stubFile = 'controller.stub';
-        $serviceInterface = "{$this->modelName}ServiceInterface";
-        $serviceInstance = Str::camel($this->modelName) . 'Service';
-
-        $stub = $this->getStubContent($stubFile, $this->isClean, [
-            'namespace' => "Modules\\{$this->moduleName}\\Http\\Controllers",
-            'controllerName' => $this->controllerName,
-            'modelName' => $this->modelName,
-            'module' => $this->moduleName,
-            'serviceInterface' => $serviceInterface,
+        $stub = $this->getStubContent('controller.stub', $this->isClean, [
+            'namespace'       => $namespace,
+            'controllerName'  => $controllerName,
+            'modelName'       => $this->modelName,
+            'module'          => $this->moduleName,
+            'serviceInterface'=> $serviceInterface,
             'serviceInstance' => $serviceInstance,
         ]);
 
-        $this->putFile("{$controllerDir}/{$this->controllerName}.php", $stub, "Controlador {$this->controllerName}.php creado en Modules/{$this->moduleName}/Http/Controllers");
+        $relativePath = "Http/Controllers/{$this->getContextFolder()}/{$controllerName}.php";
+        $this->putFile(
+            "{$controllerDir}/{$controllerName}.php",
+            $stub,
+            "Controlador creado: Modules/{$this->moduleName}/{$relativePath}"
+        );
     }
 }

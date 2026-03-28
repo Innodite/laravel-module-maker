@@ -92,9 +92,9 @@ class SetupModuleMakerCommand extends Command
         }
 
         // Copia los archivos de configuración de ejemplo
-        $filesToCopy = ['post.json', 'blog.json','core.json','sales.json','shop.json'];
+        $filesToCopy = ['post.json', 'blog.json', 'core.json', 'sales.json', 'shop.json'];
         foreach ($filesToCopy as $file) {
-            $sourceFile = "{$packageStubsPath}/{$file}";
+            $sourceFile      = "{$packageStubsPath}/{$file}";
             $destinationFile = "{$configPath}/{$file}";
 
             if (File::exists($sourceFile)) {
@@ -103,6 +103,18 @@ class SetupModuleMakerCommand extends Command
             } else {
                 $this->error("El archivo de configuración de ejemplo '{$file}' no existe en: '{$sourceFile}'.");
             }
+        }
+
+        // Publica contexts.json — configura los contextos del proyecto (Central, Shared, tenants)
+        $contextsSource      = "{$packageStubsPath}/contexts.json";
+        $contextsDestination = "{$configPath}/contexts.json";
+
+        if (! File::exists($contextsDestination)) {
+            File::copy($contextsSource, $contextsDestination);
+            $this->info("✅ contexts.json publicado en: '{$contextsDestination}'.");
+            $this->info("   👉 Edita este archivo para configurar los contextos de tu proyecto.");
+        } else {
+            $this->warn("   contexts.json ya existe. No se sobreescribió. Edítalo manualmente si necesitas cambios.");
         }
     }
     

@@ -1,147 +1,117 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Innodite\LaravelModuleMaker\Generators\Components;
 
 use Illuminate\Support\Str;
-use Innodite\LaravelModuleMaker\Generators\Concerns\HasStubs;
 
 /**
- * Class ServiceGenerator
+ * Genera la interfaz y la implementación del servicio respetando la convención de contextos.
  *
- * Genera una interfaz y una clase de servicio para un modelo dado, siguiendo el patrón Repository/Service.
- * Esta clase se encarga de crear la estructura de directorios y el contenido de los archivos.
+ * Ejemplos de salida según contexto:
+ *   central        → Services/Central/CentralUserService.php + Services/Central/Contracts/CentralUserServiceInterface.php
+ *   tenant_shared  → Services/Tenant/Shared/TenantSharedUserService.php + .../Contracts/TenantSharedUserServiceInterface.php
+ *   energy_spain   → Services/Tenant/EnergySpain/TenantEnergySpainUserService.php + .../Contracts/...
  */
 class ServiceGenerator extends AbstractComponentGenerator
 {
-    use HasStubs;
     /**
-     * Directorio base para las implementaciones de servicios.
-     */
-    protected const SERVICES_DIR = 'Services';
-
-    /**
-     * Directorio para las interfaces de servicios.
-     */
-    protected const CONTRACTS_DIR = 'Services/Contracts';
-
-    /**
-     * Sufijo para las interfaces de servicio.
-     */
-    protected const INTERFACE_SUFFIX = 'Interface';
-
-    /**
-     * Sufijo para los repositorios.
-     */
-    protected const REPOSITORY_SUFFIX = 'Repository';
-
-    /**
-     * Stub para la interfaz del servicio.
-     */
-    protected const SERVICE_INTERFACE_STUB = 'service-interface.stub';
-
-    /**
-     * Stub para la implementación del servicio.
-     */
-    protected const SERVICE_IMPLEMENTATION_STUB = 'service.stub';
-
-    /**
-     * @var string El nombre del servicio.
-     */
-    protected string $serviceName;
-
-    /**
-     * @var string El nombre del modelo asociado al servicio.
+     * Nombre base del modelo asociado al servicio (StudlyCase, sin prefijo de contexto).
+     *
+     * @var string
      */
     protected string $modelName;
 
-    
-     /**
-     * ServiceGenerator constructor.
-     *
-     * @param string $moduleName El nombre del módulo.
-     * @param string $modulePath La ruta del módulo.
-     * @param bool $isClean Indica si el generador debe usar stubs "limpios".
-     * @param string $serviceName El nombre del servicio a generar.
-     * @param string $modelName El nombre del modelo asociado.
-     * @param array $componentConfig Configuración adicional del componente.
+    /**
+     * @param  string  $moduleName       Nombre del módulo
+     * @param  string  $modulePath       Ruta absoluta al directorio del módulo
+     * @param  bool    $isClean          true = stubs clean, false = stubs dynamic
+     * @param  string  $modelName        Nombre del modelo en StudlyCase
+     * @param  array   $componentConfig  Configuración del componente (debe incluir 'context')
      */
-    public function __construct(string $moduleName, string $modulePath, bool $isClean, string $serviceName, string $modelName, array $componentConfig = [])
-    {
+    public function __construct(
+        string $moduleName,
+        string $modulePath,
+        bool $isClean,
+        string $modelName,
+        array $componentConfig = []
+    ) {
         parent::__construct($moduleName, $modulePath, $isClean, $componentConfig);
-        $this->serviceName = Str::studly($serviceName);
         $this->modelName = Str::studly($modelName);
     }
 
     /**
-     * Genera el archivo del servicio y su interfaz.
+     * Genera la interfaz y la implementación del servicio.
      *
      * @return void
      */
     public function generate(): void
     {
-        $serviceDirectory = $this->getComponentBasePath() .'/'. self::SERVICES_DIR;
-        $serviceContractDirectory = $this->getComponentBasePath() .'/'.self::CONTRACTS_DIR;
+        $serviceDir          = $this->buildPath('Services');
+        $serviceContractsDir = $serviceDir . '/Contracts';
 
-        $this->ensureDirectoryExists($serviceDirectory);
-        $this->ensureDirectoryExists($serviceContractDirectory);
+        $this->ensureDirectoryExists($serviceDir);
+        $this->ensureDirectoryExists($serviceContractsDir);
 
-        
-        $this->generateServiceContract($serviceContractDirectory);
-
-        $this->generateServiceImplementation($serviceDirectory);
+        $this->generateInterface($serviceContractsDir);
+        $this->generateImplementation($serviceDir);
     }
 
     /**
-     * Genera la interfaz del servicio.
+     * Genera el archivo de la interfaz del servicio.
      *
-     * @param string $serviceContractDirectory El directorio donde se guardarán los contratos.
+     * @param  string  $contractsDir  Ruta absoluta a la carpeta Contracts
      * @return void
      */
-    protected function generateServiceContract(string $serviceContractDirectory): void
+    private function generateInterface(string $contractsDir): void
     {
-        $serviceInterfaceName = $this->serviceName . self::INTERFACE_SUFFIX;
+        $interfaceName = $this->prefixClass("{$this->modelName}ServiceInterface");
+        $namespace     = $this->buildNamespace('Services') . '\\Contracts';
 
-        $stubInterface = $this->getStubContent(self::SERVICE_INTERFACE_STUB, $this->isClean, [
-            'namespace' => "Modules\\{$this->moduleName}\\Services\\Contracts",
-            'serviceInterfaceName' => $serviceInterfaceName,
-            'modelName' => $this->modelName,
-            'module' => $this->moduleName,
+        $stub = $this->getStubContent('service-interface.stub', $this->isClean, [
+            'namespace'            => $namespace,
+            'serviceInterfaceName' => $interfaceName,
+            'modelName'            => $this->modelName,
+            'module'               => $this->moduleName,
         ]);
 
         $this->putFile(
-            "{$serviceContractDirectory}/{$serviceInterfaceName}.php", 
-            $stubInterface, 
-            "Interfaz {$serviceInterfaceName}.php creada en Modules/{$this->moduleName}/Services/Contracts"
+            "{$contractsDir}/{$interfaceName}.php",
+            $stub,
+            "Interfaz creada: Modules/{$this->moduleName}/Services/{$this->getContextFolder()}/Contracts/{$interfaceName}.php"
         );
     }
 
     /**
-     * Genera la implementación de la clase de servicio.
+     * Genera el archivo de la implementación del servicio.
      *
-     * @param string $serviceDirectory El directorio donde se guardarán las implementaciones.
+     * @param  string  $serviceDir  Ruta absoluta a la carpeta Services
      * @return void
      */
-    protected function generateServiceImplementation(string $serviceDirectory): void
+    private function generateImplementation(string $serviceDir): void
     {
-         $serviceInterfaceName = $this->serviceName . self::INTERFACE_SUFFIX;
-         $repositoryName = Str::replaceLast('Service', self::REPOSITORY_SUFFIX, $this->serviceName);
-         $repositoryInterfaceName = "{$repositoryName}Interface";
-         $repositoryInstance = Str::camel($repositoryName);
-         
-         $stubService = $this->getStubContent(self::SERVICE_IMPLEMENTATION_STUB, $this->isClean, [
-             'namespace' => "Modules\\{$this->moduleName}\\Services",
-             'serviceName' => $this->serviceName,
-             'modelName' => $this->modelName,
-             'module' => $this->moduleName,
-             'serviceInterfaceName' => $serviceInterfaceName,
-             'repositoryInterfaceName' => $repositoryInterfaceName,
-             'repositoryInstance' => $repositoryInstance,
-         ]);
-         $this->putFile(
-            "{$serviceDirectory}/{$this->serviceName}.php", 
-            $stubService, 
-            "Servicio {$this->serviceName}.php creado en Modules/{$this->moduleName}/Services"
+        $serviceName           = $this->prefixClass("{$this->modelName}Service");
+        $serviceInterfaceName  = $this->prefixClass("{$this->modelName}ServiceInterface");
+        $repositoryName        = $this->prefixClass("{$this->modelName}Repository");
+        $repositoryInterface   = $this->prefixClass("{$this->modelName}RepositoryInterface");
+        $repositoryInstance    = Str::camel($repositoryName);
+        $namespace             = $this->buildNamespace('Services');
+
+        $stub = $this->getStubContent('service.stub', $this->isClean, [
+            'namespace'               => $namespace,
+            'serviceName'             => $serviceName,
+            'modelName'               => $this->modelName,
+            'module'                  => $this->moduleName,
+            'serviceInterfaceName'    => $serviceInterfaceName,
+            'repositoryInterfaceName' => $repositoryInterface,
+            'repositoryInstance'      => $repositoryInstance,
+        ]);
+
+        $this->putFile(
+            "{$serviceDir}/{$serviceName}.php",
+            $stub,
+            "Servicio creado: Modules/{$this->moduleName}/Services/{$this->getContextFolder()}/{$serviceName}.php"
         );
     }
-
 }

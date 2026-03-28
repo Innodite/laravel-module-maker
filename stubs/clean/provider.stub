@@ -1,28 +1,36 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Modules\{{ module }}\Providers;
 
 use Illuminate\Support\ServiceProvider;
 {{ modelImports }}
 
+/**
+ * Service Provider del módulo {{ module }}.
+ *
+ * Registra los bindings de Interface → Implementación para
+ * Services y Repositories del módulo.
+ */
 class {{ module }}ServiceProvider extends ServiceProvider
 {
     /**
-     * Register the service provider.
+     * Registra los bindings del módulo en el contenedor de servicios.
      *
      * @return void
      */
-    public function register()
+    public function register(): void
     {
 {{ modelBindings }}
     }
 
     /**
-     * Boot the application events.
+     * Inicializa el módulo luego de que todos los providers han sido registrados.
      *
      * @return void
      */
-    public function boot()
+    public function boot(): void
     {
         //
     }
