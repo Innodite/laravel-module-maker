@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace {{ namespace }};
 
-use App\Traits\RendersInertiaModule;
+use Innodite\LaravelModuleMaker\Traits\RendersInertiaModule;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Routing\Controller;
 use Inertia\Response as InertiaResponse;
