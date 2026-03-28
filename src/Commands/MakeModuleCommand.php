@@ -165,6 +165,28 @@ class MakeModuleCommand extends Command
         $selectedLabel = $this->choice('¿En qué contexto quieres crear el módulo?', $choices, 0);
         $contextKey    = $keyMap[$selectedLabel];
 
+        // Si el contexto es 'tenant', preguntar cuál tenant específico
+        $tenantKey = null;
+        if ($contextKey === 'tenant') {
+            $tenants     = ContextResolver::allTenants();
+            $tenantChoices = [];
+            $tenantKeyMap  = [];
+
+            foreach ($tenants as $key => $tenant) {
+                $label               = $tenant['label'] ?? $key;
+                $tenantChoices[]     = $label;
+                $tenantKeyMap[$label] = $key;
+            }
+
+            if (empty($tenantChoices)) {
+                $this->error("No hay tenants definidos en contexts.json. Agrega tenants en la sección 'tenants'.");
+                return Command::FAILURE;
+            }
+
+            $selectedTenantLabel = $this->choice('¿Para cuál tenant?', $tenantChoices, 0);
+            $tenantKey           = $tenantKeyMap[$selectedTenantLabel];
+        }
+
         // Preguntar nombre de funcionalidad para el prefijo de ruta
         $defaultFunctionality = Str::plural(Str::kebab($moduleName));
         $functionality        = $this->ask(
@@ -174,11 +196,14 @@ class MakeModuleCommand extends Command
 
         $this->newLine();
         $this->info("  Contexto      : {$selectedLabel} ({$contextKey})");
+        if ($tenantKey) {
+            $this->info("  Tenant        : {$tenantKey}");
+        }
         $this->info("  Funcionalidad : {$functionality}");
         $this->newLine();
 
         (new ModuleGenerator($moduleName, true, null, $this))
-            ->createCleanModuleWithContext($contextKey, $functionality);
+            ->createCleanModuleWithContext($contextKey, $functionality, $tenantKey);
 
         return Command::SUCCESS;
     }
