@@ -85,23 +85,20 @@ class ProviderGenerator extends AbstractComponentGenerator
 
         $componentList = (! $this->isClean && ! empty($this->components))
             ? $this->components
-            : [['name' => $this->moduleName, 'context' => $this->componentConfig['context'] ?? null, 'tenant' => $this->componentConfig['tenant'] ?? null]];
+            : [['name' => $this->moduleName, 'context' => $this->componentConfig['context'] ?? null, 'context_name' => $this->componentConfig['context_name'] ?? null]];
 
         foreach ($componentList as $component) {
-            $modelName  = Str::studly($component['name']);
-            $contextKey = $component['context'] ?? null;
-            $tenantKey  = $component['tenant'] ?? null;
+            $modelName   = Str::studly($component['name']);
+            $contextKey  = $component['context'] ?? null;
+            $contextName = $component['context_name'] ?? null;
 
-            // Resolver el contexto efectivo: si es 'tenant', usar el tenant específico
+            // Resolver el contexto efectivo usando context_name para identificar el sub-item
             $effectiveCtx = null;
-            if ($contextKey === 'tenant' && $tenantKey !== null) {
+            if ($contextKey !== null) {
                 try {
-                    $effectiveCtx = \Innodite\LaravelModuleMaker\Support\ContextResolver::resolveTenant($tenantKey);
-                } catch (\InvalidArgumentException) {
-                }
-            } elseif ($contextKey !== null) {
-                try {
-                    $effectiveCtx = \Innodite\LaravelModuleMaker\Support\ContextResolver::resolve($contextKey);
+                    $effectiveCtx = $contextName !== null
+                        ? \Innodite\LaravelModuleMaker\Support\ContextResolver::resolveItem($contextKey, $contextName)
+                        : \Innodite\LaravelModuleMaker\Support\ContextResolver::resolve($contextKey);
                 } catch (\InvalidArgumentException) {
                 }
             }

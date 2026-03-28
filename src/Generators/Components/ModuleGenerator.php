@@ -66,7 +66,7 @@ class ModuleGenerator
      *
      * @return void
      */
-    protected function createFolders(): void
+    public function createFolders(): void
     {
         File::ensureDirectoryExists($this->modulePath);
         File::ensureDirectoryExists("{$this->modulePath}/config");
@@ -121,14 +121,14 @@ class ModuleGenerator
     /**
      * Orquesta la creación de un módulo limpio con contexto explícito.
      * Aplica la convención de nombres y carpetas según el contexto seleccionado.
-     * Si el contexto es 'tenant', requiere $tenantKey para saber cuál tenant específico.
+     * Si el contexto tiene múltiples variantes, $contextName identifica cuál usar.
      *
      * @param  string       $contextKey    Clave del contexto (ej: 'central', 'tenant', 'tenant_shared')
      * @param  string       $functionality Nombre de la funcionalidad para el prefijo de ruta (ej: 'users')
-     * @param  string|null  $tenantKey     Clave del tenant específico (solo si $contextKey === 'tenant')
+     * @param  string|null  $contextName   Valor del campo 'name' del sub-contexto (ej: 'Energía España')
      * @return void
      */
-    public function createCleanModuleWithContext(string $contextKey, string $functionality, ?string $tenantKey = null): void
+    public function createCleanModuleWithContext(string $contextKey, string $functionality, ?string $contextName = null): void
     {
         $this->createFolders();
 
@@ -138,7 +138,7 @@ class ModuleGenerator
         $componentConfig = [
             'name'          => $modelName,
             'context'       => $contextKey,
-            'tenant'        => $tenantKey,
+            'context_name'  => $contextName,
             'functionality' => $functionality,
         ];
 
@@ -208,44 +208,44 @@ class ModuleGenerator
     }
 
     /**
-     * Orquesta la creación de componentes individuales.
+     * Orquesta la creación de componentes individuales según los flags booleanos.
+     * El nombre de cada archivo se deriva del nombre del módulo + prefijo del contexto.
      *
-     * @param array $options Las opciones pasadas al comando.
+     * @param  array  $flags            Mapa de flags booleanos: model, controller, service, repository, migration, request
+     * @param  array  $componentConfig  Contexto activo: context, context_name
      * @return void
      */
-    public function createIndividualComponents(array $options): void
+    public function createIndividualComponents(array $flags, array $componentConfig = []): void
     {
-        // Al crear componentes individuales, se usa la lógica del modo 'limpio'
-        $isClean = true;
-        
-        $modelName = Str::studly($options['model'] ?? '');
-        $controllerName = Str::studly($options['controller'] ?? '');
-        $requestName = Str::studly($options['request'] ?? '');
-        $serviceName = Str::studly($options['service'] ?? '');
-        $repositoryName = Str::studly($options['repository'] ?? '');
-        $migrationName = Str::studly($options['migration'] ?? '');
+        $modelName = $this->moduleName;
 
-        if ($modelName) {
-            (new ModelGenerator($this->moduleName, $this->modulePath, $isClean, $modelName))->generate();
+        if ($flags['model'] ?? false) {
+            // El modelo NO lleva prefijo de contexto
+            (new ModelGenerator($this->moduleName, $this->modulePath, true, $modelName))->generate();
         }
-        if ($controllerName) {
-            (new ControllerGenerator($this->moduleName, $this->modulePath, $isClean, $controllerName, $modelName))->generate();
+
+        if ($flags['controller'] ?? false) {
+            (new ControllerGenerator($this->moduleName, $this->modulePath, true, $modelName, $componentConfig))->generate();
         }
-        if ($requestName) {
-            (new RequestGenerator($this->moduleName, $this->modulePath, $isClean, $requestName))->generate();
+
+        if ($flags['service'] ?? false) {
+            (new ServiceGenerator($this->moduleName, $this->modulePath, true, $modelName, $componentConfig))->generate();
         }
-        if ($serviceName) {
-            (new ServiceGenerator($this->moduleName, $this->modulePath, $isClean, $serviceName, $modelName))->generate();
+
+        if ($flags['repository'] ?? false) {
+            (new RepositoryGenerator($this->moduleName, $this->modulePath, true, $modelName, $componentConfig))->generate();
         }
-        if ($repositoryName) {
-            (new RepositoryGenerator($this->moduleName, $this->modulePath, $isClean, $repositoryName, $modelName))->generate();
+
+        if ($flags['migration'] ?? false) {
+            (new MigrationGenerator($this->moduleName, $this->modulePath, true, $modelName))->generate();
         }
-        if ($migrationName) {
-            (new MigrationGenerator($this->moduleName, $this->modulePath, $isClean, $migrationName))->generate();
+
+        if ($flags['request'] ?? false) {
+            (new RequestGenerator($this->moduleName, $this->modulePath, true, "{$modelName}StoreRequest", $componentConfig))->generate();
         }
-        
+
         if ($this->command) {
-            $this->command->info("✅ Componentes individuales creados con éxito en el módulo '{$this->moduleName}'.");
+            $this->command->info("✅ Componentes creados en el módulo '{$this->moduleName}'.");
         }
     }
 }

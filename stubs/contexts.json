@@ -1,85 +1,75 @@
 {
-    "_readme": "Plantilla de contextos. Publicada por 'innodite:module-setup' en Modules/module-maker-config/contexts.json. Edita ESE archivo — no este. La sección 'contexts' define los 4 contextos arquitectónicos fijos. La sección 'tenants' define los tenants del proyecto.",
+    "_readme": "Plantilla de contextos. Publicada por 'innodite:module-setup' en Modules/module-maker-config/contexts.json. Edita ESE archivo — no este. Cada clave de 'contexts' contiene un array de sub-contextos con 'name'. El contexto 'tenant' contiene los tenants del proyecto.",
 
     "contexts": {
-        "central": {
-            "label": "App Central",
-            "class_prefix": "Central",
-            "folder": "Central",
-            "namespace_path": "Central",
-            "route_prefix": "central",
-            "route_name": "central.",
-            "permission_prefix": "central",
-            "permission_middleware": "central-permission",
-            "route_middleware": ["web", "auth"],
-            "wrap_central_domains": true
-        },
+        "central": [
+            {
+                "name": "App Central",
+                "class_prefix": "Central",
+                "folder": "Central",
+                "namespace_path": "Central",
+                "route_prefix": "central",
+                "route_name": "central.",
+                "permission_prefix": "central",
+                "permission_middleware": "central-permission",
+                "route_middleware": ["web", "auth"],
+                "wrap_central_domains": true
+            }
+        ],
 
-        "shared": {
-            "label": "Shared",
-            "class_prefix": "Shared",
-            "folder": "Shared",
-            "namespace_path": "Shared",
-            "route_prefix": "shared",
-            "route_name": "shared.",
-            "permission_prefix": "shared",
-            "permission_middleware": "central-permission",
-            "route_middleware": ["web", "auth"],
-            "wrap_central_domains": false
-        },
+        "shared": [
+            {
+                "name": "Shared",
+                "class_prefix": "Shared",
+                "folder": "Shared",
+                "namespace_path": "Shared",
+                "route_prefix": "shared",
+                "route_name": "shared.",
+                "permission_prefix": "shared",
+                "permission_middleware": "central-permission",
+                "route_middleware": ["web", "auth"],
+                "wrap_central_domains": false
+            }
+        ],
 
-        "tenant": {
-            "label": "Tenant (específico)",
-            "class_prefix": null,
-            "folder": null,
-            "namespace_path": null,
-            "route_prefix": null,
-            "route_name": null,
-            "permission_prefix": null,
-            "permission_middleware": "tenant-permission",
-            "route_middleware": ["web", "auth", "tenant-auth"],
-            "wrap_central_domains": false
-        },
+        "tenant": [
+            {
+                "name": "Tenant One",
+                "class_prefix": "TenantOne",
+                "folder": "Tenant/TenantOne",
+                "namespace_path": "Tenant\\TenantOne",
+                "route_prefix": "tenant-one",
+                "route_name": "tenant-one.",
+                "permission_prefix": "tenant_one",
+                "permission_middleware": "tenant-permission",
+                "route_middleware": ["web", "auth", "tenant-auth"]
+            },
+            {
+                "name": "Tenant Two",
+                "class_prefix": "TenantTwo",
+                "folder": "Tenant/TenantTwo",
+                "namespace_path": "Tenant\\TenantTwo",
+                "route_prefix": "tenant-two",
+                "route_name": "tenant-two.",
+                "permission_prefix": "tenant_two",
+                "permission_middleware": "tenant-permission",
+                "route_middleware": ["web", "auth", "tenant-auth"]
+            }
+        ],
 
-        "tenant_shared": {
-            "label": "Tenant Shared",
-            "class_prefix": "TenantShared",
-            "folder": "Tenant/Shared",
-            "namespace_path": "Tenant\\Shared",
-            "route_prefix": null,
-            "route_name": null,
-            "permission_prefix": null,
-            "permission_middleware": "tenant-permission",
-            "route_middleware": ["web", "auth", "tenant-auth"],
-            "wrap_central_domains": false
-        }
-    },
-
-    "tenants": {
-        "_readme": "Define aquí los tenants de tu proyecto. Cada tenant es una instancia del contexto 'tenant'. Configura class_prefix, folder, route_prefix y permission_prefix según tu proyecto.",
-
-        "tenant_one": {
-            "label": "Tenant One",
-            "class_prefix": "TenantOne",
-            "folder": "Tenant/TenantOne",
-            "namespace_path": "Tenant\\TenantOne",
-            "route_prefix": "tenant-one",
-            "route_name": "tenant-one.",
-            "permission_prefix": "tenant_one",
-            "permission_middleware": "tenant-permission",
-            "route_middleware": ["web", "auth", "tenant-auth"]
-        },
-
-        "tenant_two": {
-            "label": "Tenant Two",
-            "class_prefix": "TenantTwo",
-            "folder": "Tenant/TenantTwo",
-            "namespace_path": "Tenant\\TenantTwo",
-            "route_prefix": "tenant-two",
-            "route_name": "tenant-two.",
-            "permission_prefix": "tenant_two",
-            "permission_middleware": "tenant-permission",
-            "route_middleware": ["web", "auth", "tenant-auth"]
-        }
+        "tenant_shared": [
+            {
+                "name": "Tenant Shared",
+                "class_prefix": "TenantShared",
+                "folder": "Tenant/Shared",
+                "namespace_path": "Tenant\\Shared",
+                "route_prefix": null,
+                "route_name": null,
+                "permission_prefix": null,
+                "permission_middleware": "tenant-permission",
+                "route_middleware": ["web", "auth", "tenant-auth"],
+                "wrap_central_domains": false
+            }
+        ]
     }
 }
