@@ -151,7 +151,7 @@ class MakeModuleCommand extends Command
             $this->error("No se encontró el archivo de configuración para '{$moduleName}'.");
             $this->line("  Buscado en : {$jsonPath}");
             $this->line("  Crea '{$configDir}/" . Str::lower($moduleName) . ".json' con la estructura del módulo.");
-            $this->line("  Ejemplo    : {$configDir}/blog.json");
+            $this->line("  Crea el archivo JSON y luego ejecuta: php artisan innodite:make-module {$moduleName} --json");
             return Command::FAILURE;
         }
 

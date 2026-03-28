@@ -19,7 +19,7 @@ class SetupModuleMakerCommand extends Command
      *
      * @var string
      */
-    protected $description = 'Configura el paquete, publicando stubs y un archivo de configuración de ejemplo.';
+    protected $description = 'Configura el paquete: crea la estructura de módulos y publica stubs y contexts.json.';
 
     /**
      * Execute the console command.
@@ -49,18 +49,18 @@ class SetupModuleMakerCommand extends Command
             $this->info("✅ Carpeta 'module-maker-config' creada en: {$configPath}.");
         }
 
-        // Publica los stubs y los archivos de configuración de ejemplo
         $this->publishStubsAndConfig($configPath);
 
         // NUEVO: Modifica el DatabaseSeeder automáticamente
         $this->modifyDatabaseSeeder();
 
         $this->info("\n🎉 ¡Configuración completa! Ahora puedes personalizar los stubs y el archivo de configuración en 'Modules/module-maker-config'.");
-        $this->info("Para generar un módulo dinámico, edita 'blog.json' y ejecuta: php artisan innodite:make-module Blog --config=blog.json");
+        $this->info("Edita 'Modules/module-maker-config/contexts.json' con los contextos y tenants de tu proyecto.");
+        $this->info("Luego ejecuta: php artisan innodite:make-module NombreModulo");
     }
 
     /**
-     * Publica los stubs y los archivos de configuración de ejemplo.
+     * Publica los stubs y contexts.json en el proyecto.
      *
      * @param string $configPath
      * @return void
@@ -89,20 +89,6 @@ class SetupModuleMakerCommand extends Command
             $this->info("✅ Stubs dinámicos publicados en: '{$stubsDestinationPathDynamic}'.");
         } else {
             $this->error("El directorio de stubs de origen 'dynamic' no existe: '{$stubsSourcePathDynamic}'.");
-        }
-
-        // Copia los archivos de configuración de ejemplo
-        $filesToCopy = ['post.json', 'blog.json', 'core.json', 'sales.json', 'shop.json'];
-        foreach ($filesToCopy as $file) {
-            $sourceFile      = "{$packageStubsPath}/{$file}";
-            $destinationFile = "{$configPath}/{$file}";
-
-            if (File::exists($sourceFile)) {
-                File::copy($sourceFile, $destinationFile);
-                $this->info("✅ Archivo de configuración de ejemplo '{$file}' publicado en: '{$configPath}'.");
-            } else {
-                $this->error("El archivo de configuración de ejemplo '{$file}' no existe en: '{$sourceFile}'.");
-            }
         }
 
         // Publica contexts.json — configura los contextos del proyecto (Central, Shared, tenants)
