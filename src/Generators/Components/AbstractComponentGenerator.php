@@ -1,12 +1,24 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Innodite\LaravelModuleMaker\Generators\Components;
 
+use Illuminate\Support\Facades\File;
 use Illuminate\Support\Str;
 use Innodite\LaravelModuleMaker\Generators\Concerns\HasStubs;
-use Illuminate\Support\Facades\File;
+use Innodite\LaravelModuleMaker\Support\ContextResolver;
 use Symfony\Component\Console\Output\OutputInterface;
 
+/**
+ * Clase base para todos los generadores de componentes del módulo.
+ *
+ * Centraliza la lógica de contexto (Central, Shared, TenantShared, tenant específico)
+ * para que cada generator concreto derive automáticamente la carpeta correcta,
+ * el prefijo de clase y el namespace sin repetir lógica.
+ *
+ * El contexto se configura en contexts.json del proyecto (publicado por innodite:setup).
+ */
 abstract class AbstractComponentGenerator
 {
     use HasStubs;
@@ -18,41 +30,171 @@ abstract class AbstractComponentGenerator
     protected ?OutputInterface $output = null;
 
     /**
-     * @param string $moduleName El nombre del módulo.
-     * @param string $modulePath La ruta base al directorio de módulos.
-     * @param bool $isClean Indica si el módulo se está creando desde cero.
-     * @param array $componentConfig La configuración específica para el componente.
+     * Cache de la configuración del contexto activo.
+     *
+     * @var array<string, mixed>|null
      */
-    public function __construct(string $moduleName, string $modulePath, bool $isClean, array $componentConfig = [])
-    {
-        $this->moduleName = Str::studly($moduleName);
-        $this->modulePath = $modulePath;
-        $this->isClean = $isClean;
+    private ?array $resolvedContext = null;
+
+    /**
+     * @param  string  $moduleName       Nombre del módulo (se convierte a StudlyCase)
+     * @param  string  $modulePath       Ruta absoluta al directorio del módulo
+     * @param  bool    $isClean          true = stubs clean, false = stubs dynamic
+     * @param  array   $componentConfig  Configuración del componente (puede incluir 'context' y 'functionality')
+     */
+    public function __construct(
+        string $moduleName,
+        string $modulePath,
+        bool $isClean,
+        array $componentConfig = []
+    ) {
+        $this->moduleName      = Str::studly($moduleName);
+        $this->modulePath      = $modulePath;
+        $this->isClean         = $isClean;
         $this->componentConfig = $componentConfig;
     }
 
     /**
      * Establece el objeto de salida de la consola.
      *
-     * @param OutputInterface $output La interfaz de salida de Symfony Console.
-     * @return self
+     * @param  OutputInterface  $output
+     * @return static
      */
-    public function setOutput(OutputInterface $output): self
+    public function setOutput(OutputInterface $output): static
     {
         $this->output = $output;
         return $this;
     }
 
     /**
-     * Ejecuta la generación del componente específico.
+     * Ejecuta la generación del componente.
      * Cada clase concreta debe implementar este método.
      *
      * @return void
      */
     abstract public function generate(): void;
 
+    // ─── Helpers de contexto ─────────────────────────────────────────────────
+
     /**
-     * Obtiene la ruta base para el componente dentro del módulo.
+     * Retorna la configuración completa del contexto activo.
+     * Si el componente no tiene 'context' definido, retorna un contexto vacío
+     * para mantener compatibilidad con el modo sin contexto.
+     *
+     * @return array<string, mixed>
+     */
+    protected function getContext(): array
+    {
+        if ($this->resolvedContext !== null) {
+            return $this->resolvedContext;
+        }
+
+        $contextKey = $this->componentConfig['context'] ?? null;
+
+        if ($contextKey === null) {
+            $this->resolvedContext = [];
+            return $this->resolvedContext;
+        }
+
+        $this->resolvedContext = ContextResolver::resolve($contextKey);
+        return $this->resolvedContext;
+    }
+
+    /**
+     * Retorna el prefijo de clase del contexto activo.
+     * Ej: 'Central', 'Shared', 'TenantShared', 'TenantEnergySpain'
+     * Retorna cadena vacía si no hay contexto definido (retrocompatibilidad).
+     *
+     * @return string
+     */
+    protected function getClassPrefix(): string
+    {
+        return $this->getContext()['class_prefix'] ?? '';
+    }
+
+    /**
+     * Retorna la subcarpeta del contexto dentro de cada tipo de componente.
+     * Ej: 'Central', 'Shared', 'Tenant/Shared', 'Tenant/EnergySpain'
+     * Retorna cadena vacía si no hay contexto definido.
+     *
+     * @return string
+     */
+    protected function getContextFolder(): string
+    {
+        return $this->getContext()['folder'] ?? '';
+    }
+
+    /**
+     * Retorna el fragmento de namespace del contexto.
+     * Ej: 'Central', 'Shared', 'Tenant\\Shared', 'Tenant\\EnergySpain'
+     *
+     * @return string
+     */
+    protected function getContextNamespacePath(): string
+    {
+        return $this->getContext()['namespace_path'] ?? '';
+    }
+
+    /**
+     * Construye el namespace completo para un tipo de componente dentro del módulo.
+     * Ej: buildNamespace('Http\\Controllers') → 'Modules\Products\Http\Controllers\Tenant\EnergySpain'
+     *
+     * @param  string  $componentType  Tipo de componente (ej: 'Http\\Controllers', 'Services', 'Models')
+     * @return string
+     */
+    protected function buildNamespace(string $componentType): string
+    {
+        $base   = "Modules\\{$this->moduleName}\\{$componentType}";
+        $ctxNs  = $this->getContextNamespacePath();
+
+        return $ctxNs ? "{$base}\\{$ctxNs}" : $base;
+    }
+
+    /**
+     * Construye la ruta absoluta de carpeta para un tipo de componente dentro del módulo.
+     * Ej: buildPath('Http/Controllers') → '.../Products/Http/Controllers/Tenant/EnergySpain'
+     *
+     * @param  string  $componentType  Tipo de componente (ej: 'Http/Controllers', 'Services', 'Models')
+     * @return string
+     */
+    protected function buildPath(string $componentType): string
+    {
+        $base   = $this->getComponentBasePath() . "/{$componentType}";
+        $folder = $this->getContextFolder();
+
+        return $folder ? "{$base}/{$folder}" : $base;
+    }
+
+    /**
+     * Prefija el nombre de la clase con el prefijo del contexto activo.
+     * Ej: prefixClass('UserController') con contexto 'energy_spain' → 'TenantEnergySpainUserController'
+     *
+     * @param  string  $className  Nombre de la clase sin prefijo
+     * @return string
+     */
+    protected function prefixClass(string $className): string
+    {
+        $prefix = $this->getClassPrefix();
+        return $prefix ? $prefix . $className : $className;
+    }
+
+    /**
+     * Retorna el nombre de la funcionalidad en kebab-case para el prefijo de ruta.
+     * Ej: 'users', 'campaign-goals'
+     * Si no está definido, usa el nombre del módulo en kebab-case.
+     *
+     * @return string
+     */
+    protected function getFunctionality(): string
+    {
+        return $this->componentConfig['functionality']
+            ?? Str::kebab(Str::plural(Str::snake($this->moduleName)));
+    }
+
+    // ─── Helpers de filesystem ────────────────────────────────────────────────
+
+    /**
+     * Retorna la ruta base del módulo dentro del directorio de módulos.
      *
      * @return string
      */
@@ -62,9 +204,9 @@ abstract class AbstractComponentGenerator
     }
 
     /**
-     * Crea los directorios necesarios para el componente si no existen.
+     * Crea los directorios necesarios si no existen.
      *
-     * @param string $directoryPath La ruta del directorio a crear.
+     * @param  string  $directoryPath  Ruta absoluta del directorio
      * @return void
      */
     protected function ensureDirectoryExists(string $directoryPath): void
@@ -73,11 +215,11 @@ abstract class AbstractComponentGenerator
     }
 
     /**
-     * Escribe el contenido en un archivo y muestra un mensaje de éxito.
+     * Escribe el contenido en un archivo y muestra un mensaje de éxito en consola.
      *
-     * @param string $filePath La ruta completa del archivo a escribir.
-     * @param string $content El contenido a escribir en el archivo.
-     * @param string $message El mensaje a mostrar en la consola.
+     * @param  string  $filePath  Ruta absoluta del archivo a escribir
+     * @param  string  $content   Contenido a escribir
+     * @param  string  $message   Mensaje a mostrar en consola
      * @return void
      */
     protected function putFile(string $filePath, string $content, string $message): void
@@ -86,42 +228,38 @@ abstract class AbstractComponentGenerator
         $this->info("✅ {$message}");
     }
 
+    // ─── Output ───────────────────────────────────────────────────────────────
+
     /**
-     * Muestra un mensaje de información en la consola.
+     * Muestra un mensaje de información en consola.
      *
-     * @param string $message El mensaje a mostrar.
+     * @param  string  $message
      * @return void
      */
     public function info(string $message): void
     {
-        if ($this->output) {
-            $this->output->writeln("<info>{$message}</info>");
-        }
+        $this->output?->writeln("<info>{$message}</info>");
     }
 
     /**
-     * Muestra un mensaje de advertencia en la consola.
+     * Muestra un mensaje de advertencia en consola.
      *
-     * @param string $message El mensaje a mostrar.
+     * @param  string  $message
      * @return void
      */
     public function warn(string $message): void
     {
-        if ($this->output) {
-            $this->output->writeln("<comment>{$message}</comment>");
-        }
+        $this->output?->writeln("<comment>{$message}</comment>");
     }
 
     /**
-     * Muestra un mensaje de error en la consola.
+     * Muestra un mensaje de error en consola.
      *
-     * @param string $message El mensaje a mostrar.
+     * @param  string  $message
      * @return void
      */
     public function error(string $message): void
     {
-        if ($this->output) {
-            $this->output->writeln("<error>{$message}</error>");
-        }
+        $this->output?->writeln("<error>{$message}</error>");
     }
 }
