@@ -1,7 +1,7 @@
 # Laravel Module Maker — Especificación del Paquete
 
 **Paquete:** `innodite/laravel-module-maker`
-**Versión actual:** v2.4.0
+**Versión actual:** v2.5.0
 **Última actualización:** 2026-03-28
 
 ---
@@ -24,11 +24,20 @@ php artisan innodite:module-setup
 1. Crea `Modules/` si no existe
 2. Crea `Modules/module-maker-config/` si no existe
 3. Publica los stubs en `Modules/module-maker-config/stubs/`
-4. Publica los JSONs de ejemplo (`blog.json`, `post.json`, etc.)
-5. Publica `contexts.json` en `Modules/module-maker-config/contexts.json` ← **EDITAR ESTE**
-6. Modifica `DatabaseSeeder.php` para incluir los seeders de los módulos
+4. Publica `contexts.json` en `Modules/module-maker-config/contexts.json` ← **EDITAR ESTE**
+5. Modifica `DatabaseSeeder.php` para incluir los seeders de los módulos
 
 > Los stubs publicados tienen prioridad sobre los del paquete. El proyecto puede personalizarlos.
+
+### Estructura publicada en el proyecto
+
+```
+Modules/module-maker-config/
+├── contexts.json     ← configurar contextos y tenants del proyecto
+└── stubs/
+    ├── clean/        ← stubs para modo automático (personalizables)
+    └── dynamic/      ← stubs para modo --json (personalizables)
+```
 
 ---
 
@@ -38,12 +47,10 @@ Ubicación: `Modules/module-maker-config/contexts.json`
 
 ### Estructura
 
-Cada clave de `contexts` mapea a un **array de sub-contextos con `name`**. Esto permite tener múltiples variantes por contexto (ej: `shared` puede tener `SharedBase` y `SharedPoint`).
+Cada clave de `contexts` mapea a un **array de sub-contextos con `name`**. Esto permite tener múltiples variantes por contexto (ej: `tenant` puede tener `Tenant One` y `Tenant Two`).
 
 ```json
 {
-    "_readme": "...",
-
     "contexts": {
         "central": [
             {
@@ -72,72 +79,31 @@ Cada clave de `contexts` mapea a un **array de sub-contextos con `name`**. Esto 
                 "permission_middleware": "central-permission",
                 "route_middleware": ["web", "auth"],
                 "wrap_central_domains": false
-            },
-            {
-                "name": "SharedPoint",
-                "class_prefix": "SharedPoint",
-                "folder": "Shared/Point",
-                "namespace_path": "Shared\\Point",
-                "route_prefix": "shared-point",
-                "route_name": "shared-point.",
-                "permission_prefix": "shared_point",
-                "permission_middleware": "central-permission",
-                "route_middleware": ["web", "auth"],
-                "wrap_central_domains": false
             }
         ],
 
         "tenant": [
             {
-                "name": "Energía España",
-                "class_prefix": "TenantEnergySpain",
-                "folder": "Tenant/EnergySpain",
-                "namespace_path": "Tenant\\EnergySpain",
-                "route_prefix": "energy-spain",
-                "route_name": "energy-spain.",
-                "permission_prefix": "energy_spain",
+                "name": "Tenant One",
+                "class_prefix": "TenantOne",
+                "folder": "Tenant/TenantOne",
+                "namespace_path": "Tenant\\TenantOne",
+                "route_prefix": "tenant-one",
+                "route_name": "tenant-one.",
+                "permission_prefix": "tenant_one",
                 "permission_middleware": "tenant-permission",
-                "route_middleware": [
-                    "web",
-                    "Stancl\\Tenancy\\Middleware\\InitializeTenancyByDomain::class",
-                    "Stancl\\Tenancy\\Middleware\\PreventAccessFromCentralDomains::class",
-                    "auth",
-                    "tenant-auth"
-                ]
+                "route_middleware": ["web", "auth", "tenant-auth"]
             },
             {
-                "name": "Telefonía España",
-                "class_prefix": "TenantTelephonySpain",
-                "folder": "Tenant/TelephonySpain",
-                "namespace_path": "Tenant\\TelephonySpain",
-                "route_prefix": "telephony-spain",
-                "route_name": "telephony-spain.",
-                "permission_prefix": "telephony_spain",
+                "name": "Tenant Two",
+                "class_prefix": "TenantTwo",
+                "folder": "Tenant/TenantTwo",
+                "namespace_path": "Tenant\\TenantTwo",
+                "route_prefix": "tenant-two",
+                "route_name": "tenant-two.",
+                "permission_prefix": "tenant_two",
                 "permission_middleware": "tenant-permission",
-                "route_middleware": [
-                    "web",
-                    "Stancl\\Tenancy\\Middleware\\InitializeTenancyByDomain::class",
-                    "Stancl\\Tenancy\\Middleware\\PreventAccessFromCentralDomains::class",
-                    "auth",
-                    "tenant-auth"
-                ]
-            },
-            {
-                "name": "Telefonía Perú",
-                "class_prefix": "TenantTelephonyPeru",
-                "folder": "Tenant/TelephonyPeru",
-                "namespace_path": "Tenant\\TelephonyPeru",
-                "route_prefix": "telephony-peru",
-                "route_name": "telephony-peru.",
-                "permission_prefix": "telephony_peru",
-                "permission_middleware": "tenant-permission",
-                "route_middleware": [
-                    "web",
-                    "Stancl\\Tenancy\\Middleware\\InitializeTenancyByDomain::class",
-                    "Stancl\\Tenancy\\Middleware\\PreventAccessFromCentralDomains::class",
-                    "auth",
-                    "tenant-auth"
-                ]
+                "route_middleware": ["web", "auth", "tenant-auth"]
             }
         ],
 
@@ -151,13 +117,7 @@ Cada clave de `contexts` mapea a un **array de sub-contextos con `name`**. Esto 
                 "route_name": null,
                 "permission_prefix": null,
                 "permission_middleware": "tenant-permission",
-                "route_middleware": [
-                    "web",
-                    "Stancl\\Tenancy\\Middleware\\InitializeTenancyByDomain::class",
-                    "Stancl\\Tenancy\\Middleware\\PreventAccessFromCentralDomains::class",
-                    "auth",
-                    "tenant-auth"
-                ],
+                "route_middleware": ["web", "auth", "tenant-auth"],
                 "wrap_central_domains": false
             }
         ]
@@ -170,12 +130,12 @@ Cada clave de `contexts` mapea a un **array de sub-contextos con `name`**. Esto 
 | Campo | Tipo | Descripción |
 |---|---|---|
 | `name` | string | Nombre legible, mostrado en el CLI al seleccionar |
-| `class_prefix` | string | Prefijo de clase PHP (ej: `TenantEnergySpain`) |
+| `class_prefix` | string | Prefijo de clase PHP (ej: `TenantOne`) |
 | `folder` | string | Subcarpeta dentro de `Http/Controllers/`, `Services/`, etc. |
-| `namespace_path` | string | Fragmento de namespace (ej: `Tenant\\EnergySpain`) |
-| `route_prefix` | string\|null | Prefijo URL (ej: `energy-spain`) |
-| `route_name` | string\|null | Prefijo de nombre de ruta (ej: `energy-spain.`) |
-| `permission_prefix` | string\|null | Prefijo del permiso (ej: `energy_spain`) |
+| `namespace_path` | string | Fragmento de namespace (ej: `Tenant\\TenantOne`) |
+| `route_prefix` | string\|null | Prefijo URL (ej: `tenant-one`) |
+| `route_name` | string\|null | Prefijo de nombre de ruta (ej: `tenant-one.`) |
+| `permission_prefix` | string\|null | Prefijo del permiso (ej: `tenant_one`) |
 | `permission_middleware` | string | Middleware de permisos (`tenant-permission` o `central-permission`) |
 | `route_middleware` | array | Stack de middleware para el grupo de rutas |
 | `wrap_central_domains` | bool | Si las rutas se envuelven en `foreach central_domains` |
@@ -211,22 +171,21 @@ php artisan innodite:make-module NombreModulo
    ¿Cuál variante? → lista de names del array
 
 3. ¿Cómo generar?
-   [1] Automático (estructura limpia por defecto)
+   [1] Automático (estructura limpia)
    [2] Desde JSON (usar module-maker-config/{module}.json)
 
 4a. Si elige Automático:
-    - Pregunta: funcionalidad para rutas (ej: users, campaign-goals)
-    - Genera todos los archivos
-    - Crea/actualiza module-maker-config/{module}.json con la config básica
+    - Pregunta: funcionalidad para rutas (ej: products, campaign-goals)
+    - Genera todos los archivos con stubs clean
 
 4b. Si elige Desde JSON:
     - Verifica que module-maker-config/{module}.json existe
     - Lee la config del JSON
-    - Genera todos los archivos con esa config
+    - Genera todos los archivos con stubs dynamic
     - Si no existe el JSON → error con instrucciones
 ```
 
-**Nota:** Si el módulo ya existe y se vuelve a correr el comando, ofrece agregar un nuevo contexto/tenant al módulo existente (no sobreescribe).
+**Nota:** Si el módulo ya existe y no se usan flags de componente individual, muestra un error. Para añadir archivos a un módulo existente, usar `-M -C -S -R -G -Q`.
 
 ### Modo 2 — Directo con JSON (`--json`)
 
@@ -234,17 +193,17 @@ php artisan innodite:make-module NombreModulo
 php artisan innodite:make-module NombreModulo --json
 ```
 
-Igual que elegir "Desde JSON" en el modo interactivo, pero sin preguntas. Lee directamente `module-maker-config/{nombremodulo}.json`.
+Lee directamente `module-maker-config/{nombremodulo}.json` sin preguntas interactivas.
 
 ### Modo 3 — Componente individual
 
 ```bash
-php artisan innodite:make-module NombreModulo --model=User
-php artisan innodite:make-module NombreModulo --controller=UserController
-php artisan innodite:make-module NombreModulo --service=UserService
-php artisan innodite:make-module NombreModulo --repository=UserRepository
-php artisan innodite:make-module NombreModulo --migration=User
-php artisan innodite:make-module NombreModulo --request=UserStoreRequest
+php artisan innodite:make-module NombreModulo -M   # Model
+php artisan innodite:make-module NombreModulo -C   # Controller + contexto
+php artisan innodite:make-module NombreModulo -S   # Service + Interface + contexto
+php artisan innodite:make-module NombreModulo -R   # Repository + Interface + contexto
+php artisan innodite:make-module NombreModulo -G   # Migration
+php artisan innodite:make-module NombreModulo -Q   # Request + contexto
 ```
 
 El módulo debe existir. Se pueden combinar flags.
@@ -253,30 +212,31 @@ El módulo debe existir. Se pueden combinar flags.
 
 ## 5. JSON del módulo — `module-maker-config/{module}.json`
 
-Creado automáticamente en modo interactivo. Enriquecible a mano para el modo `--json`.
+Creado manualmente por el desarrollador para usar con el modo `--json`.
+El archivo debe ubicarse en `Modules/module-maker-config/{nombremodulo}.json`.
 
 ### Formato
 
 ```json
 {
-    "module_name": "User",
+    "module_name": "Product",
     "components": [
         {
-            "name": "User",
+            "name": "Product",
             "context": "tenant",
-            "context_name": "Energía España",
-            "functionality": "users",
-            "table": "users",
+            "context_name": "Tenant One",
+            "functionality": "products",
+            "table": "products",
             "attributes": [
-                { "name": "name", "type": "string", "length": 255 },
-                { "name": "email", "type": "string", "unique": true },
+                { "name": "name",      "type": "string",  "length": 255 },
+                { "name": "price",     "type": "decimal", "total": 10, "places": 2 },
                 { "name": "is_active", "type": "boolean", "default": true }
             ],
             "indexes": [
-                { "columns": "email", "type": "index" }
+                { "columns": ["name"], "type": "index" }
             ],
             "relations": [
-                { "name": "branch", "type": "belongsTo", "model": "Branch" }
+                { "name": "category", "type": "belongsTo", "model": "Category" }
             ]
         }
     ]
@@ -289,9 +249,9 @@ Creado automáticamente en modo interactivo. Enriquecible a mano para el modo `-
 |---|---|---|
 | `name` | ✅ | Nombre del modelo (StudlyCase) |
 | `context` | ✅ | Clave del contexto (`central`, `shared`, `tenant`, `tenant_shared`) |
-| `context_name` | ✅ | `name` del sub-contexto seleccionado (identifica cuál item del array usar) |
-| `functionality` | ✅ | Prefijo de ruta en kebab-case (ej: `users`, `campaign-goals`) |
-| `table` | ❌ | Nombre de la tabla (default: snake_plural del modelo) |
+| `context_name` | ✅ | Valor del campo `name` del sub-contexto a usar |
+| `functionality` | ✅ | Prefijo de ruta en kebab-case (ej: `products`, `campaign-goals`) |
+| `table` | ❌ | Nombre de tabla (default: snake_plural del modelo) |
 | `attributes` | ❌ | Columnas para la migración |
 | `indexes` | ❌ | Índices de la migración |
 | `relations` | ❌ | Relaciones Eloquent del modelo |
@@ -300,53 +260,54 @@ Creado automáticamente en modo interactivo. Enriquecible a mano para el modo `-
 
 ## 6. Archivos generados
 
-### Estructura de carpetas (ejemplo: `tenant` → `Energía España`, módulo `User`)
+### Estructura de carpetas (ejemplo: `tenant` → `Tenant One`, módulo `Product`)
 
 ```
-Modules/User/
+Modules/Product/
 ├── Http/
 │   ├── Controllers/
-│   │   └── Tenant/EnergySpain/
-│   │       └── TenantEnergySpainUserController.php
+│   │   └── Tenant/TenantOne/
+│   │       └── TenantOneProductController.php
 │   └── Requests/
-│       └── UserStoreRequest.php
+│       └── ProductStoreRequest.php
 ├── Services/
-│   └── Tenant/EnergySpain/
-│       ├── TenantEnergySpainUserService.php
+│   └── Tenant/TenantOne/
+│       ├── TenantOneProductService.php
 │       └── Contracts/
-│           └── TenantEnergySpainUserServiceInterface.php
+│           └── TenantOneProductServiceInterface.php
 ├── Repositories/
-│   └── Tenant/EnergySpain/
-│       ├── TenantEnergySpainUserRepository.php
+│   └── Tenant/TenantOne/
+│       ├── TenantOneProductRepository.php
 │       └── Contracts/
-│           └── TenantEnergySpainUserRepositoryInterface.php
+│           └── TenantOneProductRepositoryInterface.php
 ├── Models/
-│   └── User.php
+│   └── Product.php
 ├── Providers/
-│   └── UserServiceProvider.php
+│   └── ProductServiceProvider.php
 ├── routes/
 │   └── tenant.php
 ├── Database/
 │   ├── Migrations/
-│   │   └── 2026_xx_xx_create_users_table.php
+│   │   └── xxxx_create_products_table.php
 │   ├── Seeders/
-│   │   └── UserSeeder.php
+│   │   └── ProductSeeder.php
 │   └── Factories/
-│       └── UserFactory.php
+│       └── ProductFactory.php
 └── Tests/Unit/
-    └── UserTest.php
+    └── ProductTest.php
 ```
 
 ### Convención de nombres PHP
 
-| Contexto / Variante | class_prefix | Ejemplo Controller |
-|---|---|---|
-| central → App Central | `Central` | `CentralUserController` |
-| shared → Shared | `Shared` | `SharedUserController` |
-| shared → SharedPoint | `SharedPoint` | `SharedPointUserController` |
-| tenant_shared → Tenant Shared | `TenantShared` | `TenantSharedUserController` |
-| tenant → Energía España | `TenantEnergySpain` | `TenantEnergySpainUserController` |
-| tenant → Telefonía España | `TenantTelephonySpain` | `TenantTelephonySpainUserController` |
+| Contexto / Variante          | class_prefix    | Ejemplo Controller               |
+|------------------------------|-----------------|----------------------------------|
+| central → App Central        | `Central`       | `CentralProductController`       |
+| shared → Shared              | `Shared`        | `SharedProductController`        |
+| tenant_shared → Tenant Shared| `TenantShared`  | `TenantSharedProductController`  |
+| tenant → Tenant One          | `TenantOne`     | `TenantOneProductController`     |
+| tenant → Tenant Two          | `TenantTwo`     | `TenantTwoProductController`     |
+
+> El **Model** nunca lleva prefijo de contexto.
 
 ### Convención de nombres Vue
 
@@ -354,11 +315,11 @@ Mismo prefijo que PHP. `RendersInertiaModule` lo resuelve automáticamente:
 
 | Componente Vue | Carpeta resuelta |
 |---|---|
-| `CentralUserList.vue` | `Pages/Central/` |
-| `SharedUserList.vue` | `Pages/Shared/` |
-| `SharedPointUserList.vue` | `Pages/Shared/Point/` |
-| `TenantSharedUserList.vue` | `Pages/Tenant/Shared/` |
-| `TenantEnergySpainUserList.vue` | `Pages/Tenant/EnergySpain/` |
+| `CentralProductList.vue` | `Pages/Central/` |
+| `SharedProductList.vue` | `Pages/Shared/` |
+| `TenantSharedProductList.vue` | `Pages/Tenant/Shared/` |
+| `TenantOneProductList.vue` | `Pages/Tenant/TenantOne/` |
+| `TenantTwoProductList.vue` | `Pages/Tenant/TenantTwo/` |
 
 ---
 
@@ -371,10 +332,10 @@ Archivo: `routes/web.php`
 ```php
 foreach (config('tenancy.central_domains') as $domain) {
     Route::domain($domain)->group(function () {
-        Route::prefix('central-users')->name('central.users.')->group(function () {
-            // CRUD con middleware('central-permission:central_users_{action}')
+        Route::prefix('central-products')->name('central.products.')->group(function () {
+            // CRUD con middleware('central-permission:central_products_{action}')
         });
-        // {{CENTRAL_APP_CENTRAL_END}}
+        // {{CENTRAL_END}}
     });
 }
 ```
@@ -385,10 +346,10 @@ Archivo: `routes/web.php`
 
 ```php
 Route::middleware(['web', 'auth'])->group(function () {
-    Route::prefix('shared-users')->name('shared.users.')->group(function () {
-        // CRUD con middleware('central-permission:shared_users_{action}')
+    Route::prefix('shared-products')->name('shared.products.')->group(function () {
+        // CRUD con middleware('central-permission:shared_products_{action}')
     });
-    // {{SHARED_SHARED_END}}
+    // {{SHARED_END}}
 });
 ```
 
@@ -397,14 +358,14 @@ Route::middleware(['web', 'auth'])->group(function () {
 Archivo: `routes/tenant.php`
 
 ```php
-// ─────────────────────────────────────────────────────────────────
-// Energía España — User
-// ─────────────────────────────────────────────────────────────────
-Route::middleware(['web', InitializeTenancyByDomain::class, ...])->group(function () {
-    Route::prefix('energy-spain-users')->name('energy-spain.users.')->group(function () {
-        // CRUD con middleware('tenant-permission:energy_spain_users_{action}')
+// ──────────────────────────────────────────────────────────────────────────
+// Tenant One — Product
+// ──────────────────────────────────────────────────────────────────────────
+Route::middleware(['web', 'auth', 'tenant-auth'])->group(function () {
+    Route::prefix('tenant-one-products')->name('tenant-one.products.')->group(function () {
+        // CRUD con middleware('tenant-permission:tenant_one_products_{action}')
     });
-    // {{TENANT_ENERGY_SPAIN_END}}
+    // {{TENANT_ONE_END}}
 });
 ```
 
@@ -414,8 +375,10 @@ Archivo: `routes/tenant.php` — genera un bloque por cada item del contexto `te
 
 ### Marcador de append
 
-Formato: `// {{CONTEXT_SUBNAME_END}}` en SCREAMING_SNAKE_CASE del `class_prefix`.
-Ejemplo: `class_prefix: TenantEnergySpain` → marcador `{{TENANT_ENERGY_SPAIN_END}}`
+Formato: `// {{CLASS_PREFIX_SCREAMING_SNAKE_END}}`
+Ejemplo: `class_prefix: TenantOne` → marcador `// {{TENANT_ONE_END}}`
+
+Permite añadir nuevas funcionalidades al archivo de rutas existente sin sobreescribir las anteriores.
 
 ### CRUD routes
 
@@ -433,17 +396,17 @@ DELETE /{id}    → destroy (permiso: {prefix}_{func}_delete)
 ## 8. Provider generado
 
 ```php
-class UserServiceProvider extends ServiceProvider
+class ProductServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
         $this->app->bind(
-            TenantEnergySpainUserServiceInterface::class,
-            TenantEnergySpainUserService::class
+            TenantOneProductServiceInterface::class,
+            TenantOneProductService::class
         );
         $this->app->bind(
-            TenantEnergySpainUserRepositoryInterface::class,
-            TenantEnergySpainUserRepository::class
+            TenantOneProductRepositoryInterface::class,
+            TenantOneProductRepository::class
         );
     }
 }
@@ -458,19 +421,20 @@ class UserServiceProvider extends ServiceProvider
 ```php
 use Innodite\LaravelModuleMaker\Traits\RendersInertiaModule;
 
-class TenantEnergySpainUserController extends Controller
+class TenantOneProductController extends Controller
 {
     use RendersInertiaModule;
 
     public function index(): InertiaResponse
     {
-        return $this->renderModule('UserManagement', 'TenantEnergySpainUserIndex');
+        return $this->renderModule('Product', 'TenantOneProductIndex');
+        // Resuelve → Modules/Product/resources/js/Pages/Tenant/TenantOne/TenantOneProductIndex.vue
     }
 }
 ```
 
 **Resolución del prefijo:**
-1. Extrae el prefijo del nombre del componente (`TenantEnergySpain`)
+1. Extrae el prefijo del nombre del componente (`TenantOne`)
 2. Construye el mapa `class_prefix → folder` desde todos los items de `contexts.json`
 3. Ordena por longitud de clave desc (prefijos más específicos primero)
 4. Verifica que el `.vue` existe en `Modules/{Module}/resources/js/Pages/{folder}/{file}.vue`
@@ -516,13 +480,9 @@ El paquete registra automáticamente todos los módulos en `Modules/` al arranca
 
 ## 12. Pendientes / TODO
 
-- [x] Trait `RendersInertiaModule` en el paquete con prefijos dinámicos desde contexts.json
-- [x] Comando interactivo con selección de contexto y tenant
-- [ ] **`contexts.json`:** migrar estructura a arrays de sub-items con `name`
-- [ ] **Modo interactivo:** preguntar ¿Automático o desde JSON?
-- [ ] **Modo interactivo:** si hay múltiples items en el contexto, preguntar cuál
-- [ ] **Modo interactivo:** crear `module-maker-config/{module}.json` automáticamente con `context_name`
-- [ ] **Marcadores de rutas:** usar `class_prefix` en SCREAMING_SNAKE_CASE (no nombre del contexto)
-- [ ] **`RendersInertiaModule`:** actualizar para leer la nueva estructura de arrays
-- [ ] **Modo `--json`:** si tiene atributos, generar la migration con las columnas correctas
-- [ ] **Componente `--vue`:** generar el Vue con convención de nombres correcta
+- [x] Trait `RendersInertiaModule` con prefijos dinámicos desde `contexts.json`
+- [x] Comando interactivo con selección de contexto y variante
+- [x] Estructura `contexts.json` con arrays de sub-items con `name`
+- [x] Archivos de ejemplo eliminados — solo `contexts.json` como referencia
+- [ ] **Modo interactivo:** crear `module-maker-config/{module}.json` automáticamente al generar en modo Automático
+- [ ] **Componente `--vue`:** generar el componente Vue con convención de nombres correcta
