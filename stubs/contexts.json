@@ -1,5 +1,5 @@
 {
-    "_readme": "Fuente de verdad de contextos y tenants del proyecto. 'contexts' define los 4 contextos arquitectónicos. 'tenants' define los tenants específicos del proyecto (instancias del contexto 'tenant').",
+    "_readme": "Plantilla de contextos. Publicada por 'innodite:module-setup' en Modules/module-maker-config/contexts.json. Edita ESE archivo — no este. La sección 'contexts' define los 4 contextos arquitectónicos fijos. La sección 'tenants' define los tenants del proyecto.",
 
     "contexts": {
         "central": {
@@ -16,7 +16,7 @@
         },
 
         "shared": {
-            "label": "Shared (Central + Tenants)",
+            "label": "Shared",
             "class_prefix": "Shared",
             "folder": "Shared",
             "namespace_path": "Shared",
@@ -37,18 +37,12 @@
             "route_name": null,
             "permission_prefix": null,
             "permission_middleware": "tenant-permission",
-            "route_middleware": [
-                "web",
-                "Stancl\\Tenancy\\Middleware\\InitializeTenancyByDomain::class",
-                "Stancl\\Tenancy\\Middleware\\PreventAccessFromCentralDomains::class",
-                "auth",
-                "tenant-auth"
-            ],
+            "route_middleware": ["web", "auth", "tenant-auth"],
             "wrap_central_domains": false
         },
 
         "tenant_shared": {
-            "label": "Tenant Shared (todos los tenants)",
+            "label": "Tenant Shared",
             "class_prefix": "TenantShared",
             "folder": "Tenant/Shared",
             "namespace_path": "Tenant\\Shared",
@@ -56,70 +50,36 @@
             "route_name": null,
             "permission_prefix": null,
             "permission_middleware": "tenant-permission",
-            "route_middleware": [
-                "web",
-                "Stancl\\Tenancy\\Middleware\\InitializeTenancyByDomain::class",
-                "Stancl\\Tenancy\\Middleware\\PreventAccessFromCentralDomains::class",
-                "auth",
-                "tenant-auth"
-            ],
+            "route_middleware": ["web", "auth", "tenant-auth"],
             "wrap_central_domains": false
         }
     },
 
     "tenants": {
-        "energy_spain": {
-            "label": "Energía España",
-            "class_prefix": "TenantEnergySpain",
-            "folder": "Tenant/EnergySpain",
-            "namespace_path": "Tenant\\EnergySpain",
-            "route_prefix": "energy-spain",
-            "route_name": "energy-spain.",
-            "permission_prefix": "energy_spain",
+        "_readme": "Define aquí los tenants de tu proyecto. Cada tenant es una instancia del contexto 'tenant'. Configura class_prefix, folder, route_prefix y permission_prefix según tu proyecto.",
+
+        "tenant_one": {
+            "label": "Tenant One",
+            "class_prefix": "TenantOne",
+            "folder": "Tenant/TenantOne",
+            "namespace_path": "Tenant\\TenantOne",
+            "route_prefix": "tenant-one",
+            "route_name": "tenant-one.",
+            "permission_prefix": "tenant_one",
             "permission_middleware": "tenant-permission",
-            "route_middleware": [
-                "web",
-                "Stancl\\Tenancy\\Middleware\\InitializeTenancyByDomain::class",
-                "Stancl\\Tenancy\\Middleware\\PreventAccessFromCentralDomains::class",
-                "auth",
-                "tenant-auth"
-            ]
+            "route_middleware": ["web", "auth", "tenant-auth"]
         },
 
-        "telephony_spain": {
-            "label": "Telefonía España",
-            "class_prefix": "TenantTelephonySpain",
-            "folder": "Tenant/TelephonySpain",
-            "namespace_path": "Tenant\\TelephonySpain",
-            "route_prefix": "telephony-spain",
-            "route_name": "telephony-spain.",
-            "permission_prefix": "telephony_spain",
+        "tenant_two": {
+            "label": "Tenant Two",
+            "class_prefix": "TenantTwo",
+            "folder": "Tenant/TenantTwo",
+            "namespace_path": "Tenant\\TenantTwo",
+            "route_prefix": "tenant-two",
+            "route_name": "tenant-two.",
+            "permission_prefix": "tenant_two",
             "permission_middleware": "tenant-permission",
-            "route_middleware": [
-                "web",
-                "Stancl\\Tenancy\\Middleware\\InitializeTenancyByDomain::class",
-                "Stancl\\Tenancy\\Middleware\\PreventAccessFromCentralDomains::class",
-                "auth",
-                "tenant-auth"
-            ]
-        },
-
-        "telephony_peru": {
-            "label": "Telefonía Perú",
-            "class_prefix": "TenantTelephonyPeru",
-            "folder": "Tenant/TelephonyPeru",
-            "namespace_path": "Tenant\\TelephonyPeru",
-            "route_prefix": "telephony-peru",
-            "route_name": "telephony-peru.",
-            "permission_prefix": "telephony_peru",
-            "permission_middleware": "tenant-permission",
-            "route_middleware": [
-                "web",
-                "Stancl\\Tenancy\\Middleware\\InitializeTenancyByDomain::class",
-                "Stancl\\Tenancy\\Middleware\\PreventAccessFromCentralDomains::class",
-                "auth",
-                "tenant-auth"
-            ]
+            "route_middleware": ["web", "auth", "tenant-auth"]
         }
     }
 }
