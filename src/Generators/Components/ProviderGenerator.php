@@ -57,7 +57,7 @@ class ProviderGenerator extends AbstractComponentGenerator
         $stub = $this->getStubContent('provider.stub', $this->isClean, [
             'module'        => $this->moduleName,
             'modelImports'  => trim($modelImports),
-            'modelBindings' => trim($modelBindings),
+            'modelBindings' => rtrim($modelBindings),
         ]);
 
         $this->putFile(

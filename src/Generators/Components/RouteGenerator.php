@@ -72,6 +72,13 @@ class RouteGenerator extends AbstractComponentGenerator
         $routesDir = $this->getComponentBasePath() . '/routes';
         $this->ensureDirectoryExists($routesDir);
 
+        // Si hay un tenant específico seleccionado, siempre es ruta de tenant específico
+        // (el contexto 'tenant' no tiene is_tenant porque viene de la sección 'tenants' del JSON)
+        if (isset($this->componentConfig['tenant'])) {
+            $this->generateSingleTenantRoutes($routesDir, $context);
+            return;
+        }
+
         $isTenantShared = $context['generates_routes_for_all_tenants'] ?? false;
         $isCentral      = $context['wrap_central_domains'] ?? false;
 
@@ -82,7 +89,7 @@ class RouteGenerator extends AbstractComponentGenerator
             // central → envuelve en foreach central_domains
             $this->generateCentralRoutes($routesDir);
         } elseif ($context['is_tenant'] ?? false) {
-            // tenant específico → un solo bloque
+            // tenant específico definido en contexts.contexts (retrocompatibilidad)
             $this->generateSingleTenantRoutes($routesDir, $context);
         } else {
             // shared sin tenant → web.php simple
