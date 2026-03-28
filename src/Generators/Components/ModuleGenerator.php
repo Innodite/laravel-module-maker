@@ -1,7 +1,8 @@
 <?php
 
-namespace Innodite\LaravelModuleMaker\Generators\Components;
+declare(strict_types=1);
 
+namespace Innodite\LaravelModuleMaker\Generators\Components;
 
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Str;
@@ -89,7 +90,8 @@ class ModuleGenerator
     }
 
     /**
-     * Orquesta la creación de un módulo limpio.
+     * Orquesta la creación de un módulo limpio sin contexto (estructura básica).
+     * Úsalo cuando no hay contexts.json disponible o como fallback.
      *
      * @return void
      */
@@ -98,29 +100,59 @@ class ModuleGenerator
         $this->createFolders();
 
         $modelName = $this->moduleName;
-        $controllerName = "{$modelName}Controller";
-        $serviceName = "{$modelName}Service";
-        $repositoryName = "{$modelName}Repository";
-        $requestName = "{$modelName}StoreRequest";
-        $migrationName = $modelName;
-        $seederName = "{$modelName}Seeder";
-        $factoryName = $modelName;
-        $testName = "{$modelName}Test";
 
         (new ModelGenerator($this->moduleName, $this->modulePath, true, $modelName))->generate();
-        (new ControllerGenerator($this->moduleName, $this->modulePath, true, $controllerName, $modelName))->generate();
-        (new ServiceGenerator($this->moduleName, $this->modulePath, true, $serviceName, $modelName))->generate();
-        (new RepositoryGenerator($this->moduleName, $this->modulePath, true, $repositoryName, $modelName))->generate();
-        (new RequestGenerator($this->moduleName, $this->modulePath, true, $requestName))->generate();
-        (new ProviderGenerator($this->moduleName, $this->modulePath, true, $this->moduleName))->generate(); // Para módulo limpio, no pasamos componentes
-        (new RouteGenerator($this->moduleName, $this->modulePath, true, $controllerName))->generate();
-        (new MigrationGenerator($this->moduleName, $this->modulePath, true, $migrationName))->generate();
-        (new SeederGenerator($this->moduleName, $this->modulePath, true, $seederName))->generate();
-        (new FactoryGenerator($this->moduleName, $this->modulePath, true, $factoryName, $modelName))->generate();
-        (new TestGenerator($this->moduleName, $this->modulePath, true, $testName))->generate();
+        (new ControllerGenerator($this->moduleName, $this->modulePath, true, $modelName))->generate();
+        (new ServiceGenerator($this->moduleName, $this->modulePath, true, $modelName))->generate();
+        (new RepositoryGenerator($this->moduleName, $this->modulePath, true, $modelName))->generate();
+        (new RequestGenerator($this->moduleName, $this->modulePath, true, "{$modelName}StoreRequest"))->generate();
+        (new ProviderGenerator($this->moduleName, $this->modulePath, true))->generate();
+        (new RouteGenerator($this->moduleName, $this->modulePath, true, $modelName))->generate();
+        (new MigrationGenerator($this->moduleName, $this->modulePath, true, $modelName))->generate();
+        (new SeederGenerator($this->moduleName, $this->modulePath, true, "{$modelName}Seeder"))->generate();
+        (new FactoryGenerator($this->moduleName, $this->modulePath, true, $modelName, $modelName))->generate();
+        (new TestGenerator($this->moduleName, $this->modulePath, true, "{$modelName}Test"))->generate();
 
         if ($this->command) {
-            $this->command->info("✅ Módulo '{$this->moduleName}' creado con éxito (Estructura limpia).");
+            $this->command->info("✅ Módulo '{$this->moduleName}' creado con éxito (Estructura básica).");
+        }
+    }
+
+    /**
+     * Orquesta la creación de un módulo limpio con contexto explícito.
+     * Aplica la convención de nombres y carpetas según el contexto seleccionado.
+     *
+     * @param  string  $contextKey    Clave del contexto (ej: 'central', 'energy_spain')
+     * @param  string  $functionality Nombre de la funcionalidad para el prefijo de ruta (ej: 'users')
+     * @return void
+     */
+    public function createCleanModuleWithContext(string $contextKey, string $functionality): void
+    {
+        $this->createFolders();
+
+        $modelName = $this->moduleName;
+
+        // El componentConfig le indica a cada generator en qué contexto operar
+        $componentConfig = [
+            'name'          => $modelName,
+            'context'       => $contextKey,
+            'functionality' => $functionality,
+        ];
+
+        (new ModelGenerator($this->moduleName, $this->modulePath, true, $modelName))->generate();
+        (new ControllerGenerator($this->moduleName, $this->modulePath, true, $modelName, $componentConfig))->generate();
+        (new ServiceGenerator($this->moduleName, $this->modulePath, true, $modelName, $componentConfig))->generate();
+        (new RepositoryGenerator($this->moduleName, $this->modulePath, true, $modelName, $componentConfig))->generate();
+        (new RequestGenerator($this->moduleName, $this->modulePath, true, "{$modelName}StoreRequest", $componentConfig))->generate();
+        (new ProviderGenerator($this->moduleName, $this->modulePath, true, [$componentConfig], $componentConfig))->generate();
+        (new RouteGenerator($this->moduleName, $this->modulePath, true, $modelName, $componentConfig))->generate();
+        (new MigrationGenerator($this->moduleName, $this->modulePath, true, $modelName))->generate();
+        (new SeederGenerator($this->moduleName, $this->modulePath, true, "{$modelName}Seeder"))->generate();
+        (new FactoryGenerator($this->moduleName, $this->modulePath, true, $modelName, $modelName))->generate();
+        (new TestGenerator($this->moduleName, $this->modulePath, true, "{$modelName}Test"))->generate();
+
+        if ($this->command) {
+            $this->command->info("✅ Módulo '{$this->moduleName}' creado con éxito (contexto: {$contextKey}).");
         }
     }
 
@@ -144,7 +176,7 @@ class ModuleGenerator
         $components = $this->config['components'] ?? [];
 
         // El ProviderGenerator necesita la lista completa de componentes para generar los bindings
-        (new ProviderGenerator($this->moduleName, $this->modulePath, false, $this->moduleName, $components))->generate();
+        (new ProviderGenerator($this->moduleName, $this->modulePath, false, $components))->generate();
 
         foreach ($components as $component) {
             $modelName     = Str::studly($component['name']);
