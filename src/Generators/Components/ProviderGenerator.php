@@ -72,6 +72,10 @@ class ProviderGenerator extends AbstractComponentGenerator
      * En modo dinámico usa los componentes con su contexto.
      * En modo limpio usa el nombre del módulo sin contexto.
      *
+     * Cuando el contexto de un componente es 'tenant', se usa la clave 'tenant'
+     * para resolver el tenant específico mediante ContextResolver::resolveTenant(),
+     * obteniendo así el namespace_path y class_prefix correctos.
+     *
      * @return array{0: string, 1: string}  [imports, bindings]
      */
     private function buildImportsAndBindings(): array
@@ -81,19 +85,41 @@ class ProviderGenerator extends AbstractComponentGenerator
 
         $componentList = (! $this->isClean && ! empty($this->components))
             ? $this->components
-            : [['name' => $this->moduleName, 'context' => $this->componentConfig['context'] ?? null]];
+            : [['name' => $this->moduleName, 'context' => $this->componentConfig['context'] ?? null, 'tenant' => $this->componentConfig['tenant'] ?? null]];
 
         foreach ($componentList as $component) {
             $modelName  = Str::studly($component['name']);
             $contextKey = $component['context'] ?? null;
+            $tenantKey  = $component['tenant'] ?? null;
 
-            // Derivar namespaces según el contexto del componente
-            [$serviceNs, $repoNs] = $this->resolveNamespacesForComponent($modelName, $contextKey);
+            // Resolver el contexto efectivo: si es 'tenant', usar el tenant específico
+            $effectiveCtx = null;
+            if ($contextKey === 'tenant' && $tenantKey !== null) {
+                try {
+                    $effectiveCtx = \Innodite\LaravelModuleMaker\Support\ContextResolver::resolveTenant($tenantKey);
+                } catch (\InvalidArgumentException) {
+                }
+            } elseif ($contextKey !== null) {
+                try {
+                    $effectiveCtx = \Innodite\LaravelModuleMaker\Support\ContextResolver::resolve($contextKey);
+                } catch (\InvalidArgumentException) {
+                }
+            }
 
-            $serviceClass    = ($contextKey ? $this->resolveClassPrefix($contextKey) : '') . "{$modelName}Service";
-            $serviceIface    = $serviceClass . 'Interface';
-            $repoClass       = ($contextKey ? $this->resolveClassPrefix($contextKey) : '') . "{$modelName}Repository";
-            $repoIface       = $repoClass . 'Interface';
+            $classPrefix = $effectiveCtx['class_prefix'] ?? '';
+            $nsPath      = $effectiveCtx['namespace_path'] ?? '';
+
+            $serviceClass = $classPrefix . "{$modelName}Service";
+            $serviceIface = $serviceClass . 'Interface';
+            $repoClass    = $classPrefix . "{$modelName}Repository";
+            $repoIface    = $repoClass . 'Interface';
+
+            $serviceNs = $nsPath
+                ? "Modules\\{$this->moduleName}\\Services\\{$nsPath}"
+                : "Modules\\{$this->moduleName}\\Services";
+            $repoNs = $nsPath
+                ? "Modules\\{$this->moduleName}\\Repositories\\{$nsPath}"
+                : "Modules\\{$this->moduleName}\\Repositories";
 
             $imports .= "use {$serviceNs}\\Contracts\\{$serviceIface};\n";
             $imports .= "use {$serviceNs}\\{$serviceClass};\n";
@@ -111,56 +137,5 @@ class ProviderGenerator extends AbstractComponentGenerator
         }
 
         return [$imports, $bindings];
-    }
-
-    /**
-     * Resuelve los namespaces de Service y Repository para un componente según su contexto.
-     *
-     * @param  string       $modelName   Nombre del modelo en StudlyCase
-     * @param  string|null  $contextKey  Clave del contexto o null
-     * @return array{0: string, 1: string}  [serviceNamespace, repositoryNamespace]
-     */
-    private function resolveNamespacesForComponent(string $modelName, ?string $contextKey): array
-    {
-        if ($contextKey === null) {
-            return [
-                "Modules\\{$this->moduleName}\\Services",
-                "Modules\\{$this->moduleName}\\Repositories",
-            ];
-        }
-
-        try {
-            $ctx      = \Innodite\LaravelModuleMaker\Support\ContextResolver::resolve($contextKey);
-            $nsPath   = $ctx['namespace_path'] ?? '';
-            $serviceNs = $nsPath
-                ? "Modules\\{$this->moduleName}\\Services\\{$nsPath}"
-                : "Modules\\{$this->moduleName}\\Services";
-            $repoNs = $nsPath
-                ? "Modules\\{$this->moduleName}\\Repositories\\{$nsPath}"
-                : "Modules\\{$this->moduleName}\\Repositories";
-
-            return [$serviceNs, $repoNs];
-        } catch (\InvalidArgumentException) {
-            return [
-                "Modules\\{$this->moduleName}\\Services",
-                "Modules\\{$this->moduleName}\\Repositories",
-            ];
-        }
-    }
-
-    /**
-     * Retorna el prefijo de clase para un contexto dado.
-     *
-     * @param  string  $contextKey  Clave del contexto
-     * @return string
-     */
-    private function resolveClassPrefix(string $contextKey): string
-    {
-        try {
-            $ctx = \Innodite\LaravelModuleMaker\Support\ContextResolver::resolve($contextKey);
-            return $ctx['class_prefix'] ?? '';
-        } catch (\InvalidArgumentException) {
-            return '';
-        }
     }
 }
