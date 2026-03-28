@@ -121,12 +121,14 @@ class ModuleGenerator
     /**
      * Orquesta la creación de un módulo limpio con contexto explícito.
      * Aplica la convención de nombres y carpetas según el contexto seleccionado.
+     * Si el contexto es 'tenant', requiere $tenantKey para saber cuál tenant específico.
      *
-     * @param  string  $contextKey    Clave del contexto (ej: 'central', 'energy_spain')
-     * @param  string  $functionality Nombre de la funcionalidad para el prefijo de ruta (ej: 'users')
+     * @param  string       $contextKey    Clave del contexto (ej: 'central', 'tenant', 'tenant_shared')
+     * @param  string       $functionality Nombre de la funcionalidad para el prefijo de ruta (ej: 'users')
+     * @param  string|null  $tenantKey     Clave del tenant específico (solo si $contextKey === 'tenant')
      * @return void
      */
-    public function createCleanModuleWithContext(string $contextKey, string $functionality): void
+    public function createCleanModuleWithContext(string $contextKey, string $functionality, ?string $tenantKey = null): void
     {
         $this->createFolders();
 
@@ -136,6 +138,7 @@ class ModuleGenerator
         $componentConfig = [
             'name'          => $modelName,
             'context'       => $contextKey,
+            'tenant'        => $tenantKey,
             'functionality' => $functionality,
         ];
 

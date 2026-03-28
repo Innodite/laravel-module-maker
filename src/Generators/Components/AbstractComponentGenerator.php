@@ -78,8 +78,10 @@ abstract class AbstractComponentGenerator
 
     /**
      * Retorna la configuración completa del contexto activo.
-     * Si el componente no tiene 'context' definido, retorna un contexto vacío
-     * para mantener compatibilidad con el modo sin contexto.
+     *
+     * Si el contexto es 'tenant', resuelve el tenant específico desde la sección
+     * 'tenants' de contexts.json usando la clave 'tenant' del componentConfig.
+     * Si no hay 'context' definido, retorna array vacío (retrocompatibilidad).
      *
      * @return array<string, mixed>
      */
@@ -93,6 +95,17 @@ abstract class AbstractComponentGenerator
 
         if ($contextKey === null) {
             $this->resolvedContext = [];
+            return $this->resolvedContext;
+        }
+
+        // Contexto 'tenant': las propiedades reales vienen del tenant específico
+        if ($contextKey === 'tenant') {
+            $tenantKey = $this->componentConfig['tenant'] ?? null;
+
+            $this->resolvedContext = $tenantKey !== null
+                ? ContextResolver::resolveTenant($tenantKey)
+                : ContextResolver::resolve('tenant');
+
             return $this->resolvedContext;
         }
 

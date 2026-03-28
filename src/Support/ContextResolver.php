@@ -7,43 +7,42 @@ namespace Innodite\LaravelModuleMaker\Support;
 use Illuminate\Support\Facades\File;
 
 /**
- * Resuelve la configuración de contexto para el generador de módulos.
+ * Resuelve la configuración de contextos y tenants del proyecto.
  *
- * Lee el archivo contexts.json del proyecto (publicado por innodite:setup)
- * y expone la información de cada contexto: carpeta, prefijo de clase,
- * namespace, prefijo de ruta, middleware de permisos y de rutas.
+ * Lee contexts.json con la estructura:
+ *   contexts → 4 contextos arquitectónicos (central, shared, tenant, tenant_shared)
+ *   tenants  → tenants específicos del proyecto (instancias del contexto 'tenant')
  *
- * Si el proyecto no tiene contexts.json publicado, usa el template
- * incluido en el paquete como fallback.
+ * Si el proyecto no tiene contexts.json publicado, usa el template del paquete.
  */
 class ContextResolver
 {
     /**
-     * Cache de contextos cargados para no releer el archivo en cada llamada.
+     * Cache del archivo contexts.json completo.
      *
-     * @var array<string, array>|null
+     * @var array<string, mixed>|null
      */
-    private static ?array $contexts = null;
+    private static ?array $data = null;
 
     /**
-     * Retorna la configuración completa de un contexto por su clave.
-     * Lanza una excepción si el contexto no existe en el archivo de configuración.
+     * Retorna la configuración de un contexto arquitectónico por su clave.
+     * Contextos válidos: central, shared, tenant, tenant_shared.
      *
-     * @param  string  $contextKey  Clave del contexto (ej: 'central', 'energy_spain', 'tenant_shared')
+     * @param  string  $contextKey  Clave del contexto (ej: 'central', 'tenant_shared')
      * @return array<string, mixed>
      *
-     * @throws \InvalidArgumentException Si el contexto no está definido en contexts.json
+     * @throws \InvalidArgumentException Si el contexto no existe
      */
     public static function resolve(string $contextKey): array
     {
-        $contexts = self::load();
+        $contexts = self::load()['contexts'] ?? [];
 
         if (! isset($contexts[$contextKey])) {
-            $available = implode(', ', array_filter(array_keys($contexts), fn ($k) => ! str_starts_with($k, '_')));
+            $available = implode(', ', array_keys($contexts));
             throw new \InvalidArgumentException(
                 "[ContextResolver] El contexto '{$contextKey}' no está definido en contexts.json.\n" .
                 "Contextos disponibles: {$available}\n" .
-                "Para agregar un contexto nuevo, edita Modules/module-maker-config/contexts.json."
+                "Edita Modules/module-maker-config/contexts.json para agregar o modificar contextos."
             );
         }
 
@@ -51,51 +50,73 @@ class ContextResolver
     }
 
     /**
-     * Retorna todos los contextos que tienen generates_routes_for_all_tenants = false
-     * y is_tenant = true. Usado por RouteGenerator para saber a qué tenants
-     * generar rutas cuando el contexto es tenant_shared.
+     * Retorna la configuración de un tenant específico por su clave.
+     * Los tenants son instancias del contexto 'tenant' (ej: energy_spain, telephony_spain).
      *
-     * @return array<string, array>
+     * @param  string  $tenantKey  Clave del tenant (ej: 'energy_spain', 'telephony_peru')
+     * @return array<string, mixed>
+     *
+     * @throws \InvalidArgumentException Si el tenant no existe
      */
-    public static function getSpecificTenants(): array
+    public static function resolveTenant(string $tenantKey): array
     {
-        $contexts = self::load();
+        $tenants = self::load()['tenants'] ?? [];
 
-        return array_filter(
-            $contexts,
-            fn ($key, $ctx) => ! str_starts_with($key, '_')
-                && ($ctx['is_tenant'] ?? false) === true
-                && ($ctx['generates_routes_for_all_tenants'] ?? false) === false,
-            ARRAY_FILTER_USE_BOTH
-        );
+        if (! isset($tenants[$tenantKey])) {
+            $available = implode(', ', array_keys($tenants));
+            throw new \InvalidArgumentException(
+                "[ContextResolver] El tenant '{$tenantKey}' no está definido en contexts.json.\n" .
+                "Tenants disponibles: {$available}\n" .
+                "Agrega el tenant en la sección 'tenants' de Modules/module-maker-config/contexts.json."
+            );
+        }
+
+        return $tenants[$tenantKey];
     }
 
     /**
-     * Retorna todos los contextos definidos, excluyendo las claves de metadata (_readme, etc.).
+     * Retorna todos los contextos arquitectónicos definidos.
+     * Siempre son exactamente 4: central, shared, tenant, tenant_shared.
      *
      * @return array<string, array>
      */
     public static function all(): array
     {
-        return array_filter(
-            self::load(),
-            fn ($key) => ! str_starts_with($key, '_'),
-            ARRAY_FILTER_USE_KEY
-        );
+        return self::load()['contexts'] ?? [];
+    }
+
+    /**
+     * Retorna todos los tenants específicos del proyecto.
+     *
+     * @return array<string, array>
+     */
+    public static function allTenants(): array
+    {
+        return self::load()['tenants'] ?? [];
+    }
+
+    /**
+     * Retorna los tenants específicos. Usado por RouteGenerator para tenant_shared.
+     *
+     * @return array<string, array>
+     */
+    public static function getSpecificTenants(): array
+    {
+        return self::allTenants();
     }
 
     /**
      * Carga el archivo contexts.json. Prioriza el del proyecto sobre el del paquete.
-     * Usa cache estático para no releer el archivo en cada llamada durante la misma ejecución.
+     * Usa cache estático para no releer el archivo durante la misma ejecución.
      *
-     * @return array<string, array>
+     * @return array<string, mixed>
      *
      * @throws \RuntimeException Si el JSON es inválido
      */
     private static function load(): array
     {
-        if (self::$contexts !== null) {
-            return self::$contexts;
+        if (self::$data !== null) {
+            return self::$data;
         }
 
         $path = self::resolvePath();
@@ -109,41 +130,38 @@ class ContextResolver
             );
         }
 
-        self::$contexts = $data;
-        return self::$contexts;
+        self::$data = $data;
+        return self::$data;
     }
 
     /**
      * Resuelve la ruta del archivo contexts.json.
-     * Busca primero en el proyecto (publicado por setup), luego usa el template del paquete.
+     * Prioridad: proyecto (publicado por setup) → default_config_path → template del paquete.
      *
-     * @return string  Ruta absoluta al archivo contexts.json
+     * @return string  Ruta absoluta al contexts.json
      */
     private static function resolvePath(): string
     {
-        // Prioridad 1 — publicado por el proyecto via innodite:setup
         $projectPath = config('make-module.contexts_path');
         if ($projectPath && File::exists($projectPath)) {
             return $projectPath;
         }
 
-        // Prioridad 2 — ubicación por defecto del setup
         $defaultPath = config('make-module.default_config_path') . '/contexts.json';
         if (File::exists($defaultPath)) {
             return $defaultPath;
         }
 
-        // Fallback — template incluido en el paquete
         return __DIR__ . '/../../stubs/contexts.json';
     }
 
     /**
-     * Limpia el cache de contextos. Útil en tests.
+     * Limpia el cache. Útil en tests.
      *
      * @return void
      */
     public static function flush(): void
     {
-        self::$contexts = null;
+        self::$data = null;
     }
 }
