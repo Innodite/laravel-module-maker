@@ -7,12 +7,13 @@ namespace Innodite\LaravelModuleMaker\Support;
 use Illuminate\Support\Facades\File;
 
 /**
- * Resuelve la configuración de contextos y tenants del proyecto.
+ * Resuelve la configuración de contextos del proyecto desde contexts.json.
  *
- * Lee contexts.json con la estructura:
- *   contexts → 4 contextos arquitectónicos (central, shared, tenant, tenant_shared)
- *   tenants  → tenants específicos del proyecto (instancias del contexto 'tenant')
+ * Estructura del archivo:
+ *   contexts → objeto con 4 claves (central, shared, tenant, tenant_shared)
+ *              cada clave contiene un ARRAY de sub-contextos con campo 'name'
  *
+ * Los tenants del proyecto están en contexts.tenant (no en una sección separada).
  * Si el proyecto no tiene contexts.json publicado, usa el template del paquete.
  */
 class ContextResolver
@@ -25,58 +26,72 @@ class ContextResolver
     private static ?array $data = null;
 
     /**
-     * Retorna la configuración de un contexto arquitectónico por su clave.
-     * Contextos válidos: central, shared, tenant, tenant_shared.
+     * Retorna el primer sub-contexto de una clave de contexto.
+     * Útil para contextos con un único item (ej: central, tenant_shared).
      *
      * @param  string  $contextKey  Clave del contexto (ej: 'central', 'tenant_shared')
      * @return array<string, mixed>
      *
-     * @throws \InvalidArgumentException Si el contexto no existe
+     * @throws \InvalidArgumentException Si el contexto no existe o está vacío
      */
     public static function resolve(string $contextKey): array
     {
-        $contexts = self::load()['contexts'] ?? [];
+        $items = self::allContextItems($contextKey);
 
-        if (! isset($contexts[$contextKey])) {
-            $available = implode(', ', array_keys($contexts));
+        if (empty($items)) {
+            $available = implode(', ', array_keys(self::all()));
             throw new \InvalidArgumentException(
-                "[ContextResolver] El contexto '{$contextKey}' no está definido en contexts.json.\n" .
+                "[ContextResolver] El contexto '{$contextKey}' no tiene items definidos en contexts.json.\n" .
                 "Contextos disponibles: {$available}\n" .
-                "Edita Modules/module-maker-config/contexts.json para agregar o modificar contextos."
+                "Edita Modules/module-maker-config/contexts.json."
             );
         }
 
-        return $contexts[$contextKey];
+        return $items[0];
     }
 
     /**
-     * Retorna la configuración de un tenant específico por su clave.
-     * Los tenants son instancias del contexto 'tenant' (ej: energy_spain, telephony_spain).
+     * Retorna un sub-contexto específico buscándolo por su campo 'name'.
+     * Permite seleccionar una variante concreta cuando hay múltiples en el mismo contexto.
      *
-     * @param  string  $tenantKey  Clave del tenant (ej: 'energy_spain', 'telephony_peru')
+     * @param  string  $contextKey  Clave del contexto (ej: 'tenant', 'shared')
+     * @param  string  $name        Valor del campo 'name' del sub-contexto (ej: 'Energía España')
+     * @return array<string, mixed>
+     *
+     * @throws \InvalidArgumentException Si no se encuentra ningún item con ese name
+     */
+    public static function resolveItem(string $contextKey, string $name): array
+    {
+        foreach (self::allContextItems($contextKey) as $item) {
+            if (($item['name'] ?? '') === $name) {
+                return $item;
+            }
+        }
+
+        $available = implode(', ', array_map(fn ($i) => $i['name'] ?? '?', self::allContextItems($contextKey)));
+        throw new \InvalidArgumentException(
+            "[ContextResolver] No se encontró el item '{$name}' en el contexto '{$contextKey}'.\n" .
+            "Items disponibles: {$available}\n" .
+            "Edita Modules/module-maker-config/contexts.json."
+        );
+    }
+
+    /**
+     * Retorna un tenant por su 'name'. Alias de resolveItem('tenant', $name).
+     *
+     * @param  string  $name  Valor del campo 'name' del tenant (ej: 'Energía España')
      * @return array<string, mixed>
      *
      * @throws \InvalidArgumentException Si el tenant no existe
      */
-    public static function resolveTenant(string $tenantKey): array
+    public static function resolveTenant(string $name): array
     {
-        $tenants = self::load()['tenants'] ?? [];
-
-        if (! isset($tenants[$tenantKey])) {
-            $available = implode(', ', array_keys($tenants));
-            throw new \InvalidArgumentException(
-                "[ContextResolver] El tenant '{$tenantKey}' no está definido en contexts.json.\n" .
-                "Tenants disponibles: {$available}\n" .
-                "Agrega el tenant en la sección 'tenants' de Modules/module-maker-config/contexts.json."
-            );
-        }
-
-        return $tenants[$tenantKey];
+        return self::resolveItem('tenant', $name);
     }
 
     /**
-     * Retorna todos los contextos arquitectónicos definidos.
-     * Siempre son exactamente 4: central, shared, tenant, tenant_shared.
+     * Retorna todos los contextos arquitectónicos.
+     * Formato: { "central": [...], "shared": [...], "tenant": [...], "tenant_shared": [...] }
      *
      * @return array<string, array>
      */
@@ -86,19 +101,48 @@ class ContextResolver
     }
 
     /**
-     * Retorna todos los tenants específicos del proyecto.
+     * Retorna el array de sub-contextos para una clave de contexto específica.
      *
-     * @return array<string, array>
+     * @param  string  $contextKey  Clave del contexto (ej: 'tenant', 'shared')
+     * @return array<int, array>
      */
-    public static function allTenants(): array
+    public static function allContextItems(string $contextKey): array
     {
-        return self::load()['tenants'] ?? [];
+        return self::all()[$contextKey] ?? [];
     }
 
     /**
-     * Retorna los tenants específicos. Usado por RouteGenerator para tenant_shared.
+     * Retorna todos los tenants del proyecto (items del contexto 'tenant').
      *
-     * @return array<string, array>
+     * @return array<int, array>
+     */
+    public static function allTenants(): array
+    {
+        return self::allContextItems('tenant');
+    }
+
+    /**
+     * Retorna TODOS los sub-contextos de TODOS los contextos en un array plano.
+     * Útil para RendersInertiaModule que necesita todos los prefijos.
+     *
+     * @return array<int, array>
+     */
+    public static function allItems(): array
+    {
+        $items = [];
+        foreach (self::all() as $contextItems) {
+            foreach ($contextItems as $item) {
+                $items[] = $item;
+            }
+        }
+        return $items;
+    }
+
+    /**
+     * Retorna los tenants específicos. Alias de allTenants().
+     * Mantenido para compatibilidad con RouteGenerator.
+     *
+     * @return array<int, array>
      */
     public static function getSpecificTenants(): array
     {

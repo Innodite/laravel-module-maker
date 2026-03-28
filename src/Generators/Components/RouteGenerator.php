@@ -69,32 +69,30 @@ class RouteGenerator extends AbstractComponentGenerator
             return;
         }
 
-        $routesDir = $this->getComponentBasePath() . '/routes';
+        $routesDir  = $this->getComponentBasePath() . '/routes';
+        $contextKey = $this->componentConfig['context'] ?? '';
         $this->ensureDirectoryExists($routesDir);
 
-        // Si hay un tenant específico seleccionado, siempre es ruta de tenant específico
-        // (el contexto 'tenant' no tiene is_tenant porque viene de la sección 'tenants' del JSON)
-        if (isset($this->componentConfig['tenant'])) {
+        // tenant (específico) → siempre un bloque para ese tenant
+        if ($contextKey === 'tenant') {
             $this->generateSingleTenantRoutes($routesDir, $context);
             return;
         }
 
-        $isTenantShared = $context['generates_routes_for_all_tenants'] ?? false;
-        $isCentral      = $context['wrap_central_domains'] ?? false;
-
-        if ($isTenantShared) {
-            // tenant_shared → genera un bloque por cada tenant específico
+        // tenant_shared → genera un bloque por CADA tenant del proyecto
+        if ($contextKey === 'tenant_shared') {
             $this->generateTenantSharedRoutes($routesDir);
-        } elseif ($isCentral) {
-            // central → envuelve en foreach central_domains
-            $this->generateCentralRoutes($routesDir);
-        } elseif ($context['is_tenant'] ?? false) {
-            // tenant específico definido en contexts.contexts (retrocompatibilidad)
-            $this->generateSingleTenantRoutes($routesDir, $context);
-        } else {
-            // shared sin tenant → web.php simple
-            $this->generateSharedRoutes($routesDir, $context);
+            return;
         }
+
+        // central → envuelto en foreach central_domains
+        if ($context['wrap_central_domains'] ?? false) {
+            $this->generateCentralRoutes($routesDir);
+            return;
+        }
+
+        // shared / central sin wrap → web.php simple
+        $this->generateSharedRoutes($routesDir, $context);
     }
 
     // ─── Generadores por tipo de contexto ────────────────────────────────────
@@ -199,8 +197,8 @@ class RouteGenerator extends AbstractComponentGenerator
      */
     private function generateSingleTenantRoutes(string $routesDir, array $context): void
     {
-        $tenantKey       = $this->componentConfig['tenant'] ?? $this->componentConfig['context'];
-        $markerKey       = strtoupper($tenantKey);
+        $classPrefix     = $context['class_prefix'] ?? 'TENANT';
+        $markerKey       = strtoupper(Str::snake($classPrefix));
         $functionality   = $this->getFunctionality();
         $controllerClass = $this->buildControllerClass();
         $controllerFqcn  = $this->buildControllerNamespace() . '\\' . $controllerClass;
@@ -208,7 +206,7 @@ class RouteGenerator extends AbstractComponentGenerator
         $permMiddleware  = $context['permission_middleware'];
         $permKey         = Str::snake(str_replace('-', '_', $functionality));
         $middleware      = $this->buildMiddlewareArray($context['route_middleware'] ?? []);
-        $label           = $context['label'];
+        $label           = $context['name'] ?? $context['label'] ?? $classPrefix;
         $separator       = str_repeat('─', 74);
 
         $block = $this->buildRouteBlock(
@@ -244,17 +242,17 @@ class RouteGenerator extends AbstractComponentGenerator
      */
     private function generateTenantSharedRoutes(string $routesDir): void
     {
-        $tenants = ContextResolver::getSpecificTenants();
+        $tenants = ContextResolver::allTenants();
 
-        foreach ($tenants as $tenantKey => $tenantContext) {
-            // Sustituir temporalmente el contexto para generar cada bloque con los datos del tenant
-            $this->componentConfig['context'] = $tenantKey;
-            $this->resolveContextCache($tenantContext);
-            $this->generateSingleTenantRoutes($routesDir, $tenantContext);
+        foreach ($tenants as $tenantItem) {
+            // Sustituir temporalmente el context_name para generar cada bloque con los datos del tenant
+            $this->componentConfig['context_name'] = $tenantItem['name'];
+            $this->resolveContextCache($tenantItem);
+            $this->generateSingleTenantRoutes($routesDir, $tenantItem);
         }
 
         // Restaurar el contexto original
-        $this->componentConfig['context'] = 'tenant_shared';
+        $this->componentConfig['context_name'] = null;
         $this->resolveContextCache(null);
     }
 

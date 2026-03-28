@@ -122,19 +122,19 @@ trait RendersInertiaModule
 
         try {
             // Tenants primero (prefijos más específicos, ej: TenantEnergySpain)
-            foreach (ContextResolver::allTenants() as $ctx) {
-                $prefix = $ctx['class_prefix'] ?? null;
-                $folder = $ctx['folder'] ?? null;
+            foreach (ContextResolver::allTenants() as $item) {
+                $prefix = $item['class_prefix'] ?? null;
+                $folder = $item['folder'] ?? null;
                 if ($prefix && $folder) {
                     $map[$prefix] = $folder;
                 }
             }
 
-            // Contextos arquitectónicos (prefijos más cortos, ej: TenantShared, Central, Shared)
-            foreach (ContextResolver::all() as $ctx) {
-                $prefix = $ctx['class_prefix'] ?? null;
-                $folder = $ctx['folder'] ?? null;
-                if ($prefix && $folder) {
+            // Todos los demás sub-contextos (prefijos más cortos, ej: TenantShared, Central, Shared)
+            foreach (ContextResolver::allItems() as $item) {
+                $prefix = $item['class_prefix'] ?? null;
+                $folder = $item['folder'] ?? null;
+                if ($prefix && $folder && ! isset($map[$prefix])) {
                     $map[$prefix] = $folder;
                 }
             }

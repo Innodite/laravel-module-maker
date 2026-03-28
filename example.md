@@ -105,3 +105,22 @@ yo ejecuto el comando
 
 - si le digo que use el json me pregunta el nombre  si le digo uno que este en el arrelgo 
 - si elijo automatico e entonces aggrega el json con el estandar por defefecto imaginemos que elegi el contexto shared yy moodulo se llama Point 
+
+
+
+CREACION DE ARCHIVOS INDIVIDUALES
+
+PHP ARTISAN INNODITE:MAKE MODULO -M -C -R -S 
+
+SELECCIONA EL CONTEXT 1) CENTRAL 2)SHARED  ETC.  SELECCIONE SHARED 
+
+LE DAS Y TE PREGUNTA QUIERES QUE USE LE NOMBRE DEL MODULO O QUIERES UNO PARTICULAR ?
+
+SI SELECCIONA PARTICULAR  TOKENS 
+
+ENTONCES SEGUN LOS FLAG CREA MIGRATION CONTROLLER REPOSITORY Y SERVICE
+
+SHARED/MODULE/HTTP/CONTROLLER/SHAREDTOKENSCONTROLLER.PHP
+
+QUDA CLARA LA IDEA?
+

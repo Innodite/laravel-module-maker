@@ -79,8 +79,8 @@ abstract class AbstractComponentGenerator
     /**
      * Retorna la configuración completa del contexto activo.
      *
-     * Si el contexto es 'tenant', resuelve el tenant específico desde la sección
-     * 'tenants' de contexts.json usando la clave 'tenant' del componentConfig.
+     * Usa 'context_name' del componentConfig para identificar el sub-contexto exacto
+     * dentro del array del contexto seleccionado (ej: 'Energía España' en contexts.tenant).
      * Si no hay 'context' definido, retorna array vacío (retrocompatibilidad).
      *
      * @return array<string, mixed>
@@ -91,25 +91,22 @@ abstract class AbstractComponentGenerator
             return $this->resolvedContext;
         }
 
-        $contextKey = $this->componentConfig['context'] ?? null;
+        $contextKey  = $this->componentConfig['context'] ?? null;
+        $contextName = $this->componentConfig['context_name'] ?? null;
 
         if ($contextKey === null) {
             $this->resolvedContext = [];
             return $this->resolvedContext;
         }
 
-        // Contexto 'tenant': las propiedades reales vienen del tenant específico
-        if ($contextKey === 'tenant') {
-            $tenantKey = $this->componentConfig['tenant'] ?? null;
-
-            $this->resolvedContext = $tenantKey !== null
-                ? ContextResolver::resolveTenant($tenantKey)
-                : ContextResolver::resolve('tenant');
-
-            return $this->resolvedContext;
+        try {
+            $this->resolvedContext = $contextName !== null
+                ? ContextResolver::resolveItem($contextKey, $contextName)
+                : ContextResolver::resolve($contextKey);
+        } catch (\InvalidArgumentException) {
+            $this->resolvedContext = [];
         }
 
-        $this->resolvedContext = ContextResolver::resolve($contextKey);
         return $this->resolvedContext;
     }
 
