@@ -100,17 +100,18 @@ class RouteGenerator extends AbstractComponentGenerator
      */
     private function generateCentralRoutes(string $routesDir): void
     {
-        $context       = $this->getContext();
-        $functionality = $this->getFunctionality();
-        $controllerFqn = $this->buildControllerFqn();
-        $permPrefix    = $context['permission_prefix'];
-        $permMiddleware= $context['permission_middleware'];
-        $permKey       = Str::snake(str_replace('-', '_', $functionality));
+        $context          = $this->getContext();
+        $functionality    = $this->getFunctionality();
+        $controllerClass  = $this->buildControllerClass();
+        $controllerFqcn   = $this->buildControllerNamespace() . '\\' . $controllerClass;
+        $permPrefix       = $context['permission_prefix'];
+        $permMiddleware   = $context['permission_middleware'];
+        $permKey          = Str::snake(str_replace('-', '_', $functionality));
 
         $block = $this->buildRouteBlock(
             routePrefix:    $context['route_prefix'] . '-' . $functionality,
             routeName:      $context['route_name'] . $functionality . '.',
-            controllerFqn:  $controllerFqn,
+            controllerClass: $controllerClass,
             permMiddleware: $permMiddleware,
             permPrefix:     $permPrefix,
             permKey:        $permKey,
@@ -123,6 +124,7 @@ class RouteGenerator extends AbstractComponentGenerator
         declare(strict_types=1);
 
         use Illuminate\Support\Facades\Route;
+        use {$controllerFqcn};
 
         foreach (config('tenancy.central_domains') as \$domain) {
             Route::domain(\$domain)->group(function () {
@@ -133,7 +135,7 @@ class RouteGenerator extends AbstractComponentGenerator
         }
         PHP;
 
-        $this->writeOrAppend("{$routesDir}/web.php", $content, '{{CENTRAL_END}}', $block);
+        $this->writeOrAppend("{$routesDir}/web.php", $content, '{{CENTRAL_END}}', $block, $controllerFqcn);
     }
 
     /**
@@ -145,21 +147,22 @@ class RouteGenerator extends AbstractComponentGenerator
      */
     private function generateSharedRoutes(string $routesDir, array $context): void
     {
-        $functionality = $this->getFunctionality();
-        $controllerFqn = $this->buildControllerFqn();
-        $permPrefix    = $context['permission_prefix'];
-        $permMiddleware= $context['permission_middleware'];
-        $permKey       = Str::snake(str_replace('-', '_', $functionality));
-        $middleware    = $this->buildMiddlewareArray($context['route_middleware'] ?? []);
+        $functionality   = $this->getFunctionality();
+        $controllerClass = $this->buildControllerClass();
+        $controllerFqcn  = $this->buildControllerNamespace() . '\\' . $controllerClass;
+        $permPrefix      = $context['permission_prefix'];
+        $permMiddleware  = $context['permission_middleware'];
+        $permKey         = Str::snake(str_replace('-', '_', $functionality));
+        $middleware      = $this->buildMiddlewareArray($context['route_middleware'] ?? []);
 
         $block = $this->buildRouteBlock(
-            routePrefix:    $context['route_prefix'] . '-' . $functionality,
-            routeName:      $context['route_name'] . $functionality . '.',
-            controllerFqn:  $controllerFqn,
-            permMiddleware: $permMiddleware,
-            permPrefix:     $permPrefix,
-            permKey:        $permKey,
-            indent:         '    '
+            routePrefix:     $context['route_prefix'] . '-' . $functionality,
+            routeName:       $context['route_name'] . $functionality . '.',
+            controllerClass: $controllerClass,
+            permMiddleware:  $permMiddleware,
+            permPrefix:      $permPrefix,
+            permKey:         $permKey,
+            indent:          '    '
         );
 
         $content = <<<PHP
@@ -168,6 +171,7 @@ class RouteGenerator extends AbstractComponentGenerator
         declare(strict_types=1);
 
         use Illuminate\Support\Facades\Route;
+        use {$controllerFqcn};
 
         Route::middleware({$middleware})->group(function () {
 
@@ -176,7 +180,7 @@ class RouteGenerator extends AbstractComponentGenerator
         });
         PHP;
 
-        $this->writeOrAppend("{$routesDir}/web.php", $content, '{{SHARED_END}}', $block);
+        $this->writeOrAppend("{$routesDir}/web.php", $content, '{{SHARED_END}}', $block, $controllerFqcn);
     }
 
     /**
@@ -188,25 +192,26 @@ class RouteGenerator extends AbstractComponentGenerator
      */
     private function generateSingleTenantRoutes(string $routesDir, array $context): void
     {
-        $tenantKey     = $this->componentConfig['context'];
-        $markerKey     = strtoupper($tenantKey);
-        $functionality = $this->getFunctionality();
-        $controllerFqn = $this->buildControllerFqn();
-        $permPrefix    = $context['permission_prefix'];
-        $permMiddleware= $context['permission_middleware'];
-        $permKey       = Str::snake(str_replace('-', '_', $functionality));
-        $middleware    = $this->buildMiddlewareArray($context['route_middleware'] ?? []);
-        $label         = $context['label'];
-        $separator     = str_repeat('─', 74);
+        $tenantKey       = $this->componentConfig['tenant'] ?? $this->componentConfig['context'];
+        $markerKey       = strtoupper($tenantKey);
+        $functionality   = $this->getFunctionality();
+        $controllerClass = $this->buildControllerClass();
+        $controllerFqcn  = $this->buildControllerNamespace() . '\\' . $controllerClass;
+        $permPrefix      = $context['permission_prefix'];
+        $permMiddleware  = $context['permission_middleware'];
+        $permKey         = Str::snake(str_replace('-', '_', $functionality));
+        $middleware      = $this->buildMiddlewareArray($context['route_middleware'] ?? []);
+        $label           = $context['label'];
+        $separator       = str_repeat('─', 74);
 
         $block = $this->buildRouteBlock(
-            routePrefix:    $context['route_prefix'] . '-' . $functionality,
-            routeName:      $context['route_name'] . $functionality . '.',
-            controllerFqn:  $controllerFqn,
-            permMiddleware: $permMiddleware,
-            permPrefix:     $permPrefix,
-            permKey:        $permKey,
-            indent:         '    '
+            routePrefix:     $context['route_prefix'] . '-' . $functionality,
+            routeName:       $context['route_name'] . $functionality . '.',
+            controllerClass: $controllerClass,
+            permMiddleware:  $permMiddleware,
+            permPrefix:      $permPrefix,
+            permKey:         $permKey,
+            indent:          '    '
         );
 
         $section = <<<PHP
@@ -220,7 +225,7 @@ class RouteGenerator extends AbstractComponentGenerator
         });
         PHP;
 
-        $this->writeOrAppend("{$routesDir}/tenant.php", $section, "{$markerKey}_END", $block);
+        $this->writeOrAppend("{$routesDir}/tenant.php", $section, "{$markerKey}_END", $block, $controllerFqcn);
     }
 
     /**
@@ -251,58 +256,58 @@ class RouteGenerator extends AbstractComponentGenerator
     /**
      * Construye el bloque de rutas CRUD estándar para una funcionalidad.
      *
-     * @param  string  $routePrefix    Prefijo de URL (ej: 'energy-spain-users')
-     * @param  string  $routeName      Prefijo de nombre (ej: 'energy-spain.users.')
-     * @param  string  $controllerFqn  Nombre de la clase del controlador (sin namespace)
-     * @param  string  $permMiddleware Middleware de permisos ('tenant-permission' o 'central-permission')
-     * @param  string  $permPrefix     Prefijo del permiso (ej: 'energy_spain')
-     * @param  string  $permKey        Clave de la funcionalidad en snake_case (ej: 'users')
-     * @param  string  $indent         Indentación del bloque
+     * @param  string  $routePrefix     Prefijo de URL (ej: 'energy-spain-users')
+     * @param  string  $routeName       Prefijo de nombre (ej: 'energy-spain.users.')
+     * @param  string  $controllerClass Nombre corto de la clase del controlador (sin namespace)
+     * @param  string  $permMiddleware  Middleware de permisos ('tenant-permission' o 'central-permission')
+     * @param  string  $permPrefix      Prefijo del permiso (ej: 'energy_spain')
+     * @param  string  $permKey         Clave de la funcionalidad en snake_case (ej: 'users')
+     * @param  string  $indent          Indentación del bloque
      * @return string
      */
     private function buildRouteBlock(
         string $routePrefix,
         string $routeName,
-        string $controllerFqn,
+        string $controllerClass,
         string $permMiddleware,
         string $permPrefix,
         string $permKey,
         string $indent = '    '
     ): string {
-        $i = $indent;
+        $i  = $indent;
         $i2 = $indent . '    ';
 
         return <<<PHP
         {$i}Route::prefix('{$routePrefix}')
         {$i}    ->name('{$routeName}')
-        {$i}    ->group(function () use ({$controllerFqn}) {
+        {$i}    ->group(function () {
         {$i2}// Vista principal
-        {$i2}Route::get('/', [{$controllerFqn}::class, 'index'])
+        {$i2}Route::get('/', [{$controllerClass}::class, 'index'])
         {$i2}    ->name('index')
         {$i2}    ->middleware('{$permMiddleware}:{$permPrefix}_{$permKey}_index');
 
         {$i2}// Endpoint JSON listado
-        {$i2}Route::get('/list', [{$controllerFqn}::class, 'list'])
+        {$i2}Route::get('/list', [{$controllerClass}::class, 'list'])
         {$i2}    ->name('list')
         {$i2}    ->middleware('{$permMiddleware}:{$permPrefix}_{$permKey}_index');
 
         {$i2}// Crear
-        {$i2}Route::post('/', [{$controllerFqn}::class, 'store'])
+        {$i2}Route::post('/', [{$controllerClass}::class, 'store'])
         {$i2}    ->name('store')
         {$i2}    ->middleware('{$permMiddleware}:{$permPrefix}_{$permKey}_store');
 
         {$i2}// Ver uno
-        {$i2}Route::get('/{id}', [{$controllerFqn}::class, 'show'])
+        {$i2}Route::get('/{id}', [{$controllerClass}::class, 'show'])
         {$i2}    ->name('show')
         {$i2}    ->middleware('{$permMiddleware}:{$permPrefix}_{$permKey}_show');
 
         {$i2}// Actualizar
-        {$i2}Route::put('/{id}', [{$controllerFqn}::class, 'update'])
+        {$i2}Route::put('/{id}', [{$controllerClass}::class, 'update'])
         {$i2}    ->name('update')
         {$i2}    ->middleware('{$permMiddleware}:{$permPrefix}_{$permKey}_update');
 
         {$i2}// Eliminar
-        {$i2}Route::delete('/{id}', [{$controllerFqn}::class, 'destroy'])
+        {$i2}Route::delete('/{id}', [{$controllerClass}::class, 'destroy'])
         {$i2}    ->name('destroy')
         {$i2}    ->middleware('{$permMiddleware}:{$permPrefix}_{$permKey}_delete');
         {$i}});
@@ -310,14 +315,25 @@ class RouteGenerator extends AbstractComponentGenerator
     }
 
     /**
-     * Construye el nombre de la clase del controlador con su namespace completo de use.
-     * Retorna solo el nombre de clase para uso en el bloque de rutas.
+     * Retorna solo el nombre corto de la clase del controlador (sin namespace).
+     * Ej: 'TenantEnergySpainUserController'
      *
-     * @return string  Nombre corto de la clase (ej: 'TenantEnergySpainUserController')
+     * @return string
      */
-    private function buildControllerFqn(): string
+    private function buildControllerClass(): string
     {
         return $this->prefixClass("{$this->modelName}Controller");
+    }
+
+    /**
+     * Retorna el namespace completo (FQCN) del controlador para el import use.
+     * Ej: 'Modules\Products\Http\Controllers\Tenant\EnergySpain\TenantEnergySpainUserController'
+     *
+     * @return string
+     */
+    private function buildControllerNamespace(): string
+    {
+        return $this->buildNamespace('Http\\Controllers');
     }
 
     /**
@@ -337,15 +353,22 @@ class RouteGenerator extends AbstractComponentGenerator
      * Escribe el archivo de rutas o agrega una nueva sección si el archivo ya existe.
      * Busca el marcador y agrega el nuevo bloque antes de él.
      * Si el marcador no está en el archivo, agrega la sección completa al final.
+     * Cuando el archivo ya existe, agrega el import `use` si aún no está presente.
      *
-     * @param  string  $filePath  Ruta absoluta al archivo de rutas
-     * @param  string  $fullContent  Contenido completo para archivo nuevo
-     * @param  string  $markerKey    Clave del marcador sin llaves (ej: 'CENTRAL_END')
-     * @param  string  $newBlock     Bloque de rutas a insertar
+     * @param  string  $filePath       Ruta absoluta al archivo de rutas
+     * @param  string  $fullContent    Contenido completo para archivo nuevo
+     * @param  string  $markerKey      Clave del marcador sin llaves (ej: 'CENTRAL_END')
+     * @param  string  $newBlock       Bloque de rutas a insertar
+     * @param  string  $controllerFqcn FQCN del controlador para el import use
      * @return void
      */
-    private function writeOrAppend(string $filePath, string $fullContent, string $markerKey, string $newBlock): void
-    {
+    private function writeOrAppend(
+        string $filePath,
+        string $fullContent,
+        string $markerKey,
+        string $newBlock,
+        string $controllerFqcn = ''
+    ): void {
         $marker = "// {{{$markerKey}}}";
 
         if (! file_exists($filePath)) {
@@ -355,6 +378,19 @@ class RouteGenerator extends AbstractComponentGenerator
         }
 
         $existing = file_get_contents($filePath);
+
+        // Añadir el import use si el FQCN está definido y no está ya en el archivo
+        if ($controllerFqcn !== '' && ! str_contains($existing, "use {$controllerFqcn};")) {
+            // Insertar después del último `use ...;` existente
+            if (preg_match('/^(use [^;]+;)(?!.*^use [^;]+;)/ms', $existing)) {
+                $existing = preg_replace(
+                    '/(use [^;]+;)(?=(?:(?!use [^;]+;)[\s\S])*$)/',
+                    "$1\nuse {$controllerFqcn};",
+                    $existing,
+                    1
+                );
+            }
+        }
 
         if (str_contains($existing, $marker)) {
             $updated = str_replace($marker, $newBlock . PHP_EOL . '    ' . $marker, $existing);

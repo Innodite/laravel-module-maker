@@ -51,21 +51,25 @@ class ControllerGenerator extends AbstractComponentGenerator
      */
     public function generate(): void
     {
-        $controllerName     = $this->prefixClass("{$this->modelName}Controller");
-        $serviceInterface   = $this->prefixClass("{$this->modelName}ServiceInterface");
-        $serviceInstance    = Str::camel($this->prefixClass("{$this->modelName}Service"));
-        $namespace          = $this->buildNamespace('Http\\Controllers');
-        $controllerDir      = $this->buildPath('Http/Controllers');
+        $controllerName          = $this->prefixClass("{$this->modelName}Controller");
+        $serviceInterface        = $this->prefixClass("{$this->modelName}ServiceInterface");
+        $serviceInstance         = Str::camel($this->prefixClass("{$this->modelName}Service"));
+        $namespace               = $this->buildNamespace('Http\\Controllers');
+        $controllerDir           = $this->buildPath('Http/Controllers');
+        $serviceInterfaceNs      = $this->buildNamespace('Services') . '\\Contracts\\' . $serviceInterface;
+        $viewName                = $this->prefixClass("{$this->modelName}Index");
 
         $this->ensureDirectoryExists($controllerDir);
 
         $stub = $this->getStubContent('controller.stub', $this->isClean, [
-            'namespace'       => $namespace,
-            'controllerName'  => $controllerName,
-            'modelName'       => $this->modelName,
-            'module'          => $this->moduleName,
-            'serviceInterface'=> $serviceInterface,
-            'serviceInstance' => $serviceInstance,
+            'namespace'                => $namespace,
+            'controllerName'           => $controllerName,
+            'modelName'                => $this->modelName,
+            'module'                   => $this->moduleName,
+            'serviceInterface'         => $serviceInterface,
+            'serviceInstance'          => $serviceInstance,
+            'serviceInterfaceNamespace'=> $serviceInterfaceNs,
+            'viewName'                 => $viewName,
         ]);
 
         $relativePath = "Http/Controllers/{$this->getContextFolder()}/{$controllerName}.php";
