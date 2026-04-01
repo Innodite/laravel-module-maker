@@ -1,0 +1,1288 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Laravel Module Maker — Innodite</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<link href="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/themes/prism-tomorrow.min.css" rel="stylesheet">
+<style>
+:root {
+  --primary: #6366f1;
+  --primary-light: #818cf8;
+  --primary-dark: #4f46e5;
+  --sidebar-bg: #0f172a;
+  --sidebar-border: #1e293b;
+  --sidebar-text: #94a3b8;
+  --sidebar-hover: #1e293b;
+  --sidebar-active-text: #e2e8f0;
+  --sidebar-width: 260px;
+  --code-bg: #1e1e2e;
+  --surface: #f8fafc;
+  --surface-2: #f1f5f9;
+  --border: #e2e8f0;
+  --text: #0f172a;
+  --text-muted: #64748b;
+  --badge-central: #7c3aed;
+  --badge-shared: #2563eb;
+  --badge-tenant-shared: #059669;
+  --badge-tenant: #d97706;
+}
+
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html { scroll-behavior: smooth; font-size: 16px; }
+
+body {
+  font-family: 'Inter', sans-serif;
+  color: var(--text);
+  background: #fff;
+  display: flex;
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+/* ── SIDEBAR ── */
+#sidebar {
+  position: fixed;
+  top: 0; left: 0;
+  width: var(--sidebar-width);
+  height: 100vh;
+  background: var(--sidebar-bg);
+  border-right: 1px solid var(--sidebar-border);
+  overflow-y: auto;
+  z-index: 100;
+  display: flex;
+  flex-direction: column;
+  transition: transform 0.3s ease;
+}
+
+#sidebar::-webkit-scrollbar { width: 4px; }
+#sidebar::-webkit-scrollbar-track { background: transparent; }
+#sidebar::-webkit-scrollbar-thumb { background: #334155; border-radius: 2px; }
+
+.sidebar-logo {
+  padding: 20px 20px 16px;
+  border-bottom: 1px solid var(--sidebar-border);
+  flex-shrink: 0;
+}
+
+.sidebar-logo .brand {
+  font-size: 15px;
+  font-weight: 700;
+  color: #e2e8f0;
+  letter-spacing: -0.3px;
+}
+
+.sidebar-logo .brand span { color: var(--primary-light); }
+
+.sidebar-logo .version-tag {
+  display: inline-block;
+  margin-top: 5px;
+  font-size: 10px;
+  font-weight: 600;
+  padding: 2px 7px;
+  background: rgba(99,102,241,0.2);
+  color: var(--primary-light);
+  border-radius: 20px;
+  letter-spacing: 0.5px;
+}
+
+.sidebar-nav { padding: 12px 0; flex: 1; }
+
+.nav-group { margin-bottom: 6px; }
+
+.nav-group-label {
+  padding: 6px 16px 4px;
+  font-size: 10px;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  color: #475569;
+}
+
+.nav-group a {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 16px;
+  color: var(--sidebar-text);
+  text-decoration: none;
+  font-size: 13.5px;
+  font-weight: 400;
+  border-radius: 0;
+  transition: background 0.15s, color 0.15s;
+  border-left: 2px solid transparent;
+}
+
+.nav-group a:hover {
+  background: var(--sidebar-hover);
+  color: var(--sidebar-active-text);
+}
+
+.nav-group a.active {
+  background: rgba(99,102,241,0.12);
+  color: var(--primary-light);
+  border-left-color: var(--primary);
+  font-weight: 500;
+}
+
+/* ── MAIN CONTENT ── */
+#main {
+  margin-left: var(--sidebar-width);
+  flex: 1;
+  min-width: 0;
+}
+
+.content-inner {
+  max-width: 820px;
+  margin: 0 auto;
+  padding: 0 40px 80px;
+}
+
+/* ── SECTIONS ── */
+section {
+  padding-top: 60px;
+  border-bottom: 1px solid var(--border);
+  padding-bottom: 20px;
+  margin-bottom: 20px;
+}
+
+section:last-of-type { border-bottom: none; }
+
+.section-badge {
+  display: inline-block;
+  padding: 3px 10px;
+  border-radius: 20px;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  margin-bottom: 10px;
+}
+.badge-central { background: rgba(124,58,237,0.12); color: #7c3aed; }
+.badge-shared { background: rgba(37,99,235,0.12); color: #2563eb; }
+.badge-tenant-shared { background: rgba(5,150,105,0.12); color: #059669; }
+.badge-tenant { background: rgba(217,119,6,0.12); color: #d97706; }
+.badge-primary { background: rgba(99,102,241,0.12); color: var(--primary); }
+
+h1 { font-size: 2.4rem; font-weight: 700; letter-spacing: -1px; color: var(--text); line-height: 1.2; margin-bottom: 16px; }
+h2 { font-size: 1.75rem; font-weight: 700; letter-spacing: -0.5px; margin-bottom: 12px; color: var(--text); }
+h3 { font-size: 1.2rem; font-weight: 600; margin: 24px 0 10px; color: var(--text); }
+h4 { font-size: 1rem; font-weight: 600; margin: 18px 0 8px; color: var(--text-muted); }
+p { color: #334155; line-height: 1.75; margin-bottom: 14px; }
+
+/* ── HERO ── */
+.hero { padding-top: 56px; padding-bottom: 32px; }
+
+.hero-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 12px;
+  background: rgba(99,102,241,0.1);
+  border: 1px solid rgba(99,102,241,0.25);
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--primary);
+  margin-bottom: 20px;
+}
+
+.hero-badge::before { content: ""; width: 6px; height: 6px; background: var(--primary); border-radius: 50%; animation: pulse 2s infinite; }
+
+@keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+
+.hero h1 .brand-name { color: var(--primary); }
+
+.hero-subtitle {
+  font-size: 1.05rem;
+  color: var(--text-muted);
+  max-width: 560px;
+  margin-bottom: 24px;
+  line-height: 1.7;
+}
+
+.install-box {
+  display: flex;
+  align-items: center;
+  gap: 0;
+  background: var(--sidebar-bg);
+  border-radius: 10px;
+  padding: 14px 18px;
+  margin-bottom: 32px;
+  max-width: 520px;
+  border: 1px solid #1e293b;
+}
+
+.install-box code {
+  font-family: 'JetBrains Mono', monospace;
+  color: #a5f3fc;
+  font-size: 14px;
+  flex: 1;
+}
+
+.install-box .copy-btn {
+  background: rgba(99,102,241,0.2);
+  border: none;
+  color: var(--primary-light);
+  padding: 5px 11px;
+  border-radius: 6px;
+  font-size: 12px;
+  cursor: pointer;
+  font-family: 'Inter', sans-serif;
+  font-weight: 500;
+  transition: background 0.15s;
+}
+
+.install-box .copy-btn:hover { background: rgba(99,102,241,0.35); }
+
+/* ── FEATURE GRID ── */
+.feature-grid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 14px;
+  margin-top: 8px;
+}
+
+.feature-card {
+  padding: 18px;
+  background: var(--surface);
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.feature-card:hover { border-color: var(--primary-light); box-shadow: 0 0 0 3px rgba(99,102,241,0.08); }
+
+.feature-card .icon { font-size: 1.8rem; margin-bottom: 8px; }
+.feature-card .title { font-weight: 600; font-size: 14px; margin-bottom: 4px; }
+.feature-card .desc { font-size: 13px; color: var(--text-muted); line-height: 1.5; }
+
+/* ── STEPS ── */
+.steps { display: flex; flex-direction: column; gap: 16px; margin: 20px 0; }
+
+.step {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+}
+
+.step-num {
+  width: 28px;
+  height: 28px;
+  background: var(--primary);
+  color: white;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  font-weight: 700;
+  flex-shrink: 0;
+  margin-top: 2px;
+}
+
+.step-content { flex: 1; }
+.step-content strong { display: block; margin-bottom: 6px; font-size: 14px; }
+
+/* ── CODE BLOCKS ── */
+.code-wrapper {
+  position: relative;
+  margin: 12px 0;
+  border-radius: 10px;
+  overflow: hidden;
+  border: 1px solid #2d3748;
+}
+
+.code-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 14px;
+  background: #161b2e;
+  border-bottom: 1px solid #2d3748;
+}
+
+.code-lang {
+  font-size: 11px;
+  font-weight: 600;
+  color: #64748b;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+.copy-code-btn {
+  background: transparent;
+  border: 1px solid #334155;
+  color: #64748b;
+  padding: 3px 9px;
+  border-radius: 5px;
+  font-size: 11px;
+  cursor: pointer;
+  font-family: 'Inter', sans-serif;
+  transition: all 0.15s;
+}
+
+.copy-code-btn:hover { background: #1e293b; color: #94a3b8; border-color: #475569; }
+.copy-code-btn.copied { color: #34d399; border-color: #34d399; }
+
+.code-wrapper pre[class*="language-"] {
+  margin: 0;
+  border-radius: 0;
+  background: var(--code-bg) !important;
+  padding: 16px;
+  overflow-x: auto;
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 13px;
+  line-height: 1.65;
+}
+
+/* ── TABLES ── */
+.table-wrap { overflow-x: auto; margin: 14px 0; border-radius: 8px; border: 1px solid var(--border); }
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13.5px;
+}
+
+thead tr { background: var(--surface-2); }
+thead th {
+  padding: 10px 14px;
+  text-align: left;
+  font-weight: 600;
+  color: var(--text-muted);
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  border-bottom: 1px solid var(--border);
+}
+
+tbody tr { border-bottom: 1px solid var(--border); }
+tbody tr:last-child { border-bottom: none; }
+tbody tr:hover { background: var(--surface); }
+tbody td { padding: 9px 14px; color: #334155; vertical-align: top; }
+
+.file-php { color: #4ade80; font-weight: 500; font-family: 'JetBrains Mono', monospace; font-size: 12px; }
+.file-vue { color: #22d3ee; font-weight: 700; font-family: 'JetBrains Mono', monospace; font-size: 12px; }
+.file-md { color: #fbbf24; font-family: 'JetBrains Mono', monospace; font-size: 12px; }
+
+code:not([class]) {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12.5px;
+  background: #f1f5f9;
+  color: #7c3aed;
+  padding: 2px 6px;
+  border-radius: 4px;
+  border: 1px solid #e2e8f0;
+}
+
+/* ── CALLOUTS ── */
+.callout {
+  padding: 14px 16px;
+  border-radius: 8px;
+  border-left: 4px solid;
+  margin: 16px 0;
+  font-size: 13.5px;
+  line-height: 1.65;
+}
+.callout p { margin: 0; }
+.callout-info { background: #eff6ff; border-color: #3b82f6; color: #1e40af; }
+.callout-warn { background: #fffbeb; border-color: #f59e0b; color: #92400e; }
+.callout-tip { background: #f0fdf4; border-color: #22c55e; color: #166534; }
+
+/* ── TABS ── */
+.tabs { margin: 16px 0; }
+.tab-header { display: flex; gap: 0; border-bottom: 2px solid var(--border); margin-bottom: 0; }
+.tab-btn {
+  padding: 8px 16px;
+  border: none;
+  background: transparent;
+  font-family: 'Inter', sans-serif;
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--text-muted);
+  cursor: pointer;
+  border-bottom: 2px solid transparent;
+  margin-bottom: -2px;
+  transition: color 0.15s;
+}
+.tab-btn.active { color: var(--primary); border-bottom-color: var(--primary); }
+.tab-pane { display: none; }
+.tab-pane.active { display: block; }
+
+/* ── MOBILE TOGGLE ── */
+#sidebar-toggle {
+  display: none;
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  z-index: 200;
+  width: 50px;
+  height: 50px;
+  background: var(--primary);
+  color: white;
+  border: none;
+  border-radius: 50%;
+  font-size: 20px;
+  cursor: pointer;
+  box-shadow: 0 4px 20px rgba(99,102,241,0.4);
+  align-items: center;
+  justify-content: center;
+}
+
+/* ── FOOTER ── */
+footer {
+  text-align: center;
+  padding: 32px 20px;
+  color: var(--text-muted);
+  font-size: 13px;
+  border-top: 1px solid var(--border);
+  margin-top: 20px;
+}
+footer a { color: var(--primary); text-decoration: none; }
+footer a:hover { text-decoration: underline; }
+
+/* ── RESPONSIVE ── */
+@media (max-width: 768px) {
+  #sidebar { transform: translateX(-100%); }
+  #sidebar.open { transform: translateX(0); }
+  #main { margin-left: 0; }
+  .content-inner { padding: 0 20px 60px; }
+  #sidebar-toggle { display: flex; }
+  .feature-grid { grid-template-columns: 1fr; }
+  h1 { font-size: 1.8rem; }
+  h2 { font-size: 1.4rem; }
+}
+
+.sidebar-overlay {
+  display: none;
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.5);
+  z-index: 99;
+}
+.sidebar-overlay.open { display: block; }
+</style>
+</head>
+<body>
+
+<!-- Sidebar overlay (mobile) -->
+<div class="sidebar-overlay" id="sidebar-overlay"></div>
+
+<!-- ── SIDEBAR ── -->
+<aside id="sidebar">
+  <div class="sidebar-logo">
+    <div class="brand"><span>Innodite</span> Module Maker</div>
+    <div class="version-tag">v3.0.0 — RC</div>
+  </div>
+  <nav class="sidebar-nav">
+    <div class="nav-group">
+      <div class="nav-group-label">Inicio</div>
+      <a href="#inicio">🏠 Inicio</a>
+    </div>
+    <div class="nav-group">
+      <div class="nav-group-label">Primeros Pasos</div>
+      <a href="#instalacion">📦 Instalación</a>
+      <a href="#configuracion">⚙️ Configuración</a>
+    </div>
+    <div class="nav-group">
+      <div class="nav-group-label">Contextos</div>
+      <a href="#central">🟣 Central</a>
+      <a href="#shared">🔵 Shared</a>
+      <a href="#tenant-shared">🟢 Tenant Shared</a>
+      <a href="#tenant">🟠 Tenant Específico</a>
+    </div>
+    <div class="nav-group">
+      <div class="nav-group-label">Frontend</div>
+      <a href="#bridge">🔗 Bridge</a>
+      <a href="#composables">🧩 Composables</a>
+      <a href="#vistas">🖼️ Vistas Vue</a>
+    </div>
+    <div class="nav-group">
+      <div class="nav-group-label">Comandos</div>
+      <a href="#comandos">🛠️ Artisan</a>
+    </div>
+    <div class="nav-group">
+      <div class="nav-group-label">Avanzado</div>
+      <a href="#auditoria">📋 Auditoría</a>
+      <a href="#publicar">🚀 Publicar</a>
+    </div>
+  </nav>
+</aside>
+
+<!-- ── MAIN ── -->
+<main id="main">
+<div class="content-inner">
+
+<!-- ──────────── HERO ──────────── -->
+<section id="inicio" class="hero">
+  <div class="hero-badge">v3.0.0 — Release Candidate</div>
+  <h1>Laravel <span class="brand-name">Module Maker</span></h1>
+  <p class="hero-subtitle">
+    Genera backend completo (controllers, services, repositories, routes, migrations) más vistas Vue con Inertia.js — con un solo comando artisan, en segundos.
+  </p>
+
+  <div class="install-box">
+    <code id="install-cmd">composer require innodite/laravel-module-maker</code>
+    <button class="copy-btn" onclick="copyText('composer require innodite/laravel-module-maker', this)">Copiar</button>
+  </div>
+
+  <div class="feature-grid">
+    <div class="feature-card">
+      <div class="icon">⚡</div>
+      <div class="title">Generación Completa</div>
+      <div class="desc">Scaffold de backend PHP + frontend Vue en un único comando. Todos los archivos correctamente nombrados y enlazados.</div>
+    </div>
+    <div class="feature-card">
+      <div class="icon">🎯</div>
+      <div class="title">Contextos Dinámicos</div>
+      <div class="desc">Define <code>contexts.json</code> con 4 tipos: central, shared, tenant_shared y tenant. Cada uno genera rutas e inyección de prefijos correctos.</div>
+    </div>
+    <div class="feature-card">
+      <div class="icon">🔗</div>
+      <div class="title">Bridge Frontend</div>
+      <div class="desc">Middleware que inyecta automáticamente <code>auth.context</code> y <code>auth.permissions</code> vía Inertia shared props.</div>
+    </div>
+    <div class="feature-card">
+      <div class="icon">📋</div>
+      <div class="title">Auditoría</div>
+      <div class="desc">Registro NDJSON de cada archivo generado: comando, contexto, módulo, archivo, timestamp y hash SHA-256.</div>
+    </div>
+  </div>
+</section>
+
+<!-- ──────────── INSTALACIÓN ──────────── -->
+<section id="instalacion">
+  <span class="section-badge badge-primary">Primeros Pasos</span>
+  <h2>Instalación</h2>
+  <p>Sigue estos cuatro pasos para tener el paquete completamente configurado en tu aplicación Laravel.</p>
+
+  <div class="steps">
+    <div class="step">
+      <div class="step-num">1</div>
+      <div class="step-content">
+        <strong>Requerir el paquete vía Composer</strong>
+        <div class="code-wrapper">
+          <div class="code-header"><span class="code-lang">bash</span><button class="copy-code-btn" onclick="copyCode(this)">Copiar</button></div>
+          <pre><code class="language-bash">composer require innodite/laravel-module-maker</code></pre>
+        </div>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">2</div>
+      <div class="step-content">
+        <strong>Ejecutar el setup inicial (publica config y stubs)</strong>
+        <div class="code-wrapper">
+          <div class="code-header"><span class="code-lang">bash</span><button class="copy-code-btn" onclick="copyCode(this)">Copiar</button></div>
+          <pre><code class="language-bash">php artisan module:setup</code></pre>
+        </div>
+        <p style="margin-top:8px;font-size:13px;color:var(--text-muted)">Publica <code>contexts.json</code>, stubs personalizables y el archivo de configuración principal.</p>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">3</div>
+      <div class="step-content">
+        <strong>Publicar los composables Vue</strong>
+        <div class="code-wrapper">
+          <div class="code-header"><span class="code-lang">bash</span><button class="copy-code-btn" onclick="copyCode(this)">Copiar</button></div>
+          <pre><code class="language-bash">php artisan module:publish-frontend</code></pre>
+        </div>
+        <p style="margin-top:8px;font-size:13px;color:var(--text-muted)">Publica <code>useModuleContext.js</code> y <code>usePermissions.js</code> en <code>resources/js/composables/</code>.</p>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">4</div>
+      <div class="step-content">
+        <strong>Registrar el middleware Bridge en bootstrap/app.php</strong>
+        <div class="code-wrapper">
+          <div class="code-header"><span class="code-lang">php</span><button class="copy-code-btn" onclick="copyCode(this)">Copiar</button></div>
+          <pre><code class="language-php">use Innodite\ModuleMaker\Http\Middleware\InnoditeBridgeMiddleware;
+
+->withMiddleware(function (Middleware $middleware) {
+    $middleware->appendToGroup('web', InnoditeBridgeMiddleware::class);
+    $middleware->appendToGroup('api', InnoditeBridgeMiddleware::class);
+})</code></pre>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ──────────── CONFIGURACIÓN ──────────── -->
+<section id="configuracion">
+  <span class="section-badge badge-primary">Primeros Pasos</span>
+  <h2>Configuración</h2>
+  <p>El archivo <code>contexts.json</code> (en la raíz del proyecto) define todos los contextos disponibles para la generación de módulos.</p>
+
+  <div class="code-wrapper">
+    <div class="code-header"><span class="code-lang">json</span><button class="copy-code-btn" onclick="copyCode(this)">Copiar</button></div>
+    <pre><code class="language-json">{
+  "contexts": [
+    {
+      "name": "central",
+      "type": "central",
+      "route_prefix": "central",
+      "permission_prefix": "central",
+      "route_file": "web.php",
+      "middleware": ["web", "auth"],
+      "sub_contexts": []
+    },
+    {
+      "name": "shared",
+      "type": "shared",
+      "route_prefix": "shared",
+      "permission_prefix": "shared",
+      "route_file": ["web.php", "tenant.php"],
+      "middleware": ["web", "auth"],
+      "sub_contexts": []
+    },
+    {
+      "name": "tenant_shared",
+      "type": "tenant_shared",
+      "route_prefix": null,
+      "permission_prefix": "tenant",
+      "route_file": "tenant.php",
+      "middleware": ["web", "auth", "tenant"],
+      "sub_contexts": []
+    },
+    {
+      "name": "tenant",
+      "type": "tenant",
+      "route_prefix": null,
+      "permission_prefix": "tenant",
+      "route_file": "tenant.php",
+      "middleware": ["web", "auth", "tenant"],
+      "sub_contexts": [
+        { "name": "TenantOne", "prefix": "tenant-one" },
+        { "name": "TenantTwo", "prefix": "tenant-two" }
+      ]
+    }
+  ]
+}</code></pre>
+  </div>
+
+  <h3>Campos disponibles</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Campo</th><th>Tipo</th><th>Descripción</th></tr></thead>
+      <tbody>
+        <tr><td><code>name</code></td><td>string</td><td>Identificador único del contexto</td></tr>
+        <tr><td><code>type</code></td><td>enum</td><td><code>central</code> | <code>shared</code> | <code>tenant_shared</code> | <code>tenant</code></td></tr>
+        <tr><td><code>route_prefix</code></td><td>string|null</td><td>Prefijo de URL. <code>null</code> para tenant y tenant_shared</td></tr>
+        <tr><td><code>permission_prefix</code></td><td>string</td><td>Prefijo para permisos Spatie (ej. <code>central.users.view</code>)</td></tr>
+        <tr><td><code>route_file</code></td><td>string|array</td><td>Archivo(s) de rutas destino. Array solo para <code>shared</code></td></tr>
+        <tr><td><code>middleware</code></td><td>array</td><td>Middlewares aplicados al grupo de rutas generado</td></tr>
+        <tr><td><code>sub_contexts</code></td><td>array</td><td>Solo para tipo <code>tenant</code>. Lista de tenants con <code>name</code> y <code>prefix</code></td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ──────────── CENTRAL ──────────── -->
+<section id="central">
+  <span class="section-badge badge-central">Contexto</span>
+  <h2>Central</h2>
+  <p>El contexto <strong>central</strong> genera módulos para el panel de administración global de la aplicación. Las rutas se inyectan en <code>web.php</code> con el prefijo <code>/central/{module}</code>.</p>
+
+  <div class="code-wrapper">
+    <div class="code-header"><span class="code-lang">bash</span><button class="copy-code-btn" onclick="copyCode(this)">Copiar</button></div>
+    <pre><code class="language-bash">php artisan make:module Users --context=central</code></pre>
+  </div>
+
+  <h3>Archivos PHP generados</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Archivo</th><th>Ruta</th><th>Descripción</th></tr></thead>
+      <tbody>
+        <tr><td class="file-php">CentralUsersController.php</td><td><code>app/Http/Controllers/Central/</code></td><td>Controller con métodos index, create, store, show, edit, update, destroy</td></tr>
+        <tr><td class="file-php">UsersService.php</td><td><code>app/Services/Central/</code></td><td>Lógica de negocio desacoplada</td></tr>
+        <tr><td class="file-php">UsersServiceInterface.php</td><td><code>app/Services/Central/</code></td><td>Contrato del servicio</td></tr>
+        <tr><td class="file-php">UsersRepository.php</td><td><code>app/Repositories/Central/</code></td><td>Capa de acceso a datos</td></tr>
+        <tr><td class="file-php">UsersRepositoryInterface.php</td><td><code>app/Repositories/Central/</code></td><td>Contrato del repositorio</td></tr>
+        <tr><td class="file-php">StoreUsersRequest.php</td><td><code>app/Http/Requests/Central/</code></td><td>Form Request para creación</td></tr>
+        <tr><td class="file-php">UpdateUsersRequest.php</td><td><code>app/Http/Requests/Central/</code></td><td>Form Request para actualización</td></tr>
+        <tr><td class="file-php">create_central_users_table.php</td><td><code>database/migrations/</code></td><td>Migración con timestamp</td></tr>
+        <tr><td class="file-php">UsersSeeder.php</td><td><code>database/seeders/Central/</code></td><td>Seeder del módulo</td></tr>
+        <tr><td class="file-php">UsersFactory.php</td><td><code>database/factories/Central/</code></td><td>Factory para testing</td></tr>
+        <tr><td class="file-php">CentralUsersTest.php</td><td><code>tests/Feature/Central/</code></td><td>Tests de feature</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>Archivos Vue generados</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Archivo</th><th>Ruta</th></tr></thead>
+      <tbody>
+        <tr><td class="file-vue">CentralUsersIndex.vue</td><td><code>resources/js/Pages/Central/Users/</code></td></tr>
+        <tr><td class="file-vue">CentralUsersCreate.vue</td><td><code>resources/js/Pages/Central/Users/</code></td></tr>
+        <tr><td class="file-vue">CentralUsersEdit.vue</td><td><code>resources/js/Pages/Central/Users/</code></td></tr>
+        <tr><td class="file-vue">CentralUsersShow.vue</td><td><code>resources/js/Pages/Central/Users/</code></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>Ruta inyectada en web.php</h3>
+  <div class="code-wrapper">
+    <div class="code-header"><span class="code-lang">php</span><button class="copy-code-btn" onclick="copyCode(this)">Copiar</button></div>
+    <pre><code class="language-php">Route::prefix('central')->middleware(['web', 'auth'])->group(function () {
+    Route::resource('users', \App\Http\Controllers\Central\CentralUsersController::class);
+});</code></pre>
+  </div>
+
+  <h3>Cómo contextRoute() resuelve</h3>
+  <div class="code-wrapper">
+    <div class="code-header"><span class="code-lang">javascript</span><button class="copy-code-btn" onclick="copyCode(this)">Copiar</button></div>
+    <pre><code class="language-javascript">const { contextRoute } = useModuleContext()
+// Con route_prefix = "central":
+contextRoute('users.index')  // => "central.users.index"
+contextRoute('users.store')  // => "central.users.store"</code></pre>
+  </div>
+</section>
+
+<!-- ──────────── SHARED ──────────── -->
+<section id="shared">
+  <span class="section-badge badge-shared">Contexto</span>
+  <h2>Shared</h2>
+  <p>El contexto <strong>shared</strong> es especial: genera módulos accesibles tanto desde el panel central como desde el panel tenant. Por eso <code>route_file</code> es un <strong>array</strong> <code>["web.php", "tenant.php"]</code> — el paquete inyecta el bloque de rutas en ambos archivos.</p>
+
+  <div class="callout callout-info">
+    <p><strong>Dualidad de rutas:</strong> El mismo controller atiende requests de <code>/shared/users</code> (web.php) y de <code>/shared/users</code> dentro del tenant (tenant.php). El middleware Bridge distingue el contexto.</p>
+  </div>
+
+  <div class="code-wrapper">
+    <div class="code-header"><span class="code-lang">bash</span><button class="copy-code-btn" onclick="copyCode(this)">Copiar</button></div>
+    <pre><code class="language-bash">php artisan make:module Users --context=shared</code></pre>
+  </div>
+
+  <h3>Rutas inyectadas (dos archivos)</h3>
+  <div class="tabs">
+    <div class="tab-header">
+      <button class="tab-btn active" onclick="switchTab(this, 'shared-web')">web.php</button>
+      <button class="tab-btn" onclick="switchTab(this, 'shared-tenant')">tenant.php</button>
+    </div>
+    <div class="tab-pane active" id="shared-web">
+      <div class="code-wrapper">
+        <div class="code-header"><span class="code-lang">php</span><button class="copy-code-btn" onclick="copyCode(this)">Copiar</button></div>
+        <pre><code class="language-php">// routes/web.php
+Route::prefix('shared')->middleware(['web', 'auth'])->group(function () {
+    Route::resource('users', \App\Http\Controllers\Shared\SharedUsersController::class);
+});</code></pre>
+      </div>
+    </div>
+    <div class="tab-pane" id="shared-tenant">
+      <div class="code-wrapper">
+        <div class="code-header"><span class="code-lang">php</span><button class="copy-code-btn" onclick="copyCode(this)">Copiar</button></div>
+        <pre><code class="language-php">// routes/tenant.php
+Route::prefix('shared')->middleware(['web', 'auth', 'tenant'])->group(function () {
+    Route::resource('users', \App\Http\Controllers\Shared\SharedUsersController::class);
+});</code></pre>
+      </div>
+    </div>
+  </div>
+
+  <h3>Archivos PHP generados</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Archivo</th><th>Ruta</th></tr></thead>
+      <tbody>
+        <tr><td class="file-php">SharedUsersController.php</td><td><code>app/Http/Controllers/Shared/</code></td></tr>
+        <tr><td class="file-php">UsersService.php + Interface</td><td><code>app/Services/Shared/</code></td></tr>
+        <tr><td class="file-php">UsersRepository.php + Interface</td><td><code>app/Repositories/Shared/</code></td></tr>
+        <tr><td class="file-php">StoreUsersRequest.php</td><td><code>app/Http/Requests/Shared/</code></td></tr>
+        <tr><td class="file-vue">SharedUsersIndex.vue … Show.vue</td><td><code>resources/js/Pages/Shared/Users/</code></td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ──────────── TENANT SHARED ──────────── -->
+<section id="tenant-shared">
+  <span class="section-badge badge-tenant-shared">Contexto</span>
+  <h2>Tenant Shared</h2>
+  <p>El contexto <strong>tenant_shared</strong> genera módulos que viven exclusivamente dentro del scope tenant, compartidos por todos los tenants, pero <strong>sin route_prefix</strong>. Las rutas van directamente en <code>tenant.php</code> sin prefijo de URL adicional.</p>
+
+  <div class="callout callout-tip">
+    <p><strong>Sin route_prefix:</strong> <code>route_prefix</code> es <code>null</code>, por lo que <code>contextRoute('users.index')</code> resuelve directamente a <code>tenant.users.index</code> usando el <code>permission_prefix</code> como referencia de nombre.</p>
+  </div>
+
+  <div class="code-wrapper">
+    <div class="code-header"><span class="code-lang">bash</span><button class="copy-code-btn" onclick="copyCode(this)">Copiar</button></div>
+    <pre><code class="language-bash">php artisan make:module Users --context=tenant_shared</code></pre>
+  </div>
+
+  <h3>Ruta inyectada en tenant.php</h3>
+  <div class="code-wrapper">
+    <div class="code-header"><span class="code-lang">php</span><button class="copy-code-btn" onclick="copyCode(this)">Copiar</button></div>
+    <pre><code class="language-php">// routes/tenant.php
+Route::middleware(['web', 'auth', 'tenant'])->group(function () {
+    Route::resource('users', \App\Http\Controllers\TenantShared\TenantSharedUsersController::class);
+});</code></pre>
+  </div>
+
+  <h3>Archivos PHP generados</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Archivo</th><th>Ruta</th></tr></thead>
+      <tbody>
+        <tr><td class="file-php">TenantSharedUsersController.php</td><td><code>app/Http/Controllers/TenantShared/</code></td></tr>
+        <tr><td class="file-php">UsersService.php + Interface</td><td><code>app/Services/TenantShared/</code></td></tr>
+        <tr><td class="file-php">UsersRepository.php + Interface</td><td><code>app/Repositories/TenantShared/</code></td></tr>
+        <tr><td class="file-vue">TenantSharedUsersIndex.vue … Show.vue</td><td><code>resources/js/Pages/TenantShared/Users/</code></td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ──────────── TENANT ESPECÍFICO ──────────── -->
+<section id="tenant">
+  <span class="section-badge badge-tenant">Contexto</span>
+  <h2>Tenant Específico</h2>
+  <p>El contexto <strong>tenant</strong> genera módulos para un tenant concreto, definido en <code>sub_contexts</code>. Cada sub-contexto tiene su propio prefijo de URL y namespace de archivos.</p>
+
+  <div class="code-wrapper">
+    <div class="code-header"><span class="code-lang">bash</span><button class="copy-code-btn" onclick="copyCode(this)">Copiar</button></div>
+    <pre><code class="language-bash">php artisan make:module Users --context=tenant --sub-context=TenantOne</code></pre>
+  </div>
+
+  <h3>Ruta inyectada en tenant.php (para TenantOne)</h3>
+  <div class="code-wrapper">
+    <div class="code-header"><span class="code-lang">php</span><button class="copy-code-btn" onclick="copyCode(this)">Copiar</button></div>
+    <pre><code class="language-php">// routes/tenant.php
+Route::prefix('tenant-one')->middleware(['web', 'auth', 'tenant'])->group(function () {
+    Route::resource('users', \App\Http\Controllers\TenantOne\TenantOneUsersController::class);
+});</code></pre>
+  </div>
+
+  <h3>Archivos PHP generados</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Archivo</th><th>Ruta</th></tr></thead>
+      <tbody>
+        <tr><td class="file-php">TenantOneUsersController.php</td><td><code>app/Http/Controllers/TenantOne/</code></td></tr>
+        <tr><td class="file-php">UsersService.php + Interface</td><td><code>app/Services/TenantOne/</code></td></tr>
+        <tr><td class="file-php">UsersRepository.php + Interface</td><td><code>app/Repositories/TenantOne/</code></td></tr>
+        <tr><td class="file-php">StoreUsersRequest.php</td><td><code>app/Http/Requests/TenantOne/</code></td></tr>
+        <tr><td class="file-vue">TenantOneUsersIndex.vue … Show.vue</td><td><code>resources/js/Pages/TenantOne/Users/</code></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>Resolución contextRoute() con sub-contexto</h3>
+  <div class="code-wrapper">
+    <div class="code-header"><span class="code-lang">javascript</span><button class="copy-code-btn" onclick="copyCode(this)">Copiar</button></div>
+    <pre><code class="language-javascript">const { contextRoute } = useModuleContext()
+// El Bridge inyecta route_prefix = "tenant-one" para este usuario:
+contextRoute('users.index')  // => "tenant-one.users.index"
+contextRoute('users.store')  // => "tenant-one.users.store"</code></pre>
+  </div>
+</section>
+
+<!-- ──────────── BRIDGE ──────────── -->
+<section id="bridge">
+  <span class="section-badge badge-primary">Frontend</span>
+  <h2>Bridge Middleware</h2>
+  <p><code>InnoditeBridgeMiddleware</code> se ejecuta en cada request y comparte vía <code>Inertia::share()</code> los datos de contexto y permisos necesarios para el frontend.</p>
+
+  <h3>Props inyectadas</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Prop</th><th>Tipo</th><th>Ejemplo</th><th>Descripción</th></tr></thead>
+      <tbody>
+        <tr><td><code>auth.context.route_prefix</code></td><td>string|null</td><td><code>"central"</code></td><td>Prefijo de ruta del contexto del usuario autenticado</td></tr>
+        <tr><td><code>auth.context.permission_prefix</code></td><td>string</td><td><code>"central"</code></td><td>Prefijo para construir nombres de permisos</td></tr>
+        <tr><td><code>auth.context.name</code></td><td>string</td><td><code>"central"</code></td><td>Nombre del contexto</td></tr>
+        <tr><td><code>auth.permissions</code></td><td>array</td><td><code>["central.users.view"]</code></td><td>Lista de permisos del usuario autenticado</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>Cadena de resolución de permisos</h3>
+  <div class="callout callout-info">
+    <p>El Bridge intenta resolver permisos en este orden: <strong>Spatie Permission</strong> → <strong>InnoditeUserPermissions (custom)</strong> → <strong>array vacío (fail-safe)</strong>. Nunca lanza excepción si el sistema de permisos no está instalado.</p>
+  </div>
+
+  <div class="code-wrapper">
+    <div class="code-header"><span class="code-lang">php</span><button class="copy-code-btn" onclick="copyCode(this)">Copiar</button></div>
+    <pre><code class="language-php">// Resolución interna del Bridge (simplificado)
+try {
+    $permissions = $user->getAllPermissions()->pluck('name')->toArray(); // Spatie
+} catch (\Throwable $e) {
+    try {
+        $permissions = $user->innoditePermissions(); // Custom interface
+    } catch (\Throwable $e2) {
+        $permissions = []; // Fail-safe
+    }
+}
+
+Inertia::share([
+    'auth.context' => [
+        'name'               => $context['name'],
+        'route_prefix'       => $context['route_prefix'],
+        'permission_prefix'  => $context['permission_prefix'],
+    ],
+    'auth.permissions' => $permissions,
+]);</code></pre>
+  </div>
+
+  <h3>Registro en bootstrap/app.php</h3>
+  <div class="code-wrapper">
+    <div class="code-header"><span class="code-lang">php</span><button class="copy-code-btn" onclick="copyCode(this)">Copiar</button></div>
+    <pre><code class="language-php">use Innodite\ModuleMaker\Http\Middleware\InnoditeBridgeMiddleware;
+
+return Application::configure(basePath: dirname(__DIR__))
+    ->withRouting(...)
+    ->withMiddleware(function (Middleware $middleware) {
+        $middleware->appendToGroup('web', InnoditeBridgeMiddleware::class);
+        $middleware->appendToGroup('api', InnoditeBridgeMiddleware::class);
+    })
+    ->create();</code></pre>
+  </div>
+</section>
+
+<!-- ──────────── COMPOSABLES ──────────── -->
+<section id="composables">
+  <span class="section-badge badge-primary">Frontend</span>
+  <h2>Composables Vue</h2>
+  <p>El paquete publica dos composables en <code>resources/js/composables/</code> que consumen las props del Bridge.</p>
+
+  <h3>useModuleContext.js</h3>
+  <p>Provee <code>contextRoute()</code> para construir nombres de rutas de forma context-aware, y <code>contextPermission()</code> para construir nombres de permisos.</p>
+
+  <div class="code-wrapper">
+    <div class="code-header"><span class="code-lang">javascript</span><button class="copy-code-btn" onclick="copyCode(this)">Copiar</button></div>
+    <pre><code class="language-javascript">import { useModuleContext } from '@/composables/useModuleContext'
+
+const { contextRoute, contextPermission, context } = useModuleContext()
+
+// Construcción de rutas:
+contextRoute('users.index')    // "central.users.index"
+contextRoute('users.store')    // "central.users.store"
+
+// Construcción de permisos:
+contextPermission('users.view')  // "central.users.view"
+contextPermission('users.edit')  // "central.users.edit"
+
+// Acceso al contexto completo:
+console.log(context.value.name)           // "central"
+console.log(context.value.route_prefix)   // "central"</code></pre>
+  </div>
+
+  <h3>usePermissions.js</h3>
+  <p>Provee helpers reactivos para verificar permisos contra la lista inyectada por el Bridge.</p>
+
+  <div class="code-wrapper">
+    <div class="code-header"><span class="code-lang">javascript</span><button class="copy-code-btn" onclick="copyCode(this)">Copiar</button></div>
+    <pre><code class="language-javascript">import { usePermissions } from '@/composables/usePermissions'
+import { useModuleContext } from '@/composables/useModuleContext'
+
+const { can, canAny, canAll } = usePermissions()
+const { contextPermission } = useModuleContext()
+
+// Verificación individual:
+can(contextPermission('users.view'))     // true | false
+
+// Al menos uno:
+canAny(['central.users.view', 'central.users.edit'])  // true | false
+
+// Todos:
+canAll(['central.users.view', 'central.users.edit'])  // true | false</code></pre>
+  </div>
+
+  <h3>Estrategia de permisos dual</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Helper</th><th>Comportamiento</th><th>Caso de uso</th></tr></thead>
+      <tbody>
+        <tr><td><code>can(perm)</code></td><td>Comprueba si <code>perm</code> está en <code>auth.permissions</code></td><td>Botones individuales, rutas protegidas</td></tr>
+        <tr><td><code>canAny(perms[])</code></td><td><code>OR</code> — al menos uno</td><td>Mostrar sección si tiene cualquier acceso</td></tr>
+        <tr><td><code>canAll(perms[])</code></td><td><code>AND</code> — todos requeridos</td><td>Acciones destructivas con múltiples permisos</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ──────────── VISTAS VUE ──────────── -->
+<section id="vistas">
+  <span class="section-badge badge-primary">Frontend</span>
+  <h2>Vistas Vue Generadas</h2>
+  <p>Cada módulo genera 4 vistas Inertia.js. Las vistas usan <code>axios</code> para llamadas API y los composables para routing y permisos.</p>
+
+  <h3>Arquitectura de vistas</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Vista</th><th>Estrategia de datos</th><th>Descripción</th></tr></thead>
+      <tbody>
+        <tr><td class="file-vue">*Index.vue</td><td>Inertia props + axios</td><td>Listado con paginación, búsqueda y acciones</td></tr>
+        <tr><td class="file-vue">*Create.vue</td><td>Inertia form helpers</td><td>Formulario de creación con validación reactiva</td></tr>
+        <tr><td class="file-vue">*Edit.vue</td><td>Inertia props + form</td><td>Formulario de edición prellenado</td></tr>
+        <tr><td class="file-vue">*Show.vue</td><td>Inertia props</td><td>Vista de detalle, solo lectura</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>Ejemplo: CentralUsersIndex.vue</h3>
+  <div class="code-wrapper">
+    <div class="code-header"><span class="code-lang">javascript</span><button class="copy-code-btn" onclick="copyCode(this)">Copiar</button></div>
+    <pre><code class="language-javascript">&lt;script setup&gt;
+import { ref, onMounted } from 'vue'
+import { useModuleContext } from '@/composables/useModuleContext'
+import { usePermissions } from '@/composables/usePermissions'
+
+const { contextRoute } = useModuleContext()
+const { can } = usePermissions()
+const users = ref([])
+
+onMounted(async () => {
+  const { data } = await axios.get(route(contextRoute('users.index')))
+  users.value = data.data
+})
+&lt;/script&gt;
+
+&lt;template&gt;
+  &lt;div&gt;
+    &lt;button
+      v-if="can('central.users.create')"
+      @click="$inertia.visit(route(contextRoute('users.create')))"
+    &gt;
+      Nuevo Usuario
+    &lt;/button&gt;
+    &lt;table&gt;
+      &lt;tr v-for="user in users" :key="user.id"&gt;
+        &lt;td&gt;{{ user.name }}&lt;/td&gt;
+        &lt;td&gt;{{ user.email }}&lt;/td&gt;
+      &lt;/tr&gt;
+    &lt;/table&gt;
+  &lt;/div&gt;
+&lt;/template&gt;</code></pre>
+  </div>
+</section>
+
+<!-- ──────────── COMANDOS ──────────── -->
+<section id="comandos">
+  <span class="section-badge badge-primary">Comandos</span>
+  <h2>Comandos Artisan</h2>
+
+  <h3>Todos los comandos disponibles</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Comando</th><th>Descripción</th></tr></thead>
+      <tbody>
+        <tr><td><code>make:module {Name}</code></td><td>Genera un módulo completo (PHP + Vue)</td></tr>
+        <tr><td><code>module:setup</code></td><td>Setup inicial: publica config, stubs y contexts.json</td></tr>
+        <tr><td><code>module:check {Name}</code></td><td>Verifica si un módulo ya existe en el contexto dado</td></tr>
+        <tr><td><code>module:check-env</code></td><td>Valida el entorno (Inertia, Spatie, estructura de dirs)</td></tr>
+        <tr><td><code>module:publish-frontend</code></td><td>Publica composables Vue en resources/js/composables/</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>Flags de make:module</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Flag</th><th>Tipo</th><th>Descripción</th></tr></thead>
+      <tbody>
+        <tr><td><code>--context=</code></td><td>string</td><td>Contexto destino (requerido si hay más de uno)</td></tr>
+        <tr><td><code>--sub-context=</code></td><td>string</td><td>Sub-contexto para tipo tenant (ej. TenantOne)</td></tr>
+        <tr><td><code>--force</code></td><td>bool</td><td>Sobreescribir archivos existentes sin preguntar</td></tr>
+        <tr><td><code>--no-vue</code></td><td>bool</td><td>Omitir generación de vistas Vue</td></tr>
+        <tr><td><code>--no-tests</code></td><td>bool</td><td>Omitir generación de tests</td></tr>
+        <tr><td><code>--dry-run</code></td><td>bool</td><td>Simular generación sin escribir archivos</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>Palabras reservadas (validación)</h3>
+  <div class="callout callout-warn">
+    <p><strong>Nombres inválidos:</strong> El comando rechaza módulos con nombres que colisionen con clases internas de PHP o Laravel: <code>App</code>, <code>Auth</code>, <code>Cache</code>, <code>Config</code>, <code>DB</code>, <code>Event</code>, <code>Http</code>, <code>Log</code>, <code>Route</code>, <code>Session</code>, <code>Storage</code>, <code>View</code>, entre otros.</p>
+  </div>
+
+  <div class="code-wrapper">
+    <div class="code-header"><span class="code-lang">bash</span><button class="copy-code-btn" onclick="copyCode(this)">Copiar</button></div>
+    <pre><code class="language-bash"># Ejemplos de uso
+php artisan make:module Products --context=central
+php artisan make:module Invoices --context=shared
+php artisan make:module Reports --context=tenant_shared
+php artisan make:module Orders --context=tenant --sub-context=TenantOne
+php artisan make:module Dashboard --context=central --dry-run
+php artisan module:check Products --context=central</code></pre>
+  </div>
+</section>
+
+<!-- ──────────── AUDITORÍA ──────────── -->
+<section id="auditoria">
+  <span class="section-badge badge-primary">Avanzado</span>
+  <h2>Auditoría</h2>
+  <p>Cada generación exitosa registra una entrada en <code>storage/logs/module-maker.ndjson</code> en formato NDJSON (newline-delimited JSON), uno por línea.</p>
+
+  <h3>Ejemplo de entrada NDJSON</h3>
+  <div class="code-wrapper">
+    <div class="code-header"><span class="code-lang">json</span><button class="copy-code-btn" onclick="copyCode(this)">Copiar</button></div>
+    <pre><code class="language-json">{"event":"module_generated","module":"Users","context":"central","sub_context":null,"file":"app/Http/Controllers/Central/CentralUsersController.php","sha256":"a1b2c3d4e5f6...","timestamp":"2026-04-01T14:32:00Z","command":"make:module Users --context=central"}
+{"event":"module_generated","module":"Users","context":"central","sub_context":null,"file":"resources/js/Pages/Central/Users/CentralUsersIndex.vue","sha256":"f6e5d4c3b2a1...","timestamp":"2026-04-01T14:32:00Z","command":"make:module Users --context=central"}</code></pre>
+  </div>
+
+  <h3>Eventos registrados</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Evento</th><th>Cuándo ocurre</th></tr></thead>
+      <tbody>
+        <tr><td><code>module_generated</code></td><td>Archivo generado exitosamente</td></tr>
+        <tr><td><code>module_skipped</code></td><td>Archivo omitido porque ya existe (sin --force)</td></tr>
+        <tr><td><code>module_overwritten</code></td><td>Archivo sobreescrito con --force</td></tr>
+        <tr><td><code>module_error</code></td><td>Error al generar un archivo específico</td></tr>
+        <tr><td><code>setup_completed</code></td><td>module:setup ejecutado exitosamente</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ──────────── PUBLICAR ──────────── -->
+<section id="publicar">
+  <span class="section-badge badge-primary">Avanzado</span>
+  <h2>Publicar Assets</h2>
+  <p>El paquete soporta publicación selectiva de sus componentes mediante tags de vendor publish.</p>
+
+  <div class="code-wrapper">
+    <div class="code-header"><span class="code-lang">bash</span><button class="copy-code-btn" onclick="copyCode(this)">Copiar</button></div>
+    <pre><code class="language-bash"># Publicar todo
+php artisan vendor:publish --provider="Innodite\ModuleMaker\ModuleMakerServiceProvider"
+
+# Solo configuración
+php artisan vendor:publish --tag=module-maker-config
+
+# Solo stubs (para personalizar plantillas)
+php artisan vendor:publish --tag=module-maker-stubs
+
+# Solo composables Vue
+php artisan module:publish-frontend</code></pre>
+  </div>
+
+  <h3>Estructura de stubs publicados</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Stub</th><th>Archivo</th><th>Descripción</th></tr></thead>
+      <tbody>
+        <tr><td><span class="file-md">controller.stub</span></td><td><code>stubs/module-maker/</code></td><td>Plantilla del controller</td></tr>
+        <tr><td><span class="file-md">service.stub</span></td><td><code>stubs/module-maker/</code></td><td>Plantilla del service</td></tr>
+        <tr><td><span class="file-md">repository.stub</span></td><td><code>stubs/module-maker/</code></td><td>Plantilla del repository</td></tr>
+        <tr><td><span class="file-md">model.stub</span></td><td><code>stubs/module-maker/</code></td><td>Plantilla del model</td></tr>
+        <tr><td><span class="file-md">vue-index.stub</span></td><td><code>stubs/module-maker/</code></td><td>Plantilla de vista Index.vue</td></tr>
+        <tr><td><span class="file-md">vue-form.stub</span></td><td><code>stubs/module-maker/</code></td><td>Plantilla de vistas Create/Edit.vue</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="callout callout-tip">
+    <p><strong>Personalización de stubs:</strong> Una vez publicados, el paquete prioriza los stubs en <code>stubs/module-maker/</code> sobre los internos. Puedes modificar cualquier plantilla sin tocar el vendor.</p>
+  </div>
+</section>
+
+<footer>
+  <p>
+    <strong>Laravel Module Maker</strong> &mdash; MIT License &mdash;
+    &copy; 2026 <a href="https://github.com/anthonyfilgueira" target="_blank">Anthony Filgueira</a>
+    &mdash;
+    <a href="https://github.com/innodite/laravel-module-maker" target="_blank">GitHub</a>
+  </p>
+  <p style="margin-top:8px;font-size:12px;color:#94a3b8">innodite/laravel-module-maker v3.0.0 — Release Candidate</p>
+</footer>
+
+</div>
+</main>
+
+<!-- Mobile toggle button -->
+<button id="sidebar-toggle" aria-label="Toggle sidebar">☰</button>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-php.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-bash.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-json.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-javascript.min.js"></script>
+
+<script>
+// ── COPY UTILITIES ──
+function copyText(text, btn) {
+  navigator.clipboard.writeText(text).then(() => {
+    const orig = btn.textContent;
+    btn.textContent = '¡Copiado!';
+    setTimeout(() => btn.textContent = orig, 1800);
+  });
+}
+
+function copyCode(btn) {
+  const pre = btn.closest('.code-wrapper').querySelector('pre');
+  const text = pre.textContent;
+  navigator.clipboard.writeText(text.trim()).then(() => {
+    btn.textContent = '¡Copiado!';
+    btn.classList.add('copied');
+    setTimeout(() => {
+      btn.textContent = 'Copiar';
+      btn.classList.remove('copied');
+    }, 1800);
+  });
+}
+
+// ── TAB SWITCHER ──
+function switchTab(btn, paneId) {
+  const tabsEl = btn.closest('.tabs');
+  tabsEl.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+  tabsEl.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+  btn.classList.add('active');
+  document.getElementById(paneId).classList.add('active');
+}
+
+// ── MOBILE SIDEBAR TOGGLE ──
+const sidebar = document.getElementById('sidebar');
+const overlay = document.getElementById('sidebar-overlay');
+const toggleBtn = document.getElementById('sidebar-toggle');
+
+toggleBtn.addEventListener('click', () => {
+  sidebar.classList.toggle('open');
+  overlay.classList.toggle('open');
+});
+
+overlay.addEventListener('click', () => {
+  sidebar.classList.remove('open');
+  overlay.classList.remove('open');
+});
+
+// ── SMOOTH SCROLL + CLOSE MOBILE SIDEBAR ──
+document.querySelectorAll('#sidebar a[href^="#"]').forEach(link => {
+  link.addEventListener('click', e => {
+    e.preventDefault();
+    const target = document.querySelector(link.getAttribute('href'));
+    if (target) {
+      target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+      sidebar.classList.remove('open');
+      overlay.classList.remove('open');
+    }
+  });
+});
+
+// ── ACTIVE SECTION TRACKING (IntersectionObserver) ──
+const navLinks = document.querySelectorAll('#sidebar a[href^="#"]');
+const sections = document.querySelectorAll('section[id]');
+
+const observer = new IntersectionObserver(entries => {
+  entries.forEach(entry => {
+    if (entry.isIntersecting) {
+      const id = entry.target.id;
+      navLinks.forEach(link => {
+        link.classList.toggle('active', link.getAttribute('href') === '#' + id);
+      });
+    }
+  });
+}, {
+  rootMargin: '-10% 0px -80% 0px',
+  threshold: 0
+});
+
+sections.forEach(section => observer.observe(section));
+</script>
+</body>
+</html>

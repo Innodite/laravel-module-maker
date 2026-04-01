@@ -8,106 +8,201 @@ use Illuminate\Console\Command;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Str;
 use Innodite\LaravelModuleMaker\Generators\Components\ModuleGenerator;
+use Innodite\LaravelModuleMaker\Services\ModuleAuditor;
+use Innodite\LaravelModuleMaker\Services\RouteInjectionService;
 use Innodite\LaravelModuleMaker\Support\ContextResolver;
+use Throwable;
 
 /**
- * Comando principal para generar un módulo Laravel con arquitectura modular.
+ * MakeModuleCommand — Orquestador Maestro del Generador de Módulos v3.0.0
  *
  * Modos de uso:
- *   1. php artisan innodite:make-module User
- *      Modo interactivo: pregunta contexto, variante y automático/JSON.
+ *   1. Módulo completo con contexto explícito:
+ *        php artisan innodite:make-module User --context=central
  *
- *   2. php artisan innodite:make-module User --json
- *      Lee Modules/module-maker-config/user.json y genera con esa configuración.
+ *   2. Módulo completo con selección interactiva (sin --context):
+ *        php artisan innodite:make-module User
  *
- *   3. php artisan innodite:make-module User -M -C -S -R
- *      Componentes individuales: pregunta contexto y crea solo los marcados.
+ *   3. Componentes individuales en módulo existente:
+ *        php artisan innodite:make-module User --context=shared -S -R
+ *
+ *   4. Desde JSON de configuración dinámica:
+ *        php artisan innodite:make-module User --json
+ *
+ *   5. Sin inyección de rutas:
+ *        php artisan innodite:make-module User --context=central --no-routes
  */
 class MakeModuleCommand extends Command
 {
-    /**
-     * Firma del comando con sus opciones.
-     *
-     * @var string
-     */
-    protected $signature = 'innodite:make-module {name : Nombre del módulo en StudlyCase}
-                             {--json : Usa el archivo JSON de configuración en module-maker-config/}
-                             {--M|model      : Crea el modelo}
-                             {--C|controller : Crea el controlador e interface}
-                             {--S|service    : Crea el servicio e interface}
-                             {--R|repository : Crea el repositorio e interface}
-                             {--G|migration  : Crea la migración}
-                             {--Q|request    : Crea el form request}';
+    protected $signature = 'innodite:make-module
+        {name                  : Nombre de la entidad en singular (se convierte a PascalCase)}
+        {--context=            : Contexto: central | shared | tenant_shared | nombre-del-tenant}
+        {--json                : Usa module-maker-config/{module}.json como fuente de configuración}
+        {--no-routes           : Omite la inyección de rutas en el proyecto}
+        {--M|model             : Solo añade el modelo}
+        {--C|controller        : Solo añade el controlador}
+        {--S|service           : Solo añade el servicio e interface}
+        {--R|repository        : Solo añade el repositorio e interface}
+        {--G|migration         : Solo añade la migración contextualizada}
+        {--Q|request           : Solo añade el form request}';
 
-    /**
-     * Descripción del comando.
-     *
-     * @var string
-     */
-    protected $description = 'Crea un módulo completo o componentes individuales con convención de contexto.';
+    protected $description = 'Genera un módulo completo con inyección de rutas contextualizada.';
 
-    /**
-     * Ejecuta el comando principal según el modo seleccionado.
-     *
-     * @return int
-     */
+    // ─── Entry point ──────────────────────────────────────────────────────────
+
     public function handle(): int
     {
-        $moduleName = Str::studly($this->argument('name'));
-        $modulePath = config('make-module.module_path') . "/{$moduleName}";
-
-        // ── Modo: componentes individuales (-M -C -S -R -G -Q) ───────────────
-        if ($this->hasIndividualComponentOptions()) {
-            return $this->handleComponentMode($moduleName, $modulePath);
-        }
-
-        // ── Módulo ya existe (sin componentes individuales) ───────────────────
-        if (File::exists($modulePath)) {
-            $this->error("El módulo '{$moduleName}' ya existe. Usa -M -C -S -R -G -Q para añadir componentes.");
+        // ── Pre-flight: validar nombre ────────────────────────────────────────
+        try {
+            $moduleName = $this->resolveModuleName($this->argument('name'));
+        } catch (\InvalidArgumentException $e) {
+            $this->components->error($e->getMessage());
             return Command::FAILURE;
         }
 
-        // ── Modo: JSON ────────────────────────────────────────────────────────
+        $modulePath = config('make-module.module_path') . "/{$moduleName}";
+
+        // ── Modo JSON ─────────────────────────────────────────────────────────
         if ($this->option('json')) {
             return $this->handleJsonMode($moduleName);
         }
 
-        // ── Modo: interactivo (por defecto) ───────────────────────────────────
-        return $this->handleInteractiveMode($moduleName);
+        // ── Modo componentes individuales ─────────────────────────────────────
+        if ($this->hasIndividualFlags()) {
+            return $this->handleComponentMode($moduleName, $modulePath);
+        }
+
+        // ── Módulo ya existe (modo completo) ──────────────────────────────────
+        if (File::exists($modulePath)) {
+            $this->components->error(
+                "El módulo '{$moduleName}' ya existe en {$modulePath}."
+                . " Usa -M -C -S -R -G -Q para añadir componentes."
+            );
+            return Command::FAILURE;
+        }
+
+        // ── Modo completo ─────────────────────────────────────────────────────
+        return $this->handleFullModule($moduleName, $modulePath);
+    }
+
+    // ─── Modos de ejecución ───────────────────────────────────────────────────
+
+    /**
+     * Genera el módulo completo: estructura + inyección de rutas.
+     */
+    private function handleFullModule(string $moduleName, string $modulePath): int
+    {
+        // Pre-flight: resolver contexto
+        try {
+            [$contextKey, $contextItem] = $this->resolveContext();
+        } catch (\InvalidArgumentException $e) {
+            $this->components->error($e->getMessage());
+            return Command::FAILURE;
+        }
+
+        $contextName   = $contextItem['name'] ?? '';
+        $functionality = $this->resolveFunctionality($moduleName);
+
+        $this->newLine();
+        $this->components->info("Generando módulo <comment>{$moduleName}</comment>");
+        $this->displayConfigTable($moduleName, $contextKey, $contextName, $functionality);
+        $this->newLine();
+
+        $filesGenerated = false;
+
+        try {
+            // ── Paso 1: Generar estructura de archivos (Fases 1 & 2) ──────────
+            $this->components->task('Creando estructura de archivos', function () use (
+                $moduleName, $contextKey, $functionality, $contextName, &$filesGenerated
+            ) {
+                (new ModuleGenerator($moduleName, true, null, $this))
+                    ->createCleanModuleWithContext($contextKey, $functionality, $contextName);
+
+                $filesGenerated = true;
+                return true;
+            });
+
+            // ── Paso 2: Inyectar rutas en el proyecto (Fase 3) ────────────────
+            if (!$this->option('no-routes')) {
+                $this->components->task('Inyectando rutas en el proyecto', function () use (
+                    $contextKey, $moduleName, $contextName, $contextItem
+                ) {
+                    $controllerFqcn = $this->buildControllerFqcn($moduleName, $contextItem);
+
+                    (new RouteInjectionService($this))->inject(
+                        contextKey:     $contextKey,
+                        entityName:     $moduleName,
+                        contextName:    $contextName,
+                        controllerFqcn: $controllerFqcn,
+                        contextConfig:  $contextItem
+                    );
+
+                    return true;
+                });
+            }
+
+            $this->newLine();
+            $this->displaySuccess($moduleName, $contextKey, $contextName);
+
+            // ── Auditoría ─────────────────────────────────────────────────────
+            ModuleAuditor::log('module.created', [
+                'module'        => $moduleName,
+                'context_key'   => $contextKey,
+                'context_name'  => $contextName,
+                'functionality' => $functionality,
+                'routes'        => !$this->option('no-routes'),
+            ]);
+
+            return Command::SUCCESS;
+
+        } catch (Throwable $e) {
+            $this->newLine();
+            $this->components->error("Error: {$e->getMessage()}");
+
+            // ── Rollback opcional si hay archivos generados ───────────────────
+            if ($filesGenerated && File::exists($modulePath)) {
+                if ($this->confirm("¿Deseas eliminar los archivos generados en '{$modulePath}'? (Rollback)")) {
+                    $this->performRollback($modulePath);
+                    ModuleAuditor::log('module.rollback', [
+                        'module'      => $moduleName,
+                        'context_key' => $contextKey ?? 'unknown',
+                        'reason'      => $e->getMessage(),
+                    ]);
+                } else {
+                    $this->components->warn("Los archivos generados se mantienen. Revisa el estado manualmente.");
+                }
+            }
+
+            return Command::FAILURE;
+        }
     }
 
     /**
-     * Modo componentes individuales: pregunta contexto y crea solo los archivos marcados.
-     * Si el módulo no existe, pregunta si desea crearlo antes de continuar.
-     *
-     * @param  string  $moduleName  Nombre del módulo en StudlyCase
-     * @param  string  $modulePath  Ruta absoluta al directorio del módulo
-     * @return int
+     * Añade componentes individuales a un módulo existente.
      */
     private function handleComponentMode(string $moduleName, string $modulePath): int
     {
-        if (! File::exists($modulePath)) {
-            $this->warn("El módulo '{$moduleName}' no existe.");
-            if (! $this->confirm("¿Quieres crear la estructura base del módulo antes de continuar?")) {
-                $this->line("Operación cancelada.");
+        // Si el módulo no existe, ofrecer crear la estructura base
+        if (!File::exists($modulePath)) {
+            $this->components->warn("El módulo '{$moduleName}' no existe.");
+            if (!$this->confirm("¿Crear la estructura base antes de continuar?")) {
                 return Command::FAILURE;
             }
             (new ModuleGenerator($moduleName, true, null, $this))->createFolders();
         }
 
-        $allContexts = $this->loadContexts();
-        if ($allContexts === null) {
+        try {
+            [$contextKey, $contextItem] = $this->resolveContext();
+        } catch (\InvalidArgumentException $e) {
+            $this->components->error($e->getMessage());
             return Command::FAILURE;
         }
 
-        [$contextKey, $selectedItem] = $this->askContextSelection($allContexts);
-        if ($contextKey === null) {
-            return Command::FAILURE;
-        }
+        $contextName = $contextItem['name'] ?? '';
 
         $componentConfig = [
             'context'      => $contextKey,
-            'context_name' => $selectedItem['name'],
+            'context_name' => $contextName,
         ];
 
         $flags = [
@@ -120,185 +215,367 @@ class MakeModuleCommand extends Command
         ];
 
         $this->newLine();
-        $this->line("  Módulo   : {$moduleName}");
-        $this->line("  Contexto : {$contextKey} → {$selectedItem['name']}");
+        $this->components->info("Añadiendo componentes a <comment>{$moduleName}</comment> [{$contextKey}]");
         $this->newLine();
 
-        (new ModuleGenerator($moduleName, true, null, $this))
-            ->createIndividualComponents($flags, $componentConfig);
+        try {
+            $this->components->task('Generando componentes', function () use (
+                $moduleName, $flags, $componentConfig
+            ) {
+                (new ModuleGenerator($moduleName, true, null, $this))
+                    ->createIndividualComponents($flags, $componentConfig);
+                return true;
+            });
 
-        return Command::SUCCESS;
+            // Inyectar rutas si se generó un controller
+            if (!$this->option('no-routes') && ($flags['controller'] ?? false)) {
+                $this->components->task('Inyectando rutas', function () use (
+                    $contextKey, $moduleName, $contextName, $contextItem
+                ) {
+                    (new RouteInjectionService($this))->inject(
+                        contextKey:     $contextKey,
+                        entityName:     $moduleName,
+                        contextName:    $contextName,
+                        controllerFqcn: $this->buildControllerFqcn($moduleName, $contextItem),
+                        contextConfig:  $contextItem
+                    );
+                    return true;
+                });
+            }
+
+            return Command::SUCCESS;
+
+        } catch (Throwable $e) {
+            $this->components->error($e->getMessage());
+            return Command::FAILURE;
+        }
     }
 
     /**
-     * Genera el módulo a partir del archivo JSON de configuración.
-     * Busca Modules/module-maker-config/{modulename}.json (en minúscula o kebab-case).
-     *
-     * @param  string  $moduleName  Nombre del módulo en StudlyCase
-     * @return int
+     * Genera el módulo desde un archivo JSON de configuración dinámica.
      */
     private function handleJsonMode(string $moduleName): int
     {
-        $configDir     = config('make-module.module_path') . '/module-maker-config';
+        $configDir     = config('make-module.config_path');
         $jsonPath      = "{$configDir}/" . Str::lower($moduleName) . '.json';
         $jsonPathKebab = "{$configDir}/" . Str::kebab($moduleName) . '.json';
 
-        if (! File::exists($jsonPath) && File::exists($jsonPathKebab)) {
+        if (!File::exists($jsonPath) && File::exists($jsonPathKebab)) {
             $jsonPath = $jsonPathKebab;
         }
 
-        if (! File::exists($jsonPath)) {
-            $this->error("No se encontró el archivo de configuración para '{$moduleName}'.");
-            $this->line("  Buscado en : {$jsonPath}");
-            $this->line("  Crea '{$configDir}/" . Str::lower($moduleName) . ".json' con la estructura del módulo.");
-            $this->line("  Crea el archivo JSON y luego ejecuta: php artisan innodite:make-module {$moduleName} --json");
+        if (!File::exists($jsonPath)) {
+            $this->components->error("No se encontró archivo de configuración para '{$moduleName}'.");
+            $this->line("  Buscado en: <comment>{$jsonPath}</comment>");
             return Command::FAILURE;
         }
 
         $config = json_decode(File::get($jsonPath), true);
 
         if (json_last_error() !== JSON_ERROR_NONE) {
-            $this->error("Error al parsear '{$jsonPath}': " . json_last_error_msg());
+            $this->components->error("JSON inválido en '{$jsonPath}': " . json_last_error_msg());
             return Command::FAILURE;
         }
 
-        $this->info("Usando configuración: {$jsonPath}");
+        $this->components->info("Usando configuración: <comment>{$jsonPath}</comment>");
 
         $resolvedName = Str::studly($config['module_name'] ?? $moduleName);
-        $generator    = new ModuleGenerator($resolvedName, false, $config, $this);
-        $generator->createDynamicModule();
 
-        return Command::SUCCESS;
-    }
+        try {
+            $this->components->task('Generando módulo dinámico', function () use ($resolvedName, $config) {
+                (new ModuleGenerator($resolvedName, false, $config, $this))->createDynamicModule();
+                return true;
+            });
 
-    /**
-     * Modo interactivo: contexto → variante (si >1) → automático/JSON → funcionalidad.
-     * Si no hay contexts.json disponible, genera un módulo básico sin contexto.
-     *
-     * @param  string  $moduleName  Nombre del módulo en StudlyCase
-     * @return int
-     */
-    private function handleInteractiveMode(string $moduleName): int
-    {
-        $this->info("Creando módulo '{$moduleName}'...");
-
-        $allContexts = $this->loadContexts();
-
-        if ($allContexts === null) {
-            (new ModuleGenerator($moduleName, true, null, $this))->createCleanModule();
             return Command::SUCCESS;
-        }
 
-        [$contextKey, $selectedItem] = $this->askContextSelection($allContexts);
-        if ($contextKey === null) {
+        } catch (Throwable $e) {
+            $this->components->error($e->getMessage());
             return Command::FAILURE;
         }
-
-        // ── Automático o desde JSON ───────────────────────────────────────────
-        $generationMode = $this->choice(
-            '¿Cómo generar el módulo?',
-            ['Automático (estructura limpia)', 'Desde JSON (module-maker-config/{module}.json)'],
-            0
-        );
-
-        if (str_starts_with($generationMode, 'Desde JSON')) {
-            return $this->handleJsonMode($moduleName);
-        }
-
-        // ── Funcionalidad para el prefijo de ruta ─────────────────────────────
-        $defaultFunctionality = Str::plural(Str::kebab($moduleName));
-        $functionality        = $this->ask(
-            'Nombre de la funcionalidad para las rutas (ej: users, campaign-goals)',
-            $defaultFunctionality
-        );
-
-        $this->newLine();
-        $this->line("  Contexto      : {$contextKey}");
-        $this->line("  Variante      : {$selectedItem['name']}");
-        $this->line("  Funcionalidad : {$functionality}");
-        $this->newLine();
-
-        (new ModuleGenerator($moduleName, true, null, $this))
-            ->createCleanModuleWithContext($contextKey, $functionality, $selectedItem['name']);
-
-        return Command::SUCCESS;
     }
 
-    // ─── Helpers ─────────────────────────────────────────────────────────────
+    // ─── Pre-flight: Validaciones ─────────────────────────────────────────────
 
     /**
-     * Carga los contextos desde contexts.json.
-     * Muestra advertencia y retorna null si no hay contexts.json disponible o está vacío.
+     * Convierte el input a PascalCase y valida que sea un identificador PHP válido.
      *
-     * @return array<string, array>|null
+     * Sub-proceso atómico:
+     *   input "user-profile" → Str::studly() → "UserProfile"
+     *   Regex: /^[A-Z][a-zA-Z0-9]+$/
+     *
+     * @throws \InvalidArgumentException Si el nombre no es válido
      */
-    private function loadContexts(): ?array
+    // ─── Palabras reservadas que no pueden usarse como nombre de módulo ──────────
+
+    private const RESERVED_NAMES = [
+        // PHP keywords
+        'abstract', 'and', 'array', 'as', 'break', 'callable', 'case', 'catch',
+        'class', 'clone', 'const', 'continue', 'declare', 'default', 'die', 'do',
+        'echo', 'else', 'elseif', 'empty', 'enddeclare', 'endfor', 'endforeach',
+        'endif', 'endswitch', 'endwhile', 'eval', 'exit', 'extends', 'final',
+        'finally', 'fn', 'for', 'foreach', 'function', 'global', 'goto', 'if',
+        'implements', 'include', 'include_once', 'instanceof', 'insteadof',
+        'interface', 'isset', 'list', 'match', 'namespace', 'new', 'or', 'print',
+        'private', 'protected', 'public', 'readonly', 'require', 'require_once',
+        'return', 'static', 'switch', 'throw', 'trait', 'try', 'unset', 'use',
+        'var', 'while', 'xor', 'yield',
+        // PHP built-in class names
+        'exception', 'error', 'closure', 'generator', 'iterator', 'arrayaccess',
+        'countable', 'stringable', 'throwable',
+        // Laravel names que generarían conflictos de namespace
+        'app', 'config', 'route', 'request', 'response', 'model', 'controller',
+        'middleware', 'provider', 'facade', 'auth', 'event', 'job', 'mail',
+        'notification', 'policy', 'rule', 'seeder', 'factory', 'migration',
+    ];
+
+    private function resolveModuleName(string $input): string
     {
-        try {
-            $allContexts = ContextResolver::all();
-        } catch (\Throwable) {
-            $this->warn('No se encontró contexts.json. Ejecuta: php artisan innodite:module-setup');
-            return null;
+        $name = Str::studly($input);
+
+        if (!preg_match('/^[A-Z][a-zA-Z0-9]+$/', $name)) {
+            throw new \InvalidArgumentException(
+                "'{$name}' no es un nombre de módulo válido. "
+                . "Usa letras y números en PascalCase (ej: User, InvoiceItem)."
+            );
         }
 
-        if (empty($allContexts)) {
-            $this->warn('contexts.json está vacío.');
-            return null;
+        if (in_array(strtolower($name), self::RESERVED_NAMES, true)) {
+            throw new \InvalidArgumentException(
+                "'{$name}' es una palabra reservada de PHP o Laravel y no puede "
+                . "usarse como nombre de módulo. Usa un nombre específico del dominio (ej: UserAccount)."
+            );
         }
 
-        return $allContexts;
+        return $name;
     }
 
     /**
-     * Pregunta al usuario el contexto y la variante a usar.
-     * Si el contexto tiene un solo item, lo selecciona automáticamente.
-     * Retorna [contextKey, selectedItem] o [null, null] si hay error.
+     * Resuelve el contexto desde --context o via selección interactiva.
      *
-     * @param  array<string, array>  $allContexts  Mapa de contextos desde contexts.json
-     * @return array{0: string|null, 1: array|null}
+     * Orden de resolución:
+     *   1. Si --context=X y X es una clave directa (central, shared, tenant_shared) → usar
+     *   2. Si --context=X y X coincide con name/class_prefix de un tenant → usar ese tenant
+     *   3. Si --context vacío → selección interactiva
+     *   4. Si nada coincide → error con lista de disponibles
+     *
+     * @return array{0: string, 1: array}  [contextKey, contextItem]
+     * @throws \InvalidArgumentException
      */
-    private function askContextSelection(array $allContexts): array
+    private function resolveContext(): array
     {
-        $contextKeys    = array_keys($allContexts);
-        $selectedCtxKey = $this->choice('¿En qué contexto?', $contextKeys, 0);
-        $contextItems   = $allContexts[$selectedCtxKey];
+        $allContexts = $this->loadContexts();
+        $option      = trim($this->option('context') ?? '');
 
-        if (empty($contextItems)) {
-            $this->error("El contexto '{$selectedCtxKey}' no tiene variantes en contexts.json.");
-            return [null, null];
+        // Sin opción → selección interactiva
+        if ($option === '') {
+            return $this->askContextInteractive($allContexts);
         }
 
-        if (count($contextItems) === 1) {
-            return [$selectedCtxKey, $contextItems[0]];
+        // Coincidencia directa con clave de contexto
+        if (isset($allContexts[$option])) {
+            $items = $allContexts[$option];
+            if (count($items) === 1) {
+                return [$option, $items[0]];
+            }
+            // Múltiples variantes → preguntar cuál
+            return $this->askVariant($option, $items);
         }
 
-        $names        = array_map(fn ($item) => $item['name'] ?? '?', $contextItems);
-        $selectedName = $this->choice('¿Cuál variante?', $names, 0);
-
-        foreach ($contextItems as $item) {
-            if (($item['name'] ?? '') === $selectedName) {
-                return [$selectedCtxKey, $item];
+        // Buscar en tenants por name, class_prefix o slug
+        foreach ($allContexts['tenant'] ?? [] as $item) {
+            if ($this->tenantMatches($option, $item)) {
+                return ['tenant', $item];
             }
         }
 
-        $this->error("No se encontró la variante '{$selectedName}'.");
-        return [null, null];
+        // No encontrado → error descriptivo
+        $available = implode(', ', array_keys($allContexts));
+        $tenants   = implode(', ', array_map(
+            fn ($t) => Str::kebab(Str::studly($t['name'] ?? '')),
+            $allContexts['tenant'] ?? []
+        ));
+
+        throw new \InvalidArgumentException(
+            "Contexto '{$option}' no encontrado en contexts.json.\n"
+            . "  Contextos disponibles: {$available}\n"
+            . "  Tenants disponibles:   {$tenants}"
+        );
     }
 
     /**
-     * Determina si el usuario pasó alguna opción de componente individual.
-     *
-     * @return bool
+     * Verifica si un tenant coincide con el input del usuario.
+     * Acepta: nombre exacto, class_prefix, o slug kebab-case.
      */
-    private function hasIndividualComponentOptions(): bool
+    private function tenantMatches(string $option, array $item): bool
+    {
+        $slug = Str::kebab(Str::studly($item['name'] ?? ''));
+        return
+            strcasecmp($option, $item['name'] ?? '')         === 0 ||
+            strcasecmp($option, $item['class_prefix'] ?? '') === 0 ||
+            $option === $slug;
+    }
+
+    /**
+     * Selección interactiva de contexto cuando no se pasa --context.
+     *
+     * @return array{0: string, 1: array}
+     * @throws \InvalidArgumentException
+     */
+    private function askContextInteractive(array $allContexts): array
+    {
+        $keys        = array_keys($allContexts);
+        $selectedKey = $this->choice('Selecciona el contexto:', $keys, 0);
+        $items       = $allContexts[$selectedKey];
+
+        if (empty($items)) {
+            throw new \InvalidArgumentException("El contexto '{$selectedKey}' no tiene variantes.");
+        }
+
+        if (count($items) === 1) {
+            return [$selectedKey, $items[0]];
+        }
+
+        return $this->askVariant($selectedKey, $items);
+    }
+
+    /**
+     * Selección interactiva cuando un contexto tiene múltiples variantes.
+     *
+     * @return array{0: string, 1: array}
+     */
+    private function askVariant(string $contextKey, array $items): array
+    {
+        $names    = array_map(fn ($item) => $item['name'] ?? '?', $items);
+        $selected = $this->choice("Selecciona la variante de '{$contextKey}':", $names, 0);
+
+        foreach ($items as $item) {
+            if (($item['name'] ?? '') === $selected) {
+                return [$contextKey, $item];
+            }
+        }
+
+        throw new \InvalidArgumentException("Variante '{$selected}' no encontrada.");
+    }
+
+    /**
+     * Carga todos los contextos desde contexts.json.
+     *
+     * @throws \InvalidArgumentException Si no hay contexts.json o está vacío
+     */
+    private function loadContexts(): array
+    {
+        try {
+            $all = ContextResolver::all();
+        } catch (Throwable $e) {
+            throw new \InvalidArgumentException(
+                "No se pudo leer contexts.json: {$e->getMessage()}\n"
+                . "Ejecuta: php artisan innodite:module-setup"
+            );
+        }
+
+        if (empty($all)) {
+            throw new \InvalidArgumentException(
+                "contexts.json está vacío. Edita module-maker-config/contexts.json."
+            );
+        }
+
+        return $all;
+    }
+
+    // ─── Helpers de orquestación ──────────────────────────────────────────────
+
+    /**
+     * Construye el FQCN del controlador principal del módulo para el contexto dado.
+     *
+     * Sub-proceso atómico:
+     *   class_prefix='Central', moduleName='User' → CentralUserController
+     *   namespace_path='Central' → Modules\User\Http\Controllers\Central\CentralUserController
+     */
+    private function buildControllerFqcn(string $moduleName, array $contextItem): string
+    {
+        $prefix    = $contextItem['class_prefix']   ?? '';
+        $nsPath    = $contextItem['namespace_path'] ?? '';
+        $className = "{$prefix}{$moduleName}Controller";
+
+        $namespace = $nsPath
+            ? "Modules\\{$moduleName}\\Http\\Controllers\\{$nsPath}"
+            : "Modules\\{$moduleName}\\Http\\Controllers";
+
+        return "{$namespace}\\{$className}";
+    }
+
+    /**
+     * Derive la funcionalidad (prefijo de ruta) desde el nombre del módulo.
+     * Sub-proceso atómico: User → users, InvoiceItem → invoice-items
+     */
+    private function resolveFunctionality(string $moduleName): string
+    {
+        return Str::kebab(Str::plural(Str::snake($moduleName)));
+    }
+
+    /**
+     * Determina si el usuario pasó algún flag de componente individual.
+     */
+    private function hasIndividualFlags(): bool
     {
         return (bool) (
-            $this->option('model')
-            || $this->option('controller')
-            || $this->option('service')
-            || $this->option('repository')
-            || $this->option('migration')
-            || $this->option('request')
+            $this->option('model')      ||
+            $this->option('controller') ||
+            $this->option('service')    ||
+            $this->option('repository') ||
+            $this->option('migration')  ||
+            $this->option('request')
         );
+    }
+
+    /**
+     * Elimina el directorio del módulo como parte de un rollback.
+     */
+    private function performRollback(string $modulePath): void
+    {
+        $this->components->task('Ejecutando rollback', function () use ($modulePath) {
+            File::deleteDirectory($modulePath);
+            return true;
+        });
+
+        $this->components->warn("Rollback completado. Los archivos de '{$modulePath}' fueron eliminados.");
+    }
+
+    // ─── Output visual ────────────────────────────────────────────────────────
+
+    /**
+     * Muestra la tabla de configuración antes de ejecutar.
+     */
+    private function displayConfigTable(
+        string $moduleName,
+        string $contextKey,
+        string $contextName,
+        string $functionality
+    ): void {
+        $this->table(
+            ['Campo', 'Valor'],
+            [
+                ['Módulo',        $moduleName],
+                ['Contexto',      $contextKey],
+                ['Variante',      $contextName],
+                ['Prefijo ruta',  $functionality],
+                ['Inyectar rutas', $this->option('no-routes') ? 'No' : 'Sí'],
+            ]
+        );
+    }
+
+    /**
+     * Muestra el resumen final tras la generación exitosa.
+     */
+    private function displaySuccess(string $moduleName, string $contextKey, string $contextName): void
+    {
+        $this->components->info("Módulo <comment>{$moduleName}</comment> generado exitosamente.");
+        $this->newLine();
+        $this->line("  Próximos pasos:");
+        $this->line("    1. Añade los marcadores en <comment>routes/web.php</comment> o <comment>routes/tenant.php</comment> si aún no los tienes.");
+        $this->line("    2. Registra el Service Provider en <comment>bootstrap/providers.php</comment> si usas Laravel 11+.");
+        $this->line("    3. Ejecuta <comment>php artisan migrate</comment> para crear las tablas.");
+        $this->newLine();
     }
 }

@@ -1,0 +1,46 @@
+<?php
+
+declare(strict_types=1);
+
+namespace {{ namespace }};
+
+use Illuminate\Http\Request;
+use Illuminate\Routing\Controller;
+use {{ serviceInterfaceNamespace }};
+
+class {{ controllerName }} extends Controller
+{
+    public function __construct(
+        private readonly {{ serviceInterface }} ${{ serviceInstance }},
+    ) {}
+
+    public function index(Request $request): mixed
+    {
+        return $this->{{ serviceInstance }}->paginate($request->all());
+    }
+
+    public function list(Request $request): mixed
+    {
+        return $this->{{ serviceInstance }}->list($request->all());
+    }
+
+    public function store(Request $request): mixed
+    {
+        return $this->{{ serviceInstance }}->create($request->validated());
+    }
+
+    public function show(int $id): mixed
+    {
+        return $this->{{ serviceInstance }}->findById($id);
+    }
+
+    public function update(Request $request, int $id): mixed
+    {
+        return $this->{{ serviceInstance }}->update($id, $request->validated());
+    }
+
+    public function destroy(int $id): mixed
+    {
+        return $this->{{ serviceInstance }}->delete($id);
+    }
+}

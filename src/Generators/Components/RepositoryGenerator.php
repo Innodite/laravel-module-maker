@@ -51,13 +51,13 @@ class RepositoryGenerator extends AbstractComponentGenerator
      */
     public function generate(): void
     {
-        $repoDir          = $this->buildPath('Repositories');
-        $repoContractsDir = $repoDir . '/Contracts';
+        $repoDir      = $this->buildPath('Repositories');
+        $contractsDir = $this->buildContractsPath('Repositories');
 
         $this->ensureDirectoryExists($repoDir);
-        $this->ensureDirectoryExists($repoContractsDir);
+        $this->ensureDirectoryExists($contractsDir);
 
-        $this->generateInterface($repoContractsDir);
+        $this->generateInterface($contractsDir);
         $this->generateImplementation($repoDir);
     }
 
@@ -70,7 +70,7 @@ class RepositoryGenerator extends AbstractComponentGenerator
     private function generateInterface(string $contractsDir): void
     {
         $interfaceName = $this->prefixClass("{$this->modelName}RepositoryInterface");
-        $namespace     = $this->buildNamespace('Repositories') . '\\Contracts';
+        $namespace     = $this->buildContractsNamespace('Repositories');
 
         $stub = $this->getStubContent('repository-interface.stub', $this->isClean, [
             'namespace'               => $namespace,
@@ -82,7 +82,7 @@ class RepositoryGenerator extends AbstractComponentGenerator
         $this->putFile(
             "{$contractsDir}/{$interfaceName}.php",
             $stub,
-            "Interfaz creada: Modules/{$this->moduleName}/Repositories/{$this->getContextFolder()}/Contracts/{$interfaceName}.php"
+            "Interfaz creada: Modules/{$this->moduleName}/Repositories/Contracts/{$this->getContextFolder()}/{$interfaceName}.php"
         );
     }
 
@@ -94,22 +94,24 @@ class RepositoryGenerator extends AbstractComponentGenerator
      */
     private function generateImplementation(string $repoDir): void
     {
-        $repoName          = $this->prefixClass("{$this->modelName}Repository");
-        $repoInterface     = $this->prefixClass("{$this->modelName}RepositoryInterface");
-        $modelInstance     = Str::camel($this->modelName);
-        $namespace         = $this->buildNamespace('Repositories');
-
-        // El modelo vive en Models/{contextFolder}/
-        $modelNamespace = $this->buildNamespace('Models');
+        $repoName              = $this->prefixClass("{$this->modelName}Repository");
+        $repoInterface         = $this->prefixClass("{$this->modelName}RepositoryInterface");
+        $modelInstance         = Str::camel($this->modelName);
+        $namespace             = $this->buildNamespace('Repositories');
+        // FQCN del model para el `use` statement (el modelo vive en Models/{contextFolder}/)
+        $modelFqcn             = $this->buildNamespace('Models') . '\\' . $this->modelName;
+        // FQCN del repository interface para el `use` statement
+        $repoInterfaceNs       = $this->buildContractsNamespace('Repositories') . '\\' . $repoInterface;
 
         $stub = $this->getStubContent('repository.stub', $this->isClean, [
-            'namespace'               => $namespace,
-            'repositoryName'          => $repoName,
-            'modelName'               => $this->modelName,
-            'modelNamespace'          => $modelNamespace,
-            'module'                  => $this->moduleName,
-            'repositoryInterfaceName' => $repoInterface,
-            'modelNameLowerCase'      => $modelInstance,
+            'namespace'                    => $namespace,
+            'repositoryName'               => $repoName,
+            'modelName'                    => $this->modelName,
+            'modelNamespace'               => $modelFqcn,
+            'module'                       => $this->moduleName,
+            'repositoryInterfaceName'      => $repoInterface,
+            'repositoryInterfaceNamespace' => $repoInterfaceNs,
+            'modelNameLowerCase'           => $modelInstance,
         ]);
 
         $this->putFile(
