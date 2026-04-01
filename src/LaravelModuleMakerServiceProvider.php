@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\Route;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Innodite\LaravelModuleMaker\Commands\CheckEnvCommand;
 use Innodite\LaravelModuleMaker\Commands\MakeModuleCommand;
+use Innodite\LaravelModuleMaker\Commands\MigrateModulesCommand;
 use Innodite\LaravelModuleMaker\Commands\ModuleCheckCommand;
 use Innodite\LaravelModuleMaker\Commands\PublishFrontendCommand;
 use Innodite\LaravelModuleMaker\Commands\SetupModuleMakerCommand;
@@ -51,6 +52,7 @@ class LaravelModuleMakerServiceProvider extends ServiceProvider
         if ($this->app->runningInConsole()) {
             $this->commands([
                 MakeModuleCommand::class,
+                MigrateModulesCommand::class,
                 ModuleCheckCommand::class,
                 SetupModuleMakerCommand::class,
                 PublishFrontendCommand::class,
@@ -128,9 +130,13 @@ class LaravelModuleMakerServiceProvider extends ServiceProvider
     }
 
     /**
-     * Carga las rutas del módulo desde Routes/ (v3.0.0).
+     * Carga las rutas del módulo con backward compatibility (v2.x y v3.x).
      *
-     * Registra los tres archivos de ruta por tipo de contexto:
+     * Prioridad de búsqueda:
+     *   1. Routes/ (v3.0.0+) → Archivos específicos: web.php, tenant.php, api.php
+     *   2. routes/ (v2.x legacy) → Todos los archivos .php
+     *
+     * Registra los archivos de ruta encontrados:
      *   - web.php    → middleware 'web' (Central + Shared)
      *   - tenant.php → sin middleware wrapper (gestionado por el archivo de ruta)
      *   - api.php    → middleware 'api' (soporte externo)
@@ -140,12 +146,30 @@ class LaravelModuleMakerServiceProvider extends ServiceProvider
      */
     private function loadModuleRoutes(string $modulePath): void
     {
-        $routesPath = "{$modulePath}/Routes";
+        // Prioridad 1: Routes/ (v3.0.0+) — uppercase
+        $routesPathV3 = "{$modulePath}/Routes";
+        
+        // Prioridad 2: routes/ (v2.x legacy) — lowercase
+        $routesPathV2 = "{$modulePath}/routes";
 
-        if (!File::isDirectory($routesPath)) {
-            return;
+        // Detectar qué convención usa este módulo
+        if (File::isDirectory($routesPathV3)) {
+            // Módulo v3.0.0+ con Routes/ (uppercase)
+            $this->loadRoutesV3($routesPathV3);
+        } elseif (File::isDirectory($routesPathV2)) {
+            // Módulo legacy v2.x con routes/ (lowercase)
+            $this->loadRoutesV2($routesPathV2);
         }
+    }
 
+    /**
+     * Carga rutas v3.0.0+ (Routes/ con archivos específicos).
+     *
+     * @param  string  $routesPath  Ruta al directorio Routes/
+     * @return void
+     */
+    private function loadRoutesV3(string $routesPath): void
+    {
         $webFile    = "{$routesPath}/web.php";
         $tenantFile = "{$routesPath}/tenant.php";
         $apiFile    = "{$routesPath}/api.php";
@@ -165,6 +189,33 @@ class LaravelModuleMakerServiceProvider extends ServiceProvider
             Route::middleware('api')->group(function () use ($apiFile) {
                 require $apiFile;
             });
+        }
+    }
+
+    /**
+     * Carga rutas v2.x legacy (routes/ con todos los archivos .php).
+     *
+     * @param  string  $routesPath  Ruta al directorio routes/
+     * @return void
+     */
+    private function loadRoutesV2(string $routesPath): void
+    {
+        foreach (File::files($routesPath) as $routeFile) {
+            if ($routeFile->getExtension() !== 'php') {
+                continue;
+            }
+
+            $filename = $routeFile->getFilename();
+
+            if ($filename === 'api.php') {
+                Route::middleware('api')->group(function () use ($routeFile) {
+                    require $routeFile->getPathname();
+                });
+            } else {
+                Route::middleware('web')->group(function () use ($routeFile) {
+                    require $routeFile->getPathname();
+                });
+            }
         }
     }
 
