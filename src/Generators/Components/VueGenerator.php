@@ -62,16 +62,9 @@ class VueGenerator extends AbstractComponentGenerator
                 continue;
             }
 
-            $stubPath = $this->getStubPath($stubFile);
-
-            if (!File::exists($stubPath)) {
-                $this->warn("⚠️  Stub no encontrado: {$stubFile}");
-                continue;
-            }
-
-            $content = File::get($stubPath);
-            $content = $this->replacePlaceholdersInContent(
-                $content,
+            $content = $this->getStubContent(
+                $stubFile,
+                $this->isClean,
                 array_merge($placeholders, ['{{ vueComponentName }}' => $componentName])
             );
 
