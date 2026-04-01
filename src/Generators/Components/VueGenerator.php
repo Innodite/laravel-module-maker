@@ -113,23 +113,6 @@ class VueGenerator extends AbstractComponentGenerator
     }
 
     /**
-     * Resuelve la ruta absoluta al stub Vue.
-     * Prioridad: module-maker-config/stubs/contextual/ → stubs/contextual/ del paquete.
-     *
-     * @param  string  $stubFile
-     * @return string
-     */
-    private function getStubPath(string $stubFile): string
-    {
-        $projectStub = base_path("module-maker-config/stubs/contextual/{$stubFile}");
-        if (File::exists($projectStub)) {
-            return $projectStub;
-        }
-
-        return __DIR__ . "/../../../stubs/contextual/{$stubFile}";
-    }
-
-    /**
      * Construye la ruta de salida de los componentes Vue.
      * Usa la carpeta del contexto activo dentro de Resources/js/Pages/.
      *
