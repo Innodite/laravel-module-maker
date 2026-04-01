@@ -1,0 +1,45 @@
+<?php
+
+declare(strict_types=1);
+
+namespace {{ namespace }};
+
+use {{ serviceInterfaceNamespace }};
+use {{ repositoryInterfaceNamespace }};
+
+class {{ serviceName }} implements {{ serviceInterfaceName }}
+{
+    public function __construct(
+        private readonly {{ repositoryInterfaceName }} ${{ repositoryInstance }},
+    ) {}
+
+    public function paginate(array $filters = []): mixed
+    {
+        return $this->{{ repositoryInstance }}->paginate($filters);
+    }
+
+    public function list(array $filters = []): mixed
+    {
+        return $this->{{ repositoryInstance }}->list($filters);
+    }
+
+    public function findById(int $id): mixed
+    {
+        return $this->{{ repositoryInstance }}->findById($id);
+    }
+
+    public function create(array $data): mixed
+    {
+        return $this->{{ repositoryInstance }}->create($data);
+    }
+
+    public function update(int $id, array $data): mixed
+    {
+        return $this->{{ repositoryInstance }}->update($id, $data);
+    }
+
+    public function delete(int $id): bool
+    {
+        return $this->{{ repositoryInstance }}->delete($id);
+    }
+}

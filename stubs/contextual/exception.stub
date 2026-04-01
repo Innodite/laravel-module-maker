@@ -1,0 +1,13 @@
+<?php
+
+namespace {{ moduleNamespace }}\Exceptions\{{ contextFolder }};
+
+use Exception;
+
+class {{ className }}NotFoundException extends Exception
+{
+    public function __construct(int|string $id)
+    {
+        parent::__construct("{{ moduleName }} [{$id}] not found in {{ contextPrefix }} context.");
+    }
+}

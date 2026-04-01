@@ -1,0 +1,23 @@
+<?php
+
+declare(strict_types=1);
+
+namespace {{ namespace }};
+
+use Illuminate\Support\ServiceProvider;
+{{ modelImports }}
+{{ importsMarker }}
+
+class {{ providerName }} extends ServiceProvider
+{
+    public function register(): void
+    {
+        {{ modelBindings }}
+        {{ bindingsMarker }}
+    }
+
+    public function boot(): void
+    {
+        //
+    }
+}

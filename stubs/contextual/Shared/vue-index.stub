@@ -1,0 +1,159 @@
+<script setup>
+import { ref, onMounted } from 'vue'
+import { router } from '@inertiajs/vue3'
+import { useModuleContext } from '@/Composables/useModuleContext'
+import { usePermissions } from '@/Composables/usePermissions'
+
+const { contextRoute } = useModuleContext()
+const { can } = usePermissions()
+
+const items   = ref([])
+const loading = ref(false)
+const meta    = ref({ current_page: 1, last_page: 1, total: 0 })
+const error   = ref(null)
+
+async function fetchItems(page = 1) {
+    loading.value = true
+    error.value   = null
+    try {
+        const { data } = await axios.get(route(contextRoute('{{ entityPlural }}.index')), {
+            params: { page }
+        })
+        items.value = data.data
+        meta.value  = {
+            current_page: data.current_page,
+            last_page:    data.last_page,
+            total:        data.total,
+        }
+    } catch (err) {
+        error.value = err.response?.data?.message ?? 'Error al cargar los datos.'
+        console.error('[{{ vueComponentName }}]', err)
+    } finally {
+        loading.value = false
+    }
+}
+
+async function destroy(id) {
+    if (!confirm('¿Estás seguro de eliminar este registro?')) return
+    try {
+        await axios.delete(route(contextRoute('{{ entityPlural }}.destroy'), { id }))
+        await fetchItems(meta.value.current_page)
+    } catch (err) {
+        alert(err.response?.data?.message ?? 'No se pudo eliminar el registro.')
+    }
+}
+
+function goToCreate() {
+    router.visit(route(contextRoute('{{ entityPlural }}.create')))
+}
+
+function goToEdit(id) {
+    router.visit(route(contextRoute('{{ entityPlural }}.edit'), { id }))
+}
+
+function goToShow(id) {
+    router.visit(route(contextRoute('{{ entityPlural }}.show'), { id }))
+}
+
+onMounted(() => fetchItems())
+</script>
+
+<template>
+    <div class="p-6">
+
+        <!-- Cabecera -->
+        <div class="flex items-center justify-between mb-6">
+            <h1 class="text-2xl font-semibold text-gray-800">{{ entityLabel }}</h1>
+            <button
+                v-if="can('{{ entityPlural }}.create')"
+                @click="goToCreate"
+                class="inline-flex items-center px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition"
+            >
+                + Nuevo {{ entityLabel }}
+            </button>
+        </div>
+
+        <!-- Error -->
+        <div v-if="error" class="mb-4 p-4 bg-red-50 border border-red-200 text-red-700 rounded-lg text-sm">
+            {{ error }}
+        </div>
+
+        <!-- Loader -->
+        <div v-if="loading" class="flex justify-center py-12">
+            <span class="text-gray-400 text-sm">Cargando...</span>
+        </div>
+
+        <template v-else>
+
+            <!-- Tabla -->
+            <div class="overflow-x-auto rounded-lg border border-gray-200">
+                <table class="min-w-full divide-y divide-gray-200 text-sm">
+                    <thead class="bg-gray-50">
+                        <tr>
+                            <th class="px-4 py-3 text-left font-medium text-gray-600">#</th>
+                            <th class="px-4 py-3 text-left font-medium text-gray-600">ID</th>
+                            <th class="px-4 py-3 text-right font-medium text-gray-600">Acciones</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-gray-100 bg-white">
+                        <tr v-if="items.length === 0">
+                            <td colspan="3" class="px-4 py-8 text-center text-gray-400">
+                                No hay registros para mostrar.
+                            </td>
+                        </tr>
+                        <tr
+                            v-for="(item, index) in items"
+                            :key="item.id"
+                            class="hover:bg-gray-50 transition"
+                        >
+                            <td class="px-4 py-3 text-gray-500">
+                                {{ (meta.current_page - 1) * 15 + index + 1 }}
+                            </td>
+                            <td
+                                class="px-4 py-3 text-blue-600 cursor-pointer hover:underline"
+                                @click="goToShow(item.id)"
+                            >
+                                {{ item.id }}
+                            </td>
+                            <td class="px-4 py-3 text-right space-x-3">
+                                <button
+                                    v-if="can('{{ entityPlural }}.edit')"
+                                    @click="goToEdit(item.id)"
+                                    class="text-blue-600 hover:underline text-xs"
+                                >
+                                    Editar
+                                </button>
+                                <button
+                                    v-if="can('{{ entityPlural }}.delete')"
+                                    @click="destroy(item.id)"
+                                    class="text-red-500 hover:underline text-xs"
+                                >
+                                    Eliminar
+                                </button>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Paginación -->
+            <div class="flex items-center justify-between mt-4">
+                <span class="text-xs text-gray-400">Total: {{ meta.total }} registros</span>
+                <div v-if="meta.last_page > 1" class="flex space-x-1">
+                    <button
+                        v-for="p in meta.last_page"
+                        :key="p"
+                        @click="fetchItems(p)"
+                        :class="p === meta.current_page
+                            ? 'bg-blue-600 text-white'
+                            : 'bg-white text-gray-600 border border-gray-300 hover:bg-gray-50'"
+                        class="px-3 py-1 rounded text-xs transition"
+                    >
+                        {{ p }}
+                    </button>
+                </div>
+            </div>
+
+        </template>
+    </div>
+</template>

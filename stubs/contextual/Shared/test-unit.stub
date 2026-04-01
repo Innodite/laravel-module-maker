@@ -1,0 +1,13 @@
+<?php
+
+namespace {{ moduleNamespace }}\Tests\Unit\{{ contextFolder }};
+
+use PHPUnit\Framework\TestCase;
+
+class {{ className }}ServiceTest extends TestCase
+{
+    public function test_service_can_be_instantiated(): void
+    {
+        $this->assertTrue(true);
+    }
+}

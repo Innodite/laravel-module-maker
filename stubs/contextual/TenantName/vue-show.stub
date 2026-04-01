@@ -1,0 +1,124 @@
+<script setup>
+import { ref, onMounted } from 'vue'
+import { router } from '@inertiajs/vue3'
+import { useModuleContext } from '@/Composables/useModuleContext'
+import { usePermissions } from '@/Composables/usePermissions'
+
+const props = defineProps({
+    id: { type: [Number, String], required: true },
+})
+
+const { contextRoute } = useModuleContext()
+const { can }          = usePermissions()
+
+const item    = ref(null)
+const loading = ref(false)
+
+async function fetchItem() {
+    loading.value = true
+    try {
+        const { data } = await axios.get(
+            route(contextRoute('{{ entityPlural }}.show'), { id: props.id })
+        )
+        item.value = data
+    } catch (err) {
+        alert(err.response?.data?.message ?? 'No se pudo cargar el registro.')
+        goBack()
+    } finally {
+        loading.value = false
+    }
+}
+
+async function destroy() {
+    if (!can('{{ entityPlural }}.delete')) return
+    if (!confirm('¿Estás seguro de eliminar este registro?')) return
+    try {
+        await axios.delete(
+            route(contextRoute('{{ entityPlural }}.destroy'), { id: props.id })
+        )
+        router.visit(route(contextRoute('{{ entityPlural }}.index')))
+    } catch (err) {
+        alert(err.response?.data?.message ?? 'No se pudo eliminar el registro.')
+    }
+}
+
+function goToEdit() {
+    router.visit(route(contextRoute('{{ entityPlural }}.edit'), { id: props.id }))
+}
+
+function goBack() {
+    router.visit(route(contextRoute('{{ entityPlural }}.index')))
+}
+
+onMounted(() => fetchItem())
+</script>
+
+<template>
+    <div class="p-6 max-w-2xl">
+
+        <!-- Cabecera -->
+        <div class="flex items-center justify-between mb-6">
+            <div class="flex items-center gap-3">
+                <button @click="goBack" class="text-gray-400 hover:text-gray-600 transition">
+                    ← Volver
+                </button>
+                <h1 class="text-2xl font-semibold text-gray-800">Detalle: {{ entityLabel }}</h1>
+            </div>
+            <div class="flex gap-2">
+                <button
+                    v-if="can('{{ entityPlural }}.edit')"
+                    @click="goToEdit"
+                    class="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition"
+                >
+                    Editar
+                </button>
+                <button
+                    v-if="can('{{ entityPlural }}.delete')"
+                    @click="destroy"
+                    class="px-4 py-2 bg-red-500 text-white text-sm font-medium rounded-lg hover:bg-red-600 transition"
+                >
+                    Eliminar
+                </button>
+            </div>
+        </div>
+
+        <!-- Loader -->
+        <div v-if="loading" class="flex justify-center py-12">
+            <span class="text-gray-400 text-sm">Cargando...</span>
+        </div>
+
+        <!-- Detalle del registro -->
+        <div v-else-if="item" class="bg-white border border-gray-200 rounded-lg divide-y divide-gray-100">
+
+            <!--
+                TODO: Añade aquí las filas de detalle del registro.
+                Ejemplo:
+                <div class="flex px-4 py-3">
+                    <span class="w-40 text-sm font-medium text-gray-500">Nombre</span>
+                    <span class="text-sm text-gray-800">{{ item.name }}</span>
+                </div>
+            -->
+
+            <div class="flex px-4 py-3">
+                <span class="w-40 text-sm font-medium text-gray-500">ID</span>
+                <span class="text-sm text-gray-800">{{ item.id }}</span>
+            </div>
+
+            <div class="flex px-4 py-3">
+                <span class="w-40 text-sm font-medium text-gray-500">Creado</span>
+                <span class="text-sm text-gray-800">{{ item.created_at }}</span>
+            </div>
+
+            <div class="flex px-4 py-3">
+                <span class="w-40 text-sm font-medium text-gray-500">Actualizado</span>
+                <span class="text-sm text-gray-800">{{ item.updated_at }}</span>
+            </div>
+
+        </div>
+
+        <div v-else class="text-center py-12 text-gray-400 text-sm">
+            Registro no encontrado.
+        </div>
+
+    </div>
+</template>

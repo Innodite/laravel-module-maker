@@ -1,0 +1,13 @@
+<?php
+
+namespace {{ moduleNamespace }}\Tests\Support\{{ contextFolder }};
+
+class {{ className }}Support
+{
+    public static function make(array $overrides = []): array
+    {
+        return array_merge([
+            'name' => 'Test {{ moduleName }}',
+        ], $overrides);
+    }
+}

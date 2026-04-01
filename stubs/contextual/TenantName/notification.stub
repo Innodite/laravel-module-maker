@@ -1,0 +1,25 @@
+<?php
+
+namespace {{ moduleNamespace }}\Notifications\{{ contextFolder }};
+
+use Illuminate\Bus\Queueable;
+use Illuminate\Notifications\Notification;
+use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Notifications\Messages\MailMessage;
+
+class {{ className }}{{ notificationSuffix }} extends Notification implements ShouldQueue
+{
+    use Queueable;
+
+    public function via(object $notifiable): array
+    {
+        return ['mail'];
+    }
+
+    public function toMail(object $notifiable): MailMessage
+    {
+        return (new MailMessage)
+            ->subject('{{ moduleName }} Notification')
+            ->line('Welcome to {{ moduleName }}.');
+    }
+}

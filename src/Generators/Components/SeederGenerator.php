@@ -27,7 +27,7 @@ class SeederGenerator extends AbstractComponentGenerator
 
     public function generate(): void
     {
-        $seederDir = $this->getComponentBasePath() . self::SEEDER_PATH_SUFFIX;
+        $seederDir = $this->buildPath('Database/Seeders');
         $this->ensureDirectoryExists($seederDir);
 
         // Genera el seeder de la tabla específica

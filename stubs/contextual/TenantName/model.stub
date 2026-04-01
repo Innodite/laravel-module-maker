@@ -1,0 +1,22 @@
+<?php
+
+declare(strict_types=1);
+
+namespace {{ namespace }};
+
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+
+class {{ modelName }} extends Model
+{
+    use HasFactory;
+
+    /** @var string Nombre de tabla normalizado (WORKPLAN v3: obligatorio) */
+    {{ table }}
+
+    {{ fillable }}
+
+    {{ useStatements }}
+
+    {{ relations }}
+}

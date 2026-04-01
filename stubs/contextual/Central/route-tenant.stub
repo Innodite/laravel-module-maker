@@ -1,0 +1,18 @@
+<?php
+
+declare(strict_types=1);
+
+use Illuminate\Support\Facades\Route;
+use Modules\{{ StudlyModule }}\Http\Controllers\{{ controllerName }};
+
+Route::prefix('{{ snakeModule }}')
+    ->name('{{ snakeModule }}.')
+    ->group(function () {
+        Route::get('/', [{{ controllerName }}::class, 'index'])->name('index');
+        Route::post('/', [{{ controllerName }}::class, 'store'])->name('store');
+        Route::get('/{id}', [{{ controllerName }}::class, 'show'])->name('show');
+        Route::put('/{id}', [{{ controllerName }}::class, 'update'])->name('update');
+        Route::delete('/{id}', [{{ controllerName }}::class, 'destroy'])->name('destroy');
+
+        // {{TENANT_ROUTES_END}}
+    });

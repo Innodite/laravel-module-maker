@@ -1,0 +1,43 @@
+<?php
+
+declare(strict_types=1);
+
+namespace {{ namespace }};
+
+use {{ modelNamespace }};
+use {{ repositoryInterfaceNamespace }};
+
+class {{ repositoryName }} implements {{ repositoryInterfaceName }}
+{
+    public function paginate(array $filters = []): mixed
+    {
+        return {{ modelName }}::query()->paginate($filters['per_page'] ?? 15);
+    }
+
+    public function list(array $filters = []): mixed
+    {
+        return {{ modelName }}::query()->get();
+    }
+
+    public function findById(int $id): mixed
+    {
+        return {{ modelName }}::findOrFail($id);
+    }
+
+    public function create(array $data): mixed
+    {
+        return {{ modelName }}::create($data);
+    }
+
+    public function update(int $id, array $data): mixed
+    {
+        ${{ modelNameLowerCase }} = {{ modelName }}::findOrFail($id);
+        ${{ modelNameLowerCase }}->update($data);
+        return ${{ modelNameLowerCase }};
+    }
+
+    public function delete(int $id): bool
+    {
+        return (bool) {{ modelName }}::destroy($id);
+    }
+}

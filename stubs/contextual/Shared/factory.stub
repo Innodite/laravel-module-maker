@@ -1,0 +1,20 @@
+<?php
+
+declare(strict_types=1);
+
+namespace {{ namespace }};
+
+use Illuminate\Database\Eloquent\Factories\Factory;
+use {{ modelNamespace }};
+
+class {{ factoryName }}Factory extends Factory
+{
+    protected $model = {{ modelName }}::class;
+
+    public function definition(): array
+    {
+        return [
+            {{ attributes }}
+        ];
+    }
+}
