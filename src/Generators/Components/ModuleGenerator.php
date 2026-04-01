@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\File;
 use Illuminate\Support\Str;
 use Innodite\LaravelModuleMaker\Generators\Components\ConsoleCommandGenerator;
 use Innodite\LaravelModuleMaker\Generators\Components\ExceptionGenerator;
+use Innodite\LaravelModuleMaker\Generators\Components\Factory\FactoryGenerator;
 use Innodite\LaravelModuleMaker\Generators\Components\JobGenerator;
 use Innodite\LaravelModuleMaker\Generators\Components\NotificationGenerator;
 use Innodite\LaravelModuleMaker\Services\RouteInjectionService;
