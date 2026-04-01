@@ -1,0 +1,15 @@
+<?php
+
+declare(strict_types=1);
+
+namespace {{ namespace }};
+
+interface {{ repositoryInterfaceName }}
+{
+    public function paginate(array $filters = []): mixed;
+    public function list(array $filters = []): mixed;
+    public function findById(int $id): mixed;
+    public function create(array $data): mixed;
+    public function update(int $id, array $data): mixed;
+    public function delete(int $id): bool;
+}

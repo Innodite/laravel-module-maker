@@ -477,7 +477,7 @@ footer a:hover { text-decoration: underline; }
 <aside id="sidebar">
   <div class="sidebar-logo">
     <div class="brand"><span>Innodite</span> Module Maker</div>
-    <div class="version-tag">v3.0.0 — RC</div>
+    <div class="version-tag">v3.1.0</div>
   </div>
   <nav class="sidebar-nav">
     <div class="nav-group">
@@ -520,10 +520,10 @@ footer a:hover { text-decoration: underline; }
 
 <!-- ──────────── HERO ──────────── -->
 <section id="inicio" class="hero">
-  <div class="hero-badge">v3.0.0 — Release Candidate</div>
+  <div class="hero-badge">v3.1.0 — Arquitectura de Contextos Dinámicos</div>
   <h1>Laravel <span class="brand-name">Module Maker</span></h1>
   <p class="hero-subtitle">
-    Genera backend completo (controllers, services, repositories, routes, migrations) más vistas Vue con Inertia.js — con un solo comando artisan, en segundos.
+    Genera hasta <strong>24 archivos por contexto</strong>: controllers, services, repositories, jobs, notifications, console commands, exceptions, migrations, factories, seeders, tests y vistas Vue — con un solo comando artisan, en segundos.
   </p>
 
   <div class="install-box">
@@ -693,37 +693,63 @@ footer a:hover { text-decoration: underline; }
     <pre><code class="language-bash">php artisan make:module Users --context=central</code></pre>
   </div>
 
-  <h3>Archivos PHP generados</h3>
+  <h3>Archivos generados (24 archivos)</h3>
   <div class="table-wrap">
     <table>
-      <thead><tr><th>Archivo</th><th>Ruta</th><th>Descripción</th></tr></thead>
+      <thead><tr><th>Archivo</th><th>Ruta en Modules/User/</th><th>Descripción</th></tr></thead>
       <tbody>
-        <tr><td class="file-php">CentralUsersController.php</td><td><code>app/Http/Controllers/Central/</code></td><td>Controller con métodos index, create, store, show, edit, update, destroy</td></tr>
-        <tr><td class="file-php">UsersService.php</td><td><code>app/Services/Central/</code></td><td>Lógica de negocio desacoplada</td></tr>
-        <tr><td class="file-php">UsersServiceInterface.php</td><td><code>app/Services/Central/</code></td><td>Contrato del servicio</td></tr>
-        <tr><td class="file-php">UsersRepository.php</td><td><code>app/Repositories/Central/</code></td><td>Capa de acceso a datos</td></tr>
-        <tr><td class="file-php">UsersRepositoryInterface.php</td><td><code>app/Repositories/Central/</code></td><td>Contrato del repositorio</td></tr>
-        <tr><td class="file-php">StoreUsersRequest.php</td><td><code>app/Http/Requests/Central/</code></td><td>Form Request para creación</td></tr>
-        <tr><td class="file-php">UpdateUsersRequest.php</td><td><code>app/Http/Requests/Central/</code></td><td>Form Request para actualización</td></tr>
-        <tr><td class="file-php">create_central_users_table.php</td><td><code>database/migrations/</code></td><td>Migración con timestamp</td></tr>
-        <tr><td class="file-php">UsersSeeder.php</td><td><code>database/seeders/Central/</code></td><td>Seeder del módulo</td></tr>
-        <tr><td class="file-php">UsersFactory.php</td><td><code>database/factories/Central/</code></td><td>Factory para testing</td></tr>
-        <tr><td class="file-php">CentralUsersTest.php</td><td><code>tests/Feature/Central/</code></td><td>Tests de feature</td></tr>
+        <tr><td class="file-php">CentralUserController.php</td><td><code>Http/Controllers/Central/</code></td><td>Usa trait <code>RendersInertiaModule</code>, index() → renderModule()</td></tr>
+        <tr><td class="file-php">CentralUserStoreRequest.php</td><td><code>Http/Requests/Central/</code></td><td>Form Request para creación</td></tr>
+        <tr><td class="file-php">CentralUserUpdateRequest.php</td><td><code>Http/Requests/Central/</code></td><td>Form Request para actualización</td></tr>
+        <tr><td class="file-php">CentralUserService.php</td><td><code>Services/Central/</code></td><td>Lógica de negocio</td></tr>
+        <tr><td class="file-php">CentralUserServiceInterface.php</td><td><code>Services/Contracts/Central/</code></td><td>Contrato del servicio</td></tr>
+        <tr><td class="file-php">CentralUserRepository.php</td><td><code>Repositories/Central/</code></td><td>Capa de datos Eloquent</td></tr>
+        <tr><td class="file-php">CentralUserRepositoryInterface.php</td><td><code>Repositories/Contracts/Central/</code></td><td>Contrato del repositorio</td></tr>
+        <tr><td class="file-php">CentralUser.php</td><td><code>Models/Central/</code></td><td>Modelo Eloquent</td></tr>
+        <tr><td class="file-php">XXXX_create_central_users_table.php</td><td><code>Database/Migrations/Central/</code></td><td>Migración anónima</td></tr>
+        <tr><td class="file-php">CentralUserSeeder.php</td><td><code>Database/Seeders/Central/</code></td><td>Seeder del módulo</td></tr>
+        <tr><td class="file-php">CentralUserFactory.php</td><td><code>Database/Factories/Central/</code></td><td>Factory para testing</td></tr>
+        <tr><td class="file-php">CentralUserTest.php</td><td><code>Tests/Feature/Central/</code></td><td>Feature test</td></tr>
+        <tr><td class="file-php">CentralUserServiceTest.php</td><td><code>Tests/Unit/Central/</code></td><td>Unit test del servicio</td></tr>
+        <tr><td class="file-php">CentralUserSupport.php</td><td><code>Tests/Support/Central/</code></td><td>Helper de test (solo Central)</td></tr>
+        <tr><td class="file-php">CentralUserExportJob.php</td><td><code>Jobs/Central/</code></td><td>Job para exportación/procesamiento</td></tr>
+        <tr><td class="file-php">CentralUserWelcomeNotification.php</td><td><code>Notifications/Central/</code></td><td>Notificación (mail/broadcast)</td></tr>
+        <tr><td class="file-php">CentralUserCleanupCommand.php</td><td><code>Console/Commands/Central/</code></td><td>Artisan command de mantenimiento</td></tr>
+        <tr><td class="file-php">CentralUserNotFoundException.php</td><td><code>Exceptions/Central/</code></td><td>Excepción tipada (solo Central)</td></tr>
+        <tr><td class="file-php">UserServiceProvider.php</td><td><code>Providers/</code></td><td>Binding Interface↔Implementation</td></tr>
+        <tr><td class="file-vue">CentralUserIndex.vue</td><td><code>Resources/js/Pages/Central/</code></td><td>Lista paginada, datos via axios.get</td></tr>
+        <tr><td class="file-vue">CentralUserCreate.vue</td><td><code>Resources/js/Pages/Central/</code></td><td>Formulario, axios.post</td></tr>
+        <tr><td class="file-vue">CentralUserEdit.vue</td><td><code>Resources/js/Pages/Central/</code></td><td>Edición, axios.get + axios.put</td></tr>
+        <tr><td class="file-vue">CentralUserShow.vue</td><td><code>Resources/js/Pages/Central/</code></td><td>Detalle, axios.get</td></tr>
       </tbody>
     </table>
   </div>
 
-  <h3>Archivos Vue generados</h3>
-  <div class="table-wrap">
-    <table>
-      <thead><tr><th>Archivo</th><th>Ruta</th></tr></thead>
-      <tbody>
-        <tr><td class="file-vue">CentralUsersIndex.vue</td><td><code>resources/js/Pages/Central/Users/</code></td></tr>
-        <tr><td class="file-vue">CentralUsersCreate.vue</td><td><code>resources/js/Pages/Central/Users/</code></td></tr>
-        <tr><td class="file-vue">CentralUsersEdit.vue</td><td><code>resources/js/Pages/Central/Users/</code></td></tr>
-        <tr><td class="file-vue">CentralUsersShow.vue</td><td><code>resources/js/Pages/Central/Users/</code></td></tr>
-      </tbody>
-    </table>
+  <h3>Controller generado — RendersInertiaModule</h3>
+  <div class="callout callout-info">
+    <p><strong>Regla obligatoria:</strong> Todos los controllers usan el trait <code>RendersInertiaModule</code>. El método <code>index()</code> siempre retorna <code>renderModule()</code> para navegar a la vista. Los datos se cargan <strong>exclusivamente vía axios</strong> desde la vista Vue al montarse.</p>
+  </div>
+  <div class="code-wrapper">
+    <div class="code-header"><span class="code-lang">php</span><button class="copy-code-btn" onclick="copyCode(this)">Copiar</button></div>
+    <pre><code class="language-php">class CentralUserController extends Controller
+{
+    use RendersInertiaModule;
+
+    public function index(): InertiaResponse
+    {
+        return $this->renderModule('User', 'CentralUserIndex'); // Solo navega a la vista
+    }
+
+    public function list(Request $request): JsonResponse
+    {
+        return response()->json($this->service->paginate($request->all())); // Datos para axios
+    }
+
+    public function store(Request $request): JsonResponse
+    {
+        return response()->json($this->service->create($request->validated()), 201);
+    }
+}</code></pre>
   </div>
 
   <h3>Ruta inyectada en web.php</h3>
@@ -785,16 +811,27 @@ Route::prefix('shared')->middleware(['web', 'auth', 'tenant'])->group(function (
     </div>
   </div>
 
-  <h3>Archivos PHP generados</h3>
+  <h3>Archivos generados (16 archivos)</h3>
   <div class="table-wrap">
     <table>
-      <thead><tr><th>Archivo</th><th>Ruta</th></tr></thead>
+      <thead><tr><th>Archivo</th><th>Ruta en Modules/User/</th></tr></thead>
       <tbody>
-        <tr><td class="file-php">SharedUsersController.php</td><td><code>app/Http/Controllers/Shared/</code></td></tr>
-        <tr><td class="file-php">UsersService.php + Interface</td><td><code>app/Services/Shared/</code></td></tr>
-        <tr><td class="file-php">UsersRepository.php + Interface</td><td><code>app/Repositories/Shared/</code></td></tr>
-        <tr><td class="file-php">StoreUsersRequest.php</td><td><code>app/Http/Requests/Shared/</code></td></tr>
-        <tr><td class="file-vue">SharedUsersIndex.vue … Show.vue</td><td><code>resources/js/Pages/Shared/Users/</code></td></tr>
+        <tr><td class="file-php">SharedUserController.php</td><td><code>Http/Controllers/Shared/</code></td></tr>
+        <tr><td class="file-php">SharedUserRequest.php</td><td><code>Http/Requests/Shared/</code></td></tr>
+        <tr><td class="file-php">SharedUserService.php</td><td><code>Services/Shared/</code></td></tr>
+        <tr><td class="file-php">SharedUserServiceInterface.php</td><td><code>Services/Contracts/Shared/</code></td></tr>
+        <tr><td class="file-php">SharedUserRepository.php</td><td><code>Repositories/Shared/</code></td></tr>
+        <tr><td class="file-php">SharedUserRepositoryInterface.php</td><td><code>Repositories/Contracts/Shared/</code></td></tr>
+        <tr><td class="file-php">SharedUser.php</td><td><code>Models/Shared/</code></td></tr>
+        <tr><td class="file-php">XXXX_create_shared_users_table.php</td><td><code>Database/Migrations/Shared/</code></td></tr>
+        <tr><td class="file-php">SharedUserSeeder.php</td><td><code>Database/Seeders/Shared/</code></td></tr>
+        <tr><td class="file-php">SharedUserFactory.php</td><td><code>Database/Factories/Shared/</code></td></tr>
+        <tr><td class="file-php">SharedUserTest.php</td><td><code>Tests/Feature/Shared/</code></td></tr>
+        <tr><td class="file-php">SharedUserServiceTest.php</td><td><code>Tests/Unit/Shared/</code></td></tr>
+        <tr><td class="file-vue">SharedUserIndex.vue</td><td><code>Resources/js/Pages/Shared/</code></td></tr>
+        <tr><td class="file-vue">SharedUserCreate.vue</td><td><code>Resources/js/Pages/Shared/</code></td></tr>
+        <tr><td class="file-vue">SharedUserEdit.vue</td><td><code>Resources/js/Pages/Shared/</code></td></tr>
+        <tr><td class="file-vue">SharedUserShow.vue</td><td><code>Resources/js/Pages/Shared/</code></td></tr>
       </tbody>
     </table>
   </div>
@@ -824,15 +861,28 @@ Route::middleware(['web', 'auth', 'tenant'])->group(function () {
 });</code></pre>
   </div>
 
-  <h3>Archivos PHP generados</h3>
+  <h3>Archivos generados (17 archivos)</h3>
   <div class="table-wrap">
     <table>
-      <thead><tr><th>Archivo</th><th>Ruta</th></tr></thead>
+      <thead><tr><th>Archivo</th><th>Ruta en Modules/User/</th></tr></thead>
       <tbody>
-        <tr><td class="file-php">TenantSharedUsersController.php</td><td><code>app/Http/Controllers/TenantShared/</code></td></tr>
-        <tr><td class="file-php">UsersService.php + Interface</td><td><code>app/Services/TenantShared/</code></td></tr>
-        <tr><td class="file-php">UsersRepository.php + Interface</td><td><code>app/Repositories/TenantShared/</code></td></tr>
-        <tr><td class="file-vue">TenantSharedUsersIndex.vue … Show.vue</td><td><code>resources/js/Pages/TenantShared/Users/</code></td></tr>
+        <tr><td class="file-php">TenantSharedUserController.php</td><td><code>Http/Controllers/Tenant/Shared/</code></td></tr>
+        <tr><td class="file-php">TenantSharedUserRequest.php</td><td><code>Http/Requests/Tenant/Shared/</code></td></tr>
+        <tr><td class="file-php">TenantSharedUserService.php</td><td><code>Services/Tenant/Shared/</code></td></tr>
+        <tr><td class="file-php">TenantSharedUserServiceInterface.php</td><td><code>Services/Contracts/Tenant/Shared/</code></td></tr>
+        <tr><td class="file-php">TenantSharedUserRepository.php</td><td><code>Repositories/Tenant/Shared/</code></td></tr>
+        <tr><td class="file-php">TenantSharedUserRepositoryInterface.php</td><td><code>Repositories/Contracts/Tenant/Shared/</code></td></tr>
+        <tr><td class="file-php">TenantSharedUser.php</td><td><code>Models/Tenant/Shared/</code></td></tr>
+        <tr><td class="file-php">XXXX_create_tenant_users_table.php</td><td><code>Database/Migrations/Tenant/Shared/</code></td></tr>
+        <tr><td class="file-php">TenantSharedUserSeeder.php</td><td><code>Database/Seeders/Tenant/Shared/</code></td></tr>
+        <tr><td class="file-php">TenantSharedUserFactory.php</td><td><code>Database/Factories/Tenant/Shared/</code></td></tr>
+        <tr><td class="file-php">TenantSharedUserTest.php</td><td><code>Tests/Feature/Tenant/Shared/</code></td></tr>
+        <tr><td class="file-php">TenantSharedUserServiceTest.php</td><td><code>Tests/Unit/Tenant/Shared/</code></td></tr>
+        <tr><td class="file-php">TenantSharedUserReportJob.php</td><td><code>Jobs/Tenant/Shared/</code></td></tr>
+        <tr><td class="file-vue">TenantSharedUserIndex.vue</td><td><code>Resources/js/Pages/Tenant/Shared/</code></td></tr>
+        <tr><td class="file-vue">TenantSharedUserCreate.vue</td><td><code>Resources/js/Pages/Tenant/Shared/</code></td></tr>
+        <tr><td class="file-vue">TenantSharedUserEdit.vue</td><td><code>Resources/js/Pages/Tenant/Shared/</code></td></tr>
+        <tr><td class="file-vue">TenantSharedUserShow.vue</td><td><code>Resources/js/Pages/Tenant/Shared/</code></td></tr>
       </tbody>
     </table>
   </div>
@@ -858,16 +908,31 @@ Route::prefix('tenant-one')->middleware(['web', 'auth', 'tenant'])->group(functi
 });</code></pre>
   </div>
 
-  <h3>Archivos PHP generados</h3>
+  <h3>Archivos generados — ej. INNODITE (20 archivos)</h3>
   <div class="table-wrap">
     <table>
-      <thead><tr><th>Archivo</th><th>Ruta</th></tr></thead>
+      <thead><tr><th>Archivo</th><th>Ruta en Modules/User/</th></tr></thead>
       <tbody>
-        <tr><td class="file-php">TenantOneUsersController.php</td><td><code>app/Http/Controllers/TenantOne/</code></td></tr>
-        <tr><td class="file-php">UsersService.php + Interface</td><td><code>app/Services/TenantOne/</code></td></tr>
-        <tr><td class="file-php">UsersRepository.php + Interface</td><td><code>app/Repositories/TenantOne/</code></td></tr>
-        <tr><td class="file-php">StoreUsersRequest.php</td><td><code>app/Http/Requests/TenantOne/</code></td></tr>
-        <tr><td class="file-vue">TenantOneUsersIndex.vue … Show.vue</td><td><code>resources/js/Pages/TenantOne/Users/</code></td></tr>
+        <tr><td class="file-php">TenantINNODITEUserController.php</td><td><code>Http/Controllers/Tenant/INNODITE/</code></td></tr>
+        <tr><td class="file-php">TenantINNODITEUserStoreRequest.php</td><td><code>Http/Requests/Tenant/INNODITE/</code></td></tr>
+        <tr><td class="file-php">TenantINNODITEUserUpdateRequest.php</td><td><code>Http/Requests/Tenant/INNODITE/</code></td></tr>
+        <tr><td class="file-php">TenantINNODITEUserService.php</td><td><code>Services/Tenant/INNODITE/</code></td></tr>
+        <tr><td class="file-php">TenantINNODITEUserServiceInterface.php</td><td><code>Services/Contracts/Tenant/INNODITE/</code></td></tr>
+        <tr><td class="file-php">TenantINNODITEUserRepository.php</td><td><code>Repositories/Tenant/INNODITE/</code></td></tr>
+        <tr><td class="file-php">TenantINNODITEUserRepositoryInterface.php</td><td><code>Repositories/Contracts/Tenant/INNODITE/</code></td></tr>
+        <tr><td class="file-php">TenantINNODITEUser.php</td><td><code>Models/Tenant/INNODITE/</code></td></tr>
+        <tr><td class="file-php">XXXX_add_fields_to_innodite_table.php</td><td><code>Database/Migrations/Tenant/INNODITE/</code></td></tr>
+        <tr><td class="file-php">TenantINNODITEUserSeeder.php</td><td><code>Database/Seeders/Tenant/INNODITE/</code></td></tr>
+        <tr><td class="file-php">TenantINNODITEUserFactory.php</td><td><code>Database/Factories/Tenant/INNODITE/</code></td></tr>
+        <tr><td class="file-php">TenantINNODITEUserTest.php</td><td><code>Tests/Feature/Tenant/INNODITE/</code></td></tr>
+        <tr><td class="file-php">TenantINNODITEUserServiceTest.php</td><td><code>Tests/Unit/Tenant/INNODITE/</code></td></tr>
+        <tr><td class="file-php">TenantINNODITEUserReportJob.php</td><td><code>Jobs/Tenant/INNODITE/</code></td></tr>
+        <tr><td class="file-php">TenantINNODITEUserCustomAlert.php</td><td><code>Notifications/Tenant/INNODITE/</code></td></tr>
+        <tr><td class="file-php">TenantINNODITEUserImportCommand.php</td><td><code>Console/Commands/Tenant/INNODITE/</code></td></tr>
+        <tr><td class="file-vue">TenantINNODITEUserIndex.vue</td><td><code>Resources/js/Pages/Tenant/INNODITE/</code></td></tr>
+        <tr><td class="file-vue">TenantINNODITEUserCreate.vue</td><td><code>Resources/js/Pages/Tenant/INNODITE/</code></td></tr>
+        <tr><td class="file-vue">TenantINNODITEUserEdit.vue</td><td><code>Resources/js/Pages/Tenant/INNODITE/</code></td></tr>
+        <tr><td class="file-vue">TenantINNODITEUserShow.vue</td><td><code>Resources/js/Pages/Tenant/INNODITE/</code></td></tr>
       </tbody>
     </table>
   </div>
@@ -1072,11 +1137,11 @@ onMounted(async () => {
     <table>
       <thead><tr><th>Comando</th><th>Descripción</th></tr></thead>
       <tbody>
-        <tr><td><code>make:module {Name}</code></td><td>Genera un módulo completo (PHP + Vue)</td></tr>
-        <tr><td><code>module:setup</code></td><td>Setup inicial: publica config, stubs y contexts.json</td></tr>
-        <tr><td><code>module:check {Name}</code></td><td>Verifica si un módulo ya existe en el contexto dado</td></tr>
-        <tr><td><code>module:check-env</code></td><td>Valida el entorno (Inertia, Spatie, estructura de dirs)</td></tr>
-        <tr><td><code>module:publish-frontend</code></td><td>Publica composables Vue en resources/js/composables/</td></tr>
+        <tr><td><code>innodite:make-module {Name}</code></td><td>Genera módulo completo — hasta 24 archivos por contexto</td></tr>
+        <tr><td><code>innodite:module-setup</code></td><td>Setup inicial: publica config, stubs y contexts.json</td></tr>
+        <tr><td><code>innodite:module-check</code></td><td>Diagnóstico: integridad contexts.json, permisos de escritura, colisiones</td></tr>
+        <tr><td><code>innodite:check-env</code></td><td>Verifica integración: User model, HandleInertiaRequests, Bridge middleware</td></tr>
+        <tr><td><code>innodite:publish-frontend</code></td><td>Publica composables Vue en resources/js/Composables/</td></tr>
       </tbody>
     </table>
   </div>
@@ -1162,23 +1227,45 @@ php artisan vendor:publish --tag=module-maker-stubs
 php artisan module:publish-frontend</code></pre>
   </div>
 
-  <h3>Estructura de stubs publicados</h3>
-  <div class="table-wrap">
-    <table>
-      <thead><tr><th>Stub</th><th>Archivo</th><th>Descripción</th></tr></thead>
-      <tbody>
-        <tr><td><span class="file-md">controller.stub</span></td><td><code>stubs/module-maker/</code></td><td>Plantilla del controller</td></tr>
-        <tr><td><span class="file-md">service.stub</span></td><td><code>stubs/module-maker/</code></td><td>Plantilla del service</td></tr>
-        <tr><td><span class="file-md">repository.stub</span></td><td><code>stubs/module-maker/</code></td><td>Plantilla del repository</td></tr>
-        <tr><td><span class="file-md">model.stub</span></td><td><code>stubs/module-maker/</code></td><td>Plantilla del model</td></tr>
-        <tr><td><span class="file-md">vue-index.stub</span></td><td><code>stubs/module-maker/</code></td><td>Plantilla de vista Index.vue</td></tr>
-        <tr><td><span class="file-md">vue-form.stub</span></td><td><code>stubs/module-maker/</code></td><td>Plantilla de vistas Create/Edit.vue</td></tr>
-      </tbody>
-    </table>
+  <h3>Estructura de stubs contextuales (4 carpetas × 26 stubs)</h3>
+  <div class="code-wrapper">
+    <div class="code-header"><span class="code-lang">text</span><button class="copy-code-btn" onclick="copyCode(this)">Copiar</button></div>
+    <pre><code>module-maker-config/stubs/contextual/
+├── Central/          ← Personaliza stubs solo para contexto Central
+│   ├── controller.stub
+│   ├── service.stub
+│   ├── job.stub
+│   └── ... (26 stubs)
+├── Shared/           ← Personaliza stubs solo para contexto Shared
+├── TenantShared/     ← Personaliza stubs solo para Tenant Shared
+└── TenantName/       ← Personaliza stubs para todos los tenants específicos</code></pre>
   </div>
 
   <div class="callout callout-tip">
-    <p><strong>Personalización de stubs:</strong> Una vez publicados, el paquete prioriza los stubs en <code>stubs/module-maker/</code> sobre los internos. Puedes modificar cualquier plantilla sin tocar el vendor.</p>
+    <p><strong>Resolución por prioridad:</strong> El paquete busca el stub en este orden: (1) custom por contexto, (2) custom genérico, (3) paquete por contexto, (4) paquete genérico. Puedes sobrescribir solo el stub de Central sin afectar los demás contextos.</p>
+  </div>
+
+  <h3>Stubs disponibles por contexto</h3>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Stub</th><th>Central</th><th>Shared</th><th>TenantShared</th><th>TenantName</th></tr></thead>
+      <tbody>
+        <tr><td><code>controller.stub</code></td><td>✅</td><td>✅</td><td>✅</td><td>✅</td></tr>
+        <tr><td><code>service.stub / service-interface.stub</code></td><td>✅</td><td>✅</td><td>✅</td><td>✅</td></tr>
+        <tr><td><code>repository.stub / repository-interface.stub</code></td><td>✅</td><td>✅</td><td>✅</td><td>✅</td></tr>
+        <tr><td><code>model.stub</code></td><td>✅</td><td>✅</td><td>✅</td><td>✅</td></tr>
+        <tr><td><code>request-store.stub / request-update.stub</code></td><td>✅</td><td>—</td><td>—</td><td>✅</td></tr>
+        <tr><td><code>request.stub</code></td><td>—</td><td>✅</td><td>✅</td><td>—</td></tr>
+        <tr><td><code>migration.stub / seeder.stub / factory.stub</code></td><td>✅</td><td>✅</td><td>✅</td><td>✅</td></tr>
+        <tr><td><code>job.stub</code></td><td>✅ ExportJob</td><td>—</td><td>✅ ReportJob</td><td>✅ ReportJob</td></tr>
+        <tr><td><code>notification.stub</code></td><td>✅ Welcome</td><td>—</td><td>—</td><td>✅ CustomAlert</td></tr>
+        <tr><td><code>console-command.stub</code></td><td>✅ Cleanup</td><td>—</td><td>—</td><td>✅ Import</td></tr>
+        <tr><td><code>exception.stub</code></td><td>✅ NotFound</td><td>—</td><td>—</td><td>—</td></tr>
+        <tr><td><code>test.stub / test-unit.stub</code></td><td>✅</td><td>✅</td><td>✅</td><td>✅</td></tr>
+        <tr><td><code>test-support.stub</code></td><td>✅</td><td>—</td><td>—</td><td>—</td></tr>
+        <tr><td><code>vue-index/create/edit/show.stub</code></td><td>✅ 4 vistas</td><td>✅ 4 vistas</td><td>✅ 4 vistas</td><td>✅ 4 vistas</td></tr>
+      </tbody>
+    </table>
   </div>
 </section>
 

@@ -1,0 +1,87 @@
+<script setup>
+import { ref } from 'vue'
+import { router } from '@inertiajs/vue3'
+import { useModuleContext } from '@/Composables/useModuleContext'
+import { usePermissions } from '@/Composables/usePermissions'
+
+const { contextRoute } = useModuleContext()
+const { can }          = usePermissions()
+
+const form     = ref({})
+const errors   = ref({})
+const saving   = ref(false)
+
+async function submit() {
+    if (!can('{{ entityPlural }}.create')) return
+
+    saving.value = true
+    errors.value = {}
+
+    try {
+        await axios.post(route(contextRoute('{{ entityPlural }}.store')), form.value)
+        router.visit(route(contextRoute('{{ entityPlural }}.index')))
+    } catch (err) {
+        if (err.response?.status === 422) {
+            errors.value = err.response.data.errors ?? {}
+        } else {
+            alert(err.response?.data?.message ?? 'Error al guardar el registro.')
+        }
+        console.error('[{{ vueComponentName }}]', err)
+    } finally {
+        saving.value = false
+    }
+}
+
+function goBack() {
+    router.visit(route(contextRoute('{{ entityPlural }}.index')))
+}
+</script>
+
+<template>
+    <div class="p-6 max-w-2xl">
+
+        <!-- Cabecera -->
+        <div class="flex items-center gap-3 mb-6">
+            <button @click="goBack" class="text-gray-400 hover:text-gray-600 transition">
+                ← Volver
+            </button>
+            <h1 class="text-2xl font-semibold text-gray-800">Nuevo {{ entityLabel }}</h1>
+        </div>
+
+        <form @submit.prevent="submit" class="space-y-5">
+
+            <!--
+                TODO: Añade aquí los campos del formulario.
+                Ejemplo:
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Nombre</label>
+                    <input
+                        v-model="form.name"
+                        type="text"
+                        class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                    />
+                    <p v-if="errors.name" class="mt-1 text-xs text-red-500">{{ errors.name[0] }}</p>
+                </div>
+            -->
+
+            <!-- Acciones -->
+            <div class="flex items-center gap-3 pt-4 border-t border-gray-100">
+                <button
+                    type="submit"
+                    :disabled="saving"
+                    class="px-5 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50 transition"
+                >
+                    {{ saving ? 'Guardando...' : 'Guardar' }}
+                </button>
+                <button
+                    type="button"
+                    @click="goBack"
+                    class="px-5 py-2 bg-white text-gray-600 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 transition"
+                >
+                    Cancelar
+                </button>
+            </div>
+
+        </form>
+    </div>
+</template>

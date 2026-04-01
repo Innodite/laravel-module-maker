@@ -54,7 +54,7 @@ class FactoryGenerator extends AbstractComponentGenerator
 
     public function generate(): void
     {
-        $factoryDir = $this->getComponentBasePath() . self::FACTORY_PATH_SUFFIX;
+        $factoryDir = $this->buildPath('Database/Factories');
         $this->ensureDirectoryExists($factoryDir);
         $definitionAttributes = $this->generateDefinitionAttributes();
         $modelUsesString = implode("\n", array_unique($this->modelUses));

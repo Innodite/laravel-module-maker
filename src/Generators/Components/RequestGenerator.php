@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Innodite\LaravelModuleMaker\Generators\Components;
 
 use Illuminate\Support\Str;
@@ -17,21 +19,85 @@ class RequestGenerator extends AbstractComponentGenerator
     }
 
     /**
-     * Genera el archivo del Request.
+     * Genera el/los archivo(s) de Request según el contexto.
+     *
+     * - Central / TenantName con contexto: genera StoreRequest + UpdateRequest contextuales.
+     * - TenantShared con contexto: genera un único Request genérico en la carpeta de contexto.
+     * - Sin contexto (fallback): genera un único Request en Http/Requests raíz.
      *
      * @return void
      */
     public function generate(): void
     {
-        $requestDir = $this->getComponentBasePath() . "/Http/Requests";
+        $contextKey    = $this->componentConfig['context'] ?? null;
+        $contextFolder = $this->getContextFolder();
+
+        // ── Sin contexto definido: comportamiento legacy ───────────────────────
+        if ($contextKey === null || $contextFolder === '') {
+            $requestDir = $this->getComponentBasePath() . '/Http/Requests';
+            $this->ensureDirectoryExists($requestDir);
+
+            $stub = $this->getStubContent('request.stub', $this->isClean, [
+                'namespace'   => "Modules\\{$this->moduleName}\\Http\\Requests",
+                'requestName' => $this->requestName,
+            ]);
+
+            $this->putFile(
+                "{$requestDir}/{$this->requestName}.php",
+                $stub,
+                "Request {$this->requestName}.php creado en Modules/{$this->moduleName}/Http/Requests"
+            );
+            return;
+        }
+
+        $contextFolderPath = $contextFolder;                            // ej: "Central", "Tenant/Shared"
+        $contextNamespace  = str_replace('/', '\\', $contextFolderPath); // ej: "Central", "Tenant\\Shared"
+        $moduleNamespace   = "Modules\\{$this->moduleName}";
+        $className         = $this->getClassPrefix() . $this->moduleName;
+        $requestDir        = $this->getComponentBasePath() . '/Http/Requests/' . $contextFolderPath;
+
         $this->ensureDirectoryExists($requestDir);
 
-        $stubFile = 'request.stub';
-        $stub = $this->getStubContent($stubFile, $this->isClean, [
-            'namespace' => "Modules\\{$this->moduleName}\\Http\\Requests",
-            'requestName' => $this->requestName,
+        // TenantShared → único Request genérico (usa stub legacy con nombre contextual)
+        $isTenantShared = ($contextKey === 'tenant_shared' || ($contextKey === 'shared' && str_contains($contextFolderPath, 'Tenant')));
+
+        if ($isTenantShared) {
+            $stub = $this->getStubContent('request.stub', $this->isClean, [
+                'namespace'   => "{$moduleNamespace}\\Http\\Requests\\{$contextNamespace}",
+                'requestName' => $className . 'Request',
+            ]);
+
+            $this->putFile(
+                "{$requestDir}/{$className}Request.php",
+                $stub,
+                "Request {$className}Request.php creado en Modules/{$this->moduleName}/Http/Requests/{$contextFolderPath}"
+            );
+            return;
+        }
+
+        // Central / TenantName → StoreRequest + UpdateRequest
+        $storeStub = $this->getStubContent('request-store.stub', $this->isClean, [
+            'moduleNamespace' => $moduleNamespace,
+            'contextFolder'   => $contextNamespace,
+            'className'       => $className,
         ]);
 
-        $this->putFile("{$requestDir}/{$this->requestName}.php", $stub, "Request {$this->requestName}.php creado en Modules/{$this->moduleName}/Http/Requests");
+        $updateStub = $this->getStubContent('request-update.stub', $this->isClean, [
+            'moduleNamespace' => $moduleNamespace,
+            'contextFolder'   => $contextNamespace,
+            'className'       => $className,
+        ]);
+
+        $this->putFile(
+            "{$requestDir}/{$className}StoreRequest.php",
+            $storeStub,
+            "Request {$className}StoreRequest.php creado en Modules/{$this->moduleName}/Http/Requests/{$contextFolderPath}"
+        );
+
+        $this->putFile(
+            "{$requestDir}/{$className}UpdateRequest.php",
+            $updateStub,
+            "Request {$className}UpdateRequest.php creado en Modules/{$this->moduleName}/Http/Requests/{$contextFolderPath}"
+        );
     }
 }

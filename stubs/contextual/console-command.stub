@@ -1,0 +1,16 @@
+<?php
+
+namespace {{ moduleNamespace }}\Console\Commands\{{ contextFolder }};
+
+use Illuminate\Console\Command;
+
+class {{ className }}{{ commandSuffix }} extends Command
+{
+    protected $signature = '{{ commandSignature }}';
+    protected $description = '{{ commandDescription }}';
+
+    public function handle(): void
+    {
+        $this->info('{{ className }} command executed successfully.');
+    }
+}

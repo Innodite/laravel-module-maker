@@ -1,32 +1,35 @@
-# Innodite Laravel Module Maker
+# 🏗️ Innodite Laravel Module Maker
 
-**v3.0.0** — Generador de módulos Laravel con arquitectura de contextos dinámicos (Central, Shared, Tenant) para proyectos multi-tenant. Genera backend completo, inyecta rutas y crea vistas Vue 3 listas para usar — todo con un solo comando.
-
----
-
-## Tabla de Contenidos
-
-- [Requisitos](#requisitos)
-- [Instalación](#instalación)
-- [Arquitectura Frontend](#arquitectura-frontend)
-- [Guía de comandos](#guía-de-comandos)
-- [Flujo completo por contexto](#flujo-completo-por-contexto)
-- [Tabla comparativa de contextos](#tabla-comparativa-de-contextos)
-- [Bridge Frontend-Backend](#bridge-frontend-backend)
-- [Estructura de contextos](#estructura-de-contextos-contextsjson)
-- [Estructura completa de un módulo generado](#estructura-completa-de-un-módulo-generado)
-- [Convenciones de nomenclatura](#convenciones-de-nomenclatura)
-- [Flujo de inyección de rutas](#flujo-de-inyección-de-rutas)
-- [Auditoría](#auditoría)
-- [Pruebas](#pruebas)
-- [Estándares de código](#estándares-de-código)
-- [Publicar en Packagist](#publicar-en-packagist--repositorio-privado)
-- [Changelog](#changelog)
-- [Licencia](#licencia)
+**v3.1.0** — Generador de módulos Laravel con arquitectura de contextos dinámicos (Central, Shared, Tenant) para proyectos multi-tenant. Genera backend completo, inyecta rutas y crea vistas Vue 3 listas para usar — todo con un solo comando.
 
 ---
 
-## Requisitos
+## 📋 Tabla de Contenidos
+
+- [Requisitos](#-requisitos)
+- [Instalación](#-instalación)
+- [Tabla comparativa de contextos](#-tabla-comparativa-de-contextos)
+- [Arquitectura Frontend](#-arquitectura-frontend)
+- [Guía de comandos](#-guía-de-comandos)
+- [Archivos generados por contexto](#-archivos-generados-por-contexto)
+- [Flujo completo por contexto](#-flujo-completo-por-contexto)
+- [Composables Vue 3](#-composables-vue-3)
+- [Stubs contextuales](#-stubs-contextuales)
+- [Bridge Frontend-Backend](#-bridge-frontend-backend)
+- [Estructura de contextos](#-estructura-de-contextos-contextsjson)
+- [Estructura de árbol de un módulo generado](#-estructura-de-árbol-de-un-módulo-generado)
+- [Convenciones de nomenclatura](#-convenciones-de-nomenclatura)
+- [Flujo de inyección de rutas](#-flujo-de-inyección-de-rutas)
+- [Auditoría](#-auditoría)
+- [Pruebas](#-pruebas)
+- [Estándares de código](#-estándares-de-código)
+- [Publicar en Packagist](#-publicar-en-packagist--repositorio-privado)
+- [Changelog](#-changelog)
+- [Licencia](#-licencia)
+
+---
+
+## ✅ Requisitos
 
 | Dependencia | Versión mínima |
 |---|---|
@@ -43,7 +46,7 @@
 
 ---
 
-## Instalación
+## 🚀 Instalación
 
 ```bash
 composer require innodite/laravel-module-maker
@@ -67,33 +70,82 @@ Crea `module-maker-config/` en la raíz del proyecto con:
 # Configuración make-module.php
 php artisan vendor:publish --tag=module-maker-config
 
-# Stubs PHP y Vue para personalización
+# Stubs PHP y Vue para personalización (4 carpetas contextuales)
 php artisan vendor:publish --tag=module-maker-stubs
 
 # contexts.json de ejemplo
 php artisan vendor:publish --tag=module-maker-contexts
 
-# Composables Vue 3
+# Composables Vue 3 (useModuleContext, usePermissions)
 php artisan vendor:publish --tag=module-maker-frontend
 ```
 
 ---
 
-## Arquitectura Frontend
+## 🗺️ Tabla comparativa de contextos
 
-> **Regla fundamental** — No negociable en este paquete.
+Los 4 contextos disponibles cubren todos los escenarios de un proyecto multi-tenant:
 
-| Responsabilidad | Tecnología |
-|---|---|
-| Navegación entre páginas | Inertia.js (`router.visit()`) |
-| Carga y mutación de datos | axios (`GET`, `POST`, `PUT`, `DELETE`) |
-| Contexto activo y permisos | Props de Inertia — compartidos por `InnoditeContextBridge` |
+| Contexto key | Prefijo de clase | Carpeta PHP | Carpeta Vue | Archivo de rutas | Nombre de ruta ejemplo | Archivos generados |
+|---|---|---|---|---|---|---|
+| `central` | `Central` | `Central/` | `Pages/Central/` | `routes/web.php` | `central.users.index` | 24 |
+| `shared` | `Shared` | `Shared/` | `Pages/Shared/` | `web.php` + `tenant.php` | `central.shared.invoices.index` | 16 |
+| `tenant_shared` | `TenantShared` | `Tenant/Shared/` | `Pages/Tenant/Shared/` | `routes/tenant.php` | `roles.index` (sin prefijo) | 17 |
+| `tenant` (ej: INNODITE) | `TenantINNODITE` | `Tenant/INNODITE/` | `Pages/Tenant/INNODITE/` | `routes/tenant.php` | `innodite.products.index` | 20 |
 
-Los controladores retornan **JSON puro**. Las vistas Vue son *shells* que se autocargan al montarse vía axios. Inertia nunca transporta datos de negocio, solo gestiona la navegación SPA.
+> **Descripción rápida de cada contexto:**
+> - `central` → Panel administrativo global. Rutas en `web.php`. Prefijo `Central`.
+> - `shared` → Código híbrido accesible tanto desde el panel central como desde el panel tenant. Inyecta rutas en DOS archivos simultáneamente.
+> - `tenant_shared` → Estándar para todos los tenants. Sin prefijo de URL ni de nombre de ruta.
+> - `tenant` → Tenants específicos del proyecto (INNODITE, ACME, etc.). Un array en `contexts.json`, cada entrada genera su propio espacio aislado.
 
 ---
 
-## Guía de comandos
+## 🖥️ Arquitectura Frontend
+
+> **Regla fundamental — No negociable en este paquete.**
+
+| Responsabilidad | Tecnología |
+|---|---|
+| Navegación entre páginas | Inertia.js (`router.visit()`, `router.get()`) |
+| Carga y mutación de datos | axios (`GET`, `POST`, `PUT`, `DELETE`) |
+| Contexto activo y permisos | Props de Inertia — compartidos por `InnoditeContextBridge` |
+
+Los controladores utilizan el trait `RendersInertiaModule` y el método `renderModule()` para devolver la vista Inertia correcta según el contexto. **Nunca** pasan datos de negocio por props de Inertia.
+
+Las vistas Vue son *shells* que se autocargan al montarse vía axios. Inertia nunca transporta datos de negocio; solo gestiona la navegación SPA.
+
+```php
+// Controlador — uso de renderModule()
+class CentralUserController extends Controller
+{
+    use RendersInertiaModule;
+
+    public function index(): JsonResponse
+    {
+        $users = $this->service->paginate();
+        return response()->json($users);
+    }
+
+    public function create(): \Inertia\Response
+    {
+        return $this->renderModule('CentralUserCreate');
+        // Retorna la vista Inertia — sin datos de negocio
+    }
+}
+```
+
+```js
+// Vista Vue — carga sus propios datos al montarse
+onMounted(async () => {
+    const { data } = await axios.get(route(contextRoute('users.index')))
+    items.value = data.data
+})
+```
+
+---
+
+## 🛠️ Guía de comandos
 
 ### `innodite:make-module` — Generador principal
 
@@ -107,7 +159,7 @@ php artisan innodite:make-module User --context=central
 php artisan innodite:make-module User
 
 # Tenant específico (por name, class_prefix o slug)
-php artisan innodite:make-module Product --context=tenant-one
+php artisan innodite:make-module Product --context=innodite
 
 # Contexto shared (rutas en web.php Y tenant.php simultáneamente)
 php artisan innodite:make-module Invoice --context=shared
@@ -130,11 +182,11 @@ php artisan innodite:make-module User --json
 | Flag | Componente generado |
 |---|---|
 | `-M` / `--model` | Modelo Eloquent con `$table` definida |
-| `-C` / `--controller` | Controlador JSON + inyección de rutas CRUD |
+| `-C` / `--controller` | Controlador con `RendersInertiaModule` + inyección de rutas CRUD |
 | `-S` / `--service` | Servicio + Interface en `Services/Contracts/` |
 | `-R` / `--repository` | Repositorio + Interface en `Repositories/Contracts/` |
 | `-G` / `--migration` | Migración anónima contextualizada |
-| `-Q` / `--request` | Form Request validado |
+| `-Q` / `--request` | Form Request validado (Store y Update para Central/Tenant, uno para Shared/TenantShared) |
 
 **Validaciones de seguridad:**
 - Nombres no PascalCase son rechazados
@@ -196,44 +248,132 @@ Publica en `resources/js/Composables/`:
 
 ---
 
-## Flujo completo por contexto
+## 📁 Archivos generados por contexto
 
-Esta sección documenta el flujo de generación completo para cada uno de los 4 contextos disponibles: qué archivos crea, dónde los ubica y cómo inyecta las rutas.
+Esta sección muestra la lista exacta de archivos que el paquete genera para el módulo `User` en cada uno de los 4 contextos.
+
+---
+
+### Contexto `central` — 24 archivos
+
+```
+Modules/User/
+├── Http/Controllers/Central/CentralUserController.php
+├── Http/Requests/Central/CentralUserStoreRequest.php
+├── Http/Requests/Central/CentralUserUpdateRequest.php
+├── Services/Central/CentralUserService.php
+├── Services/Contracts/Central/CentralUserServiceInterface.php
+├── Repositories/Central/CentralUserRepository.php
+├── Repositories/Contracts/Central/CentralUserRepositoryInterface.php
+├── Models/Central/CentralUser.php
+├── Database/Migrations/Central/XXXX_create_central_users_table.php
+├── Database/Seeders/Central/CentralUserSeeder.php
+├── Database/Factories/Central/CentralUserFactory.php
+├── Tests/Feature/Central/CentralUserTest.php
+├── Tests/Unit/Central/CentralUserServiceTest.php
+├── Tests/Support/Central/CentralUserSupport.php
+├── Resources/js/Pages/Central/CentralUserIndex.vue
+├── Resources/js/Pages/Central/CentralUserCreate.vue
+├── Resources/js/Pages/Central/CentralUserEdit.vue
+├── Resources/js/Pages/Central/CentralUserShow.vue
+├── Jobs/Central/CentralUserExportJob.php
+├── Notifications/Central/CentralUserWelcomeNotification.php
+├── Console/Commands/Central/CentralUserCleanupCommand.php
+├── Exceptions/Central/CentralUserNotFoundException.php
+├── Providers/UserServiceProvider.php
+└── Routes/web.php
+```
+
+---
+
+### Contexto `shared` — 16 archivos
+
+```
+Modules/User/
+├── Http/Controllers/Shared/SharedUserController.php
+├── Http/Requests/Shared/SharedUserRequest.php
+├── Services/Shared/SharedUserService.php
+├── Services/Contracts/Shared/SharedUserServiceInterface.php
+├── Repositories/Shared/SharedUserRepository.php
+├── Repositories/Contracts/Shared/SharedUserRepositoryInterface.php
+├── Models/Shared/SharedUser.php
+├── Database/Migrations/Shared/XXXX_create_shared_users_table.php
+├── Database/Seeders/Shared/SharedUserSeeder.php
+├── Database/Factories/Shared/SharedUserFactory.php
+├── Tests/Feature/Shared/SharedUserTest.php
+├── Tests/Unit/Shared/SharedUserServiceTest.php
+├── Resources/js/Pages/Shared/SharedUserIndex.vue
+├── Resources/js/Pages/Shared/SharedUserCreate.vue
+├── Resources/js/Pages/Shared/SharedUserEdit.vue
+└── Resources/js/Pages/Shared/SharedUserShow.vue
+```
+
+---
+
+### Contexto `tenant_shared` — 17 archivos
+
+```
+Modules/User/
+├── Http/Controllers/Tenant/Shared/TenantSharedUserController.php
+├── Http/Requests/Tenant/Shared/TenantSharedUserRequest.php
+├── Services/Tenant/Shared/TenantSharedUserService.php
+├── Services/Contracts/Tenant/Shared/TenantSharedUserServiceInterface.php
+├── Repositories/Tenant/Shared/TenantSharedUserRepository.php
+├── Repositories/Contracts/Tenant/Shared/TenantSharedUserRepositoryInterface.php
+├── Models/Tenant/Shared/TenantSharedUser.php
+├── Database/Migrations/Tenant/Shared/XXXX_create_tenant_users_table.php
+├── Database/Seeders/Tenant/Shared/TenantSharedUserSeeder.php
+├── Database/Factories/Tenant/Shared/TenantSharedUserFactory.php
+├── Tests/Feature/Tenant/Shared/TenantSharedUserTest.php
+├── Tests/Unit/Tenant/Shared/TenantSharedUserServiceTest.php
+├── Resources/js/Pages/Tenant/Shared/TenantSharedUserIndex.vue
+├── Resources/js/Pages/Tenant/Shared/TenantSharedUserCreate.vue
+├── Resources/js/Pages/Tenant/Shared/TenantSharedUserEdit.vue
+├── Resources/js/Pages/Tenant/Shared/TenantSharedUserShow.vue
+└── Jobs/Tenant/Shared/TenantSharedUserReportJob.php
+```
+
+---
+
+### Contexto `tenant` (ej: INNODITE) — 20 archivos
+
+```
+Modules/User/
+├── Http/Controllers/Tenant/INNODITE/TenantINNODITEUserController.php
+├── Http/Requests/Tenant/INNODITE/TenantINNODITEUserStoreRequest.php
+├── Http/Requests/Tenant/INNODITE/TenantINNODITEUserUpdateRequest.php
+├── Services/Tenant/INNODITE/TenantINNODITEUserService.php
+├── Services/Contracts/Tenant/INNODITE/TenantINNODITEUserServiceInterface.php
+├── Repositories/Tenant/INNODITE/TenantINNODITEUserRepository.php
+├── Repositories/Contracts/Tenant/INNODITE/TenantINNODITEUserRepositoryInterface.php
+├── Models/Tenant/INNODITE/TenantINNODITEUser.php
+├── Database/Migrations/Tenant/INNODITE/XXXX_add_fields_to_innodite_table.php
+├── Database/Seeders/Tenant/INNODITE/TenantINNODITEUserSeeder.php
+├── Database/Factories/Tenant/INNODITE/TenantINNODITEUserFactory.php
+├── Tests/Feature/Tenant/INNODITE/TenantINNODITEUserTest.php
+├── Tests/Unit/Tenant/INNODITE/TenantINNODITEUserServiceTest.php
+├── Resources/js/Pages/Tenant/INNODITE/TenantINNODITEUserIndex.vue
+├── Resources/js/Pages/Tenant/INNODITE/TenantINNODITEUserCreate.vue
+├── Resources/js/Pages/Tenant/INNODITE/TenantINNODITEUserEdit.vue
+├── Resources/js/Pages/Tenant/INNODITE/TenantINNODITEUserShow.vue
+├── Jobs/Tenant/INNODITE/TenantINNODITEUserReportJob.php
+├── Notifications/Tenant/INNODITE/TenantINNODITEUserCustomAlert.php
+└── Console/Commands/Tenant/INNODITE/TenantINNODITEUserImportCommand.php
+```
+
+---
+
+## 🔄 Flujo completo por contexto
+
+Esta sección documenta el flujo de generación completo para cada contexto: qué archivos crea, dónde los ubica y cómo inyecta las rutas.
 
 ---
 
 ### Contexto `central`
 
-**Comando:**
-
 ```bash
 php artisan innodite:make-module User --context=central
 ```
-
-#### Archivos PHP generados
-
-| Archivo | Ubicación |
-|---|---|
-| `CentralUser.php` | `Modules/User/Models/Central/` |
-| `CentralUserController.php` | `Modules/User/Http/Controllers/Central/` |
-| `CentralUserService.php` | `Modules/User/Services/Central/` |
-| `CentralUserServiceInterface.php` | `Modules/User/Services/Contracts/Central/` |
-| `CentralUserRepository.php` | `Modules/User/Repositories/Central/` |
-| `CentralUserRepositoryInterface.php` | `Modules/User/Repositories/Contracts/Central/` |
-| `CentralUserStoreRequest.php` | `Modules/User/Http/Requests/Central/` |
-| `UserServiceProvider.php` | `Modules/User/Providers/` |
-| `*_create_central_users_table.php` | `Modules/User/Database/Migrations/Central/` |
-| `UserDatabaseSeeder.php` | `Modules/User/Database/Seeders/` |
-| `CentralUserTest.php` | `Modules/User/Tests/Unit/` |
-
-#### Archivos Vue generados
-
-| Archivo | Ubicación |
-|---|---|
-| `CentralUserIndex.vue` | `Modules/User/Resources/js/Pages/Central/` |
-| `CentralUserCreate.vue` | `Modules/User/Resources/js/Pages/Central/` |
-| `CentralUserEdit.vue` | `Modules/User/Resources/js/Pages/Central/` |
-| `CentralUserShow.vue` | `Modules/User/Resources/js/Pages/Central/` |
 
 #### Ruta inyectada en `routes/web.php`
 
@@ -260,46 +400,17 @@ contextRoute('users.index')
 // Resuelve: 'central.users.index'
 ```
 
-El composable `useModuleContext` lee `auth.context.route_prefix` desde las props de Inertia y antepone el prefijo de contexto activo a la clave de ruta.
-
 ---
 
 ### Contexto `shared`
-
-**Comando:**
 
 ```bash
 php artisan innodite:make-module Invoice --context=shared
 ```
 
-#### Archivos PHP generados
-
-| Archivo | Ubicación |
-|---|---|
-| `SharedInvoice.php` | `Modules/Invoice/Models/Shared/` |
-| `SharedInvoiceController.php` | `Modules/Invoice/Http/Controllers/Shared/` |
-| `SharedInvoiceService.php` | `Modules/Invoice/Services/Shared/` |
-| `SharedInvoiceServiceInterface.php` | `Modules/Invoice/Services/Contracts/Shared/` |
-| `SharedInvoiceRepository.php` | `Modules/Invoice/Repositories/Shared/` |
-| `SharedInvoiceRepositoryInterface.php` | `Modules/Invoice/Repositories/Contracts/Shared/` |
-| `SharedInvoiceStoreRequest.php` | `Modules/Invoice/Http/Requests/Shared/` |
-| `InvoiceServiceProvider.php` | `Modules/Invoice/Providers/` |
-| `*_create_shared_invoices_table.php` | `Modules/Invoice/Database/Migrations/Shared/` |
-| `InvoiceDatabaseSeeder.php` | `Modules/Invoice/Database/Seeders/` |
-| `SharedInvoiceTest.php` | `Modules/Invoice/Tests/Unit/` |
-
-#### Archivos Vue generados
-
-| Archivo | Ubicación |
-|---|---|
-| `SharedInvoiceIndex.vue` | `Modules/Invoice/Resources/js/Pages/Shared/` |
-| `SharedInvoiceCreate.vue` | `Modules/Invoice/Resources/js/Pages/Shared/` |
-| `SharedInvoiceEdit.vue` | `Modules/Invoice/Resources/js/Pages/Shared/` |
-| `SharedInvoiceShow.vue` | `Modules/Invoice/Resources/js/Pages/Shared/` |
-
 #### Dualidad de rutas — inyección simultánea en DOS archivos
 
-El contexto `shared` es único: sus rutas son accesibles tanto desde el panel central como desde el panel tenant. Por eso el generador inyecta rutas en **dos archivos de rutas simultáneamente**.
+El contexto `shared` es único: sus rutas son accesibles tanto desde el panel central como desde el panel tenant. El generador inyecta rutas en **dos archivos simultáneamente**.
 
 **En `routes/web.php`** (acceso desde el panel central):
 
@@ -339,7 +450,7 @@ Route::prefix('tenant/shared')->name('tenant.shared.')->middleware(['web','auth'
 
 #### Resolución de `contextRoute()` en `shared`
 
-El mismo componente Vue resuelve diferente según el panel activo, gracias a la prop `auth.context.route_prefix` inyectada por `InnoditeContextBridge`:
+El mismo componente Vue resuelve diferente según el panel activo, gracias a `auth.context.route_prefix` inyectada por `InnoditeContextBridge`:
 
 ```js
 // Desde el panel central (route_prefix = 'central.shared')
@@ -357,36 +468,9 @@ Las vistas Vue no cambian — el composable adapta la ruta automáticamente seg�
 
 ### Contexto `tenant_shared`
 
-**Comando:**
-
 ```bash
 php artisan innodite:make-module Role --context=tenant_shared
 ```
-
-#### Archivos PHP generados
-
-| Archivo | Ubicación |
-|---|---|
-| `TenantSharedRole.php` | `Modules/Role/Models/Tenant/Shared/` |
-| `TenantSharedRoleController.php` | `Modules/Role/Http/Controllers/Tenant/Shared/` |
-| `TenantSharedRoleService.php` | `Modules/Role/Services/Tenant/Shared/` |
-| `TenantSharedRoleServiceInterface.php` | `Modules/Role/Services/Contracts/Tenant/Shared/` |
-| `TenantSharedRoleRepository.php` | `Modules/Role/Repositories/Tenant/Shared/` |
-| `TenantSharedRoleRepositoryInterface.php` | `Modules/Role/Repositories/Contracts/Tenant/Shared/` |
-| `TenantSharedRoleStoreRequest.php` | `Modules/Role/Http/Requests/Tenant/Shared/` |
-| `RoleServiceProvider.php` | `Modules/Role/Providers/` |
-| `*_create_tenant_shared_roles_table.php` | `Modules/Role/Database/Migrations/Tenant/Shared/` |
-| `RoleDatabaseSeeder.php` | `Modules/Role/Database/Seeders/` |
-| `TenantSharedRoleTest.php` | `Modules/Role/Tests/Unit/` |
-
-#### Archivos Vue generados
-
-| Archivo | Ubicación |
-|---|---|
-| `TenantSharedRoleIndex.vue` | `Modules/Role/Resources/js/Pages/Tenant/Shared/` |
-| `TenantSharedRoleCreate.vue` | `Modules/Role/Resources/js/Pages/Tenant/Shared/` |
-| `TenantSharedRoleEdit.vue` | `Modules/Role/Resources/js/Pages/Tenant/Shared/` |
-| `TenantSharedRoleShow.vue` | `Modules/Role/Resources/js/Pages/Tenant/Shared/` |
 
 #### Ruta inyectada en `routes/tenant.php`
 
@@ -412,95 +496,107 @@ Route::middleware(['web','auth'])->group(function () {
 
 ---
 
-### Contexto `tenant` (tenant específico — ej: TenantOne)
-
-**Comando:**
+### Contexto `tenant` (tenant específico — ej: INNODITE)
 
 ```bash
-php artisan innodite:make-module Product --context=tenant-one
+php artisan innodite:make-module Product --context=innodite
 ```
 
-El paquete resuelve `tenant-one` buscando en el array `tenant` de `contexts.json` por `name`, `class_prefix` o slug derivado del nombre.
-
-#### Archivos PHP generados
-
-| Archivo | Ubicación |
-|---|---|
-| `TenantOneProduct.php` | `Modules/Product/Models/Tenant/TenantOne/` |
-| `TenantOneProductController.php` | `Modules/Product/Http/Controllers/Tenant/TenantOne/` |
-| `TenantOneProductService.php` | `Modules/Product/Services/Tenant/TenantOne/` |
-| `TenantOneProductServiceInterface.php` | `Modules/Product/Services/Contracts/Tenant/TenantOne/` |
-| `TenantOneProductRepository.php` | `Modules/Product/Repositories/Tenant/TenantOne/` |
-| `TenantOneProductRepositoryInterface.php` | `Modules/Product/Repositories/Contracts/Tenant/TenantOne/` |
-| `TenantOneProductStoreRequest.php` | `Modules/Product/Http/Requests/Tenant/TenantOne/` |
-| `ProductServiceProvider.php` | `Modules/Product/Providers/` |
-| `*_create_tenant_one_products_table.php` | `Modules/Product/Database/Migrations/Tenant/TenantOne/` |
-| `ProductDatabaseSeeder.php` | `Modules/Product/Database/Seeders/` |
-| `TenantOneProductTest.php` | `Modules/Product/Tests/Unit/` |
-
-#### Archivos Vue generados
-
-| Archivo | Ubicación |
-|---|---|
-| `TenantOneProductIndex.vue` | `Modules/Product/Resources/js/Pages/Tenant/TenantOne/` |
-| `TenantOneProductCreate.vue` | `Modules/Product/Resources/js/Pages/Tenant/TenantOne/` |
-| `TenantOneProductEdit.vue` | `Modules/Product/Resources/js/Pages/Tenant/TenantOne/` |
-| `TenantOneProductShow.vue` | `Modules/Product/Resources/js/Pages/Tenant/TenantOne/` |
+El paquete resuelve `innodite` buscando en el array `tenant` de `contexts.json` por `name`, `class_prefix` o slug derivado del nombre.
 
 #### Ruta inyectada en `routes/tenant.php`
 
 ```php
-// Bloque generado para: Product (Contexto: Tenant One)
-Route::prefix('tenant-one')->name('tenant-one.')->middleware(['web','auth','tenant-auth'])->group(function () {
+// Bloque generado para: Product (Contexto: INNODITE)
+Route::prefix('innodite')->name('innodite.')->middleware(['web','auth','tenant-auth'])->group(function () {
     Route::prefix('products')->name('products.')->group(function () {
-        Route::get('/',          [TenantOneProductController::class, 'index'])->name('index');
-        Route::get('/create',    [TenantOneProductController::class, 'create'])->name('create');
-        Route::post('/',         [TenantOneProductController::class, 'store'])->name('store');
-        Route::get('/{id}',      [TenantOneProductController::class, 'show'])->name('show');
-        Route::get('/{id}/edit', [TenantOneProductController::class, 'edit'])->name('edit');
-        Route::put('/{id}',      [TenantOneProductController::class, 'update'])->name('update');
-        Route::delete('/{id}',   [TenantOneProductController::class, 'destroy'])->name('destroy');
+        Route::get('/',          [TenantINNODITEProductController::class, 'index'])->name('index');
+        Route::get('/create',    [TenantINNODITEProductController::class, 'create'])->name('create');
+        Route::post('/',         [TenantINNODITEProductController::class, 'store'])->name('store');
+        Route::get('/{id}',      [TenantINNODITEProductController::class, 'show'])->name('show');
+        Route::get('/{id}/edit', [TenantINNODITEProductController::class, 'edit'])->name('edit');
+        Route::put('/{id}',      [TenantINNODITEProductController::class, 'update'])->name('update');
+        Route::delete('/{id}',   [TenantINNODITEProductController::class, 'destroy'])->name('destroy');
     });
 });
-// {{TENANT_ONE_ROUTES_END}}
+// {{TENANT_INNODITE_ROUTES_END}}
 ```
 
 #### Resolución de `contextRoute()`
 
 ```js
 contextRoute('products.index')
-// Resuelve: 'tenant-one.products.index'
+// Resuelve: 'innodite.products.index'
 ```
 
 ---
 
-## Tabla comparativa de contextos
+## 🧩 Composables Vue 3
 
-| Contexto key | Clase prefijo | Carpeta PHP | Carpeta Vue | Archivo de rutas | Marcador de ruta | Nombre de ruta ejemplo |
-|---|---|---|---|---|---|---|
-| `central` | `Central` | `Central/` | `Pages/Central/` | `routes/web.php` | `{{CENTRAL_ROUTES_END}}` | `central.users.index` |
-| `shared` | `Shared` | `Shared/` | `Pages/Shared/` | `web.php` + `tenant.php` | `{{CENTRAL_ROUTES_END}}` + `{{TENANT_SHARED_ROUTES_END}}` | `central.shared.invoices.index` / `tenant.shared.invoices.index` |
-| `tenant_shared` | `TenantShared` | `Tenant/Shared/` | `Pages/Tenant/Shared/` | `routes/tenant.php` | `{{TENANT_SHARED_ROUTES_END}}` | `roles.index` (sin prefijo) |
-| `tenant` (TenantOne) | `TenantOne` | `Tenant/TenantOne/` | `Pages/Tenant/TenantOne/` | `routes/tenant.php` | `{{TENANT_ONE_ROUTES_END}}` | `tenant-one.products.index` |
+Los composables se publican con `php artisan innodite:publish-frontend` en `resources/js/Composables/`.
 
-> El contexto `tenant_shared` es el único con `route_prefix: null`, lo que elimina el prefijo de URL y nombre de ruta. Todos los demás contextos aplican su propio prefijo.
+### `useModuleContext` — Detección automática de contexto
+
+Lee `auth.context.route_prefix` desde las props de Inertia compartidas por `InnoditeContextBridge` y antepone automáticamente el prefijo correcto a cualquier clave de ruta.
+
+```js
+import { useModuleContext } from '@/Composables/useModuleContext'
+
+const { contextRoute, routePrefix, permissionPrefix } = useModuleContext()
+
+route(contextRoute('users.index'))
+// Central              → 'central.users.index'
+// Shared (web)         → 'central.shared.users.index'
+// Shared (tenant)      → 'tenant.shared.users.index'
+// TenantShared         → 'users.index'  (sin prefijo)
+// Tenant INNODITE      → 'innodite.users.index'
+```
+
+El mismo componente Vue funciona en cualquier contexto sin cambios — el composable resuelve la ruta correcta según la sesión activa.
 
 ---
 
-## Vistas Vue generadas
+### `usePermissions` — Verificación de permisos del usuario
 
-Cada módulo genera 4 vistas Vue 3 (`<script setup>`) que siguen la arquitectura axios + Inertia:
+Lee `auth.permissions` desde las props de Inertia y permite verificar permisos de forma declarativa en las plantillas Vue.
 
-### Flujo de datos en cada vista
+```js
+import { usePermissions } from '@/Composables/usePermissions'
+
+const { can, canAny, canAll } = usePermissions()
+
+can('users.create')                          // true/false
+canAny(['users.edit', 'users.create'])       // true si tiene al menos uno
+canAll(['users.view', 'users.edit'])         // true si tiene todos
+```
+
+**Estrategia dual:** verifica `{prefix}.{perm}` y `{perm}` plano simultáneamente. El mismo componente funciona en cualquier contexto sin cambios.
+
+```vue
+<template>
+  <!-- Botón visible solo si el usuario tiene permiso -->
+  <button v-if="can('users.create')" @click="goToCreate()">
+    Nuevo usuario
+  </button>
+
+  <!-- Acciones de fila protegidas por permisos -->
+  <button v-if="can('users.edit')" @click="edit(item.id)">Editar</button>
+  <button v-if="can('users.delete')" @click="destroy(item.id)">Eliminar</button>
+</template>
+```
+
+---
+
+### Flujo de datos en las vistas Vue generadas
 
 ```
-Montaje  → axios.get(route(contextRoute('users.index')))   ← carga datos
-Guardar  → axios.post/put(route(...))                      ← muta datos
-Navegar  → router.visit(route(contextRoute('users.xxx')))  ← Inertia solo navega
-Permisos → can('users.edit')                               ← oculta/muestra UI
+Montaje  → axios.get(route(contextRoute('users.index')))    ← carga datos
+Guardar  → axios.post/put(route(...))                       ← muta datos
+Navegar  → router.visit(route(contextRoute('users.xxx')))   ← Inertia solo navega
+Permisos → can('users.edit')                                ← oculta/muestra UI
 ```
 
-### `CentralUserIndex.vue` — Lista paginada
+### Ejemplo — `CentralUserIndex.vue`
 
 ```vue
 <script setup>
@@ -531,12 +627,7 @@ onMounted(() => fetchItems())
 </script>
 ```
 
-- Botón "Nuevo" visible solo si `can('users.create')`
-- Botones Editar/Eliminar visibles solo si `can('users.edit')` / `can('users.delete')`
-- Paginación automática con botones numéricos
-- Manejo de errores con mensaje visible en pantalla
-
-### `CentralUserCreate.vue` — Formulario de creación
+### Ejemplo — `CentralUserCreate.vue`
 
 ```vue
 async function submit() {
@@ -547,9 +638,8 @@ async function submit() {
 
 - Errores de validación Laravel 422 mostrados campo a campo
 - Botón deshabilitado durante el envío (previene doble submit)
-- Cancela navegando al índice con `router.visit()`
 
-### `CentralUserEdit.vue` — Formulario de edición
+### Ejemplo — `CentralUserEdit.vue`
 
 ```vue
 onMounted(async () => {
@@ -563,40 +653,70 @@ async function submit() {
 }
 ```
 
-- Recibe `id` como prop de Inertia (solo el ID, no el objeto completo)
+- Recibe solo `id` como prop de Inertia (nunca el objeto completo)
 - Carga el registro vía axios al montarse
-- Actualiza con `axios.put` y navega al índice
 
-### `CentralUserShow.vue` — Vista de detalle
+---
 
-```vue
-onMounted(async () => {
-    const { data } = await axios.get(route(contextRoute('users.show'), { id: props.id }))
-    item.value = data
-})
+## 🔧 Stubs contextuales
+
+El sistema de stubs de v3.1.0 organiza las plantillas en **4 carpetas independientes**, una por contexto. Esto permite personalizar la salida generada para cada contexto sin afectar los demás.
+
+### Estructura de stubs
+
+```
+module-maker-config/
+└── stubs/
+    └── contextual/
+        ├── Central/
+        │   ├── controller.stub
+        │   ├── service.stub
+        │   ├── repository.stub
+        │   ├── model.stub
+        │   ├── request-store.stub
+        │   ├── request-update.stub
+        │   ├── vue-index.stub
+        │   ├── vue-create.stub
+        │   ├── vue-edit.stub
+        │   └── vue-show.stub
+        ├── Shared/
+        │   ├── controller.stub
+        │   ├── service.stub
+        │   └── ...
+        ├── TenantShared/
+        │   ├── controller.stub
+        │   ├── service.stub
+        │   └── ...
+        └── TenantName/
+            ├── controller.stub
+            ├── service.stub
+            └── ...
 ```
 
-- Muestra `created_at` y `updated_at` por defecto
-- Botones Editar/Eliminar protegidos por `can()`
-- Elimina con `axios.delete` y redirige al índice
-
-### Personalización de vistas
-
-Los stubs fuente están en `module-maker-config/stubs/contextual/` tras ejecutar:
+### Publicar stubs para personalización
 
 ```bash
 php artisan vendor:publish --tag=module-maker-stubs
 ```
 
-Archivos de vista editables:
-- `vue-index.stub` — plantilla del listado
-- `vue-create.stub` — plantilla del formulario de creación
-- `vue-edit.stub` — plantilla del formulario de edición
-- `vue-show.stub` — plantilla del detalle
+Copia las 4 carpetas de stubs a `module-maker-config/stubs/contextual/` en tu proyecto. A partir de ese momento, el generador usará tus stubs en lugar de los del paquete.
+
+### Variables disponibles en los stubs
+
+| Variable | Descripción | Ejemplo |
+|---|---|---|
+| `{{MODULE}}` | Nombre del módulo | `User` |
+| `{{CLASS_PREFIX}}` | Prefijo de clase del contexto | `Central` |
+| `{{NAMESPACE}}` | Namespace completo de la clase | `Modules\User\Http\Controllers\Central` |
+| `{{CLASS_NAME}}` | Nombre completo de la clase | `CentralUserController` |
+| `{{MODEL_CLASS}}` | Clase del modelo | `CentralUser` |
+| `{{SERVICE_INTERFACE}}` | Interface del servicio | `CentralUserServiceInterface` |
+| `{{ROUTE_PREFIX}}` | Prefijo de ruta del contexto | `central` |
+| `{{TABLE_NAME}}` | Nombre de la tabla | `central_users` |
 
 ---
 
-## Bridge Frontend-Backend
+## 🌉 Bridge Frontend-Backend
 
 ### Middleware `InnoditeContextBridge`
 
@@ -604,8 +724,8 @@ Intercepta cada request e inyecta vía `Inertia::share()`:
 
 | Prop | Valor ejemplo |
 |---|---|
-| `auth.context.route_prefix` | `central`, `tenant-one`, `central.shared` |
-| `auth.context.permission_prefix` | `central`, `tenant_one`, `tenant` |
+| `auth.context.route_prefix` | `central`, `innodite`, `central.shared` |
+| `auth.context.permission_prefix` | `central`, `innodite`, `tenant` |
 | `auth.permissions` | `['central.users.edit', 'users.view', ...]` |
 
 **Cadena de resolución de permisos:**
@@ -647,36 +767,7 @@ class User extends Authenticatable implements InnoditeUserPermissions
 
 ---
 
-### Composable `useModuleContext.js`
-
-```js
-const { contextRoute, routePrefix, permissionPrefix } = useModuleContext()
-
-route(contextRoute('roles.index'))
-// Central       → 'central.roles.index'
-// TenantOne     → 'tenant-one.roles.index'
-// TenantShared  → 'roles.index'  (sin prefijo — fail-safe con warning DEV)
-// Shared/web    → 'central.shared.roles.index'
-// Shared/tenant → 'tenant.shared.roles.index'
-```
-
----
-
-### Composable `usePermissions.js`
-
-```js
-const { can, canAny, canAll } = usePermissions()
-
-can('roles.edit')                      // true si tiene 'central.roles.edit' O 'roles.edit'
-canAny(['roles.edit', 'roles.create']) // true si tiene al menos uno
-canAll(['roles.view', 'roles.edit'])   // true si tiene todos
-```
-
-**Estrategia dual:** verifica `{prefix}.{perm}` y `{perm}` plano simultáneamente — el mismo componente funciona en cualquier contexto sin cambios.
-
----
-
-## Estructura de contextos (`contexts.json`)
+## ⚙️ Estructura de contextos (`contexts.json`)
 
 ```json
 {
@@ -715,28 +806,45 @@ canAll(['roles.view', 'roles.edit'])   // true si tiene todos
             "permission_prefix": "tenant",
             "route_middleware": []
         }],
-        "tenant": [{
-            "name": "Tenant One",
-            "class_prefix": "TenantOne",
-            "folder": "Tenant/TenantOne",
-            "namespace_path": "Tenant\\TenantOne",
-            "route_file": "tenant.php",
-            "route_prefix": "tenant-one",
-            "route_name": "tenant-one.",
-            "permission_prefix": "tenant_one",
-            "route_middleware": ["web", "auth", "tenant-auth"]
-        }]
+        "tenant": [
+            {
+                "name": "INNODITE",
+                "class_prefix": "TenantINNODITE",
+                "folder": "Tenant/INNODITE",
+                "namespace_path": "Tenant\\INNODITE",
+                "route_file": "tenant.php",
+                "route_prefix": "innodite",
+                "route_name": "innodite.",
+                "permission_prefix": "innodite",
+                "route_middleware": ["web", "auth", "tenant-auth"]
+            },
+            {
+                "name": "ACME",
+                "class_prefix": "TenantACME",
+                "folder": "Tenant/ACME",
+                "namespace_path": "Tenant\\ACME",
+                "route_file": "tenant.php",
+                "route_prefix": "acme",
+                "route_name": "acme.",
+                "permission_prefix": "acme",
+                "route_middleware": ["web", "auth", "tenant-auth"]
+            }
+        ]
     }
 }
 ```
 
-> El array `tenant` puede contener múltiples entradas, una por cada tenant específico del proyecto. Cada entrada genera su propio marcador de rutas basado en su `class_prefix`.
+> El array `tenant` puede contener **múltiples entradas**, una por cada tenant específico del proyecto. Cada entrada genera su propio espacio de nombres, carpetas y marcador de rutas aislado.
+
+### Claves del contexto `tenant_shared` con `route_prefix: null`
+
+Es el único contexto sin prefijo de URL ni de nombre de ruta. `contextRoute('roles.index')` devuelve simplemente `'roles.index'` — diseñado para código estándar que se ejecuta bajo el dominio de cada tenant.
 
 ---
 
-## Estructura completa de un módulo generado
+## 🌳 Estructura de árbol de un módulo generado
 
-El siguiente árbol corresponde a `innodite:make-module User --context=central`:
+El siguiente árbol corresponde a `innodite:make-module User --context=central` (módulo completo, 24 archivos):
 
 ```
 Modules/
@@ -744,10 +852,11 @@ Modules/
     ├── Http/
     │   ├── Controllers/
     │   │   └── Central/
-    │   │       └── CentralUserController.php      (retorna JSON puro)
+    │   │       └── CentralUserController.php      (RendersInertiaModule + JSON)
     │   └── Requests/
     │       └── Central/
-    │           └── CentralUserStoreRequest.php
+    │           ├── CentralUserStoreRequest.php
+    │           └── CentralUserUpdateRequest.php
     ├── Models/
     │   └── Central/
     │       └── CentralUser.php                    (con $table definida)
@@ -770,9 +879,21 @@ Modules/
     │   │   └── Central/
     │   │       └── *_create_central_users_table.php   (migración anónima)
     │   ├── Seeders/
-    │   │   └── UserDatabaseSeeder.php
+    │   │   └── Central/
+    │   │       └── CentralUserSeeder.php
     │   └── Factories/
-    │       └── UserFactory.php
+    │       └── Central/
+    │           └── CentralUserFactory.php
+    ├── Tests/
+    │   ├── Feature/
+    │   │   └── Central/
+    │   │       └── CentralUserTest.php
+    │   ├── Unit/
+    │   │   └── Central/
+    │   │       └── CentralUserServiceTest.php
+    │   └── Support/
+    │       └── Central/
+    │           └── CentralUserSupport.php
     ├── Resources/
     │   └── js/
     │       └── Pages/
@@ -781,34 +902,43 @@ Modules/
     │               ├── CentralUserCreate.vue      (formulario, axios.post)
     │               ├── CentralUserEdit.vue        (formulario, axios.get + axios.put)
     │               └── CentralUserShow.vue        (detalle, axios.get)
-    ├── Routes/
-    │   └── web.php                                (rutas CRUD — referencia local)
-    └── Docs/
-        ├── history.md
-        ├── architecture.md
-        └── schema.md
+    ├── Jobs/
+    │   └── Central/
+    │       └── CentralUserExportJob.php
+    ├── Notifications/
+    │   └── Central/
+    │       └── CentralUserWelcomeNotification.php
+    ├── Console/
+    │   └── Commands/
+    │       └── Central/
+    │           └── CentralUserCleanupCommand.php
+    ├── Exceptions/
+    │   └── Central/
+    │       └── CentralUserNotFoundException.php
+    └── Routes/
+        └── web.php                                (rutas CRUD — referencia local)
 ```
 
 ---
 
-## Convenciones de nomenclatura
+## 📐 Convenciones de nomenclatura
 
 | Contexto | Prefijo de clase | Ejemplo Vue | Ejemplo PHP |
 |---|---|---|---|
 | `central` | `Central` | `CentralUserIndex.vue` | `CentralUserController.php` |
 | `shared` | `Shared` | `SharedInvoiceIndex.vue` | `SharedInvoiceService.php` |
 | `tenant_shared` | `TenantShared` | `TenantSharedRoleIndex.vue` | `TenantSharedRoleRepository.php` |
-| `tenant` (TenantOne) | `TenantOne` | `TenantOneProductIndex.vue` | `TenantOneProductController.php` |
+| `tenant` (INNODITE) | `TenantINNODITE` | `TenantINNODITEUserIndex.vue` | `TenantINNODITEUserController.php` |
 
 **Reglas adicionales:**
 - El nombre del módulo siempre va en PascalCase (ej: `User`, `InvoiceItem`, `TaxReport`)
 - Las migraciones son anónimas (`return new class extends Migration`) para evitar colisiones de nombres
 - Los ServiceProviders llevan el nombre del módulo sin prefijo de contexto (`UserServiceProvider`, no `CentralUserServiceProvider`)
-- Los seeders tampoco llevan prefijo de contexto (`UserDatabaseSeeder`)
+- Los Seeders, Jobs, Notifications y Commands **sí llevan prefijo de contexto** a partir de v3.1.0
 
 ---
 
-## Flujo de inyección de rutas
+## 🔀 Flujo de inyección de rutas
 
 ### Marcadores en `routes/web.php`
 
@@ -823,17 +953,17 @@ Modules/
 // Por contexto tenant_shared y shared-tenant:
 // {{TENANT_SHARED_ROUTES_END}}
 
-// Por cada tenant específico (uno por tenant):
-// {{TENANT_ONE_ROUTES_END}}
-// {{TENANT_TWO_ROUTES_END}}
+// Por cada tenant específico (uno por tenant, basado en class_prefix):
+// {{TENANT_INNODITE_ROUTES_END}}
+// {{TENANT_ACME_ROUTES_END}}
 ```
 
 ### Proceso interno de inyección
 
 ```
 1. resolveMarkerKey()   → contexto + route_file → clave del marcador
-                          central + web.php      → CENTRAL_ROUTES_END
-                          tenant-one + tenant.php → TENANT_ONE_ROUTES_END
+                          central + web.php         → CENTRAL_ROUTES_END
+                          innodite + tenant.php      → TENANT_INNODITE_ROUTES_END
 
 2. blockExists()        → busca firma del bloque existente
                           si ya existe: OMITE (operación idempotente)
@@ -859,12 +989,28 @@ Modules/
 
 ---
 
-## Auditoría
+## 📋 Resumen de todos los comandos
+
+| Comando | Descripción |
+|---|---|
+| `innodite:make-module {Name}` | Genera módulo completo con backend, vistas Vue y rutas |
+| `innodite:module-setup` | Inicializa configuración del paquete en el proyecto |
+| `innodite:module-check` | Diagnóstico de configuración, permisos y conflictos |
+| `innodite:check-env` | Verifica integración frontend-backend (bridge Inertia) |
+| `innodite:publish-frontend` | Publica composables Vue 3 (`useModuleContext`, `usePermissions`) |
+| `vendor:publish --tag=module-maker-config` | Publica `make-module.php` |
+| `vendor:publish --tag=module-maker-stubs` | Publica stubs contextuales personalizables |
+| `vendor:publish --tag=module-maker-contexts` | Publica `contexts.json` de ejemplo |
+| `vendor:publish --tag=module-maker-frontend` | Publica composables Vue 3 |
+
+---
+
+## 📊 Auditoría
 
 `storage/logs/module_maker.log` — formato NDJSON (una entrada JSON por línea):
 
 ```json
-{"timestamp":"2025-01-01T12:00:00+00:00","event":"module.created","package":"innodite/laravel-module-maker","version":"3.0.0","module":"User","context_key":"central","context_name":"App Central","routes":true}
+{"timestamp":"2026-04-01T12:00:00+00:00","event":"module.created","package":"innodite/laravel-module-maker","version":"3.1.0","module":"User","context_key":"central","context_name":"App Central","routes":true}
 ```
 
 | Evento | Cuándo se registra |
@@ -882,7 +1028,7 @@ ModuleAuditor::logPath();  // devuelve ruta absoluta al archivo de log
 
 ---
 
-## Pruebas
+## 🧪 Pruebas
 
 ```bash
 composer test           # todos los tests
@@ -891,11 +1037,14 @@ composer test:feature   # solo integración
 composer test:coverage  # con cobertura HTML en /coverage
 ```
 
-Los tests generados por `make-module` se ubican en `Modules/{Name}/Tests/Unit/` y tienen stubs base listos para ser completados.
+Los tests generados por `make-module` se ubican en:
+- `Modules/{Name}/Tests/Feature/{Context}/` — tests de integración HTTP
+- `Modules/{Name}/Tests/Unit/{Context}/` — tests unitarios del servicio
+- `Modules/{Name}/Tests/Support/{Context}/` — helpers y factories de test
 
 ---
 
-## Estándares de código
+## 📏 Estándares de código
 
 ```bash
 composer lint         # verificar PSR-12
@@ -907,13 +1056,13 @@ El paquete incluye configuración de PHP CS Fixer compatible con PSR-12. Todos l
 
 ---
 
-## Publicar en Packagist / repositorio privado
+## 📦 Publicar en Packagist / repositorio privado
 
 ### Repositorio público (Packagist)
 
 ```bash
-git init && git add . && git commit -m "feat: release v3.0.0"
-git tag v3.0.0 && git push origin main --tags
+git init && git add . && git commit -m "feat: release v3.1.0"
+git tag v3.1.0 && git push origin main --tags
 ```
 
 Luego registrar el repositorio en [packagist.org](https://packagist.org) con la URL del repositorio.
@@ -934,17 +1083,17 @@ Agregar en el `composer.json` del proyecto consumidor:
 ```
 
 ```bash
-composer require innodite/laravel-module-maker:^3.0
+composer require innodite/laravel-module-maker:^3.1
 ```
 
 ---
 
-## Changelog
+## 📝 Changelog
 
 Ver [CHANGELOG.md](CHANGELOG.md) para el historial completo de versiones.
 
 ---
 
-## Licencia
+## 📄 Licencia
 
 MIT — [Anthony Filgueira](https://www.innodite.com)

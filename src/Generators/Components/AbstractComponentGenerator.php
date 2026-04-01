@@ -84,8 +84,9 @@ abstract class AbstractComponentGenerator
      */
     protected function getStubContent(string $stubFile, bool $isClean, array $placeholders = [], ?string $context = null): string
     {
-        $resolvedContext = $context ?? ($this->componentConfig['context'] ?? null);
-        $stub = $this->getStub($stubFile, $isClean, $resolvedContext);
+        // Pasar la carpeta de contexto real (ej: "Central", "Tenant/Shared") para resolución por carpeta
+        $contextFolder = $context ?? $this->getContextFolder() ?: ($this->componentConfig['context'] ?? null);
+        $stub = $this->getStub($stubFile, $isClean, $contextFolder);
         return $this->replacePlaceholders($stub, $placeholders);
     }
 

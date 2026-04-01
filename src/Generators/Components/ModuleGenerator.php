@@ -6,6 +6,10 @@ namespace Innodite\LaravelModuleMaker\Generators\Components;
 
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Str;
+use Innodite\LaravelModuleMaker\Generators\Components\ConsoleCommandGenerator;
+use Innodite\LaravelModuleMaker\Generators\Components\ExceptionGenerator;
+use Innodite\LaravelModuleMaker\Generators\Components\JobGenerator;
+use Innodite\LaravelModuleMaker\Generators\Components\NotificationGenerator;
 use Innodite\LaravelModuleMaker\Services\RouteInjectionService;
 use Innodite\LaravelModuleMaker\Support\ContextResolver;
 
@@ -96,8 +100,22 @@ class ModuleGenerator
         $this->createContextSubfolders('Services');
         $this->createContextSubfolders('Services/Contracts');
 
+        // ── Jobs ─────────────────────────────────────────────────────────────
+        $this->createContextSubfolders('Jobs');
+
+        // ── Notifications ─────────────────────────────────────────────────────
+        $this->createContextSubfolders('Notifications');
+
+        // ── Console/Commands ──────────────────────────────────────────────────
+        $this->createContextSubfolders('Console/Commands');
+
+        // ── Exceptions ───────────────────────────────────────────────────────
+        File::ensureDirectoryExists("{$this->modulePath}/Exceptions/Central");
+
         // ── Tests ────────────────────────────────────────────────────────────
-        File::ensureDirectoryExists("{$this->modulePath}/Tests/Unit");
+        $this->createContextSubfolders('Tests/Feature');
+        $this->createContextSubfolders('Tests/Unit');
+        File::ensureDirectoryExists("{$this->modulePath}/Tests/Support/Central");
 
         if ($this->command) {
             $this->command->info("✅ Estructura de carpetas v3.0.0 creada para el módulo '{$this->moduleName}'.");
@@ -210,6 +228,40 @@ class ModuleGenerator
 
         // ── Vistas Vue (axios + Inertia solo para navegación) ─────────────────
         (new VueGenerator($this->moduleName, $this->modulePath, true, $modelName, $componentConfig))->generate();
+
+        // ── Generadores extendidos según tipo de contexto ─────────────────────
+        $isCentral      = ($contextKey === 'central');
+        $isTenantShared = ($contextKey === 'tenant_shared');
+        $isTenantSpecific = ($contextKey === 'tenant');
+
+        // Resolver el array de contexto para pasarlo a los nuevos generadores
+        try {
+            $resolvedContext = $contextName !== null
+                ? ContextResolver::resolveItem($contextKey, $contextName)
+                : ContextResolver::resolve($contextKey);
+        } catch (\InvalidArgumentException) {
+            $resolvedContext = [];
+        }
+
+        // Jobs (Central, TenantShared, TenantName)
+        if (($isCentral || $isTenantShared || $isTenantSpecific) && !empty($resolvedContext)) {
+            (new JobGenerator($resolvedContext, $this->modulePath, $this->moduleName))->generate();
+        }
+
+        // Notifications (Central, TenantName)
+        if (($isCentral || $isTenantSpecific) && !empty($resolvedContext)) {
+            (new NotificationGenerator($resolvedContext, $this->modulePath, $this->moduleName))->generate();
+        }
+
+        // Console Commands (Central, TenantName)
+        if (($isCentral || $isTenantSpecific) && !empty($resolvedContext)) {
+            (new ConsoleCommandGenerator($resolvedContext, $this->modulePath, $this->moduleName))->generate();
+        }
+
+        // Exceptions (solo Central)
+        if ($isCentral && !empty($resolvedContext)) {
+            (new ExceptionGenerator($resolvedContext, $this->modulePath, $this->moduleName))->generate();
+        }
 
         // ── Inyectar rutas en el proyecto ─────────────────────────────────────
         $this->injectRoutes($contextKey, $contextName, $componentConfig);
