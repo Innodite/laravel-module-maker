@@ -6,98 +6,152 @@ namespace Innodite\LaravelModuleMaker\Generators\Components;
 
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Str;
-use Innodite\LaravelModuleMaker\Generators\Components\ControllerGenerator;
-use Innodite\LaravelModuleMaker\Generators\Components\Factory\FactoryGenerator;
-use Innodite\LaravelModuleMaker\Generators\Components\MigrationGenerator;
-use Innodite\LaravelModuleMaker\Generators\Components\ModelGenerator;
-use Innodite\LaravelModuleMaker\Generators\Components\ProviderGenerator;
-use Innodite\LaravelModuleMaker\Generators\Components\RepositoryGenerator;
-use Innodite\LaravelModuleMaker\Generators\Components\RequestGenerator;
-use Innodite\LaravelModuleMaker\Generators\Components\RouteGenerator;
-use Innodite\LaravelModuleMaker\Generators\Components\SeederGenerator;
-use Innodite\LaravelModuleMaker\Generators\Components\TestGenerator;
+use Innodite\LaravelModuleMaker\Services\RouteInjectionService;
+use Innodite\LaravelModuleMaker\Support\ContextResolver;
 
+/**
+ * Orquesta la creación de un módulo completo según la arquitectura v3.0.0.
+ *
+ * Estructura generada por contexto:
+ *   Docs/               — history.md, architecture.md, schema.md
+ *   Database/           — Factories/, Migrations/, Seeders/ (con subcarpetas de contexto)
+ *   Http/               — Controllers/, Middleware/, Requests/ (con subcarpetas de contexto)
+ *   Models/             — Subcarpetas de contexto
+ *   Providers/
+ *   Repositories/       — Implementaciones + Contracts/ (ambos con subcarpetas de contexto)
+ *   Resources/js/Pages/ — Componentes Vue por contexto
+ *   Routes/             — web.php, tenant.php, api.php
+ *   Services/           — Implementaciones + Contracts/ (ambos con subcarpetas de contexto)
+ *   Tests/Unit/
+ */
 class ModuleGenerator
 {
     protected string $moduleName;
     protected string $modulePath;
     protected bool $isClean;
-    protected ?array $config; // Configuración JSON para módulos dinámicos
-    protected $command; // Referencia al objeto Command para mensajes de consola
+    protected ?array $config;
+    protected $command;
+
+    /**
+     * Subcarpetas de contexto base que se crean en todas las capas.
+     * Las carpetas de tenant específico se crean on-demand por cada generator.
+     */
+    private const BASE_CONTEXT_FOLDERS = [
+        'Central',
+        'Shared',
+        'Tenant/Shared',
+    ];
 
     public function __construct(string $moduleName, bool $isClean = true, ?array $config = null, $command = null)
     {
         $this->moduleName = Str::studly($moduleName);
         $this->modulePath = config('make-module.module_path') . "/{$this->moduleName}";
-        $this->isClean = $isClean;
-        $this->config = $config;
-        $this->command = $command; // Inyectamos el comando para poder usar info/error
+        $this->isClean    = $isClean;
+        $this->config     = $config;
+        $this->command    = $command;
     }
 
-    /**
-     * Resuelve la ruta del archivo de configuración, buscando en varias ubicaciones.
-     *
-     * @param string $configPath
-     * @return string
-     */
-    public function resolveConfigPath(string $configPath): string
-    {
-        // 1. Prioridad: Buscar en una carpeta de configuración del módulo
-        $moduleConfigPath = config('make-module.module_path') . "/{$this->moduleName}/config/{$configPath}";
-        if (File::exists($moduleConfigPath)) {
-            return $moduleConfigPath;
-        }
-        // 2. Segunda opción: Buscar en la carpeta de configuración del paquete (la que crea el setup)
-        $packageConfigPath = config('make-module.module_path') . "/module-maker-config/{$configPath}";
-        if (File::exists($packageConfigPath)) {
-            return $packageConfigPath;
-        }
-        // 3. Tercera opción: Buscar en la carpeta 'config' de la raíz de la aplicación
-        $rootConfigPath = base_path('config') . "/{$configPath}"; // Corregido para usar base_path('config')
-        if (File::exists($rootConfigPath)) {
-            return $rootConfigPath;
-        }
-        // Si no se encuentra, devolvemos la ruta original para que el error sea claro.
-        return $configPath;
-    }
+    // ─── Helpers de creación de estructura ───────────────────────────────────
 
     /**
-     * Crea las carpetas base para el módulo.
+     * Crea la estructura de carpetas completa v3.0.0.
+     * Incluye subcarpetas de contexto base (Central, Shared, Tenant/Shared)
+     * en todas las capas que lo requieren.
      *
      * @return void
      */
     public function createFolders(): void
     {
-        File::ensureDirectoryExists($this->modulePath);
-        File::ensureDirectoryExists("{$this->modulePath}/config");
-        File::ensureDirectoryExists("{$this->modulePath}/Http/Controllers");
-        File::ensureDirectoryExists("{$this->modulePath}/Http/Requests");
-        File::ensureDirectoryExists("{$this->modulePath}/Database/Migrations");
-        File::ensureDirectoryExists("{$this->modulePath}/Database/Seeders");
-        File::ensureDirectoryExists("{$this->modulePath}/Database/Factories");
-        File::ensureDirectoryExists("{$this->modulePath}/routes");
-        File::ensureDirectoryExists("{$this->modulePath}/Models");
-        File::ensureDirectoryExists("{$this->modulePath}/Services/Contracts");
-        File::ensureDirectoryExists("{$this->modulePath}/Repositories/Contracts");
+        // ── Docs (sin segregación de contexto) ───────────────────────────────
+        File::ensureDirectoryExists("{$this->modulePath}/Docs");
+
+        // ── Database ─────────────────────────────────────────────────────────
+        foreach (['Factories', 'Migrations', 'Seeders'] as $sub) {
+            $this->createContextSubfolders("Database/{$sub}");
+        }
+
+        // ── Http ─────────────────────────────────────────────────────────────
+        foreach (['Controllers', 'Requests'] as $sub) {
+            $this->createContextSubfolders("Http/{$sub}");
+        }
+        File::ensureDirectoryExists("{$this->modulePath}/Http/Middleware");
+
+        // ── Models ───────────────────────────────────────────────────────────
+        $this->createContextSubfolders('Models');
+
+        // ── Providers ────────────────────────────────────────────────────────
         File::ensureDirectoryExists("{$this->modulePath}/Providers");
-        File::ensureDirectoryExists("{$this->modulePath}/resources/views");
-        File::ensureDirectoryExists("{$this->modulePath}/resources/lang");
+
+        // ── Repositories: implementaciones + Contracts ────────────────────────
+        $this->createContextSubfolders('Repositories');
+        $this->createContextSubfolders('Repositories/Contracts');
+
+        // ── Resources/js/Pages ───────────────────────────────────────────────
+        $this->createContextSubfolders('Resources/js/Pages');
+
+        // ── Routes (raíz del módulo, sin subcarpetas de contexto) ─────────────
+        File::ensureDirectoryExists("{$this->modulePath}/Routes");
+
+        // ── Services: implementaciones + Contracts ────────────────────────────
+        $this->createContextSubfolders('Services');
+        $this->createContextSubfolders('Services/Contracts');
+
+        // ── Tests ────────────────────────────────────────────────────────────
         File::ensureDirectoryExists("{$this->modulePath}/Tests/Unit");
 
         if ($this->command) {
-            $this->command->info("✅ Carpetas base creadas para el módulo '{$this->moduleName}'.");
+            $this->command->info("✅ Estructura de carpetas v3.0.0 creada para el módulo '{$this->moduleName}'.");
         }
     }
 
     /**
-     * Orquesta la creación de un módulo limpio sin contexto (estructura básica).
-     * Úsalo cuando no hay contexts.json disponible o como fallback.
+     * Crea los tres archivos maestros de documentación del módulo.
+     * Estos archivos son la única carpeta no segregada por contexto.
+     *
+     * → TAREA DELEGABLE A AGENTE OPERATIVO:
+     *   Esta sección puede ser procesada por un agente operativo usando la siguiente instrucción:
+     *   "Crea los archivos history.md, architecture.md y schema.md dentro de
+     *   Modules/{ModuleName}/Docs/ con las plantillas de encabezado Markdown definidas
+     *   en stubs/contextual/docs/ del paquete."
+     *
+     * @return void
+     */
+    public function createDocs(): void
+    {
+        $docsPath = "{$this->modulePath}/Docs";
+        File::ensureDirectoryExists($docsPath);
+
+        $date = now()->format('Y-m-d');
+
+        $files = [
+            'history.md' => "# {$this->moduleName} — Historial de Cambios\n\n## [{$date}] — Creación inicial\n- Módulo generado con `innodite:make-module`.\n",
+            'architecture.md' => "# {$this->moduleName} — Decisiones de Arquitectura\n\n## Contexto\n_Describe aquí las decisiones técnicas y diagramas de flujo._\n",
+            'schema.md' => "# {$this->moduleName} — Esquema de Base de Datos\n\n## Tablas\n_Diccionario de datos y relaciones de base de datos._\n",
+        ];
+
+        foreach ($files as $filename => $content) {
+            $filePath = "{$docsPath}/{$filename}";
+            if (!File::exists($filePath)) {
+                File::put($filePath, $content);
+            }
+        }
+
+        if ($this->command) {
+            $this->command->info("✅ Docs/ creados: history.md, architecture.md, schema.md");
+        }
+    }
+
+    // ─── Orchestrators ────────────────────────────────────────────────────────
+
+    /**
+     * Crea un módulo limpio sin contexto (fallback cuando no hay contexts.json).
      *
      * @return void
      */
     public function createCleanModule(): void
     {
         $this->createFolders();
+        $this->createDocs();
 
         $modelName = $this->moduleName;
 
@@ -114,27 +168,26 @@ class ModuleGenerator
         (new TestGenerator($this->moduleName, $this->modulePath, true, "{$modelName}Test"))->generate();
 
         if ($this->command) {
-            $this->command->info("✅ Módulo '{$this->moduleName}' creado con éxito (Estructura básica).");
+            $this->command->info("✅ Módulo '{$this->moduleName}' creado (estructura básica sin contexto).");
         }
     }
 
     /**
-     * Orquesta la creación de un módulo limpio con contexto explícito.
-     * Aplica la convención de nombres y carpetas según el contexto seleccionado.
-     * Si el contexto tiene múltiples variantes, $contextName identifica cuál usar.
+     * Crea un módulo limpio con contexto explícito.
+     * Aplica prefijos de clase y subcarpetas según el contexto seleccionado.
      *
      * @param  string       $contextKey    Clave del contexto (ej: 'central', 'tenant', 'tenant_shared')
-     * @param  string       $functionality Nombre de la funcionalidad para el prefijo de ruta (ej: 'users')
-     * @param  string|null  $contextName   Valor del campo 'name' del sub-contexto (ej: 'Energía España')
+     * @param  string       $functionality Nombre funcional para prefijo de ruta (ej: 'users')
+     * @param  string|null  $contextName   Valor del campo 'name' del sub-contexto
      * @return void
      */
     public function createCleanModuleWithContext(string $contextKey, string $functionality, ?string $contextName = null): void
     {
         $this->createFolders();
+        $this->createDocs();
 
         $modelName = $this->moduleName;
 
-        // El componentConfig le indica a cada generator en qué contexto operar
         $componentConfig = [
             'name'          => $modelName,
             'context'       => $contextKey,
@@ -142,28 +195,34 @@ class ModuleGenerator
             'functionality' => $functionality,
         ];
 
-        (new ModelGenerator($this->moduleName, $this->modulePath, true, $modelName))->generate();
+        // El modelo sí lleva contexto en v3: vive en Models/{ContextFolder}/
+        (new ModelGenerator($this->moduleName, $this->modulePath, true, $modelName, [], [], [], $componentConfig))->generate();
         (new ControllerGenerator($this->moduleName, $this->modulePath, true, $modelName, $componentConfig))->generate();
         (new ServiceGenerator($this->moduleName, $this->modulePath, true, $modelName, $componentConfig))->generate();
         (new RepositoryGenerator($this->moduleName, $this->modulePath, true, $modelName, $componentConfig))->generate();
         (new RequestGenerator($this->moduleName, $this->modulePath, true, "{$modelName}StoreRequest", $componentConfig))->generate();
         (new ProviderGenerator($this->moduleName, $this->modulePath, true, [$componentConfig], $componentConfig))->generate();
         (new RouteGenerator($this->moduleName, $this->modulePath, true, $modelName, $componentConfig))->generate();
-        (new MigrationGenerator($this->moduleName, $this->modulePath, true, $modelName))->generate();
-        (new SeederGenerator($this->moduleName, $this->modulePath, true, "{$modelName}Seeder"))->generate();
-        (new FactoryGenerator($this->moduleName, $this->modulePath, true, $modelName, $modelName))->generate();
-        (new TestGenerator($this->moduleName, $this->modulePath, true, "{$modelName}Test"))->generate();
+        (new MigrationGenerator($this->moduleName, $this->modulePath, true, $modelName, [], [], $componentConfig))->generate();
+        (new SeederGenerator($this->moduleName, $this->modulePath, true, "{$modelName}Seeder", $componentConfig))->generate();
+        (new FactoryGenerator($this->moduleName, $this->modulePath, true, $modelName, $modelName, $componentConfig))->generate();
+        (new TestGenerator($this->moduleName, $this->modulePath, true, "{$modelName}Test", $componentConfig))->generate();
+
+        // ── Vistas Vue (axios + Inertia solo para navegación) ─────────────────
+        (new VueGenerator($this->moduleName, $this->modulePath, true, $modelName, $componentConfig))->generate();
+
+        // ── Inyectar rutas en el proyecto ─────────────────────────────────────
+        $this->injectRoutes($contextKey, $contextName, $componentConfig);
 
         if ($this->command) {
-            $this->command->info("✅ Módulo '{$this->moduleName}' creado con éxito (contexto: {$contextKey}).");
+            $this->command->info("✅ Módulo '{$this->moduleName}' creado (contexto: {$contextKey} / {$contextName}).");
         }
     }
 
     /**
-     * Orquesta la creación de un módulo dinámico a partir de una configuración JSON.
+     * Crea un módulo dinámico a partir de una configuración JSON.
      *
      * @return void
-     * @throws \Exception Si el archivo de configuración no existe o es inválido.
      */
     public function createDynamicModule(): void
     {
@@ -175,43 +234,37 @@ class ModuleGenerator
         }
 
         $this->createFolders();
+        $this->createDocs();
 
         $components = $this->config['components'] ?? [];
 
-        // El ProviderGenerator necesita la lista completa de componentes para generar los bindings
         (new ProviderGenerator($this->moduleName, $this->modulePath, false, $components))->generate();
 
         foreach ($components as $component) {
-            $modelName     = Str::studly($component['name']);
-            $requestName   = "{$modelName}StoreRequest";
-            $migrationName = $modelName;
-            $seederName    = "{$modelName}Seeder";
-            $factoryName   = $modelName;
-            $testName      = "{$modelName}Test";
+            $modelName   = Str::studly($component['name']);
+            $requestName = "{$modelName}StoreRequest";
 
-            // componentConfig incluye 'context' y 'functionality' si están definidos en el JSON
             (new ModelGenerator($this->moduleName, $this->modulePath, false, $modelName, $component['attributes'] ?? [], $component['relations'] ?? [], [], $component))->generate();
             (new ControllerGenerator($this->moduleName, $this->modulePath, false, $modelName, $component))->generate();
             (new ServiceGenerator($this->moduleName, $this->modulePath, false, $modelName, $component))->generate();
             (new RepositoryGenerator($this->moduleName, $this->modulePath, false, $modelName, $component))->generate();
             (new RequestGenerator($this->moduleName, $this->modulePath, false, $requestName, $component))->generate();
-            (new MigrationGenerator($this->moduleName, $this->modulePath, false, $migrationName, $component['attributes'] ?? [], $component['indexes'] ?? [], $component))->generate();
-            (new SeederGenerator($this->moduleName, $this->modulePath, false, $seederName, $component))->generate();
-            (new FactoryGenerator($this->moduleName, $this->modulePath, false, $factoryName, $modelName, $component))->generate();
-            (new TestGenerator($this->moduleName, $this->modulePath, false, $testName, $component))->generate();
+            (new MigrationGenerator($this->moduleName, $this->modulePath, false, $modelName, $component['attributes'] ?? [], $component['indexes'] ?? [], $component))->generate();
+            (new SeederGenerator($this->moduleName, $this->modulePath, false, "{$modelName}Seeder", $component))->generate();
+            (new FactoryGenerator($this->moduleName, $this->modulePath, false, $modelName, $modelName, $component))->generate();
+            (new TestGenerator($this->moduleName, $this->modulePath, false, "{$modelName}Test", $component))->generate();
             (new RouteGenerator($this->moduleName, $this->modulePath, false, $modelName, $component))->generate();
         }
 
         if ($this->command) {
-            $this->command->info("✅ Módulo '{$this->moduleName}' creado con éxito (Generación dinámica).");
+            $this->command->info("✅ Módulo '{$this->moduleName}' creado (generación dinámica).");
         }
     }
 
     /**
-     * Orquesta la creación de componentes individuales según los flags booleanos.
-     * El nombre de cada archivo se deriva del nombre del módulo + prefijo del contexto.
+     * Crea componentes individuales según los flags booleanos.
      *
-     * @param  array  $flags            Mapa de flags booleanos: model, controller, service, repository, migration, request
+     * @param  array  $flags            Mapa de flags: model, controller, service, repository, migration, request
      * @param  array  $componentConfig  Contexto activo: context, context_name
      * @return void
      */
@@ -220,8 +273,7 @@ class ModuleGenerator
         $modelName = $this->moduleName;
 
         if ($flags['model'] ?? false) {
-            // El modelo NO lleva prefijo de contexto
-            (new ModelGenerator($this->moduleName, $this->modulePath, true, $modelName))->generate();
+            (new ModelGenerator($this->moduleName, $this->modulePath, true, $modelName, [], [], [], $componentConfig))->generate();
         }
 
         if ($flags['controller'] ?? false) {
@@ -237,15 +289,103 @@ class ModuleGenerator
         }
 
         if ($flags['migration'] ?? false) {
-            (new MigrationGenerator($this->moduleName, $this->modulePath, true, $modelName))->generate();
+            (new MigrationGenerator($this->moduleName, $this->modulePath, true, $modelName, [], [], $componentConfig))->generate();
         }
 
         if ($flags['request'] ?? false) {
             (new RequestGenerator($this->moduleName, $this->modulePath, true, "{$modelName}StoreRequest", $componentConfig))->generate();
         }
 
+        // Si se generó un controller, inyectar (o actualizar) las rutas
+        if (($flags['controller'] ?? false) && !empty($componentConfig['context'])) {
+            $this->injectRoutes(
+                $componentConfig['context'],
+                $componentConfig['context_name'] ?? null,
+                $componentConfig
+            );
+        }
+
         if ($this->command) {
             $this->command->info("✅ Componentes creados en el módulo '{$this->moduleName}'.");
         }
+    }
+
+    // ─── Inyección de rutas en el proyecto ───────────────────────────────────
+
+    /**
+     * Inyecta las rutas del módulo en los archivos de rutas del proyecto.
+     * Solo se ejecuta si el contexto tiene configuración de ruta en contexts.json.
+     *
+     * @param  string  $contextKey      Clave del contexto
+     * @param  string|null  $contextName  Nombre del sub-contexto
+     * @param  array   $componentConfig  Configuración del componente
+     * @return void
+     */
+    private function injectRoutes(string $contextKey, ?string $contextName, array $componentConfig): void
+    {
+        try {
+            $contextConfig = $contextName
+                ? ContextResolver::resolveItem($contextKey, $contextName)
+                : ContextResolver::resolve($contextKey);
+        } catch (\InvalidArgumentException) {
+            return;
+        }
+
+        // El controlador principal del módulo es el del contexto activo
+        $controllerClass = ($contextConfig['class_prefix'] ?? '') . $this->moduleName . 'Controller';
+        $nsPath          = $contextConfig['namespace_path'] ?? '';
+        $controllerNs    = $nsPath
+            ? "Modules\\{$this->moduleName}\\Http\\Controllers\\{$nsPath}"
+            : "Modules\\{$this->moduleName}\\Http\\Controllers";
+        $controllerFqcn  = "{$controllerNs}\\{$controllerClass}";
+
+        $injector = new RouteInjectionService($this->command);
+        $injector->inject(
+            contextKey:     $contextKey,
+            entityName:     $this->moduleName,
+            contextName:    $contextName ?? '',
+            controllerFqcn: $controllerFqcn,
+            contextConfig:  $contextConfig
+        );
+    }
+
+    // ─── Helpers privados ────────────────────────────────────────────────────
+
+    /**
+     * Crea las subcarpetas de contexto base (Central, Shared, Tenant/Shared)
+     * dentro de un tipo de componente dado.
+     *
+     * @param  string  $componentType  Ruta relativa dentro del módulo (ej: 'Services', 'Http/Controllers')
+     * @return void
+     */
+    private function createContextSubfolders(string $componentType): void
+    {
+        $base = "{$this->modulePath}/{$componentType}";
+        File::ensureDirectoryExists($base);
+
+        foreach (self::BASE_CONTEXT_FOLDERS as $folder) {
+            File::ensureDirectoryExists("{$base}/{$folder}");
+        }
+    }
+
+    /**
+     * Resuelve la ruta del archivo de configuración (mantenido por retrocompatibilidad).
+     *
+     * @param  string  $configPath
+     * @return string
+     */
+    public function resolveConfigPath(string $configPath): string
+    {
+        $moduleConfigPath = config('make-module.module_path') . "/{$this->moduleName}/config/{$configPath}";
+        if (File::exists($moduleConfigPath)) {
+            return $moduleConfigPath;
+        }
+
+        $packageConfigPath = config('make-module.config_path') . "/{$configPath}";
+        if (File::exists($packageConfigPath)) {
+            return $packageConfigPath;
+        }
+
+        return base_path("config/{$configPath}");
     }
 }

@@ -51,13 +51,14 @@ class ControllerGenerator extends AbstractComponentGenerator
      */
     public function generate(): void
     {
-        $controllerName          = $this->prefixClass("{$this->modelName}Controller");
-        $serviceInterface        = $this->prefixClass("{$this->modelName}ServiceInterface");
-        $serviceInstance         = Str::camel($this->prefixClass("{$this->modelName}Service"));
-        $namespace               = $this->buildNamespace('Http\\Controllers');
-        $controllerDir           = $this->buildPath('Http/Controllers');
-        $serviceInterfaceNs      = $this->buildNamespace('Services') . '\\Contracts\\' . $serviceInterface;
-        $viewName                = $this->prefixClass("{$this->modelName}Index");
+        $controllerName     = $this->prefixClass("{$this->modelName}Controller");
+        $serviceInterface   = $this->prefixClass("{$this->modelName}ServiceInterface");
+        $serviceInstance    = Str::camel($this->prefixClass("{$this->modelName}Service"));
+        $namespace          = $this->buildNamespace('Http\\Controllers');
+        $controllerDir      = $this->buildPath('Http/Controllers');
+        // FQCN del service interface: Services/Contracts/{Context}/{Interface}
+        $serviceInterfaceNs = $this->buildContractsNamespace('Services') . '\\' . $serviceInterface;
+        $viewName           = $this->prefixClass("{$this->modelName}Index");
 
         $this->ensureDirectoryExists($controllerDir);
 

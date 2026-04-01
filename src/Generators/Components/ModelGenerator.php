@@ -147,17 +147,21 @@ class ModelGenerator extends AbstractComponentGenerator
     }
 
     /**
-     * Genera la propiedad `$table` si se ha definido en la configuración.
+     * Genera la propiedad `$table` del modelo.
+     *
+     * Regla de Oro (WORKPLAN v3.0.0): El modelo SIEMPRE debe incluir
+     * protected $table = 'nombre_original'; para asegurar que el prefijo
+     * de contexto en el nombre de clase no altere la base de datos.
+     *
+     * Si no hay tabla explícita en la configuración, deriva el nombre
+     * usando snake_case + plural del nombre del modelo (sin prefijo).
      *
      * @return string
      */
     protected function getTableProperty(): string
     {
-        if ($this->tableName) {
-            return "protected \$table = '{$this->tableName}';\n";
-        }
-
-        return '';
+        $table = $this->tableName ?? \Illuminate\Support\Str::snake(\Illuminate\Support\Str::plural($this->modelName));
+        return "protected \$table = '{$table}';\n";
     }
 
      /**

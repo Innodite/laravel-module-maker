@@ -1,18 +1,48 @@
 {
     "name": "innodite/laravel-module-maker",
-    "description": "A Laravel package to generate clean or dynamic modules with a single command.",
+    "description": "Generador de módulos Laravel con arquitectura de contextos dinámicos (Central, Shared, Tenant). Genera controladores, servicios, repositorios, migraciones e inyección de rutas con un solo comando.",
     "type": "library",
     "license": "MIT",
+    "keywords": [
+        "laravel",
+        "module",
+        "generator",
+        "scaffold",
+        "tenancy",
+        "multi-tenant",
+        "ddd",
+        "artisan"
+    ],
+    "homepage": "https://github.com/innodite/laravel-module-maker",
     "authors": [
         {
             "name": "Anthony Filgueira",
             "email": "innodite@gmail.com",
-            "homepage": "https://www.innodite.com"
+            "homepage": "https://www.innodite.com",
+            "role": "Developer"
         }
     ],
+    "require": {
+        "php": "^8.2",
+        "illuminate/support": "^11.0|^12.0",
+        "illuminate/console": "^11.0|^12.0",
+        "illuminate/filesystem": "^11.0|^12.0",
+        "illuminate/routing": "^11.0|^12.0"
+    },
+    "require-dev": {
+        "orchestra/testbench": "^9.0|^10.0",
+        "pestphp/pest": "^3.0",
+        "pestphp/pest-plugin-laravel": "^3.0",
+        "squizlabs/php_codesniffer": "^3.10"
+    },
     "autoload": {
         "psr-4": {
             "Innodite\\LaravelModuleMaker\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Innodite\\LaravelModuleMaker\\Tests\\": "tests/"
         }
     },
     "extra": {
@@ -22,9 +52,21 @@
             ]
         }
     },
-   "require": {
-        "php": "^8.2",
-        "illuminate/support": "^10.0|^11.0|^12.0",
-        "illuminate/console": "^10.0|^11.0|^12.0"
+    "config": {
+        "sort-packages": true,
+        "allow-plugins": {
+            "pestphp/pest-plugin": true
+        }
+    },
+    "minimum-stability": "stable",
+    "prefer-stable": true,
+    "scripts": {
+        "test": "pest",
+        "test:coverage": "pest --coverage",
+        "test:unit": "pest --testsuite=Unit",
+        "test:feature": "pest --testsuite=Feature",
+        "lint": "phpcs --standard=PSR12 --extensions=php src/",
+        "lint:fix": "phpcbf --standard=PSR12 --extensions=php src/",
+        "lint:strict": "grep -rL 'declare(strict_types=1)' src/ --include='*.php' | xargs -I{} echo 'MISSING strict_types: {}'"
     }
 }

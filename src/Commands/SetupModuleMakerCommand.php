@@ -5,107 +5,116 @@ namespace Innodite\LaravelModuleMaker\Commands;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\File;
 
+/**
+ * Comando de instalación del paquete v3.0.0.
+ *
+ * Crea la estructura en el project root:
+ *   module-maker-config/
+ *   ├── contexts.json
+ *   └── stubs/
+ *       └── contextual/    ← stubs personalizables (override del paquete)
+ *
+ * Crea la carpeta de módulos:
+ *   Modules/
+ */
 class SetupModuleMakerCommand extends Command
 {
-    /**
-     * The name and signature of the console command.
-     *
-     * @var string
-     */
     protected $signature = 'innodite:module-setup';
 
-    /**
-     * The console command description.
-     *
-     * @var string
-     */
-    protected $description = 'Configura el paquete: crea la estructura de módulos y publica stubs y contexts.json.';
+    protected $description = 'Configura el paquete v3.0.0: crea module-maker-config/ en el project root y publica stubs y contexts.json.';
 
-    /**
-     * Execute the console command.
-     *
-     * @return void
-     */
     public function handle(): void
     {
+        $this->info("Iniciando configuración de laravel-module-maker v3.0.0...");
+        $this->newLine();
+
+        // ── Carpeta de módulos ────────────────────────────────────────────────
         $modulesPath = base_path('Modules');
-        $configPath = "{$modulesPath}/module-maker-config";
+        $this->ensureDirectory($modulesPath, "Modules/");
 
-        // Verifica si la carpeta 'Modules' existe y lo notifica
-        if (File::exists($modulesPath)) {
-            $this->info("✅ La carpeta 'Modules' ya existe en: {$modulesPath}.");
-        } else {
-            // Si no existe, la crea
-            File::makeDirectory($modulesPath, 0755, true);
-            $this->info("✅ Carpeta 'Modules' creada en: {$modulesPath}.");
-        }
+        // ── Carpeta de configuración (project root) ───────────────────────────
+        $configPath = base_path('module-maker-config');
+        $this->ensureDirectory($configPath, "module-maker-config/");
 
-        // Verifica si la carpeta de configuración existe y lo notifica
-        if (File::exists($configPath)) {
-            $this->info("✅ La carpeta 'module-maker-config' ya existe en: {$configPath}.");
-        } else {
-            // Si no existe, la crea
-            File::makeDirectory($configPath, 0755, true);
-            $this->info("✅ Carpeta 'module-maker-config' creada en: {$configPath}.");
-        }
+        // ── Stubs ─────────────────────────────────────────────────────────────
+        $this->publishStubs($configPath);
 
-        $this->publishStubsAndConfig($configPath);
+        // ── contexts.json ─────────────────────────────────────────────────────
+        $this->publishContextsJson($configPath);
 
-        // NUEVO: Modifica el DatabaseSeeder automáticamente
+        // ── DatabaseSeeder ────────────────────────────────────────────────────
         $this->modifyDatabaseSeeder();
 
-        $this->info("\n🎉 ¡Configuración completa! Ahora puedes personalizar los stubs y el archivo de configuración en 'Modules/module-maker-config'.");
-        $this->info("Edita 'Modules/module-maker-config/contexts.json' con los contextos y tenants de tu proyecto.");
-        $this->info("Luego ejecuta: php artisan innodite:make-module NombreModulo");
+        $this->newLine();
+        $this->info("Configuración completa.");
+        $this->line("  → Edita <comment>module-maker-config/contexts.json</comment> con los contextos de tu proyecto.");
+        $this->line("  → Personaliza stubs en <comment>module-maker-config/stubs/contextual/</comment>.");
+        $this->line("  → Ejecuta: <comment>php artisan innodite:make-module NombreModulo</comment>");
     }
 
     /**
-     * Publica los stubs y contexts.json en el proyecto.
+     * Publica los stubs contextual/ del paquete en module-maker-config/stubs/contextual/.
+     * Si la carpeta del usuario ya existe, no sobreescribe (el usuario puede tener customizaciones).
      *
-     * @param string $configPath
+     * → TAREA DELEGABLE A AGENTE OPERATIVO:
+     *   La creación individual de cada archivo .stub dentro de stubs/contextual/
+     *   puede ser procesada por un agente operativo usando la instrucción:
+     *   "Copia los archivos de stubs/contextual/ del paquete a
+     *    module-maker-config/stubs/contextual/ en el proyecto del usuario,
+     *    sin sobreescribir archivos existentes."
+     *
+     * @param  string  $configPath  Ruta a module-maker-config/ en el project root
      * @return void
      */
-    protected function publishStubsAndConfig(string $configPath): void
+    protected function publishStubs(string $configPath): void
     {
-        // Se define la ruta raíz del paquete de forma robusta
-        // Asumimos que el archivo de comando está en 'src/Commands' y la carpeta de stubs en la raíz del paquete.
-        $packageStubsPath = dirname(__DIR__, 2) . '/stubs';
-        
-        // Copia los stubs de 'clean'
-        $stubsSourcePathClean = "{$packageStubsPath}/clean";
-        $stubsDestinationPathClean = "{$configPath}/stubs/clean";
-        if (File::isDirectory($stubsSourcePathClean)) {
-            File::copyDirectory($stubsSourcePathClean, $stubsDestinationPathClean);
-            $this->info("✅ Stubs limpios publicados en: '{$stubsDestinationPathClean}'.");
-        } else {
-            $this->error("El directorio de stubs de origen 'clean' no existe: '{$stubsSourcePathClean}'.");
+        $packageStubsPath = dirname(__DIR__, 2) . '/stubs/contextual';
+        $destPath         = "{$configPath}/stubs/contextual";
+
+        if (!File::isDirectory($packageStubsPath)) {
+            $this->warn("   No se encontró stubs/contextual/ en el paquete. Creando carpeta vacía...");
+            File::makeDirectory($destPath, 0755, true, true);
+            return;
         }
 
-        // Copia los stubs de 'dynamic'
-        $stubsSourcePathDynamic = "{$packageStubsPath}/dynamic";
-        $stubsDestinationPathDynamic = "{$configPath}/stubs/dynamic";
-        if (File::isDirectory($stubsSourcePathDynamic)) {
-            File::copyDirectory($stubsSourcePathDynamic, $stubsDestinationPathDynamic);
-            $this->info("✅ Stubs dinámicos publicados en: '{$stubsDestinationPathDynamic}'.");
-        } else {
-            $this->error("El directorio de stubs de origen 'dynamic' no existe: '{$stubsSourcePathDynamic}'.");
+        if (File::isDirectory($destPath)) {
+            $this->warn("   stubs/contextual/ ya existe. No se sobreescribió. Edítalo manualmente si necesitas cambios.");
+            return;
         }
 
-        // Publica contexts.json — configura los contextos del proyecto (Central, Shared, tenants)
-        $contextsSource      = "{$packageStubsPath}/contexts.json";
-        $contextsDestination = "{$configPath}/contexts.json";
-
-        if (! File::exists($contextsDestination)) {
-            File::copy($contextsSource, $contextsDestination);
-            $this->info("✅ contexts.json publicado en: '{$contextsDestination}'.");
-            $this->info("   👉 Edita este archivo para configurar los contextos de tu proyecto.");
-        } else {
-            $this->warn("   contexts.json ya existe. No se sobreescribió. Edítalo manualmente si necesitas cambios.");
-        }
+        File::copyDirectory($packageStubsPath, $destPath);
+        $this->info("✅ Stubs publicados en: module-maker-config/stubs/contextual/");
     }
-    
+
     /**
-     * Modifica el archivo DatabaseSeeder.php para incluir los seeders de los módulos.
+     * Publica el archivo contexts.json en module-maker-config/.
+     *
+     * @param  string  $configPath  Ruta a module-maker-config/ en el project root
+     * @return void
+     */
+    protected function publishContextsJson(string $configPath): void
+    {
+        $source      = dirname(__DIR__, 2) . '/stubs/contexts.json';
+        $destination = "{$configPath}/contexts.json";
+
+        if (File::exists($destination)) {
+            $this->warn("   contexts.json ya existe. No se sobreescribió.");
+            $this->line("   Edítalo manualmente en: <comment>module-maker-config/contexts.json</comment>");
+            return;
+        }
+
+        if (!File::exists($source)) {
+            $this->error("No se encontró el template contexts.json en el paquete.");
+            return;
+        }
+
+        File::copy($source, $destination);
+        $this->info("✅ contexts.json publicado en: module-maker-config/contexts.json");
+        $this->line("   Edita este archivo para configurar los contextos (Central, Shared, Tenants).");
+    }
+
+    /**
+     * Modifica el DatabaseSeeder.php del proyecto para incluir los seeders de módulos.
      *
      * @return void
      */
@@ -114,21 +123,19 @@ class SetupModuleMakerCommand extends Command
         $seederPath = database_path('seeders/DatabaseSeeder.php');
 
         if (!File::exists($seederPath)) {
-            $this->error("No se encontró el archivo DatabaseSeeder.php. Por favor, asegúrate de que el proyecto está inicializado correctamente.");
+            $this->warn("   DatabaseSeeder.php no encontrado. Asegúrate de que el proyecto está inicializado.");
             return;
         }
 
         $seederContent = File::get($seederPath);
-        $callLine = "        \$this->call(InnoditeModuleSeeder::class);";
-        $useStatement = "use Innodite\\LaravelModuleMaker\\Database\\Seeders\\InnoditeModuleSeeder;";
-        
-        // Revisa si ya existe el use statement o la llamada para no duplicar
+        $callLine      = "        \$this->call(InnoditeModuleSeeder::class);";
+        $useStatement  = "use Innodite\\LaravelModuleMaker\\Database\\Seeders\\InnoditeModuleSeeder;";
+
         if (str_contains($seederContent, $useStatement) && str_contains($seederContent, $callLine)) {
-            $this->warn("El archivo DatabaseSeeder.php ya está configurado para ejecutar los seeders de los módulos. No se realizaron cambios.");
+            $this->warn("   DatabaseSeeder.php ya está configurado. No se realizaron cambios.");
             return;
         }
 
-        // Inyecta el use statement si no existe
         if (!str_contains($seederContent, $useStatement)) {
             $seederContent = str_replace(
                 "use Illuminate\\Database\\Seeder;",
@@ -136,18 +143,34 @@ class SetupModuleMakerCommand extends Command
                 $seederContent
             );
         }
-        
-        // Inyecta la llamada si no existe
+
         if (!str_contains($seederContent, $callLine)) {
-            $comment = "        // Código generado por LaravelModuleMaker para ejecutar los seeders de los módulos";
+            $comment       = "        // Generado por LaravelModuleMaker — ejecuta seeders de todos los módulos";
             $seederContent = str_replace(
                 "public function run(): void\n    {\n",
-                "public function run(): void\n    {\n" . $comment . "\n" . $callLine . "\n",
+                "public function run(): void\n    {\n{$comment}\n{$callLine}\n",
                 $seederContent
             );
         }
 
         File::put($seederPath, $seederContent);
-        $this->info("✅ Archivo DatabaseSeeder.php modificado para incluir los seeders de los módulos. ¡Revisa el archivo!");
+        $this->info("✅ DatabaseSeeder.php modificado para incluir los seeders de módulos.");
+    }
+
+    /**
+     * Crea un directorio si no existe y reporta el resultado.
+     *
+     * @param  string  $path   Ruta absoluta
+     * @param  string  $label  Etiqueta para el mensaje de consola
+     * @return void
+     */
+    private function ensureDirectory(string $path, string $label): void
+    {
+        if (File::exists($path)) {
+            $this->line("   <comment>{$label}</comment> ya existe.");
+        } else {
+            File::makeDirectory($path, 0755, true);
+            $this->info("✅ Carpeta creada: {$label}");
+        }
     }
 }

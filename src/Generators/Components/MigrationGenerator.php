@@ -99,23 +99,29 @@ class MigrationGenerator extends AbstractComponentGenerator
      */
     public function generate(): void
     {
-        $migrationDirectoryPath = $this->getComponentBasePath() . '/' . self::MIGRATION_DIRECTORY;
+        // v3.0.0: las migraciones viven en Database/Migrations/{Context}/
+        // Usar buildPath() garantiza la subcarpeta de contexto correcta
+        $migrationDirectoryPath = $this->buildPath('Database/Migrations');
         $this->ensureDirectoryExists($migrationDirectoryPath);
 
-        $tableName = $this->tableName ?: Str::snake(Str::plural($this->migrationName));
-        $className = 'Create' . Str::studly($tableName) . 'Table';
+        $tableName   = $this->tableName ?: Str::snake(Str::plural($this->migrationName));
         $tableSchema = $this->getMigrationSchema($this->attributes, $this->indexes);
 
+        // Timestamp con microsegundos para evitar colisiones entre archivos del mismo contexto
         $uniqueTimestamp = Carbon::now()->format('Y_m_d_Hisu');
-        $fileName = "{$uniqueTimestamp}_create_{$tableName}_table.php";
+        $fileName        = "{$uniqueTimestamp}_create_{$tableName}_table.php";
 
+        // IMPORTANTE: Se pasa el tableName pero NO un className.
+        // El stub usa clases anónimas (return new class extends Migration {})
+        // para evitar colisiones cuando dos contextos migran la misma tabla.
         $stubContent = $this->getStubContent(self::MIGRATION_STUB_FILE, $this->isClean, [
-            'className' => $className,
-            'tableName' => $tableName,
-            'tableSchema' => $tableSchema,
+            'tableName'   => $tableName,
+            'columns'     => $tableSchema,
         ]);
 
-        $this->putFile("{$migrationDirectoryPath}/{$fileName}", $stubContent, "Migración '{$tableName}' creada en Modules/{$this->moduleName}/Database/Migrations");
+        $contextFolder = $this->getContextFolder();
+        $contextLabel  = $contextFolder ? "Database/Migrations/{$contextFolder}" : 'Database/Migrations';
+        $this->putFile("{$migrationDirectoryPath}/{$fileName}", $stubContent, "Migración '{$tableName}' creada en Modules/{$this->moduleName}/{$contextLabel}");
     }
 
     /**

@@ -1,0 +1,117 @@
+<script setup>
+import { ref, onMounted } from 'vue'
+import { router } from '@inertiajs/vue3'
+import { useModuleContext } from '@/Composables/useModuleContext'
+import { usePermissions } from '@/Composables/usePermissions'
+
+const props = defineProps({
+    id: { type: [Number, String], required: true },
+})
+
+const { contextRoute } = useModuleContext()
+const { can }          = usePermissions()
+
+const form    = ref({})
+const errors  = ref({})
+const loading = ref(false)
+const saving  = ref(false)
+
+async function fetchItem() {
+    loading.value = true
+    try {
+        const { data } = await axios.get(
+            route(contextRoute('{{ entityPlural }}.show'), { id: props.id })
+        )
+        form.value = { ...data }
+    } catch (err) {
+        alert(err.response?.data?.message ?? 'No se pudo cargar el registro.')
+        goBack()
+    } finally {
+        loading.value = false
+    }
+}
+
+async function submit() {
+    if (!can('{{ entityPlural }}.edit')) return
+
+    saving.value = true
+    errors.value = {}
+
+    try {
+        await axios.put(
+            route(contextRoute('{{ entityPlural }}.update'), { id: props.id }),
+            form.value
+        )
+        router.visit(route(contextRoute('{{ entityPlural }}.index')))
+    } catch (err) {
+        if (err.response?.status === 422) {
+            errors.value = err.response.data.errors ?? {}
+        } else {
+            alert(err.response?.data?.message ?? 'Error al actualizar el registro.')
+        }
+        console.error('[{{ vueComponentName }}]', err)
+    } finally {
+        saving.value = false
+    }
+}
+
+function goBack() {
+    router.visit(route(contextRoute('{{ entityPlural }}.index')))
+}
+
+onMounted(() => fetchItem())
+</script>
+
+<template>
+    <div class="p-6 max-w-2xl">
+
+        <!-- Cabecera -->
+        <div class="flex items-center gap-3 mb-6">
+            <button @click="goBack" class="text-gray-400 hover:text-gray-600 transition">
+                ← Volver
+            </button>
+            <h1 class="text-2xl font-semibold text-gray-800">Editar {{ entityLabel }}</h1>
+        </div>
+
+        <!-- Loader -->
+        <div v-if="loading" class="flex justify-center py-12">
+            <span class="text-gray-400 text-sm">Cargando...</span>
+        </div>
+
+        <form v-else @submit.prevent="submit" class="space-y-5">
+
+            <!--
+                TODO: Añade aquí los campos del formulario enlazados a form.value.
+                Ejemplo:
+                <div>
+                    <label class="block text-sm font-medium text-gray-700 mb-1">Nombre</label>
+                    <input
+                        v-model="form.name"
+                        type="text"
+                        class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                    />
+                    <p v-if="errors.name" class="mt-1 text-xs text-red-500">{{ errors.name[0] }}</p>
+                </div>
+            -->
+
+            <!-- Acciones -->
+            <div class="flex items-center gap-3 pt-4 border-t border-gray-100">
+                <button
+                    type="submit"
+                    :disabled="saving"
+                    class="px-5 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50 transition"
+                >
+                    {{ saving ? 'Guardando...' : 'Actualizar' }}
+                </button>
+                <button
+                    type="button"
+                    @click="goBack"
+                    class="px-5 py-2 bg-white text-gray-600 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 transition"
+                >
+                    Cancelar
+                </button>
+            </div>
+
+        </form>
+    </div>
+</template>

@@ -69,7 +69,7 @@ class RouteGenerator extends AbstractComponentGenerator
             return;
         }
 
-        $routesDir  = $this->getComponentBasePath() . '/routes';
+        $routesDir  = $this->getComponentBasePath() . '/Routes';
         $contextKey = $this->componentConfig['context'] ?? '';
         $this->ensureDirectoryExists($routesDir);
 
@@ -144,10 +144,17 @@ class RouteGenerator extends AbstractComponentGenerator
     }
 
     /**
-     * Genera rutas para un contexto Shared (central + todos los tenants).
+     * Genera rutas para un contexto Shared (dual: web.php + tenant.php).
+     *
+     * El contexto Shared escribe en DOS archivos con prefijos distintos para
+     * evitar colisiones de nombres de ruta:
+     *   web.php    → usa web_route_prefix / web_route_name    (ej: central.shared-users)
+     *   tenant.php → usa tenant_route_prefix / tenant_route_name (ej: tenant.shared-users)
+     *
+     * Si route_middleware es vacío, NO se añade ->middleware() (hereda del grupo padre).
      *
      * @param  string  $routesDir  Ruta al directorio de rutas del módulo
-     * @param  array   $context    Configuración del contexto
+     * @param  array   $context    Configuración del contexto shared
      * @return void
      */
     private function generateSharedRoutes(string $routesDir, array $context): void
@@ -155,14 +162,21 @@ class RouteGenerator extends AbstractComponentGenerator
         $functionality   = $this->getFunctionality();
         $controllerClass = $this->buildControllerClass();
         $controllerFqcn  = $this->buildControllerNamespace() . '\\' . $controllerClass;
-        $permPrefix      = $context['permission_prefix'];
-        $permMiddleware  = $context['permission_middleware'];
+        $permPrefix      = $context['permission_prefix'] ?? '';
+        $permMiddleware  = $context['permission_middleware'] ?? '';
         $permKey         = Str::snake(str_replace('-', '_', $functionality));
-        $middleware      = $this->buildMiddlewareArray($context['route_middleware'] ?? []);
+        $middleware      = $context['route_middleware'] ?? [];
 
-        $block = $this->buildRouteBlock(
-            routePrefix:     $context['route_prefix'] . '-' . $functionality,
-            routeName:       $context['route_name'] . $functionality . '.',
+        // ── Prefijos diferenciados por archivo ────────────────────────────────
+        $webPrefix  = ($context['web_route_prefix']  ?? $context['route_prefix']  ?? 'shared') . '-' . $functionality;
+        $webName    = ($context['web_route_name']    ?? $context['route_name']    ?? 'shared.') . $functionality . '.';
+        $tnntPrefix = ($context['tenant_route_prefix'] ?? $context['route_prefix']  ?? 'shared') . '-' . $functionality;
+        $tnntName   = ($context['tenant_route_name']   ?? $context['route_name']    ?? 'shared.') . $functionality . '.';
+
+        // ── Bloque para web.php ───────────────────────────────────────────────
+        $webBlock = $this->buildRouteBlock(
+            routePrefix:     $webPrefix,
+            routeName:       $webName,
             controllerClass: $controllerClass,
             permMiddleware:  $permMiddleware,
             permPrefix:      $permPrefix,
@@ -170,7 +184,55 @@ class RouteGenerator extends AbstractComponentGenerator
             indent:          '    '
         );
 
-        $content = <<<PHP
+        $webContent = $this->buildSharedFileContent($controllerFqcn, $webBlock, $middleware, 'SHARED_WEB_END');
+        $this->writeOrAppend("{$routesDir}/web.php", $webContent, 'SHARED_WEB_END', $webBlock, $controllerFqcn);
+
+        // ── Bloque para tenant.php ────────────────────────────────────────────
+        $tenantBlock = $this->buildRouteBlock(
+            routePrefix:     $tnntPrefix,
+            routeName:       $tnntName,
+            controllerClass: $controllerClass,
+            permMiddleware:  $permMiddleware,
+            permPrefix:      $permPrefix,
+            permKey:         $permKey,
+            indent:          '    '
+        );
+
+        $tenantContent = $this->buildSharedFileContent($controllerFqcn, $tenantBlock, $middleware, 'SHARED_TENANT_END');
+        $this->writeOrAppend("{$routesDir}/tenant.php", $tenantContent, 'SHARED_TENANT_END', $tenantBlock, $controllerFqcn);
+    }
+
+    /**
+     * Construye el contenido de archivo de rutas para contexto Shared.
+     * Si route_middleware está vacío, omite el ->middleware() (hereda del grupo padre).
+     *
+     * @param  string  $controllerFqcn  FQCN del controlador
+     * @param  string  $block           Bloque de rutas CRUD
+     * @param  array   $middleware      Array de middlewares (vacío = sin wrapper)
+     * @param  string  $markerKey       Clave del marcador sin llaves
+     * @return string
+     */
+    private function buildSharedFileContent(string $controllerFqcn, string $block, array $middleware, string $markerKey): string
+    {
+        $marker = "// {{{$markerKey}}}";
+
+        if (empty($middleware)) {
+            // Sin middleware wrapper — hereda seguridad del grupo padre
+            return <<<PHP
+            <?php
+
+            declare(strict_types=1);
+
+            use Illuminate\Support\Facades\Route;
+            use {$controllerFqcn};
+
+            {$block}
+                {$marker}
+            PHP;
+        }
+
+        $mw = $this->buildMiddlewareArray($middleware);
+        return <<<PHP
         <?php
 
         declare(strict_types=1);
@@ -178,14 +240,12 @@ class RouteGenerator extends AbstractComponentGenerator
         use Illuminate\Support\Facades\Route;
         use {$controllerFqcn};
 
-        Route::middleware({$middleware})->group(function () {
+        Route::middleware({$mw})->group(function () {
 
         {$block}
-            // {{SHARED_END}}
+            {$marker}
         });
         PHP;
-
-        $this->writeOrAppend("{$routesDir}/web.php", $content, '{{SHARED_END}}', $block, $controllerFqcn);
     }
 
     /**
@@ -378,7 +438,7 @@ class RouteGenerator extends AbstractComponentGenerator
 
         if (! file_exists($filePath)) {
             file_put_contents($filePath, $fullContent);
-            $this->info("✅ Archivo de rutas creado: " . basename(dirname($filePath, 2)) . '/routes/' . basename($filePath));
+            $this->info("✅ Archivo de rutas creado: " . basename(dirname($filePath, 2)) . '/Routes/' . basename($filePath));
             return;
         }
 
@@ -415,7 +475,7 @@ class RouteGenerator extends AbstractComponentGenerator
      */
     private function generateLegacy(): void
     {
-        $routesDir = $this->getComponentBasePath() . '/routes';
+        $routesDir = $this->getComponentBasePath() . '/Routes';
         $this->ensureDirectoryExists($routesDir);
 
         $controllerName = "{$this->modelName}Controller";
@@ -434,7 +494,7 @@ class RouteGenerator extends AbstractComponentGenerator
         ]);
         file_put_contents("{$routesDir}/web.php", $stubWeb);
 
-        $this->info("✅ Rutas legacy creadas: Modules/{$this->moduleName}/routes/");
+        $this->info("✅ Rutas legacy creadas: Modules/{$this->moduleName}/Routes/");
     }
 
     /**

@@ -9,12 +9,13 @@ use Illuminate\Support\Facades\File;
 /**
  * Resuelve la configuración de contextos del proyecto desde contexts.json.
  *
- * Estructura del archivo:
- *   contexts → objeto con 4 claves (central, shared, tenant, tenant_shared)
+ * Estructura del archivo (v3.0.0):
+ *   contexts → objeto con claves (central, shared, tenant_shared, tenant)
  *              cada clave contiene un ARRAY de sub-contextos con campo 'name'
  *
- * Los tenants del proyecto están en contexts.tenant (no en una sección separada).
- * Si el proyecto no tiene contexts.json publicado, usa el template del paquete.
+ * Prioridad de resolución:
+ *   1. module-maker-config/contexts.json (project root — publicado por innodite:module-setup)
+ *   2. Template del paquete (stubs/contexts.json)
  */
 class ContextResolver
 {
@@ -43,7 +44,7 @@ class ContextResolver
             throw new \InvalidArgumentException(
                 "[ContextResolver] El contexto '{$contextKey}' no tiene items definidos en contexts.json.\n" .
                 "Contextos disponibles: {$available}\n" .
-                "Edita Modules/module-maker-config/contexts.json."
+                "Edita module-maker-config/contexts.json."
             );
         }
 
@@ -52,10 +53,9 @@ class ContextResolver
 
     /**
      * Retorna un sub-contexto específico buscándolo por su campo 'name'.
-     * Permite seleccionar una variante concreta cuando hay múltiples en el mismo contexto.
      *
      * @param  string  $contextKey  Clave del contexto (ej: 'tenant', 'shared')
-     * @param  string  $name        Valor del campo 'name' del sub-contexto (ej: 'Energía España')
+     * @param  string  $name        Valor del campo 'name' del sub-contexto
      * @return array<string, mixed>
      *
      * @throws \InvalidArgumentException Si no se encuentra ningún item con ese name
@@ -72,14 +72,14 @@ class ContextResolver
         throw new \InvalidArgumentException(
             "[ContextResolver] No se encontró el item '{$name}' en el contexto '{$contextKey}'.\n" .
             "Items disponibles: {$available}\n" .
-            "Edita Modules/module-maker-config/contexts.json."
+            "Edita module-maker-config/contexts.json."
         );
     }
 
     /**
      * Retorna un tenant por su 'name'. Alias de resolveItem('tenant', $name).
      *
-     * @param  string  $name  Valor del campo 'name' del tenant (ej: 'Energía España')
+     * @param  string  $name  Valor del campo 'name' del tenant
      * @return array<string, mixed>
      *
      * @throws \InvalidArgumentException Si el tenant no existe
@@ -123,7 +123,6 @@ class ContextResolver
 
     /**
      * Retorna TODOS los sub-contextos de TODOS los contextos en un array plano.
-     * Útil para RendersInertiaModule que necesita todos los prefijos.
      *
      * @return array<int, array>
      */
@@ -140,13 +139,25 @@ class ContextResolver
 
     /**
      * Retorna los tenants específicos. Alias de allTenants().
-     * Mantenido para compatibilidad con RouteGenerator.
      *
      * @return array<int, array>
      */
     public static function getSpecificTenants(): array
     {
         return self::allTenants();
+    }
+
+    /**
+     * Retorna el archivo(s) de ruta definido para un contexto dado.
+     * Puede ser un string ('web.php') o un array (['web.php', 'tenant.php']) para Shared.
+     *
+     * @param  string  $contextKey  Clave del contexto
+     * @return string|array<int, string>
+     */
+    public static function getRouteFile(string $contextKey): string|array
+    {
+        $item = self::resolve($contextKey);
+        return $item['route_file'] ?? 'web.php';
     }
 
     /**
@@ -180,22 +191,22 @@ class ContextResolver
 
     /**
      * Resuelve la ruta del archivo contexts.json.
-     * Prioridad: proyecto (publicado por setup) → default_config_path → template del paquete.
+     *
+     * Prioridad:
+     *   1. module-maker-config/contexts.json (project root)
+     *   2. Template del paquete (stubs/contexts.json)
      *
      * @return string  Ruta absoluta al contexts.json
      */
     private static function resolvePath(): string
     {
+        // 1. Ruta publicada en el proyecto (project root — config configurable)
         $projectPath = config('make-module.contexts_path');
         if ($projectPath && File::exists($projectPath)) {
             return $projectPath;
         }
 
-        $defaultPath = config('make-module.default_config_path') . '/contexts.json';
-        if (File::exists($defaultPath)) {
-            return $defaultPath;
-        }
-
+        // 2. Fallback: template del paquete
         return __DIR__ . '/../../stubs/contexts.json';
     }
 

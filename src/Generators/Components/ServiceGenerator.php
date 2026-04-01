@@ -48,13 +48,13 @@ class ServiceGenerator extends AbstractComponentGenerator
      */
     public function generate(): void
     {
-        $serviceDir          = $this->buildPath('Services');
-        $serviceContractsDir = $serviceDir . '/Contracts';
+        $serviceDir      = $this->buildPath('Services');
+        $contractsDir    = $this->buildContractsPath('Services');
 
         $this->ensureDirectoryExists($serviceDir);
-        $this->ensureDirectoryExists($serviceContractsDir);
+        $this->ensureDirectoryExists($contractsDir);
 
-        $this->generateInterface($serviceContractsDir);
+        $this->generateInterface($contractsDir);
         $this->generateImplementation($serviceDir);
     }
 
@@ -67,7 +67,7 @@ class ServiceGenerator extends AbstractComponentGenerator
     private function generateInterface(string $contractsDir): void
     {
         $interfaceName = $this->prefixClass("{$this->modelName}ServiceInterface");
-        $namespace     = $this->buildNamespace('Services') . '\\Contracts';
+        $namespace     = $this->buildContractsNamespace('Services');
 
         $stub = $this->getStubContent('service-interface.stub', $this->isClean, [
             'namespace'            => $namespace,
@@ -79,7 +79,7 @@ class ServiceGenerator extends AbstractComponentGenerator
         $this->putFile(
             "{$contractsDir}/{$interfaceName}.php",
             $stub,
-            "Interfaz creada: Modules/{$this->moduleName}/Services/{$this->getContextFolder()}/Contracts/{$interfaceName}.php"
+            "Interfaz creada: Modules/{$this->moduleName}/Services/Contracts/{$this->getContextFolder()}/{$interfaceName}.php"
         );
     }
 
@@ -91,21 +91,26 @@ class ServiceGenerator extends AbstractComponentGenerator
      */
     private function generateImplementation(string $serviceDir): void
     {
-        $serviceName           = $this->prefixClass("{$this->modelName}Service");
-        $serviceInterfaceName  = $this->prefixClass("{$this->modelName}ServiceInterface");
-        $repositoryName        = $this->prefixClass("{$this->modelName}Repository");
-        $repositoryInterface   = $this->prefixClass("{$this->modelName}RepositoryInterface");
-        $repositoryInstance    = Str::camel($repositoryName);
-        $namespace             = $this->buildNamespace('Services');
+        $serviceName               = $this->prefixClass("{$this->modelName}Service");
+        $serviceInterfaceName      = $this->prefixClass("{$this->modelName}ServiceInterface");
+        $repositoryName            = $this->prefixClass("{$this->modelName}Repository");
+        $repositoryInterface       = $this->prefixClass("{$this->modelName}RepositoryInterface");
+        $repositoryInterfaceNs     = $this->buildContractsNamespace('Repositories') . '\\' . $repositoryInterface;
+        $repositoryInstance        = Str::camel($repositoryName);
+        $namespace                 = $this->buildNamespace('Services');
+        // FQCN del service interface para el `use` statement en el archivo de implementación
+        $serviceInterfaceNamespace = $this->buildContractsNamespace('Services') . '\\' . $serviceInterfaceName;
 
         $stub = $this->getStubContent('service.stub', $this->isClean, [
-            'namespace'               => $namespace,
-            'serviceName'             => $serviceName,
-            'modelName'               => $this->modelName,
-            'module'                  => $this->moduleName,
-            'serviceInterfaceName'    => $serviceInterfaceName,
-            'repositoryInterfaceName' => $repositoryInterface,
-            'repositoryInstance'      => $repositoryInstance,
+            'namespace'                => $namespace,
+            'serviceName'              => $serviceName,
+            'modelName'                => $this->modelName,
+            'module'                   => $this->moduleName,
+            'serviceInterfaceName'     => $serviceInterfaceName,
+            'serviceInterfaceNamespace'=> $serviceInterfaceNamespace,
+            'repositoryInterfaceName'  => $repositoryInterface,
+            'repositoryInterfaceNamespace' => $repositoryInterfaceNs,
+            'repositoryInstance'       => $repositoryInstance,
         ]);
 
         $this->putFile(
