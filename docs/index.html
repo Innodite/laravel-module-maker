@@ -1152,6 +1152,50 @@ onMounted(async () => {
     </table>
   </div>
 
+  <h3>Referencia avanzada comando por comando</h3>
+  <p>Guía operativa para equipos técnicos: entrada, flujo interno, salida y errores frecuentes.</p>
+
+  <h4><code>innodite:make-module</code> (generador principal)</h4>
+  <p>Genera backend + frontend por contexto. Resuelve placeholders, crea archivos por componente e inyecta rutas (salvo <code>--no-routes</code>).</p>
+  <ul>
+    <li>Valida nombre (PascalCase, no reservado, no colisión).</li>
+    <li>Resuelve contexto/sub-contexto desde <code>contexts.json</code>.</li>
+    <li>Genera archivos en <code>Modules/{Name}/...</code> con stubs contextuales.</li>
+    <li>Registra auditoría en <code>storage/logs/module_maker.log</code>.</li>
+  </ul>
+
+  <h4><code>innodite:module-setup</code></h4>
+  <p>Inicializa estructura base del paquete en el proyecto: config, stubs y contexts.</p>
+
+  <h4><code>innodite:module-check</code></h4>
+  <p>Diagnóstico de entorno: integridad de <code>contexts.json</code>, permisos de escritura, colisiones y últimos eventos de auditoría.</p>
+
+  <h4><code>innodite:check-env</code></h4>
+  <p>Valida el contrato Frontend-Backend (User model, Inertia shared props y Bridge middleware) e imprime snippets correctivos cuando falta algo.</p>
+
+  <h4><code>innodite:publish-frontend</code></h4>
+  <p>Publica composables Vue (<code>useModuleContext</code>, <code>usePermissions</code>) en <code>resources/js/Composables</code>. Usa <code>--force</code> para sobreescribir.</p>
+
+  <h4><code>innodite:test-sync</code></h4>
+  <p>Sincroniza <code>test-config.json</code> por módulo desde <code>contexts.json</code>, conservando overrides manuales y usando <code>enabled</code> para controlar ejecución.</p>
+
+  <h4><code>innodite:test-module</code></h4>
+  <p>Ejecuta PHPUnit por módulo/contexto. Genera XML contextual en <code>Tests/</code>, fuerza env de DB con <code>force="true"</code> y expone <code>DB_MYSQL_DATABASE</code> cuando aplica.</p>
+  <ul>
+    <li>Soporta <code>--context</code> y <code>--all-contexts</code>.</li>
+    <li>Coverage en HTML/Text/Clover por contexto.</li>
+    <li>Logs de fallo persistentes en <code>storage/logs/module_maker/test_failures</code>.</li>
+  </ul>
+
+  <h4><code>innodite:migrate-plan</code>, <code>innodite:migrate-one</code>, <code>innodite:seed-one</code>, <code>innodite:migration-sync</code></h4>
+  <p>Suite de migraciones/seeders por coordenadas y manifiestos JSON. Permite ejecución determinística, operaciones quirúrgicas y sincronización idempotente de manifiestos.</p>
+  <ul>
+    <li><code>migrate-plan</code>: orquestación completa por manifiesto.</li>
+    <li><code>migrate-one</code>: migración puntual con auto-registro en manifiesto.</li>
+    <li><code>seed-one</code>: seeder puntual con auto-registro en manifiesto.</li>
+    <li><code>migration-sync</code>: escaneo y append de faltantes sin duplicados.</li>
+  </ul>
+
   <h3>Migración por manifiesto: <code>innodite:migrate-plan</code></h3>
   <p>Este comando resuelve coordenadas lógicas y ejecuta cada migración en el orden declarado, evitando errores por dependencias implícitas entre módulos.</p>
   <p>Antes de ejecutar, valida la conexión objetivo y verifica que la base de datos exista para evitar procesos parciales o disparados contra una BD incorrecta.</p>

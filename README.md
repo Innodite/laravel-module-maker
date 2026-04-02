@@ -592,6 +592,195 @@ Total: 3 | Passed: 2 | Failed: 1 | Skipped: 0
 
 ## 📁 Archivos generados por contexto
 
+## 📚 Referencia avanzada por comando
+
+Esta sección documenta cada comando con enfoque operativo: qué recibe, qué valida, qué escribe y cómo diagnosticar fallos.
+
+### `innodite:make-module {Name}`
+
+**Objetivo:** generar módulos backend + frontend siguiendo el contexto (`central`, `shared`, `tenant_shared`, `tenant`).
+
+**Cómo funciona internamente:**
+1. Valida nombre del módulo (PascalCase, no reservado, no colisión).
+2. Resuelve contexto/sub-contexto desde `contexts.json`.
+3. Calcula placeholders y rutas destino.
+4. Genera archivos por componentes (`Model`, `Controller`, `Service`, `Repository`, `Requests`, `Tests`, Vue).
+5. Inyecta rutas en archivos del proyecto (salvo `--no-routes`).
+6. Registra auditoría (`module.created` o `module.components`).
+
+**Entradas clave:**
+- `--context=`: contexto de generación.
+- `--sub-context=`: requerido para tipo tenant con múltiples subcontextos.
+- `-M -C -S -R -G -Q`: generación parcial por componentes.
+- `--json`: toma configuración dinámica desde JSON.
+- `--dry-run`: simulación sin escritura.
+
+**Salida esperada:**
+- Archivos en `Modules/{Name}/...`.
+- Rutas inyectadas en `routes/web.php` o `routes/tenant.php`.
+- Entradas de log en `storage/logs/module_maker.log`.
+
+**Errores comunes:**
+- Nombre inválido o reservado.
+- Contexto no definido en `contexts.json`.
+- Permisos de escritura insuficientes en `Modules/` o `routes/`.
+
+### `innodite:module-setup`
+
+**Objetivo:** inicializar la estructura base del paquete en un proyecto nuevo.
+
+**Cómo funciona internamente:**
+1. Publica configuración del paquete.
+2. Publica stubs contextuales editables.
+3. Publica ejemplo de `contexts.json`.
+
+**Salida esperada:**
+- `module-maker-config/make-module.php`
+- `module-maker-config/stubs/contextual/...`
+- `module-maker-config/contexts.json`
+
+### `innodite:module-check`
+
+**Objetivo:** auditar salud del entorno antes de generar o migrar.
+
+**Cómo funciona internamente:**
+1. Valida formato y claves de `contexts.json`.
+2. Revisa permisos de carpetas críticas.
+3. Busca colisiones de nombres de módulos/providers.
+4. Muestra últimos eventos del log de auditoría.
+
+**Cuándo usarlo:**
+- Antes de correr `make-module` en CI/CD.
+- Después de cambios manuales en stubs o contexts.
+
+### `innodite:check-env`
+
+**Objetivo:** verificar contrato Frontend-Backend para Inertia + permisos.
+
+**Cómo funciona internamente:**
+1. Valida traits de permisos en modelo de usuario.
+2. Verifica `HandleInertiaRequests` compartiendo `auth.permissions`.
+3. Verifica registro de `InnoditeContextBridge`.
+4. Si algo falta, imprime snippet exacto para corregir.
+
+### `innodite:publish-frontend`
+
+**Objetivo:** publicar composables Vue del paquete en el proyecto.
+
+**Archivos publicados:**
+- `resources/js/Composables/useModuleContext.js`
+- `resources/js/Composables/usePermissions.js`
+
+**Flags:**
+- `--force`: sobreescribe archivos existentes.
+
+### `innodite:migrate-plan`
+
+**Objetivo:** ejecutar migraciones/seeders en orden explícito por manifiesto.
+
+**Cómo funciona internamente:**
+1. Carga manifiesto (`migrations` y opcionalmente `seeders`).
+2. Valida formato de coordenadas y existencia de archivos/clases.
+3. Resuelve conexión y base de datos objetivo.
+4. Ejecuta cada entrada en secuencia determinística.
+
+**Flags clave:**
+- `--manifest=`: manifiesto específico.
+- `--dry-run`: solo simulación.
+- `--seed`: ejecuta también bloque de seeders.
+
+### `innodite:migrate-one`
+
+**Objetivo:** ejecutar una sola migración y mantener manifiesto sincronizado.
+
+**Cómo funciona internamente:**
+1. Resuelve coordenada -> ruta real.
+2. Detecta manifiesto destino por contexto.
+3. Si falta la coordenada, la agrega al manifiesto.
+4. Ejecuta únicamente esa migración.
+
+**Flags clave:**
+- `--manifest=`: forzar manifiesto.
+- `--dry-run`: no escribe ni ejecuta.
+- `--yes`: omite confirmaciones.
+
+### `innodite:seed-one`
+
+**Objetivo:** ejecutar un seeder puntual sin correr el plan completo.
+
+**Cómo funciona internamente:**
+1. Resuelve coordenada -> clase FQCN.
+2. Detecta conexión/BD según contexto.
+3. Registra coordenada faltante en manifiesto (si aplica).
+4. Ejecuta solo ese seeder.
+
+**Flags clave:**
+- `--manifest=`
+- `--dry-run`
+- `--yes`
+
+### `innodite:migration-sync`
+
+**Objetivo:** escanear módulos y sincronizar manifiestos sin duplicados.
+
+**Cómo funciona internamente:**
+1. Recorre `Modules/*/Database/Migrations` y `Seeders`.
+2. Convierte rutas a coordenadas canónicas.
+3. Compara contra manifiesto actual.
+4. Agrega solo faltantes (idempotente).
+
+**Recomendación:** correr `--dry-run` en CI para detectar drift de manifiestos.
+
+### `innodite:test-sync`
+
+**Objetivo:** crear/sincronizar `Modules/{Modulo}/Tests/test-config.json`.
+
+**Cómo funciona internamente:**
+1. Lee contextos desde `module-maker-config/contexts.json`.
+2. Fusiona contexto nuevo con overrides existentes.
+3. Conserva campos editables (`db_connection`, `db_database`, `enabled`, `seeder`, `env`).
+
+**Resultado:** archivo editable y versionable para ejecutar tests por contexto.
+
+### `innodite:test-module`
+
+**Objetivo:** ejecutar tests por módulo/contexto con reporting y coverage.
+
+**Cómo funciona internamente:**
+1. Resuelve contexto desde `test-config.json` (o fallback default).
+2. Genera `phpunit-{contexto}.xml` en carpeta `Tests/` del módulo.
+3. Inyecta env de DB con `force="true"` para evitar herencia accidental.
+4. Si `db_database` existe, también exporta `DB_MYSQL_DATABASE` para compatibilidad MySQL custom.
+5. Opcionalmente ejecuta `seeder` previo por contexto.
+6. Ejecuta PHPUnit y consolida resumen por módulo/contexto.
+
+**Flags clave:**
+- `--context=`
+- `--all-contexts`
+- `--coverage`
+- `--format=html|text|clover`
+- `--filter=`
+- `--stop-on-failure`
+- `--no-output`
+
+**Artefactos generados:**
+- `Modules/{Modulo}/Tests/phpunit-{contexto}.xml`
+- `docs/test-reports/{Modulo}/{contexto}/...`
+- `storage/logs/module_maker/test_failures/*.log` (cuando falla)
+
+### Comandos `vendor:publish` del paquete
+
+**Tags disponibles:**
+- `module-maker-config`
+- `module-maker-stubs`
+- `module-maker-contexts`
+- `module-maker-frontend`
+
+**Uso recomendado:**
+1. Publicar una vez al iniciar proyecto.
+2. Versionar los archivos publicados en el repositorio.
+3. Re-publicar selectivamente cuando actualices versión mayor del paquete.
+
 Esta sección muestra la lista exacta de archivos que el paquete genera para el módulo `User` en cada uno de los 4 contextos.
 
 ---
