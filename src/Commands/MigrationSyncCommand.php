@@ -8,12 +8,15 @@ use Illuminate\Console\Command;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Str;
 use Innodite\LaravelModuleMaker\Services\MigrationPlanResolver;
+use Symfony\Component\Console\Input\InputInterface;
 use Throwable;
 
 class MigrationSyncCommand extends Command
 {
     protected $signature = 'innodite:migration-sync
         {--manifest= : Manifiesto JSON (ej: central_order.json) en module-maker-config/migrations}
+        {--all-manifests : Detecta contexts.json y sincroniza manifiestos por alcance (central + tenants)}
+        {--yes : Confirma automaticamente prompts de sincronizacion}
         {--dry-run : Muestra coordenadas faltantes sin escribir el manifiesto}';
 
     protected $description = 'Escanea módulos y agrega al manifiesto las migraciones/seeders no registrados.';
@@ -27,66 +30,96 @@ class MigrationSyncCommand extends Command
         $this->line('  <fg=blue;options=bold>Innodite ModuleMaker — Migration Sync</>');
         $this->newLine();
 
-        try {
-            $manifestPath = $this->resolveOrCreateManifestPath();
-            $plan = $resolver->loadPlan($manifestPath);
-        } catch (Throwable $e) {
-            $this->components->error($e->getMessage());
-            return self::FAILURE;
-        }
-
         $foundMigrations = $this->scanMigrationCoordinates();
         $foundSeeders = $this->scanSeederCoordinates();
 
-        $existingMigrations = $plan['migrations'];
-        $existingSeeders = $plan['seeders'];
+        $targets = $this->resolveTargets();
 
-        $missingMigrations = array_values(array_diff($foundMigrations, $existingMigrations));
-        $missingSeeders = array_values(array_diff($foundSeeders, $existingSeeders));
-
-        sort($missingMigrations);
-        sort($missingSeeders);
-
-        $this->components->info("Manifiesto: {$manifestPath}");
-        $this->line('  Migraciones encontradas: ' . count($foundMigrations));
-        $this->line('  Seeders encontrados:     ' . count($foundSeeders));
-        $this->line('  Migraciones faltantes:   ' . count($missingMigrations));
-        $this->line('  Seeders faltantes:       ' . count($missingSeeders));
-        $this->newLine();
-
-        if (empty($missingMigrations) && empty($missingSeeders)) {
-            $this->components->info('No hay elementos faltantes. El manifiesto ya está sincronizado.');
-            return self::SUCCESS;
-        }
-
-        foreach ($missingMigrations as $coordinate) {
-            $this->line("  + migration: {$coordinate}");
-        }
-
-        foreach ($missingSeeders as $coordinate) {
-            $this->line("  + seeder:    {$coordinate}");
-        }
-
-        if ($dryRun) {
+        if (count($targets) > 1) {
+            $this->components->info('Se detectaron manifiestos por contexto:');
+            foreach ($targets as $target) {
+                $this->line("  - {$target['manifest']} ({$target['label']})");
+            }
             $this->newLine();
-            $this->components->info('Dry-run completado. No se escribió el manifiesto.');
-            return self::SUCCESS;
+
+            if (!$this->shouldProceed()) {
+                $this->components->warn('Sincronizacion cancelada por el usuario.');
+                return self::SUCCESS;
+            }
         }
 
-        $plan['migrations'] = array_values(array_unique(array_merge($existingMigrations, $missingMigrations)));
-        $plan['seeders'] = array_values(array_unique(array_merge($existingSeeders, $missingSeeders)));
+        $hasErrors = false;
 
-        File::put($manifestPath, json_encode($plan, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES) . PHP_EOL);
+        foreach ($targets as $target) {
+            try {
+                $manifestPath = $this->resolveOrCreateManifestPath($target['manifest']);
+                $plan = $resolver->loadPlan($manifestPath);
+            } catch (Throwable $e) {
+                $this->components->error($e->getMessage());
+                $hasErrors = true;
+                continue;
+            }
 
-        $this->newLine();
-        $this->components->info('Sincronización completada. El manifiesto fue actualizado.');
+            $scopedMigrations = $this->filterCoordinatesForTarget($foundMigrations, $target);
+            $scopedSeeders = $this->filterCoordinatesForTarget($foundSeeders, $target);
+
+            $existingMigrations = $plan['migrations'];
+            $existingSeeders = $plan['seeders'];
+
+            $missingMigrations = array_values(array_diff($scopedMigrations, $existingMigrations));
+            $missingSeeders = array_values(array_diff($scopedSeeders, $existingSeeders));
+
+            sort($missingMigrations);
+            sort($missingSeeders);
+
+            $this->components->info("Manifiesto: {$manifestPath} ({$target['label']})");
+            $this->line('  Migraciones encontradas: ' . count($scopedMigrations));
+            $this->line('  Seeders encontrados:     ' . count($scopedSeeders));
+            $this->line('  Migraciones faltantes:   ' . count($missingMigrations));
+            $this->line('  Seeders faltantes:       ' . count($missingSeeders));
+            $this->newLine();
+
+            if (empty($missingMigrations) && empty($missingSeeders)) {
+                $this->components->info('No hay elementos faltantes. El manifiesto ya esta sincronizado.');
+                $this->newLine();
+                continue;
+            }
+
+            foreach ($missingMigrations as $coordinate) {
+                $this->line("  + migration: {$coordinate}");
+            }
+
+            foreach ($missingSeeders as $coordinate) {
+                $this->line("  + seeder:    {$coordinate}");
+            }
+
+            if ($dryRun) {
+                $this->newLine();
+                $this->components->info('Dry-run completado. No se escribio el manifiesto.');
+                $this->newLine();
+                continue;
+            }
+
+            $plan['migrations'] = array_values(array_unique(array_merge($existingMigrations, $missingMigrations)));
+            $plan['seeders'] = array_values(array_unique(array_merge($existingSeeders, $missingSeeders)));
+
+            File::put($manifestPath, json_encode($plan, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES) . PHP_EOL);
+
+            $this->newLine();
+            $this->components->info('Sincronizacion completada. El manifiesto fue actualizado.');
+            $this->newLine();
+        }
+
+        if ($hasErrors) {
+            return self::FAILURE;
+        }
 
         return self::SUCCESS;
     }
 
-    private function resolveOrCreateManifestPath(): string
+    private function resolveOrCreateManifestPath(string $manifestName): string
     {
-        $manifest = trim((string) ($this->option('manifest') ?: 'central_order.json'));
+        $manifest = trim($manifestName);
 
         if ($manifest === '') {
             $manifest = 'central_order.json';
@@ -106,6 +139,219 @@ class MigrationSyncCommand extends Command
         }
 
         return $path;
+    }
+
+    /**
+     * @return array<int, array{manifest: string, type: string, slug: string|null, label: string}>
+     */
+    private function resolveTargets(): array
+    {
+        $manifestOption = trim((string) $this->option('manifest'));
+
+        if ($manifestOption !== '') {
+            return [[
+                'manifest' => $manifestOption,
+                'type' => 'custom',
+                'slug' => null,
+                'label' => 'custom',
+            ]];
+        }
+
+        return $this->resolveAutoTargets();
+    }
+
+    /**
+     * @return array<int, array{manifest: string, type: string, slug: string|null, label: string}>
+     */
+    private function resolveAutoTargets(): array
+    {
+        $targets = [[
+            'manifest' => 'central_order.json',
+            'type' => 'central',
+            'slug' => null,
+            'label' => 'central+shared',
+        ]];
+
+        $contextsPath = (string) config('make-module.contexts_path');
+        if (!File::exists($contextsPath)) {
+            return $targets;
+        }
+
+        $decoded = json_decode((string) File::get($contextsPath), true);
+        if (!is_array($decoded)) {
+            return $targets;
+        }
+
+        $tenants = $decoded['contexts']['tenant'] ?? [];
+        if (!is_array($tenants)) {
+            return $targets;
+        }
+
+        foreach ($tenants as $tenant) {
+            if (!is_array($tenant)) {
+                continue;
+            }
+
+            $slug = $this->resolveTenantSlug($tenant);
+            if ($slug === '') {
+                continue;
+            }
+
+            $targets[] = [
+                'manifest' => "tenant_{$slug}_order.json",
+                'type' => 'tenant',
+                'slug' => $slug,
+                'label' => "tenant:{$slug}",
+            ];
+        }
+
+        $unique = [];
+        foreach ($targets as $target) {
+            $unique[$target['manifest']] = $target;
+        }
+
+        return array_values($unique);
+    }
+
+    private function resolveTenantSlug(array $tenant): string
+    {
+        $candidates = [
+            (string) ($tenant['permission_prefix'] ?? ''),
+            (string) ($tenant['route_prefix'] ?? ''),
+            (string) ($tenant['folder'] ?? ''),
+            (string) ($tenant['class_prefix'] ?? ''),
+            (string) ($tenant['name'] ?? ''),
+        ];
+
+        foreach ($candidates as $candidate) {
+            $slug = $this->normalizeSlug($candidate);
+            if ($slug !== '' && $slug !== 'tenant') {
+                return $slug;
+            }
+        }
+
+        return '';
+    }
+
+    private function normalizeSlug(string $value): string
+    {
+        $value = trim($value);
+        if ($value === '') {
+            return '';
+        }
+
+        if (str_contains($value, '/')) {
+            $parts = array_values(array_filter(explode('/', str_replace('\\', '/', $value))));
+            if (!empty($parts)) {
+                $value = (string) end($parts);
+            }
+        }
+
+        $value = Str::snake($value);
+        $ascii = strtolower(Str::ascii($value));
+        $ascii = preg_replace('/[^a-z0-9]+/', '_', $ascii) ?? '';
+
+        return trim($ascii, '_');
+    }
+
+    private function shouldProceed(): bool
+    {
+        if ((bool) $this->option('yes')) {
+            return true;
+        }
+
+        if (!$this->input instanceof InputInterface || !$this->input->isInteractive()) {
+            return true;
+        }
+
+        return (bool) $this->confirm('Se sincronizaran los manifiestos detectados automaticamente. Deseas continuar?', true);
+    }
+
+    /**
+     * @param array<int, string> $coordinates
+     * @param array{manifest: string, type: string, slug: string|null, label: string} $target
+     * @return array<int, string>
+     */
+    private function filterCoordinatesForTarget(array $coordinates, array $target): array
+    {
+        $filtered = [];
+
+        foreach ($coordinates as $coordinate) {
+            $contextPath = $this->extractContextPath($coordinate);
+            if ($contextPath === '') {
+                continue;
+            }
+
+            if ($target['type'] === 'custom') {
+                $filtered[] = $coordinate;
+                continue;
+            }
+
+            if ($target['type'] === 'central' && $this->isCentralOrSharedContext($contextPath)) {
+                $filtered[] = $coordinate;
+                continue;
+            }
+
+            if ($target['type'] === 'tenant' && is_string($target['slug']) && $this->isTenantScopeContext($contextPath, $target['slug'])) {
+                $filtered[] = $coordinate;
+            }
+        }
+
+        return array_values(array_unique($filtered));
+    }
+
+    private function extractContextPath(string $coordinate): string
+    {
+        if (!str_contains($coordinate, ':')) {
+            return '';
+        }
+
+        [, $contextAndTarget] = explode(':', $coordinate, 2);
+        $lastSlash = strrpos($contextAndTarget, '/');
+
+        if ($lastSlash === false) {
+            return '';
+        }
+
+        return $this->normalizePath(substr($contextAndTarget, 0, $lastSlash));
+    }
+
+    private function normalizePath(string $value): string
+    {
+        $value = str_replace('\\', '/', trim($value));
+        $value = preg_replace('#/+#', '/', $value) ?? $value;
+
+        return strtolower(trim($value, '/'));
+    }
+
+    private function isCentralOrSharedContext(string $contextPath): bool
+    {
+        return $contextPath === 'central'
+            || str_starts_with($contextPath, 'central/')
+            || $contextPath === 'shared'
+            || str_starts_with($contextPath, 'shared/');
+    }
+
+    private function isTenantScopeContext(string $contextPath, string $tenantSlug): bool
+    {
+        if ($contextPath === 'shared' || str_starts_with($contextPath, 'shared/')) {
+            return true;
+        }
+
+        if ($contextPath === 'tenant/shared' || str_starts_with($contextPath, 'tenant/shared/')) {
+            return true;
+        }
+
+        if (!str_starts_with($contextPath, 'tenant/')) {
+            return false;
+        }
+
+        $parts = explode('/', $contextPath);
+        if (count($parts) < 2) {
+            return false;
+        }
+
+        return $this->normalizeSlug($parts[1]) === $this->normalizeSlug($tenantSlug);
     }
 
     /**
