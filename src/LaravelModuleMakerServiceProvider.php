@@ -8,8 +8,10 @@ use Illuminate\Support\Facades\Route;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Innodite\LaravelModuleMaker\Commands\CheckEnvCommand;
 use Innodite\LaravelModuleMaker\Commands\MakeModuleCommand;
+use Innodite\LaravelModuleMaker\Commands\MigrateOneCommand;
 use Innodite\LaravelModuleMaker\Commands\MigratePlanCommand;
 use Innodite\LaravelModuleMaker\Commands\MigrationSyncCommand;
+use Innodite\LaravelModuleMaker\Commands\SeedOneCommand;
 use Innodite\LaravelModuleMaker\Commands\ModuleCheckCommand;
 use Innodite\LaravelModuleMaker\Commands\PublishFrontendCommand;
 use Innodite\LaravelModuleMaker\Commands\SetupModuleMakerCommand;
@@ -54,8 +56,10 @@ class LaravelModuleMakerServiceProvider extends ServiceProvider
         if ($this->app->runningInConsole()) {
             $this->commands([
                 MakeModuleCommand::class,
+                MigrateOneCommand::class,
                 MigratePlanCommand::class,
                 MigrationSyncCommand::class,
+                SeedOneCommand::class,
                 ModuleCheckCommand::class,
                 SetupModuleMakerCommand::class,
                 PublishFrontendCommand::class,

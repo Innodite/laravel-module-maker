@@ -251,6 +251,7 @@ Publica en `resources/js/Composables/`:
 ### `innodite:migrate-plan` — Orquestador de Migraciones por Manifiesto
 
 Ejecuta migraciones en el orden exacto definido en un manifiesto JSON. Es ideal cuando hay dependencias entre módulos y contextos.
+Antes de ejecutar, valida la conexión objetivo y verifica que la base de datos exista para evitar procesos parciales o lanzados contra una BD incorrecta.
 
 ```bash
 # Usar manifiesto por defecto (module-maker-config/migrations/central_order.json)
@@ -303,6 +304,103 @@ php artisan innodite:migrate-plan --manifest=tenant_innodite_order.json --seed
 **Mensajes de error claros:**
 
 Si una coordenada no existe, el comando responde con la ruta esperada para corregirla rápidamente.
+Si la base de datos objetivo no existe, corta el proceso antes de ejecutar migraciones o seeders.
+
+---
+
+### `innodite:migrate-one` — Ejecutar una Migración Específica
+
+Permite ejecutar una coordenada de migración puntual sin correr el manifiesto completo. Está pensado para casos quirúrgicos donde necesitas lanzar una sola migración y mantener sincronizado el manifiesto correspondiente.
+
+```bash
+# Ejecutar una migración específica
+php artisan innodite:migrate-one "Products:Tenant/EnergySpain/2026_01_01_000001_create_products_table.php"
+
+# Forzar un manifiesto concreto
+php artisan innodite:migrate-one "Forms:Shared/2026_01_01_000001_create_forms_table.php" --manifest=central_order.json
+
+# Simular sin escribir ni ejecutar
+php artisan innodite:migrate-one "Forms:Shared/2026_01_01_000001_create_forms_table.php" --dry-run
+
+# Omitir confirmaciones interactivas
+php artisan innodite:migrate-one "Products:Tenant/EnergySpain/2026_01_01_000001_create_products_table.php" --yes
+```
+
+**Qué hace internamente:**
+
+1. Resuelve la ruta exacta del archivo de migración desde la coordenada.
+2. Detecta automáticamente el manifiesto objetivo según el contexto.
+3. Si la coordenada aplica a múltiples manifiestos, muestra los destinos y pide confirmación.
+4. Muestra antes de ejecutar:
+    - Tipo: migración
+    - Coordenada
+    - Conexión
+    - Base de datos
+    - Manifiesto destino
+    - Ruta real del archivo
+5. Si la coordenada no está registrada en el manifiesto, la agrega primero.
+6. Ejecuta solo la migración indicada.
+
+**Reglas de resolución:**
+
+- `Central` => `central_order.json`
+- `Shared` => puede aplicar a `central_order.json` y a los manifiestos tenant
+- `Tenant/Shared` => aplica a todos los manifiestos tenant
+- `Tenant/X` => aplica al manifiesto `tenant_x_order.json` correspondiente
+
+**Importante:**
+
+- Requiere confirmación interactiva antes de ejecutar, salvo que uses `--yes`.
+- En `--dry-run` no modifica el manifiesto ni ejecuta nada.
+- Si la base de datos objetivo no existe, falla antes de iniciar el proceso.
+
+---
+
+### `innodite:seed-one` — Ejecutar un Seeder Específico
+
+Permite ejecutar un seeder puntual sin correr el manifiesto completo. Está pensado para casos quirúrgicos donde necesitas lanzar un solo seeder y mantener sincronizado el manifiesto correspondiente.
+
+```bash
+# Ejecutar un seeder específico
+php artisan innodite:seed-one "UserManagement:Tenant/Shared/TenantSharedPermissionSeeder"
+
+# Forzar un manifiesto concreto
+php artisan innodite:seed-one "Forms:Shared/SharedFormsSeeder" --manifest=central_order.json
+
+# Simular sin escribir ni ejecutar
+php artisan innodite:seed-one "Forms:Shared/SharedFormsSeeder" --dry-run
+
+# Omitir confirmaciones interactivas
+php artisan innodite:seed-one "UserManagement:Tenant/Shared/TenantSharedPermissionSeeder" --yes
+```
+
+**Qué hace internamente:**
+
+1. Resuelve el FQCN (clase completa) del seeder desde la coordenada.
+2. Detecta automáticamente el manifiesto objetivo según el contexto.
+3. Si la coordenada aplica a múltiples manifiestos, muestra los destinos y pide confirmación.
+4. Muestra antes de ejecutar:
+    - Tipo: seeder
+    - Coordenada
+    - Conexión
+    - Base de datos
+    - Manifiesto destino
+    - Clase real que va a ejecutar
+5. Si la coordenada no está registrada en el manifiesto, la agrega primero.
+6. Ejecuta solo el seeder indicado.
+
+**Reglas de resolución:**
+
+- `Central` => `central_order.json`
+- `Shared` => puede aplicar a `central_order.json` y a los manifiestos tenant
+- `Tenant/Shared` => aplica a todos los manifiestos tenant
+- `Tenant/X` => aplica al manifiesto `tenant_x_order.json` correspondiente
+
+**Importante:**
+
+- Requiere confirmación interactiva antes de ejecutar, salvo que uses `--yes`.
+- En `--dry-run` no modifica el manifiesto ni ejecuta nada.
+- Si la base de datos objetivo no existe, falla antes de iniciar el proceso.
 
 ---
 

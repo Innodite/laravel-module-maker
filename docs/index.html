@@ -1143,6 +1143,8 @@ onMounted(async () => {
         <tr><td><code>innodite:check-env</code></td><td>Verifica integración: User model, HandleInertiaRequests, Bridge middleware</td></tr>
         <tr><td><code>innodite:publish-frontend</code></td><td>Publica composables Vue en resources/js/Composables/</td></tr>
         <tr><td><code>innodite:migrate-plan</code></td><td>Ejecuta migraciones y seeders en orden explícito desde manifiestos JSON</td></tr>
+        <tr><td><code>innodite:migrate-one</code></td><td>Ejecuta una migración específica con confirmación y auto-registro en manifiesto</td></tr>
+        <tr><td><code>innodite:seed-one</code></td><td>Ejecuta un seeder específico con confirmación y auto-registro en manifiesto</td></tr>
         <tr><td><code>innodite:migration-sync</code></td><td>Escanea módulos y agrega coordenadas faltantes al manifiesto</td></tr>
       </tbody>
     </table>
@@ -1150,6 +1152,7 @@ onMounted(async () => {
 
   <h3>Migración por manifiesto: <code>innodite:migrate-plan</code></h3>
   <p>Este comando resuelve coordenadas lógicas y ejecuta cada migración en el orden declarado, evitando errores por dependencias implícitas entre módulos.</p>
+  <p>Antes de ejecutar, valida la conexión objetivo y verifica que la base de datos exista para evitar procesos parciales o disparados contra una BD incorrecta.</p>
 
   <div class="code-wrapper">
     <div class="code-header"><span class="code-lang">bash</span><button class="copy-code-btn" onclick="copyCode(this)">Copiar</button></div>
@@ -1195,7 +1198,81 @@ php artisan innodite:migrate-plan --manifest=tenant_innodite_order.json --seed</
   </div>
 
   <div class="callout callout-info">
-    <p><strong>Tip:</strong> Si una coordenada no existe, el comando muestra la ruta esperada para corregir el manifiesto en segundos.</p>
+    <p><strong>Tip:</strong> Si una coordenada no existe, el comando muestra la ruta esperada para corregir el manifiesto en segundos. Si la base objetivo no existe, aborta antes de ejecutar.</p>
+  </div>
+
+  <h3>Ejecución individual de migración: <code>innodite:migrate-one</code></h3>
+  <p>Permite ejecutar una migración puntual sin correr el manifiesto completo. Antes de ejecutar, muestra exactamente dónde va a correr y puede registrar la coordenada en el manifiesto si todavía no existe.</p>
+
+  <div class="code-wrapper">
+    <div class="code-header"><span class="code-lang">bash</span><button class="copy-code-btn" onclick="copyCode(this)">Copiar</button></div>
+    <pre><code class="language-bash"># Ejecutar una migración específica
+php artisan innodite:migrate-one "Products:Tenant/EnergySpain/2026_01_01_000001_create_products_table.php"
+
+# Forzar un manifiesto concreto
+php artisan innodite:migrate-one "Forms:Shared/2026_01_01_000001_create_forms_table.php" --manifest=central_order.json
+
+# Simular sin tocar manifiesto ni BD
+php artisan innodite:migrate-one "Forms:Shared/2026_01_01_000001_create_forms_table.php" --dry-run
+
+# Omitir confirmaciones interactivas
+php artisan innodite:migrate-one "Products:Tenant/EnergySpain/2026_01_01_000001_create_products_table.php" --yes</code></pre>
+  </div>
+
+  <h4>Qué muestra antes de ejecutar</h4>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Dato</th><th>Descripción</th></tr></thead>
+      <tbody>
+        <tr><td>Tipo</td><td>migración</td></tr>
+        <tr><td>Coordenada</td><td>Valor exacto recibido por el comando</td></tr>
+        <tr><td>Conexión</td><td>Conexión Laravel contra la que se ejecutará</td></tr>
+        <tr><td>Base de datos</td><td>Nombre real de la base destino</td></tr>
+        <tr><td>Manifiesto</td><td>Archivo que se actualizará si falta la coordenada</td></tr>
+        <tr><td>Archivo</td><td>Ruta real del archivo de migración que se ejecutará</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="callout callout-success">
+    <p><strong>Confirmación obligatoria:</strong> El comando pide aprobación antes de ejecutar. Solo se omite con <code>--yes</code>.</p>
+  </div>
+
+  <h3>Ejecución individual de seeder: <code>innodite:seed-one</code></h3>
+  <p>Permite ejecutar un seeder puntual sin correr el manifiesto completo. Antes de ejecutar, muestra exactamente dónde va a correr y puede registrar la coordenada en el manifiesto si todavía no existe.</p>
+
+  <div class="code-wrapper">
+    <div class="code-header"><span class="code-lang">bash</span><button class="copy-code-btn" onclick="copyCode(this)">Copiar</button></div>
+    <pre><code class="language-bash"># Ejecutar un seeder específico
+php artisan innodite:seed-one "UserManagement:Tenant/Shared/TenantSharedPermissionSeeder"
+
+# Forzar un manifiesto concreto
+php artisan innodite:seed-one "Forms:Shared/SharedFormsSeeder" --manifest=central_order.json
+
+# Simular sin tocar manifiesto ni BD
+php artisan innodite:seed-one "Forms:Shared/SharedFormsSeeder" --dry-run
+
+# Omitir confirmaciones interactivas
+php artisan innodite:seed-one "UserManagement:Tenant/Shared/TenantSharedPermissionSeeder" --yes</code></pre>
+  </div>
+
+  <h4>Qué muestra antes de ejecutar</h4>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Dato</th><th>Descripción</th></tr></thead>
+      <tbody>
+        <tr><td>Tipo</td><td>seeder</td></tr>
+        <tr><td>Coordenada</td><td>Valor exacto recibido por el comando</td></tr>
+        <tr><td>Conexión</td><td>Conexión Laravel contra la que se ejecutará</td></tr>
+        <tr><td>Base de datos</td><td>Nombre real de la base destino</td></tr>
+        <tr><td>Manifiesto</td><td>Archivo que se actualizará si falta la coordenada</td></tr>
+        <tr><td>Clase</td><td>FQCN real del seeder que se ejecutará</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="callout callout-success">
+    <p><strong>Confirmación obligatoria:</strong> El comando pide aprobación antes de ejecutar. Solo se omite con <code>--yes</code>.</p>
   </div>
 
   <h3>Sincronización automática: <code>innodite:migration-sync</code></h3>
