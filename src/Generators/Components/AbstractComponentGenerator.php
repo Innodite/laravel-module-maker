@@ -127,8 +127,8 @@ abstract class AbstractComponentGenerator
     }
 
     /**
-     * Retorna el prefijo de clase del contexto activo.
-     * Ej: 'Central', 'Shared', 'TenantShared', 'TenantEnergySpain'
+    * Retorna el prefijo de clase del contexto activo.
+    * Ej: 'Central', 'Shared', 'TenantShared', 'TenantAlpha'
      * Retorna cadena vacía si no hay contexto definido (retrocompatibilidad).
      *
      * @return string
@@ -139,8 +139,8 @@ abstract class AbstractComponentGenerator
     }
 
     /**
-     * Retorna la subcarpeta del contexto dentro de cada tipo de componente.
-     * Ej: 'Central', 'Shared', 'Tenant/Shared', 'Tenant/EnergySpain'
+    * Retorna la subcarpeta del contexto dentro de cada tipo de componente.
+    * Ej: 'Central', 'Shared', 'Tenant/Shared', 'Tenant/Alpha'
      * Retorna cadena vacía si no hay contexto definido.
      *
      * @return string
@@ -151,8 +151,8 @@ abstract class AbstractComponentGenerator
     }
 
     /**
-     * Retorna el fragmento de namespace del contexto.
-     * Ej: 'Central', 'Shared', 'Tenant\\Shared', 'Tenant\\EnergySpain'
+    * Retorna el fragmento de namespace del contexto.
+    * Ej: 'Central', 'Shared', 'Tenant\\Shared', 'Tenant\\Alpha'
      *
      * @return string
      */
@@ -162,8 +162,8 @@ abstract class AbstractComponentGenerator
     }
 
     /**
-     * Construye el namespace completo para un tipo de componente dentro del módulo.
-     * Ej: buildNamespace('Http\\Controllers') → 'Modules\Products\Http\Controllers\Tenant\EnergySpain'
+    * Construye el namespace completo para un tipo de componente dentro del módulo.
+    * Ej: buildNamespace('Http\\Controllers') → 'Modules\Products\Http\Controllers\Tenant\Alpha'
      *
      * @param  string  $componentType  Tipo de componente (ej: 'Http\\Controllers', 'Services', 'Models')
      * @return string
@@ -197,8 +197,8 @@ abstract class AbstractComponentGenerator
     }
 
     /**
-     * Construye la ruta absoluta de carpeta para un tipo de componente dentro del módulo.
-     * Ej: buildPath('Http/Controllers') → '.../Products/Http/Controllers/Tenant/EnergySpain'
+    * Construye la ruta absoluta de carpeta para un tipo de componente dentro del módulo.
+    * Ej: buildPath('Http/Controllers') → '.../Products/Http/Controllers/Tenant/Alpha'
      *
      * @param  string  $componentType  Tipo de componente (ej: 'Http/Controllers', 'Services', 'Models')
      * @return string

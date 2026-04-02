@@ -380,8 +380,8 @@ class RouteGenerator extends AbstractComponentGenerator
     }
 
     /**
-     * Retorna solo el nombre corto de la clase del controlador (sin namespace).
-     * Ej: 'TenantEnergySpainUserController'
+    * Retorna solo el nombre corto de la clase del controlador (sin namespace).
+    * Ej: 'TenantAlphaUserController'
      *
      * @return string
      */
@@ -391,8 +391,8 @@ class RouteGenerator extends AbstractComponentGenerator
     }
 
     /**
-     * Retorna el namespace completo (FQCN) del controlador para el import use.
-     * Ej: 'Modules\Products\Http\Controllers\Tenant\EnergySpain\TenantEnergySpainUserController'
+    * Retorna el namespace completo (FQCN) del controlador para el import use.
+    * Ej: 'Modules\Products\Http\Controllers\Tenant\Alpha\TenantAlphaUserController'
      *
      * @return string
      */
