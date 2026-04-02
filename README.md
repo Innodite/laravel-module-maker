@@ -522,7 +522,7 @@ Ejemplo de `Modules/User/Tests/test-config.json`:
     "contexts": {
         "central": {
             "db_connection": "mysql",
-            "db_database": "neocenter_test",
+            "db_database": "innodite_test",
             "enabled": true,
             "seeder": null,
             "env": {}

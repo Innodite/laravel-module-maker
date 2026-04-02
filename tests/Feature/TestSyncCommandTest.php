@@ -42,7 +42,7 @@ it('mantiene overrides existentes y agrega contextos faltantes al sincronizar', 
                 'folder' => 'Central',
                 'group' => 'central',
                 'db_connection' => 'mysql',
-                'db_database' => 'neocenter_test',
+                'db_database' => 'innodite_test',
                 'enabled' => true,
                 'seeder' => 'Modules\\Forms\\Database\\Seeders\\Central\\CentralFormsSeeder',
                 'env' => [
@@ -75,7 +75,7 @@ it('mantiene overrides existentes y agrega contextos faltantes al sincronizar', 
     $config = json_decode((string) File::get("{$modulePath}/Tests/test-config.json"), true);
 
     expect($config['contexts']['central']['db_connection'])->toBe('mysql');
-    expect($config['contexts']['central']['db_database'])->toBe('neocenter_test');
+    expect($config['contexts']['central']['db_database'])->toBe('innodite_test');
     expect($config['contexts']['central']['seeder'])->toBe('Modules\\Forms\\Database\\Seeders\\Central\\CentralFormsSeeder');
     expect($config['contexts'])->toHaveKey('shared');
     expect($config['contexts'])->toHaveKey('tenant_shared');
