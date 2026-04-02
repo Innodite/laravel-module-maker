@@ -480,27 +480,6 @@ class TestModuleCommand extends Command
             default => null,
         };
     }
-            $phpunitBin,
-            '--configuration=' . $phpunitXmlPath,
-        ];
-
-        // Flag --filter si se especifica
-        if ($filter = $this->option('filter')) {
-            $command[] = '--filter=' . $filter;
-        }
-
-        // Flag --stop-on-failure
-        if ($this->option('stop-on-failure')) {
-            $command[] = '--stop-on-failure';
-        }
-
-        // Flag --testdox para salida legible
-        if (!$this->option('no-output')) {
-            $command[] = '--testdox';
-        }
-
-        return $command;
-    }
 
     /**
      * Ejecuta el comando PHPUnit y captura el resultado.
