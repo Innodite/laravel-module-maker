@@ -345,8 +345,8 @@ class TestModuleCommand extends Command
             return;
         }
 
-        // Crear configuración temporal de PHPUnit
-        $phpunitXmlPath = $this->createTemporaryPhpunitConfig($module, $testsPath, $contextKey, $contextConfig);
+        // Resolver configuración de PHPUnit en la carpeta Tests del módulo.
+        $phpunitXmlPath = $this->createOrResolvePhpunitConfig($module, $testsPath, $contextKey, $contextConfig);
         $reportPath = $this->resolveReportPath($module, $contextKey);
 
         // Construir comando PHPUnit
@@ -357,11 +357,6 @@ class TestModuleCommand extends Command
 
         // Guardar resultado
         $this->results[] = $result;
-
-        // Limpiar archivo temporal
-        if (File::exists($phpunitXmlPath)) {
-            File::delete($phpunitXmlPath);
-        }
 
         $this->newLine();
     }
@@ -431,10 +426,16 @@ class TestModuleCommand extends Command
      * @param string $testsPath
      * @return string Path del archivo creado
      */
-    protected function createTemporaryPhpunitConfig(string $module, string $testsPath, ?string $contextKey = null, array $contextConfig = []): string
+    protected function createOrResolvePhpunitConfig(string $module, string $testsPath, ?string $contextKey = null, array $contextConfig = []): string
     {
         $modulePath = base_path("Modules/{$module}");
         $reportPath = $this->resolveReportPath($module, $contextKey);
+        $configPath = $this->resolveModulePhpunitConfigPath($module, $contextKey);
+
+        // Si ya existe, se respeta el archivo editable por el usuario.
+        if (File::exists($configPath)) {
+            return $configPath;
+        }
         
         // Crear carpeta de reportes si no existe
         if (!File::isDirectory($reportPath)) {
@@ -488,11 +489,20 @@ class TestModuleCommand extends Command
 </phpunit>
 XML;
 
-        $suffix = $contextKey ? '-' . $this->testConfigService->normalizeContextKey($contextKey) : '';
-        $tempPath = storage_path("phpunit-{$module}{$suffix}.xml");
-        File::put($tempPath, $xml);
+        File::put($configPath, $xml);
+        $this->line("  📝 Config PHPUnit creada: {$configPath}");
 
-        return $tempPath;
+        return $configPath;
+    }
+
+    protected function resolveModulePhpunitConfigPath(string $module, ?string $contextKey): string
+    {
+        $testsPath = base_path("Modules/{$module}/Tests");
+        $contextSuffix = $contextKey
+            ? $this->testConfigService->normalizeContextKey($contextKey)
+            : 'default';
+
+        return "{$testsPath}/phpunit-{$contextSuffix}.xml";
     }
 
     /**

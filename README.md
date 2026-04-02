@@ -477,6 +477,7 @@ php artisan innodite:test-module User --context=central --coverage --format=html
 - ✅ Usa configuración contextual en `Modules/{Modulo}/Tests/test-config.json`
 - ✅ Permite correr un contexto (`--context`) o todos los contextos habilitados (`--all-contexts`)
 - ✅ Escanea recursivamente toda la carpeta `Tests/` sin asumir estructura fija
+- ✅ Crea/usa archivo de configuración PHPUnit editable en `Modules/{Modulo}/Tests/phpunit-{contexto}.xml`
 - ✅ Puede ejecutar un `seeder` previo por contexto antes de PHPUnit
 - ✅ Genera reportes de coverage en múltiples formatos:
     - **HTML** → `docs/test-reports/{Module}/{contexto}/html/index.html` (navegable)
