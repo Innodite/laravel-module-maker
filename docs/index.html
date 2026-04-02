@@ -1312,6 +1312,7 @@ php artisan innodite:migration-sync --manifest=tenant_innodite_order.json --dry-
 
   <h3>Sincronización de configuración de tests: <code>innodite:test-sync</code></h3>
   <p>Genera o actualiza el archivo <code>test-config.json</code> dentro de <code>Modules/{Modulo}/Tests/</code>, leyendo los contextos definidos en <code>module-maker-config/contexts.json</code>.</p>
+  <p>Para testing solo se generan contextos ejecutables: <code>central</code> y tenants específicos. Los contextos <code>shared</code> y <code>tenant_shared</code> se excluyen porque no representan una base de datos de prueba autónoma.</p>
 
   <div class="code-wrapper">
     <div class="code-header"><span class="code-lang">bash</span><button class="copy-code-btn" onclick="copyCode(this)">Copiar</button></div>

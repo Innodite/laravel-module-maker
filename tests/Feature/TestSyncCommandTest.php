@@ -21,8 +21,10 @@ it('crea Tests/test-config.json para un modulo especifico', function () {
     expect($config)->toBeArray();
     expect($config['contexts'])->toBeArray();
     expect($config['contexts'])->toHaveKey('central');
-    expect($config['contexts'])->toHaveKey('shared');
-    expect($config['contexts'])->toHaveKey('tenant_shared');
+    expect($config['contexts'])->toHaveKey('tenant_one');
+    expect($config['contexts'])->toHaveKey('tenant_two');
+    expect($config['contexts'])->not->toHaveKey('shared');
+    expect($config['contexts'])->not->toHaveKey('tenant_shared');
     expect($config['contexts']['central']['db_connection'])->toBeNull();
     expect($config['contexts']['central']['db_database'])->toBeNull();
 });
@@ -47,6 +49,17 @@ it('mantiene overrides existentes y agrega contextos faltantes al sincronizar', 
                     'APP_LOCALE' => 'es',
                 ],
             ],
+            'shared' => [
+                'key' => 'shared',
+                'label' => 'Shared',
+                'folder' => 'Shared',
+                'group' => 'shared',
+                'db_connection' => 'mysql',
+                'db_database' => 'should_disappear',
+                'enabled' => true,
+                'seeder' => null,
+                'env' => [],
+            ],
         ],
     ];
 
@@ -64,6 +77,8 @@ it('mantiene overrides existentes y agrega contextos faltantes al sincronizar', 
     expect($config['contexts']['central']['db_connection'])->toBe('mysql');
     expect($config['contexts']['central']['db_database'])->toBe('neocenter_test');
     expect($config['contexts']['central']['seeder'])->toBe('Modules\\Forms\\Database\\Seeders\\Central\\CentralFormsSeeder');
-    expect($config['contexts']['shared'])->toBeArray();
-    expect($config['contexts']['tenant_shared'])->toBeArray();
+    expect($config['contexts'])->toHaveKey('tenant_one');
+    expect($config['contexts'])->toHaveKey('tenant_two');
+    expect($config['contexts'])->not->toHaveKey('shared');
+    expect($config['contexts'])->not->toHaveKey('tenant_shared');
 });

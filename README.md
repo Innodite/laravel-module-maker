@@ -492,6 +492,13 @@ php artisan innodite:test-module User --context=central --coverage --format=html
 
 Genera o actualiza el archivo `test-config.json` dentro de la carpeta `Tests/` de cada módulo, leyendo los contextos desde `module-maker-config/contexts.json`.
 
+Para testing, el sync solo genera contextos válidos de ejecución:
+
+- `central`
+- tenants específicos (`energy_spain`, `telephony_spain`, `telephony_peru`, etc.)
+
+No genera `shared` ni `tenant_shared`, porque esos contextos no representan una base de datos de prueba autónoma.
+
 ```bash
 # Sincronizar un módulo
 php artisan innodite:test-sync User
@@ -520,11 +527,11 @@ Ejemplo de `Modules/User/Tests/test-config.json`:
             "seeder": null,
             "env": {}
         },
-        "tenant_shared": {
+        "telephony_spain": {
             "db_connection": "tenant",
-            "db_database": "tenant_test_shared",
+            "db_database": "telephony_spain_test",
             "enabled": true,
-            "seeder": "Modules\\UserManagement\\Database\\Seeders\\Shared\\SharedModuleSeeder",
+            "seeder": "Modules\\UserManagement\\Database\\Seeders\\TelefoniaEspana\\TenantTelefoniaEspanaSeeder",
             "env": {
                 "CACHE_DRIVER": "array"
             }
