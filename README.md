@@ -248,6 +248,102 @@ Publica en `resources/js/Composables/`:
 
 ---
 
+### `innodite:migrate-plan` — Orquestador de Migraciones por Manifiesto
+
+Ejecuta migraciones en el orden exacto definido en un manifiesto JSON. Es ideal cuando hay dependencias entre módulos y contextos.
+
+```bash
+# Usar manifiesto por defecto (module-maker-config/migrations/central_order.json)
+php artisan innodite:migrate-plan
+
+# Usar manifiesto específico
+php artisan innodite:migrate-plan --manifest=tenant_innodite_order.json
+
+# Simular sin tocar BD
+php artisan innodite:migrate-plan --manifest=tenant_innodite_order.json --dry-run
+
+# Ejecutar también seeders después de migraciones
+php artisan innodite:migrate-plan --manifest=tenant_innodite_order.json --seed
+```
+
+**Formato de coordenadas soportado:**
+
+- Migraciones: `Modulo:Contexto/Archivo.php`
+- Seeders: `Modulo:Contexto/ClaseSeeder`
+
+**Ejemplo real de manifiesto (`module-maker-config/migrations/tenant_innodite_order.json`):**
+
+```json
+{
+    "migrations": [
+        "User:Shared/2026_01_01_000001_create_users_table.php",
+        "Roles:Tenant/Shared/2026_02_01_000001_create_tenant_roles_table.php",
+        "Custom:Tenant/INNODITE/2026_03_01_000001_innodite_extra_table.php"
+    ],
+    "seeders": [
+        "User:Shared/SharedUserSeeder",
+        "Roles:Tenant/Shared/TenantSharedRoleSeeder",
+        "Custom:Tenant/INNODITE/TenantINNODITECustomSeeder"
+    ]
+}
+```
+
+**Cómo resuelve rutas internas:**
+
+- `User:Shared/2026_...php` → `Modules/User/Database/Migrations/Shared/2026_...php`
+- `Roles:Tenant/Shared/TenantSharedRoleSeeder` → `Modules\Roles\Database\Seeders\Tenant\Shared\TenantSharedRoleSeeder`
+
+**Qué valida el comando:**
+
+- Que el manifiesto exista y sea JSON válido
+- Que `migrations` y `seeders` sean arrays
+- Que cada coordenada de migración apunte a un archivo real
+- Que el formato de coordenada sea correcto
+
+**Mensajes de error claros:**
+
+Si una coordenada no existe, el comando responde con la ruta esperada para corregirla rápidamente.
+
+---
+
+### `innodite:migration-sync` — Sincronización Automática de Manifiestos
+
+Escanea los módulos y agrega al manifiesto las migraciones y seeders que aún no están registradas.
+
+```bash
+# Sincronizar manifiesto por defecto
+php artisan innodite:migration-sync
+
+# Sincronizar un manifiesto concreto
+php artisan innodite:migration-sync --manifest=tenant_innodite_order.json
+
+# Ver faltantes sin escribir cambios
+php artisan innodite:migration-sync --manifest=tenant_innodite_order.json --dry-run
+```
+
+**Comportamiento de sync:**
+
+1. Crea `module-maker-config/migrations/` si no existe.
+2. Crea el manifiesto si no existe (estructura vacía).
+3. Escanea:
+     - `Modules/*/Database/Migrations/**`
+     - `Modules/*/Database/Seeders/**`
+4. Convierte hallazgos a coordenadas.
+5. Hace append solo de faltantes (sin duplicar).
+
+**Importante:**
+
+- Solo sincroniza archivos en subcarpetas de contexto (`Shared`, `Central`, `Tenant/...`).
+- Esto mantiene consistencia con el modelo contextual del paquete.
+
+**Cuándo usarlo en la práctica:**
+
+- Después de generar nuevos módulos/entidades y querer actualizar manifiestos automáticamente.
+- Antes de un deploy, para verificar que no quedaron migraciones fuera del plan.
+- En CI/CD para detectar drift entre código y manifiesto.
+
+---
+
 ### `innodite:test-module` — Ejecutar Tests con Coverage
 
 ```bash
@@ -1090,6 +1186,8 @@ Modules/
 | `innodite:module-check` | Diagnóstico de configuración, permisos y conflictos |
 | `innodite:check-env` | Verifica integración frontend-backend (bridge Inertia) |
 | `innodite:publish-frontend` | Publica composables Vue 3 (`useModuleContext`, `usePermissions`) |
+| `innodite:migrate-plan` | Ejecuta migraciones/seeders por manifiesto y orden explícito |
+| `innodite:migration-sync` | Escanea módulos y sincroniza faltantes en manifiestos |
 | `innodite:test-module` | Ejecuta tests de módulos con coverage (HTML, Text, Clover) |
 | `vendor:publish --tag=module-maker-config` | Publica `make-module.php` |
 | `vendor:publish --tag=module-maker-stubs` | Publica stubs contextuales personalizables |

@@ -1142,8 +1142,93 @@ onMounted(async () => {
         <tr><td><code>innodite:module-check</code></td><td>Diagnóstico: integridad contexts.json, permisos de escritura, colisiones</td></tr>
         <tr><td><code>innodite:check-env</code></td><td>Verifica integración: User model, HandleInertiaRequests, Bridge middleware</td></tr>
         <tr><td><code>innodite:publish-frontend</code></td><td>Publica composables Vue en resources/js/Composables/</td></tr>
+        <tr><td><code>innodite:migrate-plan</code></td><td>Ejecuta migraciones y seeders en orden explícito desde manifiestos JSON</td></tr>
+        <tr><td><code>innodite:migration-sync</code></td><td>Escanea módulos y agrega coordenadas faltantes al manifiesto</td></tr>
       </tbody>
     </table>
+  </div>
+
+  <h3>Migración por manifiesto: <code>innodite:migrate-plan</code></h3>
+  <p>Este comando resuelve coordenadas lógicas y ejecuta cada migración en el orden declarado, evitando errores por dependencias implícitas entre módulos.</p>
+
+  <div class="code-wrapper">
+    <div class="code-header"><span class="code-lang">bash</span><button class="copy-code-btn" onclick="copyCode(this)">Copiar</button></div>
+    <pre><code class="language-bash"># Manifiesto por defecto
+php artisan innodite:migrate-plan
+
+# Manifiesto específico
+php artisan innodite:migrate-plan --manifest=tenant_innodite_order.json
+
+# Simulación sin ejecutar en BD
+php artisan innodite:migrate-plan --manifest=tenant_innodite_order.json --dry-run
+
+# Ejecutar migraciones y luego seeders
+php artisan innodite:migrate-plan --manifest=tenant_innodite_order.json --seed</code></pre>
+  </div>
+
+  <h4>Formato de coordenadas</h4>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Tipo</th><th>Formato</th><th>Ejemplo</th></tr></thead>
+      <tbody>
+        <tr><td>Migración</td><td><code>Modulo:Contexto/Archivo.php</code></td><td><code>User:Shared/2026_01_01_000001_create_users_table.php</code></td></tr>
+        <tr><td>Seeder</td><td><code>Modulo:Contexto/ClaseSeeder</code></td><td><code>Roles:Tenant/Shared/TenantSharedRoleSeeder</code></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h4>Ejemplo de manifiesto</h4>
+  <div class="code-wrapper">
+    <div class="code-header"><span class="code-lang">json</span><button class="copy-code-btn" onclick="copyCode(this)">Copiar</button></div>
+    <pre><code class="language-json">{
+  "migrations": [
+    "User:Shared/2026_01_01_000001_create_users_table.php",
+    "Roles:Tenant/Shared/2026_02_01_000001_create_tenant_roles_table.php",
+    "Custom:Tenant/INNODITE/2026_03_01_000001_innodite_extra_table.php"
+  ],
+  "seeders": [
+    "User:Shared/SharedUserSeeder",
+    "Roles:Tenant/Shared/TenantSharedRoleSeeder",
+    "Custom:Tenant/INNODITE/TenantINNODITECustomSeeder"
+  ]
+}</code></pre>
+  </div>
+
+  <div class="callout callout-info">
+    <p><strong>Tip:</strong> Si una coordenada no existe, el comando muestra la ruta esperada para corregir el manifiesto en segundos.</p>
+  </div>
+
+  <h3>Sincronización automática: <code>innodite:migration-sync</code></h3>
+  <p>Escanea todo <code>Modules/*/Database/Migrations</code> y <code>Modules/*/Database/Seeders</code>, calcula coordenadas y agrega faltantes al manifiesto sin duplicar registros.</p>
+
+  <div class="code-wrapper">
+    <div class="code-header"><span class="code-lang">bash</span><button class="copy-code-btn" onclick="copyCode(this)">Copiar</button></div>
+    <pre><code class="language-bash"># Sincronizar manifiesto por defecto
+php artisan innodite:migration-sync
+
+# Sincronizar manifiesto específico
+php artisan innodite:migration-sync --manifest=tenant_innodite_order.json
+
+# Ver faltantes sin escribir
+php artisan innodite:migration-sync --manifest=tenant_innodite_order.json --dry-run</code></pre>
+  </div>
+
+  <h4>Flujo interno del sync</h4>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Paso</th><th>Acción</th></tr></thead>
+      <tbody>
+        <tr><td>1</td><td>Crea <code>module-maker-config/migrations/</code> si no existe</td></tr>
+        <tr><td>2</td><td>Crea manifiesto vacío si no existe</td></tr>
+        <tr><td>3</td><td>Escanea migraciones y seeders contextuales de todos los módulos</td></tr>
+        <tr><td>4</td><td>Compara con el contenido actual del manifiesto</td></tr>
+        <tr><td>5</td><td>Hace append solo de faltantes (idempotente)</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <div class="callout callout-success">
+    <p><strong>Práctica recomendada:</strong> Ejecuta <code>innodite:migration-sync --dry-run</code> en CI para detectar drift entre código y manifiesto antes del deploy.</p>
   </div>
 
   <h3>Flags de make:module</h3>
