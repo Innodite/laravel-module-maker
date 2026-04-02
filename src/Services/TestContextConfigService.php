@@ -166,6 +166,29 @@ class TestContextConfigService
     }
 
     /**
+     * @return array<int,string>
+     */
+    public function getTenantMarkers(): array
+    {
+        $definitions = $this->getContextDefinitions();
+        $markers = [];
+
+        foreach ($definitions as $definition) {
+            if (($definition['group'] ?? null) !== 'tenant') {
+                continue;
+            }
+
+            $folder = str_replace('\\', '/', (string) ($definition['folder'] ?? ''));
+            $marker = trim((string) basename($folder));
+            if ($marker !== '') {
+                $markers[] = $marker;
+            }
+        }
+
+        return array_values(array_unique($markers));
+    }
+
+    /**
      * @param array<string,mixed> $item
      */
     private function resolveContextKey(string $group, array $item, string $folder): string

@@ -370,11 +370,20 @@ class TestModuleCommand extends Command
     protected function getTestFiles(string $testsPath, ?string $contextKey = null, array $contextConfig = []): array
     {
         $contextFolder = null;
+        $tenantMarker = null;
+        $tenantMarkers = [];
+        $contextGroup = (string) ($contextConfig['group'] ?? '');
+
         if ($contextKey !== null && $contextKey !== '') {
             $configuredFolder = trim((string) ($contextConfig['folder'] ?? ''));
             $contextFolder = $configuredFolder !== ''
                 ? str_replace('\\', '/', $configuredFolder)
                 : $this->normalizeContextForPath($contextKey);
+
+            if ($contextGroup === 'tenant') {
+                $tenantMarker = trim((string) basename($contextFolder));
+                $tenantMarkers = $this->testConfigService->getTenantMarkers();
+            }
         }
 
         $allFiles = File::allFiles($testsPath);
@@ -390,9 +399,38 @@ class TestModuleCommand extends Command
 
             // Filtrar por contexto si se especificó
             if ($contextFolder !== null && $contextFolder !== '') {
-                if (!str_contains($relativePath, $contextFolder)) {
+                if (str_contains($relativePath, $contextFolder)) {
+                    $testFiles[] = $file->getPathname();
                     continue;
                 }
+
+                if ($contextGroup === 'tenant' && str_contains($relativePath, 'Tenant/')) {
+                    $matchesTenantSpecific = $tenantMarker !== null && $tenantMarker !== ''
+                        && str_contains($relativePath, $tenantMarker);
+
+                    $containsOtherTenantMarker = false;
+                    foreach ($tenantMarkers as $marker) {
+                        if ($marker === $tenantMarker) {
+                            continue;
+                        }
+
+                        if (str_contains($relativePath, $marker)) {
+                            $containsOtherTenantMarker = true;
+                            break;
+                        }
+                    }
+
+                    $isGenericTenantTest = !$containsOtherTenantMarker
+                        && !$matchesTenantSpecific;
+
+                    if ($matchesTenantSpecific || $isGenericTenantTest) {
+                        $testFiles[] = $file->getPathname();
+                    }
+
+                    continue;
+                }
+
+                continue;
             }
 
             $testFiles[] = $file->getPathname();
