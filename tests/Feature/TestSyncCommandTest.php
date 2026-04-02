@@ -23,6 +23,8 @@ it('crea Tests/test-config.json para un modulo especifico', function () {
     expect($config['contexts'])->toHaveKey('central');
     expect($config['contexts'])->toHaveKey('shared');
     expect($config['contexts'])->toHaveKey('tenant_shared');
+    expect($config['contexts']['central']['db_connection'])->toBeNull();
+    expect($config['contexts']['central']['db_database'])->toBeNull();
 });
 
 it('mantiene overrides existentes y agrega contextos faltantes al sincronizar', function () {

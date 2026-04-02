@@ -1330,6 +1330,7 @@ php artisan innodite:test-sync --all</code></pre>
         <tr><td>Archivo destino</td><td><code>Modules/{Modulo}/Tests/test-config.json</code></td></tr>
         <tr><td>Primera ejecución</td><td>Crea el archivo con todos los contextos detectados</td></tr>
         <tr><td>Re-ejecuciones</td><td>Agrega contextos faltantes sin pisar overrides existentes</td></tr>
+        <tr><td>DB por contexto</td><td>El usuario define <code>db_connection</code> y <code>db_database</code>; el sync no asume valores por defecto</td></tr>
         <tr><td>Campos editables</td><td><code>db_connection</code>, <code>db_database</code>, <code>seeder</code>, <code>enabled</code>, <code>env</code></td></tr>
       </tbody>
     </table>
