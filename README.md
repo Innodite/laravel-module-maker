@@ -455,46 +455,81 @@ php artisan innodite:migration-sync --manifest=tenant_innodite_order.json --dry-
 ### `innodite:test-module` — Ejecutar Tests con Coverage
 
 ```bash
-# Ejecutar tests de un módulo específico
+# 1) Sincronizar configuración por contexto (crea Tests/test-config.json)
+php artisan innodite:test-sync User
+
+# 2) Ejecutar tests de un módulo (modo default sin contexto)
 php artisan innodite:test-module User
 
-# Ejecutar tests de TODOS los módulos
-php artisan innodite:test-module --all
-
-# Filtrar por contexto
+# 3) Ejecutar un contexto específico definido en test-config.json
 php artisan innodite:test-module User --context=central
-php artisan innodite:test-module --all --context=tenant
 
-# Generar reportes de coverage (requiere Xdebug o PCOV)
-php artisan innodite:test-module User --coverage
+# 4) Ejecutar todos los contextos habilitados del módulo
+php artisan innodite:test-module User --all-contexts
 
-# Especificar formatos de coverage
-php artisan innodite:test-module User --coverage --format=html
-php artisan innodite:test-module User --coverage --format=html --format=clover
-
-# Filtrar tests específicos
-php artisan innodite:test-module User --filter=testCreate
-
-# Detener en el primer fallo
-php artisan innodite:test-module User --stop-on-failure
-
-# Modo silencioso (solo resumen)
-php artisan innodite:test-module --all --no-output
+# 5) Coverage por módulo/contexto
+php artisan innodite:test-module User --context=central --coverage --format=html --format=clover
 ```
 
 **Características:**
 
 - ✅ Ejecuta PHPUnit en uno o todos los módulos
+- ✅ Usa configuración contextual en `Modules/{Modulo}/Tests/test-config.json`
+- ✅ Permite correr un contexto (`--context`) o todos los contextos habilitados (`--all-contexts`)
 - ✅ Escanea recursivamente toda la carpeta `Tests/` sin asumir estructura fija
+- ✅ Puede ejecutar un `seeder` previo por contexto antes de PHPUnit
 - ✅ Genera reportes de coverage en múltiples formatos:
-  - **HTML** → `docs/test-reports/{Module}/html/index.html` (navegable)
+    - **HTML** → `docs/test-reports/{Module}/{contexto}/html/index.html` (navegable)
   - **Text** → Salida en consola con porcentajes
-  - **Clover XML** → `docs/test-reports/{Module}/clover.xml` (CI/CD)
+    - **Clover XML** → `docs/test-reports/{Module}/{contexto}/clover.xml` (CI/CD)
 - ✅ Valida que Xdebug o PCOV estén activos para coverage
 - ✅ Muestra tabla resumen con resultados y porcentaje de cobertura
-- ✅ Permite filtrar por contexto (Central, Shared, Tenant, etc.)
 - ✅ Soporta flag `--filter` de PHPUnit para tests específicos
 - ✅ Detección automática de módulos sin tests (warning + continuar)
+
+### `innodite:test-sync` — Sincronizar `Tests/test-config.json`
+
+Genera o actualiza el archivo `test-config.json` dentro de la carpeta `Tests/` de cada módulo, leyendo los contextos desde `module-maker-config/contexts.json`.
+
+```bash
+# Sincronizar un módulo
+php artisan innodite:test-sync User
+
+# Sincronizar todos los módulos
+php artisan innodite:test-sync --all
+```
+
+**Reglas del sync:**
+
+- ✅ Crea `Modules/{Modulo}/Tests/test-config.json` si no existe
+- ✅ Agrega contextos faltantes sin duplicar
+- ✅ Conserva overrides manuales de `db_connection`, `db_database`, `seeder`, `enabled` y `env`
+
+Ejemplo de `Modules/User/Tests/test-config.json`:
+
+```json
+{
+    "_readme": "Configuración de tests por contexto. Generado por innodite:test-sync.",
+    "contexts": {
+        "central": {
+            "db_connection": "sqlite",
+            "db_database": ":memory:",
+            "enabled": true,
+            "seeder": null,
+            "env": {}
+        },
+        "tenant_shared": {
+            "db_connection": "tenant",
+            "db_database": null,
+            "enabled": true,
+            "seeder": "Modules\\UserManagement\\Database\\Seeders\\Shared\\SharedModuleSeeder",
+            "env": {
+                "CACHE_DRIVER": "array"
+            }
+        }
+    }
+}
+```
 
 **Requisitos para Coverage:**
 
@@ -1296,7 +1331,8 @@ Modules/
 | `innodite:publish-frontend` | Publica composables Vue 3 (`useModuleContext`, `usePermissions`) |
 | `innodite:migrate-plan` | Ejecuta migraciones/seeders por manifiesto y orden explícito |
 | `innodite:migration-sync` | Escanea módulos y sincroniza faltantes en manifiestos |
-| `innodite:test-module` | Ejecuta tests de módulos con coverage (HTML, Text, Clover) |
+| `innodite:test-module` | Ejecuta tests de módulos con contexto y coverage (HTML, Text, Clover) |
+| `innodite:test-sync` | Sincroniza `Modules/{Modulo}/Tests/test-config.json` desde `contexts.json` |
 | `vendor:publish --tag=module-maker-config` | Publica `make-module.php` |
 | `vendor:publish --tag=module-maker-stubs` | Publica stubs contextuales personalizables |
 | `vendor:publish --tag=module-maker-contexts` | Publica `contexts.json` de ejemplo |

@@ -1146,6 +1146,8 @@ onMounted(async () => {
         <tr><td><code>innodite:migrate-one</code></td><td>Ejecuta una migración específica con confirmación y auto-registro en manifiesto</td></tr>
         <tr><td><code>innodite:seed-one</code></td><td>Ejecuta un seeder específico con confirmación y auto-registro en manifiesto</td></tr>
         <tr><td><code>innodite:migration-sync</code></td><td>Escanea módulos y agrega coordenadas faltantes al manifiesto</td></tr>
+        <tr><td><code>innodite:test-sync</code></td><td>Sincroniza <code>Modules/{Modulo}/Tests/test-config.json</code> desde <code>contexts.json</code></td></tr>
+        <tr><td><code>innodite:test-module</code></td><td>Ejecuta tests por módulo/contexto con coverage por contexto</td></tr>
       </tbody>
     </table>
   </div>
@@ -1306,6 +1308,61 @@ php artisan innodite:migration-sync --manifest=tenant_innodite_order.json --dry-
 
   <div class="callout callout-success">
     <p><strong>Práctica recomendada:</strong> Ejecuta <code>innodite:migration-sync --dry-run</code> en CI para detectar drift entre código y manifiesto antes del deploy.</p>
+  </div>
+
+  <h3>Sincronización de configuración de tests: <code>innodite:test-sync</code></h3>
+  <p>Genera o actualiza el archivo <code>test-config.json</code> dentro de <code>Modules/{Modulo}/Tests/</code>, leyendo los contextos definidos en <code>module-maker-config/contexts.json</code>.</p>
+
+  <div class="code-wrapper">
+    <div class="code-header"><span class="code-lang">bash</span><button class="copy-code-btn" onclick="copyCode(this)">Copiar</button></div>
+    <pre><code class="language-bash"># Sincronizar un módulo
+php artisan innodite:test-sync User
+
+# Sincronizar todos los módulos
+php artisan innodite:test-sync --all</code></pre>
+  </div>
+
+  <h4>Reglas del sync</h4>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Regla</th><th>Comportamiento</th></tr></thead>
+      <tbody>
+        <tr><td>Archivo destino</td><td><code>Modules/{Modulo}/Tests/test-config.json</code></td></tr>
+        <tr><td>Primera ejecución</td><td>Crea el archivo con todos los contextos detectados</td></tr>
+        <tr><td>Re-ejecuciones</td><td>Agrega contextos faltantes sin pisar overrides existentes</td></tr>
+        <tr><td>Campos editables</td><td><code>db_connection</code>, <code>db_database</code>, <code>seeder</code>, <code>enabled</code>, <code>env</code></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>Tests por contexto con coverage: <code>innodite:test-module</code></h3>
+  <p>Ejecuta PHPUnit por módulo y contexto. Si existe <code>test-config.json</code>, usa la configuración de DB y seeder del contexto; si no existe, cae al modo por defecto con <code>sqlite :memory:</code>.</p>
+
+  <div class="code-wrapper">
+    <div class="code-header"><span class="code-lang">bash</span><button class="copy-code-btn" onclick="copyCode(this)">Copiar</button></div>
+    <pre><code class="language-bash"># Ejecutar módulo en modo default
+php artisan innodite:test-module User
+
+# Ejecutar un contexto específico
+php artisan innodite:test-module User --context=central
+
+# Ejecutar todos los contextos habilitados
+php artisan innodite:test-module User --all-contexts
+
+# Coverage por contexto
+php artisan innodite:test-module User --context=central --coverage --format=html --format=clover</code></pre>
+  </div>
+
+  <h4>Salida de coverage</h4>
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>Formato</th><th>Ruta</th></tr></thead>
+      <tbody>
+        <tr><td>HTML</td><td><code>docs/test-reports/{Modulo}/{contexto}/html/index.html</code></td></tr>
+        <tr><td>Clover</td><td><code>docs/test-reports/{Modulo}/{contexto}/clover.xml</code></td></tr>
+        <tr><td>Text</td><td>Consola (stdout)</td></tr>
+      </tbody>
+    </table>
   </div>
 
   <h3>Flags de make:module</h3>

@@ -6,6 +6,7 @@ namespace Innodite\LaravelModuleMaker\Commands;
 
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\File;
+use Innodite\LaravelModuleMaker\Services\TestContextConfigService;
 use Symfony\Component\Process\Process;
 use Symfony\Component\Process\Exception\ProcessFailedException;
 
@@ -32,7 +33,8 @@ class TestModuleCommand extends Command
     protected $signature = 'innodite:test-module 
         {module? : Nombre del módulo (ej: User)}
         {--all : Ejecutar tests de TODOS los módulos}
-        {--context= : Filtrar por contexto (central|shared|tenant|tenant-shared)}
+        {--context= : Ejecutar tests de un contexto específico (key en Tests/test-config.json)}
+        {--all-contexts : Ejecutar todos los contextos habilitados del módulo}
         {--coverage : Generar reporte de coverage (requiere Xdebug/PCOV)}
         {--format=* : Formatos de coverage (html,text,clover). Default: html,text}
         {--filter= : Patrón de filtro para PHPUnit (ej: testExample)}
@@ -61,11 +63,11 @@ class TestModuleCommand extends Command
     protected bool $coverageEnabled = false;
 
     /**
-     * Ruta relativa para logs de fallos de tests.
+     * Servicio para sincronizar y resolver configuración de tests por contexto.
      *
-     * @var string
+     * @var TestContextConfigService
      */
-    protected string $failureLogsPath = 'logs/module_maker/test_failures';
+    protected TestContextConfigService $testConfigService;
 
     /**
      * Resultados de ejecución de tests.
@@ -81,6 +83,7 @@ class TestModuleCommand extends Command
     {
         parent::__construct();
         $this->reportsBasePath = base_path('docs/test-reports');
+        $this->testConfigService = new TestContextConfigService();
     }
 
     /**
@@ -251,13 +254,71 @@ class TestModuleCommand extends Command
             return;
         }
 
-        // Filtrar por contexto si se especifica
-        $testFiles = $this->getTestFiles($testsPath);
+        $moduleConfig = $this->testConfigService->loadModuleTestConfig($module);
+        $contexts = is_array($moduleConfig['contexts'] ?? null) ? $moduleConfig['contexts'] : [];
+
+        if ($this->option('all-contexts')) {
+            $enabledContexts = array_filter(
+                $contexts,
+                static fn ($context): bool => is_array($context) && (bool) ($context['enabled'] ?? true)
+            );
+
+            if (empty($enabledContexts)) {
+                $this->warn("  ⚠️  No hay contextos habilitados en {$this->testConfigService->getTestConfigPath($module)}");
+                $this->results[] = [
+                    'module' => $module,
+                    'status' => 'skipped',
+                    'reason' => 'No enabled contexts',
+                ];
+                $this->newLine();
+                return;
+            }
+
+            foreach ($enabledContexts as $contextKey => $contextConfig) {
+                if (!is_array($contextConfig)) {
+                    continue;
+                }
+
+                $this->runTestsForModuleContext($module, $testsPath, (string) $contextKey, $contextConfig);
+            }
+
+            return;
+        }
+
+        $contextOption = trim((string) $this->option('context'));
+        if ($contextOption !== '') {
+            $contextKey = $this->testConfigService->normalizeContextKey($contextOption);
+            $contextConfig = is_array($contexts[$contextKey] ?? null) ? $contexts[$contextKey] : [];
+
+            $this->runTestsForModuleContext($module, $testsPath, $contextKey, $contextConfig);
+            return;
+        }
+
+        $this->runTestsForModuleContext($module, $testsPath, null, []);
+    }
+
+    /**
+     * Ejecuta tests de un módulo para un contexto específico.
+     *
+     * @param string $module
+     * @param string $testsPath
+     * @param string|null $contextKey
+     * @param array<string,mixed> $contextConfig
+     * @return void
+     */
+    protected function runTestsForModuleContext(string $module, string $testsPath, ?string $contextKey, array $contextConfig): void
+    {
+        $label = $contextKey ?? 'default';
+        $moduleLabel = $contextKey ? "{$module}@{$contextKey}" : $module;
+
+        $this->info("  🧭 Contexto: {$label}");
+
+        $testFiles = $this->getTestFiles($testsPath, $contextKey, $contextConfig);
 
         if (empty($testFiles)) {
-            $this->warn("  ⚠️  No se encontraron archivos de test en '{$module}'");
+            $this->warn("  ⚠️  No se encontraron archivos de test para '{$moduleLabel}'");
             $this->results[] = [
-                'module' => $module,
+                'module' => $moduleLabel,
                 'status' => 'skipped',
                 'reason' => 'No test files',
             ];
@@ -267,14 +328,25 @@ class TestModuleCommand extends Command
 
         $this->info("  📄 Archivos de test encontrados: " . count($testFiles));
 
+        if (!$this->runContextSeeder($contextConfig, $moduleLabel)) {
+            $this->results[] = [
+                'module' => $moduleLabel,
+                'status' => 'failed',
+                'reason' => 'Seeder execution failed',
+            ];
+            $this->newLine();
+            return;
+        }
+
         // Crear configuración temporal de PHPUnit
-        $phpunitXmlPath = $this->createTemporaryPhpunitConfig($module, $testsPath);
+        $phpunitXmlPath = $this->createTemporaryPhpunitConfig($module, $testsPath, $contextKey, $contextConfig);
+        $reportPath = $this->resolveReportPath($module, $contextKey);
 
         // Construir comando PHPUnit
         $command = $this->buildPhpunitCommand($module, $phpunitXmlPath, $testFiles);
 
         // Ejecutar PHPUnit
-        $result = $this->executePhpunit($command, $module);
+        $result = $this->executePhpunit($command, $moduleLabel, $reportPath);
 
         // Guardar resultado
         $this->results[] = $result;
@@ -293,14 +365,21 @@ class TestModuleCommand extends Command
      * @param string $testsPath
      * @return array
      */
-    protected function getTestFiles(string $testsPath): array
+    protected function getTestFiles(string $testsPath, ?string $contextKey = null, array $contextConfig = []): array
     {
-        $context = $this->option('context');
+        $contextFolder = null;
+        if ($contextKey !== null && $contextKey !== '') {
+            $configuredFolder = trim((string) ($contextConfig['folder'] ?? ''));
+            $contextFolder = $configuredFolder !== ''
+                ? str_replace('\\', '/', $configuredFolder)
+                : $this->normalizeContextForPath($contextKey);
+        }
+
         $allFiles = File::allFiles($testsPath);
         $testFiles = [];
 
         foreach ($allFiles as $file) {
-            $relativePath = $file->getRelativePathname();
+            $relativePath = str_replace('\\', '/', $file->getRelativePathname());
             
             // Solo archivos *Test.php
             if (!str_ends_with($relativePath, 'Test.php')) {
@@ -308,9 +387,7 @@ class TestModuleCommand extends Command
             }
 
             // Filtrar por contexto si se especificó
-            if ($context) {
-                $contextFolder = $this->normalizeContextForPath($context);
-                
+            if ($contextFolder !== null && $contextFolder !== '') {
                 if (!str_contains($relativePath, $contextFolder)) {
                     continue;
                 }
@@ -347,10 +424,10 @@ class TestModuleCommand extends Command
      * @param string $testsPath
      * @return string Path del archivo creado
      */
-    protected function createTemporaryPhpunitConfig(string $module, string $testsPath): string
+    protected function createTemporaryPhpunitConfig(string $module, string $testsPath, ?string $contextKey = null, array $contextConfig = []): string
     {
         $modulePath = base_path("Modules/{$module}");
-        $reportPath = "{$this->reportsBasePath}/{$module}";
+        $reportPath = $this->resolveReportPath($module, $contextKey);
         
         // Crear carpeta de reportes si no existe
         if (!File::isDirectory($reportPath)) {
@@ -399,17 +476,13 @@ class TestModuleCommand extends Command
     </testsuites>{$coverageReports}
 
     <php>
-        <env name="APP_ENV" value="testing"/>
-        <env name="DB_CONNECTION" value="sqlite"/>
-        <env name="DB_DATABASE" value=":memory:"/>
-        <env name="CACHE_DRIVER" value="array"/>
-        <env name="SESSION_DRIVER" value="array"/>
-        <env name="QUEUE_CONNECTION" value="sync"/>
+{$this->renderPhpunitEnvBlock($contextConfig)}
     </php>
 </phpunit>
 XML;
 
-        $tempPath = storage_path("phpunit-{$module}.xml");
+        $suffix = $contextKey ? '-' . $this->testConfigService->normalizeContextKey($contextKey) : '';
+        $tempPath = storage_path("phpunit-{$module}{$suffix}.xml");
         File::put($tempPath, $xml);
 
         return $tempPath;
@@ -474,9 +547,9 @@ XML;
             $command[] = '--testdox';
         }
 
-        // Ejecutar exclusivamente los tests filtrados del módulo/contexto
+        // Ejecutar exclusivamente los archivos detectados para el módulo/contexto.
         foreach ($testFiles as $testFile) {
-            $command[] = $testFile;
+            $command[] = (string) $testFile;
         }
 
         return $command;
@@ -489,7 +562,7 @@ XML;
      * @param string $module
      * @return array
      */
-    protected function executePhpunit(array $command, string $module): array
+    protected function executePhpunit(array $command, string $module, string $reportPath): array
     {
         $process = new Process($command);
         $process->setTimeout(300); // 5 minutos timeout
@@ -518,101 +591,122 @@ XML;
             // Parsear cobertura si está disponible
             $coverage = $this->parseCoverageFromOutput($output);
 
-            $failureLogPath = null;
-            if (!$success) {
-                $failureLogPath = $this->persistFailedTestOutput(
-                    $module,
-                    $command,
-                    $exitCode,
-                    $output,
-                    $errorOutput,
-                    'failed'
-                );
-            }
-
             return [
                 'module' => $module,
                 'status' => $success ? 'passed' : 'failed',
                 'exit_code' => $exitCode,
                 'coverage' => $coverage,
+                'report_path' => $reportPath,
                 'output' => $output,
                 'error' => $errorOutput,
-                'failure_log_path' => $failureLogPath,
             ];
 
         } catch (ProcessFailedException $exception) {
-            $failureLogPath = $this->persistFailedTestOutput(
-                $module,
-                $command,
-                $exception->getProcess()->getExitCode(),
-                $output,
-                $exception->getMessage(),
-                'error'
-            );
-
             return [
                 'module' => $module,
                 'status' => 'error',
                 'exit_code' => $exception->getProcess()->getExitCode(),
                 'coverage' => null,
+                'report_path' => $reportPath,
                 'output' => $output,
                 'error' => $exception->getMessage(),
-                'failure_log_path' => $failureLogPath,
             ];
         }
     }
 
     /**
-     * Persiste la salida de una ejecución fallida en storage/logs del proyecto.
+     * Ejecuta seeder del contexto si está configurado.
      *
-     * @param string $module
-     * @param array $command
-     * @param int|null $exitCode
-     * @param string $output
-     * @param string $errorOutput
-     * @param string $status
-     * @return string
+     * @param array<string,mixed> $contextConfig
+     * @param string $moduleLabel
+     * @return bool
      */
-    protected function persistFailedTestOutput(
-        string $module,
-        array $command,
-        ?int $exitCode,
-        string $output,
-        string $errorOutput,
-        string $status
-    ): string {
-        $logDir = storage_path($this->failureLogsPath);
-
-        if (!File::isDirectory($logDir)) {
-            File::makeDirectory($logDir, 0755, true);
+    protected function runContextSeeder(array $contextConfig, string $moduleLabel): bool
+    {
+        $seeder = trim((string) ($contextConfig['seeder'] ?? ''));
+        if ($seeder === '') {
+            return true;
         }
 
-        $timestamp = now()->format('Ymd_His');
-        $fileName = strtolower($module) . '_' . $status . '_' . $timestamp . '.log';
-        $filePath = $logDir . DIRECTORY_SEPARATOR . $fileName;
+        $this->info("  🌱 Ejecutando seeder previo: {$seeder}");
 
-        $content = [
-            'Package: innodite/laravel-module-maker',
-            'Timestamp: ' . now()->toIso8601String(),
-            'Module: ' . $module,
-            'Status: ' . $status,
-            'Exit code: ' . ($exitCode ?? 'null'),
-            'Context: ' . ($this->option('context') ?: 'all'),
-            'Coverage requested: ' . ($this->option('coverage') ? 'yes' : 'no'),
-            'Filter: ' . ($this->option('filter') ?: 'none'),
-            'Command: ' . implode(' ', array_map('strval', $command)),
-            '',
-            '===== STDOUT =====',
-            $output !== '' ? $output : '[empty]',
-            '',
-            '===== STDERR =====',
-            $errorOutput !== '' ? $errorOutput : '[empty]',
-            '',
+        $parameters = [
+            '--class' => $seeder,
+            '--force' => true,
         ];
 
-        File::put($filePath, implode(PHP_EOL, $content));
+        $connection = trim((string) ($contextConfig['db_connection'] ?? ''));
+        if ($connection !== '') {
+            $parameters['--database'] = $connection;
+        }
 
-        return $filePath;
+        $exitCode = $this->call('db:seed', $parameters);
+        if ($exitCode !== self::SUCCESS) {
+            $this->error("  ❌ Falló el seeder configurado para {$moduleLabel}");
+            return false;
+        }
+
+        return true;
+    }
+
+    /**
+     * Renderiza el bloque <php> de phpunit.xml según contexto.
+     *
+     * @param array<string,mixed> $contextConfig
+     * @return string
+     */
+    protected function renderPhpunitEnvBlock(array $contextConfig): string
+    {
+        $env = [
+            'APP_ENV' => 'testing',
+            'CACHE_DRIVER' => 'array',
+            'SESSION_DRIVER' => 'array',
+            'QUEUE_CONNECTION' => 'sync',
+            'DB_CONNECTION' => 'sqlite',
+            'DB_DATABASE' => ':memory:',
+        ];
+
+        $configuredConnection = trim((string) ($contextConfig['db_connection'] ?? ''));
+        if ($configuredConnection !== '') {
+            $env['DB_CONNECTION'] = $configuredConnection;
+        }
+
+        if (array_key_exists('db_database', $contextConfig) && $contextConfig['db_database'] !== null) {
+            $configuredDatabase = trim((string) $contextConfig['db_database']);
+            if ($configuredDatabase !== '') {
+                $env['DB_DATABASE'] = $configuredDatabase;
+            }
+        }
+
+        $customEnv = $contextConfig['env'] ?? [];
+        if (is_array($customEnv)) {
+            foreach ($customEnv as $key => $value) {
+                if (!is_string($key) || $key === '') {
+                    continue;
+                }
+
+                $env[$key] = (string) $value;
+            }
+        }
+
+        $lines = [];
+        foreach ($env as $key => $value) {
+            $escapedValue = htmlspecialchars($value, ENT_QUOTES);
+            $lines[] = "        <env name=\"{$key}\" value=\"{$escapedValue}\"/>";
+        }
+
+        return implode(PHP_EOL, $lines);
+    }
+
+    protected function resolveReportPath(string $module, ?string $contextKey): string
+    {
+        if ($contextKey === null || $contextKey === '') {
+            return "{$this->reportsBasePath}/{$module}/default";
+        }
+
+        $normalizedContext = $this->testConfigService->normalizeContextKey($contextKey);
+
+        return "{$this->reportsBasePath}/{$module}/{$normalizedContext}";
     }
 
     /**
@@ -684,20 +778,6 @@ XML;
         $this->newLine();
         $this->info("Total: {$total} | Passed: {$passed} | Failed: {$failed} | Skipped: {$skipped}");
 
-        $failureLogs = collect($this->results)
-            ->pluck('failure_log_path')
-            ->filter()
-            ->values();
-
-        if ($failureLogs->isNotEmpty()) {
-            $this->newLine();
-            $this->warn('📝 Logs de fallos guardados en:');
-
-            foreach ($failureLogs as $failureLog) {
-                $this->line('   • ' . $failureLog);
-            }
-        }
-
         // Mostrar ubicación de reportes si se generó coverage
         if ($this->option('coverage') && $this->coverageEnabled) {
             $this->newLine();
@@ -710,7 +790,8 @@ XML;
                     $module = $result['module'];
                     
                     if (in_array('html', $formats)) {
-                        $htmlPath = "{$this->reportsBasePath}/{$module}/html/index.html";
+                        $reportPath = (string) ($result['report_path'] ?? "{$this->reportsBasePath}/{$module}");
+                        $htmlPath = "{$reportPath}/html/index.html";
                         if (File::exists($htmlPath)) {
                             $this->info("   • {$module}: {$htmlPath}");
                         }
