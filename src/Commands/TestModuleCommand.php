@@ -776,8 +776,6 @@ XML;
             'CACHE_DRIVER' => 'array',
             'SESSION_DRIVER' => 'array',
             'QUEUE_CONNECTION' => 'sync',
-            'DB_CONNECTION' => 'sqlite',
-            'DB_DATABASE' => ':memory:',
         ];
 
         $configuredConnection = trim((string) ($contextConfig['db_connection'] ?? ''));

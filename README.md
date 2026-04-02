@@ -505,6 +505,7 @@ php artisan innodite:test-sync --all
 - ✅ Crea `Modules/{Modulo}/Tests/test-config.json` si no existe
 - ✅ Agrega contextos faltantes sin duplicar
 - ✅ Conserva overrides manuales de `db_connection`, `db_database`, `seeder`, `enabled` y `env`
+- ✅ No asume ninguna base de datos por defecto: tú defines `db_connection` y `db_database`
 
 Ejemplo de `Modules/User/Tests/test-config.json`:
 
@@ -513,15 +514,15 @@ Ejemplo de `Modules/User/Tests/test-config.json`:
     "_readme": "Configuración de tests por contexto. Generado por innodite:test-sync.",
     "contexts": {
         "central": {
-            "db_connection": "sqlite",
-            "db_database": ":memory:",
+            "db_connection": "mysql",
+            "db_database": "neocenter_test",
             "enabled": true,
             "seeder": null,
             "env": {}
         },
         "tenant_shared": {
             "db_connection": "tenant",
-            "db_database": null,
+            "db_database": "tenant_test_shared",
             "enabled": true,
             "seeder": "Modules\\UserManagement\\Database\\Seeders\\Shared\\SharedModuleSeeder",
             "env": {

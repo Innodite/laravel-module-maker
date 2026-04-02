@@ -34,7 +34,7 @@ class TestContextConfigService
     }
 
     /**
-     * @return array<string, array{key:string,label:string,folder:string,group:string,db_connection:string,db_database:?string,enabled:bool,seeder:?string,env:array<string,string>}>
+    * @return array<string, array{key:string,label:string,folder:string,group:string,db_connection:?string,db_database:?string,enabled:bool,seeder:?string,env:array<string,string>}>
      */
     public function getContextDefinitions(): array
     {
@@ -74,8 +74,8 @@ class TestContextConfigService
                     'label' => (string) ($item['name'] ?? Str::headline($key)),
                     'folder' => $folder,
                     'group' => (string) $group,
-                    'db_connection' => $this->getDefaultConnection((string) $group),
-                    'db_database' => $this->getDefaultDatabase((string) $group),
+                    'db_connection' => null,
+                    'db_database' => null,
                     'enabled' => true,
                     'seeder' => null,
                     'env' => [],
@@ -125,7 +125,7 @@ class TestContextConfigService
         ksort($mergedContexts);
 
         return [
-            '_readme' => 'Configuración de tests por contexto. Generado por innodite:test-sync. Puedes editar db_connection, db_database, seeder, enabled y env por contexto.',
+            '_readme' => 'Configuración de tests por contexto. Generado por innodite:test-sync. Debes definir db_connection y db_database en cada contexto que quieras ejecutar, además de seeder, enabled y env si aplica.',
             'contexts' => $mergedContexts,
         ];
     }
@@ -183,16 +183,6 @@ class TestContextConfigService
         }
 
         return $this->normalizeContextKey((string) basename($folder));
-    }
-
-    private function getDefaultConnection(string $group): string
-    {
-        return in_array($group, ['tenant', 'tenant_shared'], true) ? 'tenant' : 'sqlite';
-    }
-
-    private function getDefaultDatabase(string $group): ?string
-    {
-        return in_array($group, ['tenant', 'tenant_shared'], true) ? null : ':memory:';
     }
 
     /**
