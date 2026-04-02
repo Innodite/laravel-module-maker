@@ -2,6 +2,19 @@
 
 **v3.1.0** — Generador de módulos Laravel con arquitectura de contextos dinámicos (Central, Shared, Tenant) para proyectos multi-tenant. Genera backend completo, inyecta rutas y crea vistas Vue 3 listas para usar — todo con un solo comando.
 
+## ⚠️ Versiones Deprecadas
+
+Se consideran **deprecados** los tags históricos con referencias heredadas a software/proyecto externo.
+
+Tags deprecados:
+- `v2.5.0`
+- `v3.2.7` a `v3.4.0`
+
+Versión mínima recomendada para uso nuevo:
+- `v3.4.1+`
+
+> Nota: la deprecación es de soporte/uso recomendado. No se reescribe el historial Git publicado.
+
 ---
 
 ## 📋 Tabla de Contenidos
@@ -9,6 +22,7 @@
 - [Requisitos](#-requisitos)
 - [Instalación](#-instalación)
 - [Tabla comparativa de contextos](#-tabla-comparativa-de-contextos)
+- [Versiones Deprecadas](#-versiones-deprecadas)
 - [Arquitectura Frontend](#-arquitectura-frontend)
 - [Guía de comandos](#-guía-de-comandos)
 - [Archivos generados por contexto](#-archivos-generados-por-contexto)
