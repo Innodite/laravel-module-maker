@@ -1,4 +1,4 @@
-# 🎯 SKILL.md — Conocimiento Experto en Innodite Laravel Module Maker v3.0.0
+# SKILL.md — Conocimiento Experto en Innodite Laravel Module Maker v3.0.0
 
 > **Rol:** Arquitecto de Software Senior especializado en PHP/Laravel
 > **Propósito:** Dominio completo de la arquitectura, patrones y funcionamiento del paquete

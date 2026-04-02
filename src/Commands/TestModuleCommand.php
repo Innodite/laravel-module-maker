@@ -260,8 +260,14 @@ class TestModuleCommand extends Command
 
         $this->info("  📄 Archivos de test encontrados: " . count($testFiles));
 
-        // Crear configuración temporal de PHPUnit
-        $phpunitXmlPath = $this->createTemporaryPhpunitConfig($module, $testsPath);
+        // Verificar si hay tests de tenant y ejecutar seeder si es necesario
+        $hasTenantTests = $this->hasTenantTests($testFiles);
+        if ($hasTenantTests) {
+            $this->setupTenantDatabase();
+        }
+
+        // Usar phpunit.xml del proyecto (NO crear temporal)
+        $phpunitXmlPath = base_path('phpunit.xml');
 
         // Construir comando PHPUnit
         $command = $this->buildPhpunitCommand($module, $phpunitXmlPath, $testFiles);
@@ -272,12 +278,41 @@ class TestModuleCommand extends Command
         // Guardar resultado
         $this->results[] = $result;
 
-        // Limpiar archivo temporal
-        if (File::exists($phpunitXmlPath)) {
-            File::delete($phpunitXmlPath);
-        }
-
         $this->newLine();
+    }
+
+    /**
+     * Verifica si hay tests de tenant en los archivos.
+     *
+     * @param array $testFiles
+     * @return bool
+     */
+    protected function hasTenantTests(array $testFiles): bool
+    {
+        foreach ($testFiles as $file) {
+            if (str_contains($file, '/Tenant/') || str_contains($file, 'TenantTest.php')) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /**
+     * Ejecuta el seeder minimal para preparar la BD de tenant.
+     *
+     * @return void
+     */
+    protected function setupTenantDatabase(): void
+    {
+        $this->info('  🔧 Preparando base de datos de tenant para testing...');
+        
+        try {
+            \Artisan::call('tenant:setup-test-db', ['--force' => true]);
+            $this->info('  ✅ Base de datos de tenant lista');
+        } catch (\Exception $e) {
+            $this->warn('  ⚠️  No se pudo ejecutar tenant:setup-test-db: ' . $e->getMessage());
+            $this->warn('  💡 Los tests de tenant podrían fallar si la BD no está preparada');
+        }
     }
 
     /**
@@ -334,81 +369,6 @@ class TestModuleCommand extends Command
     }
 
     /**
-     * Crea un archivo phpunit.xml temporal para el módulo.
-     *
-     * @param string $module
-     * @param string $testsPath
-     * @return string Path del archivo creado
-     */
-    protected function createTemporaryPhpunitConfig(string $module, string $testsPath): string
-    {
-        $modulePath = base_path("Modules/{$module}");
-        $reportPath = "{$this->reportsBasePath}/{$module}";
-        
-        // Crear carpeta de reportes si no existe
-        if (!File::isDirectory($reportPath)) {
-            File::makeDirectory($reportPath, 0755, true);
-        }
-
-        $formats = $this->getCoverageFormats();
-        $coverageReports = '';
-
-        if ($this->option('coverage') && $this->coverageEnabled) {
-            $reports = [];
-            
-            if (in_array('html', $formats)) {
-                $reports[] = "        <html outputDirectory=\"{$reportPath}/html\"/>";
-            }
-            
-            if (in_array('text', $formats)) {
-                $reports[] = "        <text outputFile=\"php://stdout\" showUncoveredFiles=\"false\"/>";
-            }
-            
-            if (in_array('clover', $formats)) {
-                $reports[] = "        <clover outputFile=\"{$reportPath}/clover.xml\"/>";
-            }
-
-            if (!empty($reports)) {
-                $coverageReports = "\n    <coverage>\n        <include>\n            <directory suffix=\".php\">{$modulePath}/Services</directory>\n            <directory suffix=\".php\">{$modulePath}/Repositories</directory>\n            <directory suffix=\".php\">{$modulePath}/Models</directory>\n            <directory suffix=\".php\">{$modulePath}/Http/Controllers</directory>\n        </include>\n        <report>\n" . implode("\n", $reports) . "\n        </report>\n    </coverage>";
-            }
-        }
-
-        $bootstrapPath = base_path('vendor/autoload.php');
-
-        $xml = <<<XML
-<?xml version="1.0" encoding="UTF-8"?>
-<phpunit
-    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
-    xsi:noNamespaceSchemaLocation="vendor/phpunit/phpunit/phpunit.xsd"
-    bootstrap="{$bootstrapPath}"
-    colors="true"
-    processIsolation="false"
-    stopOnFailure="false"
->
-    <testsuites>
-        <testsuite name="{$module}">
-            <directory suffix="Test.php">{$testsPath}</directory>
-        </testsuite>
-    </testsuites>{$coverageReports}
-
-    <php>
-        <env name="APP_ENV" value="testing"/>
-        <env name="DB_CONNECTION" value="sqlite"/>
-        <env name="DB_DATABASE" value=":memory:"/>
-        <env name="CACHE_DRIVER" value="array"/>
-        <env name="SESSION_DRIVER" value="array"/>
-        <env name="QUEUE_CONNECTION" value="sync"/>
-    </php>
-</phpunit>
-XML;
-
-        $tempPath = storage_path("phpunit-{$module}.xml");
-        File::put($tempPath, $xml);
-
-        return $tempPath;
-    }
-
-    /**
      * Obtiene los formatos de coverage solicitados.
      *
      * @return array
@@ -448,6 +408,78 @@ XML;
         
         $command = [
             PHP_BINARY,
+            $phpunitBin,
+            '--configuration=' . $phpunitXmlPath,
+        ];
+
+        // Filtrar por testsuite si se especificó contexto
+        if ($context = $this->option('context')) {
+            $testsuite = $this->getTestsuiteForContext($context, $module);
+            if ($testsuite) {
+                $command[] = '--testsuite=' . $testsuite;
+            }
+        }
+
+        // Agregar coverage si se solicita y está disponible
+        if ($this->option('coverage') && $this->coverageEnabled) {
+            $reportPath = "{$this->reportsBasePath}/{$module}";
+            
+            if (!File::isDirectory($reportPath)) {
+                File::makeDirectory($reportPath, 0755, true);
+            }
+
+            $formats = $this->getCoverageFormats();
+            
+            if (in_array('html', $formats)) {
+                $command[] = '--coverage-html=' . "{$reportPath}/html";
+            }
+            
+            if (in_array('clover', $formats)) {
+                $command[] = '--coverage-clover=' . "{$reportPath}/clover.xml";
+            }
+            
+            if (in_array('text', $formats)) {
+                $command[] = '--coverage-text';
+            }
+        }
+
+        // Flag --filter si se especifica
+        if ($filter = $this->option('filter')) {
+            $command[] = '--filter=' . $filter;
+        }
+
+        // Flag --stop-on-failure
+        if ($this->option('stop-on-failure')) {
+            $command[] = '--stop-on-failure';
+        }
+
+        // Flag --testdox para salida legible
+        if (!$this->option('no-output')) {
+            $command[] = '--testdox';
+        }
+
+        return $command;
+    }
+
+    /**
+     * Obtiene el nombre del testsuite correspondiente al contexto.
+     *
+     * @param string $context
+     * @param string $module
+     * @return string|null
+     */
+    protected function getTestsuiteForContext(string $context, string $module): ?string
+    {
+        $contextNormalized = strtolower($context);
+        
+        // Intentar encontrar testsuite específico del módulo
+        return match ($contextNormalized) {
+            'central' => "{$module}FeatureCentral",
+            'tenant' => "{$module}FeatureTenant",
+            'shared' => "{$module}Shared",
+            default => null,
+        };
+    }
             $phpunitBin,
             '--configuration=' . $phpunitXmlPath,
         ];
