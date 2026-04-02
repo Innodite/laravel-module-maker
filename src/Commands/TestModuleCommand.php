@@ -373,12 +373,14 @@ class TestModuleCommand extends Command
             }
         }
 
+        $bootstrapPath = base_path('vendor/autoload.php');
+
         $xml = <<<XML
 <?xml version="1.0" encoding="UTF-8"?>
 <phpunit
     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
     xsi:noNamespaceSchemaLocation="vendor/phpunit/phpunit/phpunit.xsd"
-    bootstrap="vendor/autoload.php"
+    bootstrap="{$bootstrapPath}"
     colors="true"
     processIsolation="false"
     stopOnFailure="false"
