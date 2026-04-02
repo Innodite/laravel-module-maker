@@ -133,10 +133,14 @@ class TestContextConfigService
     public function syncModuleTestConfig(string $module): array
     {
         $config = $this->getMergedModuleTestConfig($module);
+        $configPath = $this->getTestConfigPath($module);
+
         File::put(
-            $this->getTestConfigPath($module),
+            $configPath,
             json_encode($config, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES) . PHP_EOL
         );
+
+        @chmod($configPath, 0666);
 
         return $config;
     }

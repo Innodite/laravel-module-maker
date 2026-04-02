@@ -528,6 +528,7 @@ class TestModuleCommand extends Command
 XML;
 
         File::put($configPath, $xml);
+        @chmod($configPath, 0666);
         $this->line("  📝 Config PHPUnit creada: {$configPath}");
 
         return $configPath;
