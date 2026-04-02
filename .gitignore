@@ -1,0 +1,14 @@
+/vendor/
+/node_modules/
+composer.lock
+.phpunit.result.cache
+.DS_Store
+Thumbs.db
+
+# Reportes de test (mantener estructura de carpetas)
+docs/test-reports/*
+!docs/test-reports/.gitkeep
+!docs/test-reports/README.md
+
+# Configuraciones temporales de PHPUnit
+storage/phpunit-*.xml

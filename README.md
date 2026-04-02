@@ -248,6 +248,98 @@ Publica en `resources/js/Composables/`:
 
 ---
 
+### `innodite:test-module` — Ejecutar Tests con Coverage
+
+```bash
+# Ejecutar tests de un módulo específico
+php artisan innodite:test-module User
+
+# Ejecutar tests de TODOS los módulos
+php artisan innodite:test-module --all
+
+# Filtrar por contexto
+php artisan innodite:test-module User --context=central
+php artisan innodite:test-module --all --context=tenant
+
+# Generar reportes de coverage (requiere Xdebug o PCOV)
+php artisan innodite:test-module User --coverage
+
+# Especificar formatos de coverage
+php artisan innodite:test-module User --coverage --format=html
+php artisan innodite:test-module User --coverage --format=html --format=clover
+
+# Filtrar tests específicos
+php artisan innodite:test-module User --filter=testCreate
+
+# Detener en el primer fallo
+php artisan innodite:test-module User --stop-on-failure
+
+# Modo silencioso (solo resumen)
+php artisan innodite:test-module --all --no-output
+```
+
+**Características:**
+
+- ✅ Ejecuta PHPUnit en uno o todos los módulos
+- ✅ Escanea recursivamente toda la carpeta `Tests/` sin asumir estructura fija
+- ✅ Genera reportes de coverage en múltiples formatos:
+  - **HTML** → `docs/test-reports/{Module}/html/index.html` (navegable)
+  - **Text** → Salida en consola con porcentajes
+  - **Clover XML** → `docs/test-reports/{Module}/clover.xml` (CI/CD)
+- ✅ Valida que Xdebug o PCOV estén activos para coverage
+- ✅ Muestra tabla resumen con resultados y porcentaje de cobertura
+- ✅ Permite filtrar por contexto (Central, Shared, Tenant, etc.)
+- ✅ Soporta flag `--filter` de PHPUnit para tests específicos
+- ✅ Detección automática de módulos sin tests (warning + continuar)
+
+**Requisitos para Coverage:**
+
+```bash
+# Opción 1: Xdebug (desarrollo)
+pecl install xdebug
+# Añadir a php.ini: zend_extension=xdebug.so
+
+# Opción 2: PCOV (más rápido, CI/CD)
+pecl install pcov
+# Añadir a php.ini: extension=pcov.so
+```
+
+**Ejemplo de Salida:**
+
+```
+🧪 Innodite Module Maker - Test Runner
+
+✅ PHPUnit encontrado
+✅ Xdebug activo - Coverage disponible
+
+📦 Módulos a testear: User, Product, Invoice
+
+🔍 Ejecutando tests del módulo: User
+  📄 Archivos de test encontrados: 12
+  ✓ Tests passed (15 tests, 45 assertions)
+  
+═══════════════════════════════════════════════════════
+📊 RESUMEN DE EJECUCIÓN
+═══════════════════════════════════════════════════════
+
+┌─────────┬─────────┬──────────┐
+│ Módulo  │ Estado  │ Coverage │
+├─────────┼─────────┼──────────┤
+│ User    │ ✓ PASSED│ 87.5%    │
+│ Product │ ✓ PASSED│ 92.3%    │
+│ Invoice │ ✗ FAILED│ 65.2%    │
+└─────────┴─────────┴──────────┘
+
+Total: 3 | Passed: 2 | Failed: 1 | Skipped: 0
+
+📁 Reportes de coverage guardados en:
+   docs/test-reports/
+   • User: docs/test-reports/User/html/index.html
+   • Product: docs/test-reports/Product/html/index.html
+```
+
+---
+
 ## 📁 Archivos generados por contexto
 
 Esta sección muestra la lista exacta de archivos que el paquete genera para el módulo `User` en cada uno de los 4 contextos.
@@ -998,6 +1090,7 @@ Modules/
 | `innodite:module-check` | Diagnóstico de configuración, permisos y conflictos |
 | `innodite:check-env` | Verifica integración frontend-backend (bridge Inertia) |
 | `innodite:publish-frontend` | Publica composables Vue 3 (`useModuleContext`, `usePermissions`) |
+| `innodite:test-module` | Ejecuta tests de módulos con coverage (HTML, Text, Clover) |
 | `vendor:publish --tag=module-maker-config` | Publica `make-module.php` |
 | `vendor:publish --tag=module-maker-stubs` | Publica stubs contextuales personalizables |
 | `vendor:publish --tag=module-maker-contexts` | Publica `contexts.json` de ejemplo |
