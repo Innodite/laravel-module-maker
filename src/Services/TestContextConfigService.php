@@ -53,10 +53,6 @@ class TestContextConfigService
         $definitions = [];
 
         foreach ($decoded['contexts'] as $group => $items) {
-            if (!in_array((string) $group, ['central', 'tenant'], true)) {
-                continue;
-            }
-
             if (!is_array($items)) {
                 continue;
             }
@@ -117,6 +113,15 @@ class TestContextConfigService
             $mergedContexts[$key]['env'] = is_array($mergedContexts[$key]['env'] ?? null)
                 ? $mergedContexts[$key]['env']
                 : [];
+        }
+
+        foreach ($existing['contexts'] as $key => $context) {
+            if (!array_key_exists($key, $mergedContexts) && is_array($context)) {
+                $mergedContexts[$key] = $context;
+                $mergedContexts[$key]['env'] = is_array($mergedContexts[$key]['env'] ?? null)
+                    ? $mergedContexts[$key]['env']
+                    : [];
+            }
         }
 
         ksort($mergedContexts);
@@ -197,7 +202,7 @@ class TestContextConfigService
      */
     private function resolveContextKey(string $group, array $item, string $folder): string
     {
-        if ($group === 'central') {
+        if (in_array($group, ['central', 'shared', 'tenant_shared'], true)) {
             return $group;
         }
 
