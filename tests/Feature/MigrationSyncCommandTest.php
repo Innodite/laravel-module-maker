@@ -62,3 +62,62 @@ it('no modifica el manifiesto en modo dry-run', function () {
     $updated = json_decode(File::get($manifestPath), true);
     expect($updated)->toBe($initial);
 });
+
+it('detecta contexts y sincroniza manifiestos por central y tenant automaticamente', function () {
+    $configDir = $this->tempPath('module-maker-config');
+    $manifestDir = $this->tempPath('module-maker-config/migrations');
+
+    File::ensureDirectoryExists($configDir);
+    File::ensureDirectoryExists($manifestDir);
+
+    File::put($this->tempPath('module-maker-config/contexts.json'), json_encode([
+        'contexts' => [
+            'tenant' => [
+                [
+                    'permission_prefix' => 'energy_spain',
+                ],
+                [
+                    'permission_prefix' => 'telephony_peru',
+                ],
+            ],
+        ],
+    ], JSON_PRETTY_PRINT));
+
+    $centralMigration = $this->tempPath('Modules/User/Database/Migrations/Central/2026_01_01_000001_create_users_table.php');
+    $sharedMigration = $this->tempPath('Modules/User/Database/Migrations/Shared/2026_01_01_000000_create_shared_table.php');
+    $tenantSharedMigration = $this->tempPath('Modules/User/Database/Migrations/Tenant/Shared/2026_01_01_000002_create_user_tenant_table.php');
+    $energyMigration = $this->tempPath('Modules/Forms/Database/Migrations/Tenant/energy_spain/2026_01_01_000003_create_energy_sales_table.php');
+    $peruMigration = $this->tempPath('Modules/Forms/Database/Migrations/Tenant/telephony_peru/2026_01_01_000004_create_peru_sales_table.php');
+
+    File::ensureDirectoryExists(dirname($centralMigration));
+    File::ensureDirectoryExists(dirname($sharedMigration));
+    File::ensureDirectoryExists(dirname($tenantSharedMigration));
+    File::ensureDirectoryExists(dirname($energyMigration));
+    File::ensureDirectoryExists(dirname($peruMigration));
+
+    File::put($centralMigration, "<?php\n");
+    File::put($sharedMigration, "<?php\n");
+    File::put($tenantSharedMigration, "<?php\n");
+    File::put($energyMigration, "<?php\n");
+    File::put($peruMigration, "<?php\n");
+
+    $this->artisan('innodite:migration-sync', [
+        '--yes' => true,
+    ])->assertSuccessful();
+
+    $centralPlan = json_decode(File::get("{$manifestDir}/central_order.json"), true);
+    $energyPlan = json_decode(File::get("{$manifestDir}/tenant_energy_spain_order.json"), true);
+    $peruPlan = json_decode(File::get("{$manifestDir}/tenant_telephony_peru_order.json"), true);
+
+    expect($centralPlan['migrations'])->toContain('User:Central/2026_01_01_000001_create_users_table.php')
+        ->and($centralPlan['migrations'])->toContain('User:Shared/2026_01_01_000000_create_shared_table.php')
+        ->and($centralPlan['migrations'])->not->toContain('Forms:Tenant/energy_spain/2026_01_01_000003_create_energy_sales_table.php')
+        ->and($energyPlan['migrations'])->toContain('User:Shared/2026_01_01_000000_create_shared_table.php')
+        ->and($energyPlan['migrations'])->toContain('User:Tenant/Shared/2026_01_01_000002_create_user_tenant_table.php')
+        ->and($energyPlan['migrations'])->toContain('Forms:Tenant/energy_spain/2026_01_01_000003_create_energy_sales_table.php')
+        ->and($energyPlan['migrations'])->not->toContain('Forms:Tenant/telephony_peru/2026_01_01_000004_create_peru_sales_table.php')
+        ->and($peruPlan['migrations'])->toContain('User:Shared/2026_01_01_000000_create_shared_table.php')
+        ->and($peruPlan['migrations'])->toContain('User:Tenant/Shared/2026_01_01_000002_create_user_tenant_table.php')
+        ->and($peruPlan['migrations'])->toContain('Forms:Tenant/telephony_peru/2026_01_01_000004_create_peru_sales_table.php')
+        ->and($peruPlan['migrations'])->not->toContain('Forms:Tenant/energy_spain/2026_01_01_000003_create_energy_sales_table.php');
+});

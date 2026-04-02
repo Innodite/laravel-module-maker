@@ -311,11 +311,14 @@ Si una coordenada no existe, el comando responde con la ruta esperada para corre
 Escanea los módulos y agrega al manifiesto las migraciones y seeders que aún no están registradas.
 
 ```bash
-# Sincronizar manifiesto por defecto
+# Sincronizar automaticamente por contextos (central + tenants detectados)
 php artisan innodite:migration-sync
 
 # Sincronizar un manifiesto concreto
 php artisan innodite:migration-sync --manifest=tenant_innodite_order.json
+
+# Sincronizacion automatica sin prompt de confirmacion
+php artisan innodite:migration-sync --yes
 
 # Ver faltantes sin escribir cambios
 php artisan innodite:migration-sync --manifest=tenant_innodite_order.json --dry-run
@@ -323,13 +326,20 @@ php artisan innodite:migration-sync --manifest=tenant_innodite_order.json --dry-
 
 **Comportamiento de sync:**
 
-1. Crea `module-maker-config/migrations/` si no existe.
-2. Crea el manifiesto si no existe (estructura vacía).
-3. Escanea:
+1. Si no envías `--manifest`, lee `module-maker-config/contexts.json` y propone:
+    - `central_order.json`
+    - `tenant_{permission_prefix}_order.json` por cada tenant configurado.
+2. Pide confirmación en consola antes de generar/sincronizar múltiples manifiestos (omite prompt con `--yes`).
+3. Crea `module-maker-config/migrations/` si no existe.
+4. Crea cada manifiesto faltante (estructura vacía).
+5. Escanea:
      - `Modules/*/Database/Migrations/**`
      - `Modules/*/Database/Seeders/**`
-4. Convierte hallazgos a coordenadas.
-5. Hace append solo de faltantes (sin duplicar).
+6. Convierte hallazgos a coordenadas.
+7. Filtra por alcance de manifiesto:
+    - `central_order.json` => contextos `Central` y `Shared`.
+    - `tenant_*.json` => `Shared` + `Tenant/Shared` + contexto `Tenant/{X}` del tenant objetivo.
+8. Hace append solo de faltantes (sin duplicar).
 
 **Importante:**
 
