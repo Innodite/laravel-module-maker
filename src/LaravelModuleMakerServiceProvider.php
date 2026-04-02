@@ -12,6 +12,7 @@ use Innodite\LaravelModuleMaker\Commands\MigrateModulesCommand;
 use Innodite\LaravelModuleMaker\Commands\ModuleCheckCommand;
 use Innodite\LaravelModuleMaker\Commands\PublishFrontendCommand;
 use Innodite\LaravelModuleMaker\Commands\SetupModuleMakerCommand;
+use Innodite\LaravelModuleMaker\Commands\TestModuleCommand;
 use Innodite\LaravelModuleMaker\Middleware\InnoditeContextBridge;
 use Illuminate\Support\Str;
 use Innodite\LaravelModuleMaker\Database\Seeders\InnoditeModuleSeeder;
@@ -57,6 +58,7 @@ class LaravelModuleMakerServiceProvider extends ServiceProvider
                 SetupModuleMakerCommand::class,
                 PublishFrontendCommand::class,
                 CheckEnvCommand::class,
+                TestModuleCommand::class,
             ]);
 
             // ── Publicar configuración ────────────────────────────────────────
