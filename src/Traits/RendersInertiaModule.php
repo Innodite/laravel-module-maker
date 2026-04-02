@@ -16,7 +16,7 @@ use Innodite\LaravelModuleMaker\Support\ContextResolver;
  * dinámicamente desde contexts.json del proyecto.
  *
  * Ejemplo de uso en un controller:
- *   return $this->renderModule('UserManagement', 'TenantEnergySpainUserList');
+ *   return $this->renderModule('UserManagement', 'TenantAlphaUserList');
  *   return $this->renderModule('UserManagement', 'Users/TenantSharedUserList');
  *   return $this->renderModule('UserManagement', 'CentralUserList');
  */
@@ -27,7 +27,7 @@ trait RendersInertiaModule
      *
      * @param  string  $module     Nombre del módulo Laravel (ej: 'UserManagement')
      * @param  string  $component  Ruta relativa al componente dentro de Pages/, sin extensión
-     *                             (ej: 'TenantEnergySpainUserList', 'Users/TenantSharedUserList')
+    *                             (ej: 'TenantAlphaUserList', 'Users/TenantSharedUserList')
      * @param  array   $data       Props a inyectar en el componente Vue
      * @return InertiaResponse
      *
@@ -43,7 +43,7 @@ trait RendersInertiaModule
      * El prefijo es la única fuente de verdad — no se detecta contexto en tiempo de ejecución.
      *
      * @param  string  $module     Nombre del módulo Laravel
-     * @param  string  $component  Ruta relativa del componente (ej: 'Users/TenantEnergySpainUserList')
+    * @param  string  $component  Ruta relativa del componente (ej: 'Users/TenantAlphaUserList')
      * @return string              Ruta en formato 'Module::Folder/Filename' para Inertia
      *
      * @throws \RuntimeException Si el prefijo no coincide o el archivo no existe
@@ -81,8 +81,8 @@ trait RendersInertiaModule
      * El mapa se construye dinámicamente desde contexts.json del proyecto.
      * Los prefijos más largos se evalúan primero para evitar coincidencias parciales.
      *
-     * @param  string  $filename  Nombre del archivo sin extensión (ej: 'TenantEnergySpainUserList')
-     * @return string             Carpeta base relativa a Pages/ (ej: 'Tenant/EnergySpain')
+    * @param  string  $filename  Nombre del archivo sin extensión (ej: 'TenantAlphaUserList')
+    * @return string             Carpeta base relativa a Pages/ (ej: 'Tenant/Alpha')
      *
      * @throws \RuntimeException Si el nombre no comienza con ningún prefijo válido
      */
@@ -105,7 +105,7 @@ trait RendersInertiaModule
         throw new \RuntimeException(
             "[RendersInertiaModule] El componente '{$filename}' no tiene un prefijo de convención válido.\n\n" .
             "Prefijos válidos (según contexts.json):\n  {$validPrefixes}\n\n" .
-            "Ejemplo correcto: \$this->renderModule('UserManagement', 'TenantEnergySpainUserList')\n"
+            "Ejemplo correcto: \$this->renderModule('UserManagement', 'TenantAlphaUserList')\n"
         );
     }
 
@@ -121,7 +121,7 @@ trait RendersInertiaModule
         $map = [];
 
         try {
-            // Tenants primero (prefijos más específicos, ej: TenantEnergySpain)
+            // Tenants primero (prefijos más específicos, ej: TenantAlpha)
             foreach (ContextResolver::allTenants() as $item) {
                 $prefix = $item['class_prefix'] ?? null;
                 $folder = $item['folder'] ?? null;

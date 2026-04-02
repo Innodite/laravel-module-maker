@@ -12,7 +12,7 @@ use Illuminate\Support\Str;
  * Ejemplos de salida según contexto:
  *   central        → Services/Central/CentralUserService.php + Services/Central/Contracts/CentralUserServiceInterface.php
  *   tenant_shared  → Services/Tenant/Shared/TenantSharedUserService.php + .../Contracts/TenantSharedUserServiceInterface.php
- *   energy_spain   → Services/Tenant/EnergySpain/TenantEnergySpainUserService.php + .../Contracts/...
+ *   tenant_alpha   → Services/Tenant/Alpha/TenantAlphaUserService.php + .../Contracts/...
  */
 class ServiceGenerator extends AbstractComponentGenerator
 {

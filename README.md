@@ -328,7 +328,7 @@ Permite ejecutar una coordenada de migración puntual sin correr el manifiesto c
 
 ```bash
 # Ejecutar una migración específica
-php artisan innodite:migrate-one "Products:Tenant/EnergySpain/2026_01_01_000001_create_products_table.php"
+php artisan innodite:migrate-one "Products:Tenant/Alpha/2026_01_01_000001_create_products_table.php"
 
 # Forzar un manifiesto concreto
 php artisan innodite:migrate-one "Forms:Shared/2026_01_01_000001_create_forms_table.php" --manifest=central_order.json
@@ -337,7 +337,7 @@ php artisan innodite:migrate-one "Forms:Shared/2026_01_01_000001_create_forms_ta
 php artisan innodite:migrate-one "Forms:Shared/2026_01_01_000001_create_forms_table.php" --dry-run
 
 # Omitir confirmaciones interactivas
-php artisan innodite:migrate-one "Products:Tenant/EnergySpain/2026_01_01_000001_create_products_table.php" --yes
+php artisan innodite:migrate-one "Products:Tenant/Alpha/2026_01_01_000001_create_products_table.php" --yes
 ```
 
 **Qué hace internamente:**
@@ -509,7 +509,7 @@ Genera o actualiza el archivo `test-config.json` dentro de la carpeta `Tests/` d
 Para testing, el sync solo genera contextos válidos de ejecución:
 
 - `central`
-- tenants específicos (`energy_spain`, `telephony_spain`, `telephony_peru`, etc.)
+- tenants específicos (`tenant_alpha`, `tenant_beta`, etc.)
 
 No genera `shared` ni `tenant_shared`, porque esos contextos no representan una base de datos de prueba autónoma.
 
@@ -541,11 +541,11 @@ Ejemplo de `Modules/User/Tests/test-config.json`:
             "seeder": null,
             "env": {}
         },
-        "telephony_spain": {
+        "tenant_alpha": {
             "db_connection": "tenant",
-            "db_database": "telephony_spain_test",
+            "db_database": "tenant_alpha_test",
             "enabled": true,
-            "seeder": "Modules\\UserManagement\\Database\\Seeders\\TelefoniaEspana\\TenantTelefoniaEspanaSeeder",
+            "seeder": "Modules\\UserManagement\\Database\\Seeders\\Tenant\\TenantAlphaSeeder",
             "env": {
                 "CACHE_DRIVER": "array"
             }

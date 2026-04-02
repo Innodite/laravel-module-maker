@@ -80,7 +80,7 @@ it('valida primero que la base de datos del tenant exista antes de ejecutar', fu
     File::ensureDirectoryExists(dirname($migrationPath));
     File::put($migrationPath, "<?php\n");
 
-    $manifestPath = "{$manifestDir}/tenant_energy_spain_order.json";
+    $manifestPath = "{$manifestDir}/tenant_alpha_order.json";
     File::put($manifestPath, json_encode([
         'migrations' => [
             'User:Tenant/Shared/2026_01_01_000001_create_users_table.php',
@@ -89,7 +89,7 @@ it('valida primero que la base de datos del tenant exista antes de ejecutar', fu
     ], JSON_PRETTY_PRINT));
 
     $this->artisan('innodite:migrate-plan', [
-        '--manifest' => 'tenant_energy_spain_order.json',
+        '--manifest' => 'tenant_alpha_order.json',
     ])
         ->expectsOutputToContain("La base de datos '")
         ->assertFailed();

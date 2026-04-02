@@ -15,7 +15,7 @@ use Illuminate\Support\Str;
  * Ejemplos de salida según contexto:
  *   central        → Http/Controllers/Central/CentralUserController.php
  *   tenant_shared  → Http/Controllers/Tenant/Shared/TenantSharedUserController.php
- *   energy_spain   → Http/Controllers/Tenant/EnergySpain/TenantEnergySpainUserController.php
+ *   tenant_alpha   → Http/Controllers/Tenant/Alpha/TenantAlphaUserController.php
  */
 class ControllerGenerator extends AbstractComponentGenerator
 {

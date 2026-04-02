@@ -22,7 +22,7 @@ use Innodite\LaravelModuleMaker\Support\ContextResolver;
  *                   definido en contexts.json (generates_routes_for_all_tenants = false),
  *                   el controlador apunta al TenantShared
  *
- *   energy_spain  → routes/tenant.php, un solo bloque para ese tenant
+ *   tenant_alpha  → routes/tenant.php, un solo bloque para ese tenant
  *
  * Si el archivo ya existe, agrega la nueva sección sin sobreescribir las existentes.
  * Usa marcadores de comentario para saber dónde insertar.
@@ -321,11 +321,11 @@ class RouteGenerator extends AbstractComponentGenerator
     /**
      * Construye el bloque de rutas CRUD estándar para una funcionalidad.
      *
-     * @param  string  $routePrefix     Prefijo de URL (ej: 'energy-spain-users')
-     * @param  string  $routeName       Prefijo de nombre (ej: 'energy-spain.users.')
+    * @param  string  $routePrefix     Prefijo de URL (ej: 'tenant-alpha-users')
+    * @param  string  $routeName       Prefijo de nombre (ej: 'tenant-alpha.users.')
      * @param  string  $controllerClass Nombre corto de la clase del controlador (sin namespace)
      * @param  string  $permMiddleware  Middleware de permisos ('tenant-permission' o 'central-permission')
-     * @param  string  $permPrefix      Prefijo del permiso (ej: 'energy_spain')
+    * @param  string  $permPrefix      Prefijo del permiso (ej: 'tenant_alpha')
      * @param  string  $permKey         Clave de la funcionalidad en snake_case (ej: 'users')
      * @param  string  $indent          Indentación del bloque
      * @return string

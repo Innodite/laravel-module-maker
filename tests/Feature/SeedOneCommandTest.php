@@ -7,7 +7,7 @@ use Illuminate\Support\Facades\File;
 it('detecta el manifiesto tenant para un seeder individual y muestra lo que hara en dry-run', function () {
     $manifestDir = $this->tempPath('module-maker-config/migrations');
     File::ensureDirectoryExists($manifestDir);
-    File::put("{$manifestDir}/tenant_energy_spain_order.json", json_encode([
+    File::put("{$manifestDir}/tenant_alpha_order.json", json_encode([
         'migrations' => [],
         'seeders' => [],
     ], JSON_PRETTY_PRINT));
@@ -33,16 +33,16 @@ PHP);
 
     $this->artisan('innodite:seed-one', [
         'coordinate' => 'Probe:Tenant/Shared/TenantSharedProbeSeeder',
-        '--manifest' => 'tenant_energy_spain_order.json',
+        '--manifest' => 'tenant_alpha_order.json',
         '--yes' => true,
         '--dry-run' => true,
     ])
-        ->expectsOutputToContain('Destino: tenant_energy_spain_order.json')
+        ->expectsOutputToContain('Destino: tenant_alpha_order.json')
         ->expectsOutputToContain('Tipo:          seeder')
         ->expectsOutputToContain('[DRY-RUN] Se ejecutaria el seeder especificado.')
         ->assertSuccessful();
 
-    $plan = json_decode(File::get("{$manifestDir}/tenant_energy_spain_order.json"), true);
+    $plan = json_decode(File::get("{$manifestDir}/tenant_alpha_order.json"), true);
     expect($plan['seeders'])->toBe([]);
 });
 

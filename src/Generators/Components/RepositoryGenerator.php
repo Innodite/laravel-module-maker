@@ -15,7 +15,7 @@ use Illuminate\Support\Str;
  * Ejemplos de salida según contexto:
  *   central        → Repositories/Central/CentralUserRepository.php
  *   tenant_shared  → Repositories/Tenant/Shared/TenantSharedUserRepository.php
- *   energy_spain   → Repositories/Tenant/EnergySpain/TenantEnergySpainUserRepository.php
+ *   tenant_alpha   → Repositories/Tenant/TenantAlpha/TenantTenantAlphaUserRepository.php
  */
 class RepositoryGenerator extends AbstractComponentGenerator
 {

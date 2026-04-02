@@ -232,8 +232,8 @@ abstract class AbstractComponentGenerator
     }
 
     /**
-     * Prefija el nombre de la clase con el prefijo del contexto activo.
-     * Ej: prefixClass('UserController') con contexto 'energy_spain' → 'TenantEnergySpainUserController'
+    * Prefija el nombre de la clase con el prefijo del contexto activo.
+    * Ej: prefixClass('UserController') con contexto 'alpha' → 'TenantAlphaUserController'
      *
      * @param  string  $className  Nombre de la clase sin prefijo
      * @return string
