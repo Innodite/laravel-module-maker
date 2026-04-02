@@ -63,6 +63,13 @@ class TestModuleCommand extends Command
     protected bool $coverageEnabled = false;
 
     /**
+     * Carpeta relativa para logs de errores de test.
+     *
+     * @var string
+     */
+    protected string $failureLogsPath = 'logs/module_maker/test_failures';
+
+    /**
      * Servicio para sincronizar y resolver configuración de tests por contexto.
      *
      * @var TestContextConfigService
@@ -590,6 +597,18 @@ XML;
 
             // Parsear cobertura si está disponible
             $coverage = $this->parseCoverageFromOutput($output);
+            $failureLogPath = null;
+
+            if (!$success) {
+                $failureLogPath = $this->persistFailedTestOutput(
+                    $module,
+                    $command,
+                    $exitCode,
+                    $output,
+                    $errorOutput,
+                    'failed'
+                );
+            }
 
             return [
                 'module' => $module,
@@ -597,21 +616,106 @@ XML;
                 'exit_code' => $exitCode,
                 'coverage' => $coverage,
                 'report_path' => $reportPath,
+                'failure_log_path' => $failureLogPath,
                 'output' => $output,
                 'error' => $errorOutput,
             ];
 
         } catch (ProcessFailedException $exception) {
+            $failureLogPath = $this->persistFailedTestOutput(
+                $module,
+                $command,
+                $exception->getProcess()->getExitCode(),
+                $output,
+                $exception->getMessage(),
+                'error'
+            );
+
             return [
                 'module' => $module,
                 'status' => 'error',
                 'exit_code' => $exception->getProcess()->getExitCode(),
                 'coverage' => null,
                 'report_path' => $reportPath,
+                'failure_log_path' => $failureLogPath,
                 'output' => $output,
                 'error' => $exception->getMessage(),
             ];
         }
+    }
+
+    /**
+     * Guarda un log detallado de un fallo de ejecución.
+     *
+     * @param string $module
+     * @param array<int,string> $command
+     * @param int|null $exitCode
+     * @param string $output
+     * @param string $errorOutput
+     * @param string $status
+     * @return string
+     */
+    protected function persistFailedTestOutput(
+        string $module,
+        array $command,
+        ?int $exitCode,
+        string $output,
+        string $errorOutput,
+        string $status
+    ): string {
+        $logDir = storage_path($this->failureLogsPath);
+
+        if (!File::isDirectory($logDir)) {
+            File::makeDirectory($logDir, 0755, true);
+        }
+
+        $timestamp = date('Ymd_His');
+        $moduleSafe = str_replace(['@', '/', '\\', ' '], '_', strtolower($module));
+        $fileName = "{$moduleSafe}_{$status}_{$timestamp}.log";
+        $filePath = $logDir . DIRECTORY_SEPARATOR . $fileName;
+
+        $content = [
+            'Package: innodite/laravel-module-maker',
+            'Timestamp: ' . date(DATE_ATOM),
+            'Module: ' . $module,
+            'Status: ' . $status,
+            'Exit code: ' . ($exitCode ?? 'null'),
+            'Context option: ' . (trim((string) $this->option('context')) !== '' ? (string) $this->option('context') : '[none]'),
+            'Coverage requested: ' . ($this->option('coverage') ? 'yes' : 'no'),
+            'Filter: ' . ($this->option('filter') ?: 'none'),
+            'Command: ' . implode(' ', array_map('strval', $command)),
+            '',
+            '===== STDOUT =====',
+            $output !== '' ? $output : '[empty]',
+            '',
+            '===== STDERR =====',
+            $errorOutput !== '' ? $errorOutput : '[empty]',
+            '',
+        ];
+
+        File::put($filePath, implode(PHP_EOL, $content));
+
+        return $filePath;
+    }
+
+    /**
+     * Devuelve un extracto corto para mostrar fallos sin inundar la consola.
+     */
+    protected function buildFailureSnippet(string $output, string $error): string
+    {
+        $combined = trim($output . PHP_EOL . $error);
+        if ($combined === '') {
+            return '[sin salida adicional]';
+        }
+
+        $lines = preg_split('/\r\n|\r|\n/', $combined) ?: [];
+        $lines = array_values(array_filter(array_map('trim', $lines), static fn (string $line): bool => $line !== ''));
+
+        if (count($lines) <= 20) {
+            return implode(PHP_EOL, $lines);
+        }
+
+        return implode(PHP_EOL, array_slice($lines, -20));
     }
 
     /**
@@ -778,6 +882,32 @@ XML;
 
         $this->newLine();
         $this->info("Total: {$total} | Passed: {$passed} | Failed: {$failed} | Skipped: {$skipped}");
+
+        $failedResults = array_values(array_filter(
+            $this->results,
+            static fn (array $result): bool => in_array((string) ($result['status'] ?? ''), ['failed', 'error'], true)
+        ));
+
+        if (!empty($failedResults)) {
+            $this->newLine();
+            $this->error('❌ Detalle de errores detectados:');
+
+            foreach ($failedResults as $result) {
+                $module = (string) ($result['module'] ?? 'N/A');
+                $exitCode = (string) ($result['exit_code'] ?? 'N/A');
+                $logPath = (string) ($result['failure_log_path'] ?? 'N/A');
+                $snippet = $this->buildFailureSnippet(
+                    (string) ($result['output'] ?? ''),
+                    (string) ($result['error'] ?? '')
+                );
+
+                $this->line("  • {$module} (exit: {$exitCode})");
+                $this->line("    Log: {$logPath}");
+                $this->line('    Extracto:');
+                $this->line('    ' . str_replace(PHP_EOL, PHP_EOL . '    ', $snippet));
+                $this->newLine();
+            }
+        }
 
         // Mostrar ubicación de reportes si se generó coverage
         if ($this->option('coverage') && $this->coverageEnabled) {
