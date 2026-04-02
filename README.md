@@ -1,5 +1,11 @@
 # 🏗️ Innodite Laravel Module Maker
 
+[![Tests](https://github.com/Innodite/laravel-module-maker/actions/workflows/tests.yml/badge.svg)](https://github.com/Innodite/laravel-module-maker/actions/workflows/tests.yml)
+[![Coverage Workflow](https://github.com/Innodite/laravel-module-maker/actions/workflows/coverage.yml/badge.svg)](https://github.com/Innodite/laravel-module-maker/actions/workflows/coverage.yml)
+[![Packagist Version](https://img.shields.io/packagist/v/innodite/laravel-module-maker)](https://packagist.org/packages/innodite/laravel-module-maker)
+[![Packagist Downloads](https://img.shields.io/packagist/dt/innodite/laravel-module-maker)](https://packagist.org/packages/innodite/laravel-module-maker)
+[![License](https://img.shields.io/packagist/l/innodite/laravel-module-maker)](LICENSE)
+
 **v3.1.0** — Generador de módulos Laravel con arquitectura de contextos dinámicos (Central, Shared, Tenant) para proyectos multi-tenant. Genera backend completo, inyecta rutas y crea vistas Vue 3 listas para usar — todo con un solo comando.
 
 ---
