@@ -747,7 +747,7 @@ XML;
         $rows = [];
 
         foreach ($this->results as $result) {
-            $module = $result['module'];
+            $module = (string) ($result['module'] ?? 'N/A');
             
             $status = match ($result['status']) {
                 'passed' => '<fg=green>✓ PASSED</>',
@@ -757,11 +757,12 @@ XML;
                 default => '? UNKNOWN',
             };
 
-            $coverage = $result['coverage'] 
+            $coverageData = $result['coverage'] ?? null;
+            $coverage = is_array($coverageData)
                 ? sprintf('<fg=cyan>%.1f%%</> (%d/%d)', 
-                    $result['coverage']['percentage'],
-                    $result['coverage']['covered'],
-                    $result['coverage']['total'])
+                    (float) ($coverageData['percentage'] ?? 0),
+                    (int) ($coverageData['covered'] ?? 0),
+                    (int) ($coverageData['total'] ?? 0))
                 : '<fg=gray>N/A</>';
 
             $rows[] = [$module, $status, $coverage];
