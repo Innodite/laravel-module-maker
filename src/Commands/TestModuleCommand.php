@@ -826,6 +826,8 @@ XML;
             $configuredDatabase = trim((string) $contextConfig['db_database']);
             if ($configuredDatabase !== '') {
                 $env['DB_DATABASE'] = $configuredDatabase;
+                // Compatibilidad con proyectos que resuelven mysql.database desde DB_MYSQL_DATABASE.
+                $env['DB_MYSQL_DATABASE'] = $configuredDatabase;
             }
         }
 
@@ -843,7 +845,8 @@ XML;
         $lines = [];
         foreach ($env as $key => $value) {
             $escapedValue = htmlspecialchars($value, ENT_QUOTES);
-            $lines[] = "        <env name=\"{$key}\" value=\"{$escapedValue}\"/>";
+            // force="true" evita que variables preexistentes del proceso sobreescriban el contexto de test.
+            $lines[] = "        <env name=\"{$key}\" value=\"{$escapedValue}\" force=\"true\"/>";
         }
 
         return implode(PHP_EOL, $lines);
