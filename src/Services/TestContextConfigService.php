@@ -111,6 +111,8 @@ class TestContextConfigService
                 $existingContext = [];
             }
 
+            $existingContext = $this->normalizeLegacyContextValues($key, $existingContext);
+
             $mergedContexts[$key] = array_merge($definition, $existingContext);
             $mergedContexts[$key]['env'] = is_array($mergedContexts[$key]['env'] ?? null)
                 ? $mergedContexts[$key]['env']
@@ -195,5 +197,25 @@ class TestContextConfigService
             '_readme' => (string) ($decoded['_readme'] ?? ''),
             'contexts' => is_array($decoded['contexts'] ?? null) ? $decoded['contexts'] : [],
         ];
+    }
+
+    /**
+     * Limpia defaults heredados de versiones previas del generador.
+     *
+     * @param array<string,mixed> $context
+     * @return array<string,mixed>
+     */
+    private function normalizeLegacyContextValues(string $contextKey, array $context): array
+    {
+        if (
+            $contextKey === 'central'
+            && (($context['db_connection'] ?? null) === 'sqlite')
+            && (($context['db_database'] ?? null) === ':memory:')
+        ) {
+            $context['db_connection'] = null;
+            $context['db_database'] = null;
+        }
+
+        return $context;
     }
 }
