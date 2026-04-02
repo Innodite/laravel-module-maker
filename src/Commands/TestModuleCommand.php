@@ -61,6 +61,13 @@ class TestModuleCommand extends Command
     protected bool $coverageEnabled = false;
 
     /**
+     * Ruta relativa para logs de fallos de tests.
+     *
+     * @var string
+     */
+    protected string $failureLogsPath = 'logs/module_maker/test_failures';
+
+    /**
      * Resultados de ejecución de tests.
      *
      * @var array
@@ -260,14 +267,8 @@ class TestModuleCommand extends Command
 
         $this->info("  📄 Archivos de test encontrados: " . count($testFiles));
 
-        // Verificar si hay tests de tenant y ejecutar seeder si es necesario
-        $hasTenantTests = $this->hasTenantTests($testFiles);
-        if ($hasTenantTests) {
-            $this->setupTenantDatabase();
-        }
-
-        // Usar phpunit.xml del proyecto (NO crear temporal)
-        $phpunitXmlPath = base_path('phpunit.xml');
+        // Crear configuración temporal de PHPUnit
+        $phpunitXmlPath = $this->createTemporaryPhpunitConfig($module, $testsPath);
 
         // Construir comando PHPUnit
         $command = $this->buildPhpunitCommand($module, $phpunitXmlPath, $testFiles);
@@ -278,41 +279,12 @@ class TestModuleCommand extends Command
         // Guardar resultado
         $this->results[] = $result;
 
+        // Limpiar archivo temporal
+        if (File::exists($phpunitXmlPath)) {
+            File::delete($phpunitXmlPath);
+        }
+
         $this->newLine();
-    }
-
-    /**
-     * Verifica si hay tests de tenant en los archivos.
-     *
-     * @param array $testFiles
-     * @return bool
-     */
-    protected function hasTenantTests(array $testFiles): bool
-    {
-        foreach ($testFiles as $file) {
-            if (str_contains($file, '/Tenant/') || str_contains($file, 'TenantTest.php')) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    /**
-     * Ejecuta el seeder minimal para preparar la BD de tenant.
-     *
-     * @return void
-     */
-    protected function setupTenantDatabase(): void
-    {
-        $this->info('  🔧 Preparando base de datos de tenant para testing...');
-        
-        try {
-            \Artisan::call('tenant:setup-test-db', ['--force' => true]);
-            $this->info('  ✅ Base de datos de tenant lista');
-        } catch (\Exception $e) {
-            $this->warn('  ⚠️  No se pudo ejecutar tenant:setup-test-db: ' . $e->getMessage());
-            $this->warn('  💡 Los tests de tenant podrían fallar si la BD no está preparada');
-        }
     }
 
     /**
@@ -369,6 +341,81 @@ class TestModuleCommand extends Command
     }
 
     /**
+     * Crea un archivo phpunit.xml temporal para el módulo.
+     *
+     * @param string $module
+     * @param string $testsPath
+     * @return string Path del archivo creado
+     */
+    protected function createTemporaryPhpunitConfig(string $module, string $testsPath): string
+    {
+        $modulePath = base_path("Modules/{$module}");
+        $reportPath = "{$this->reportsBasePath}/{$module}";
+        
+        // Crear carpeta de reportes si no existe
+        if (!File::isDirectory($reportPath)) {
+            File::makeDirectory($reportPath, 0755, true);
+        }
+
+        $formats = $this->getCoverageFormats();
+        $coverageReports = '';
+
+        if ($this->option('coverage') && $this->coverageEnabled) {
+            $reports = [];
+            
+            if (in_array('html', $formats)) {
+                $reports[] = "        <html outputDirectory=\"{$reportPath}/html\"/>";
+            }
+            
+            if (in_array('text', $formats)) {
+                $reports[] = "        <text outputFile=\"php://stdout\" showUncoveredFiles=\"false\"/>";
+            }
+            
+            if (in_array('clover', $formats)) {
+                $reports[] = "        <clover outputFile=\"{$reportPath}/clover.xml\"/>";
+            }
+
+            if (!empty($reports)) {
+                $coverageReports = "\n    <coverage>\n        <include>\n            <directory suffix=\".php\">{$modulePath}/Services</directory>\n            <directory suffix=\".php\">{$modulePath}/Repositories</directory>\n            <directory suffix=\".php\">{$modulePath}/Models</directory>\n            <directory suffix=\".php\">{$modulePath}/Http/Controllers</directory>\n        </include>\n        <report>\n" . implode("\n", $reports) . "\n        </report>\n    </coverage>";
+            }
+        }
+
+        $bootstrapPath = base_path('vendor/autoload.php');
+
+        $xml = <<<XML
+<?xml version="1.0" encoding="UTF-8"?>
+<phpunit
+    xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+    xsi:noNamespaceSchemaLocation="vendor/phpunit/phpunit/phpunit.xsd"
+    bootstrap="{$bootstrapPath}"
+    colors="true"
+    processIsolation="false"
+    stopOnFailure="false"
+>
+    <testsuites>
+        <testsuite name="{$module}">
+            <directory suffix="Test.php">{$testsPath}</directory>
+        </testsuite>
+    </testsuites>{$coverageReports}
+
+    <php>
+        <env name="APP_ENV" value="testing"/>
+        <env name="DB_CONNECTION" value="sqlite"/>
+        <env name="DB_DATABASE" value=":memory:"/>
+        <env name="CACHE_DRIVER" value="array"/>
+        <env name="SESSION_DRIVER" value="array"/>
+        <env name="QUEUE_CONNECTION" value="sync"/>
+    </php>
+</phpunit>
+XML;
+
+        $tempPath = storage_path("phpunit-{$module}.xml");
+        File::put($tempPath, $xml);
+
+        return $tempPath;
+    }
+
+    /**
      * Obtiene los formatos de coverage solicitados.
      *
      * @return array
@@ -412,37 +459,6 @@ class TestModuleCommand extends Command
             '--configuration=' . $phpunitXmlPath,
         ];
 
-        // Filtrar por testsuite si se especificó contexto
-        if ($context = $this->option('context')) {
-            $testsuite = $this->getTestsuiteForContext($context, $module);
-            if ($testsuite) {
-                $command[] = '--testsuite=' . $testsuite;
-            }
-        }
-
-        // Agregar coverage si se solicita y está disponible
-        if ($this->option('coverage') && $this->coverageEnabled) {
-            $reportPath = "{$this->reportsBasePath}/{$module}";
-            
-            if (!File::isDirectory($reportPath)) {
-                File::makeDirectory($reportPath, 0755, true);
-            }
-
-            $formats = $this->getCoverageFormats();
-            
-            if (in_array('html', $formats)) {
-                $command[] = '--coverage-html=' . "{$reportPath}/html";
-            }
-            
-            if (in_array('clover', $formats)) {
-                $command[] = '--coverage-clover=' . "{$reportPath}/clover.xml";
-            }
-            
-            if (in_array('text', $formats)) {
-                $command[] = '--coverage-text';
-            }
-        }
-
         // Flag --filter si se especifica
         if ($filter = $this->option('filter')) {
             $command[] = '--filter=' . $filter;
@@ -458,27 +474,12 @@ class TestModuleCommand extends Command
             $command[] = '--testdox';
         }
 
-        return $command;
-    }
+        // Ejecutar exclusivamente los tests filtrados del módulo/contexto
+        foreach ($testFiles as $testFile) {
+            $command[] = $testFile;
+        }
 
-    /**
-     * Obtiene el nombre del testsuite correspondiente al contexto.
-     *
-     * @param string $context
-     * @param string $module
-     * @return string|null
-     */
-    protected function getTestsuiteForContext(string $context, string $module): ?string
-    {
-        $contextNormalized = strtolower($context);
-        
-        // Intentar encontrar testsuite específico del módulo
-        return match ($contextNormalized) {
-            'central' => "{$module}FeatureCentral",
-            'tenant' => "{$module}FeatureTenant",
-            'shared' => "{$module}Shared",
-            default => null,
-        };
+        return $command;
     }
 
     /**
@@ -517,6 +518,18 @@ class TestModuleCommand extends Command
             // Parsear cobertura si está disponible
             $coverage = $this->parseCoverageFromOutput($output);
 
+            $failureLogPath = null;
+            if (!$success) {
+                $failureLogPath = $this->persistFailedTestOutput(
+                    $module,
+                    $command,
+                    $exitCode,
+                    $output,
+                    $errorOutput,
+                    'failed'
+                );
+            }
+
             return [
                 'module' => $module,
                 'status' => $success ? 'passed' : 'failed',
@@ -524,9 +537,19 @@ class TestModuleCommand extends Command
                 'coverage' => $coverage,
                 'output' => $output,
                 'error' => $errorOutput,
+                'failure_log_path' => $failureLogPath,
             ];
 
         } catch (ProcessFailedException $exception) {
+            $failureLogPath = $this->persistFailedTestOutput(
+                $module,
+                $command,
+                $exception->getProcess()->getExitCode(),
+                $output,
+                $exception->getMessage(),
+                'error'
+            );
+
             return [
                 'module' => $module,
                 'status' => 'error',
@@ -534,8 +557,62 @@ class TestModuleCommand extends Command
                 'coverage' => null,
                 'output' => $output,
                 'error' => $exception->getMessage(),
+                'failure_log_path' => $failureLogPath,
             ];
         }
+    }
+
+    /**
+     * Persiste la salida de una ejecución fallida en storage/logs del proyecto.
+     *
+     * @param string $module
+     * @param array $command
+     * @param int|null $exitCode
+     * @param string $output
+     * @param string $errorOutput
+     * @param string $status
+     * @return string
+     */
+    protected function persistFailedTestOutput(
+        string $module,
+        array $command,
+        ?int $exitCode,
+        string $output,
+        string $errorOutput,
+        string $status
+    ): string {
+        $logDir = storage_path($this->failureLogsPath);
+
+        if (!File::isDirectory($logDir)) {
+            File::makeDirectory($logDir, 0755, true);
+        }
+
+        $timestamp = now()->format('Ymd_His');
+        $fileName = strtolower($module) . '_' . $status . '_' . $timestamp . '.log';
+        $filePath = $logDir . DIRECTORY_SEPARATOR . $fileName;
+
+        $content = [
+            'Package: innodite/laravel-module-maker',
+            'Timestamp: ' . now()->toIso8601String(),
+            'Module: ' . $module,
+            'Status: ' . $status,
+            'Exit code: ' . ($exitCode ?? 'null'),
+            'Context: ' . ($this->option('context') ?: 'all'),
+            'Coverage requested: ' . ($this->option('coverage') ? 'yes' : 'no'),
+            'Filter: ' . ($this->option('filter') ?: 'none'),
+            'Command: ' . implode(' ', array_map('strval', $command)),
+            '',
+            '===== STDOUT =====',
+            $output !== '' ? $output : '[empty]',
+            '',
+            '===== STDERR =====',
+            $errorOutput !== '' ? $errorOutput : '[empty]',
+            '',
+        ];
+
+        File::put($filePath, implode(PHP_EOL, $content));
+
+        return $filePath;
     }
 
     /**
@@ -606,6 +683,20 @@ class TestModuleCommand extends Command
 
         $this->newLine();
         $this->info("Total: {$total} | Passed: {$passed} | Failed: {$failed} | Skipped: {$skipped}");
+
+        $failureLogs = collect($this->results)
+            ->pluck('failure_log_path')
+            ->filter()
+            ->values();
+
+        if ($failureLogs->isNotEmpty()) {
+            $this->newLine();
+            $this->warn('📝 Logs de fallos guardados en:');
+
+            foreach ($failureLogs as $failureLog) {
+                $this->line('   • ' . $failureLog);
+            }
+        }
 
         // Mostrar ubicación de reportes si se generó coverage
         if ($this->option('coverage') && $this->coverageEnabled) {
