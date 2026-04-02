@@ -1312,7 +1312,7 @@ php artisan innodite:migration-sync --manifest=tenant_innodite_order.json --dry-
 
   <h3>Sincronización de configuración de tests: <code>innodite:test-sync</code></h3>
   <p>Genera o actualiza el archivo <code>test-config.json</code> dentro de <code>Modules/{Modulo}/Tests/</code>, leyendo los contextos definidos en <code>module-maker-config/contexts.json</code>.</p>
-  <p>Para testing solo se generan contextos ejecutables: <code>central</code> y tenants específicos. Los contextos <code>shared</code> y <code>tenant_shared</code> se excluyen porque no representan una base de datos de prueba autónoma.</p>
+  <p>Para testing, el sync genera y sincroniza los contextos definidos en <code>contexts.json</code>. La ejecución se controla por contexto con el flag <code>enabled</code> en <code>test-config.json</code>.</p>
 
   <div class="code-wrapper">
     <div class="code-header"><span class="code-lang">bash</span><button class="copy-code-btn" onclick="copyCode(this)">Copiar</button></div>
@@ -1332,13 +1332,14 @@ php artisan innodite:test-sync --all</code></pre>
         <tr><td>Primera ejecución</td><td>Crea el archivo con todos los contextos detectados</td></tr>
         <tr><td>Re-ejecuciones</td><td>Agrega contextos faltantes sin pisar overrides existentes</td></tr>
         <tr><td>DB por contexto</td><td>El usuario define <code>db_connection</code> y <code>db_database</code>; el sync no asume valores por defecto</td></tr>
+        <tr><td>Selección de ejecución</td><td>El contexto participa en <code>--all-contexts</code> solo si tiene <code>enabled=true</code></td></tr>
         <tr><td>Campos editables</td><td><code>db_connection</code>, <code>db_database</code>, <code>seeder</code>, <code>enabled</code>, <code>env</code></td></tr>
       </tbody>
     </table>
   </div>
 
   <h3>Tests por contexto con coverage: <code>innodite:test-module</code></h3>
-  <p>Ejecuta PHPUnit por módulo y contexto. Si existe <code>test-config.json</code>, usa la configuración de DB y seeder del contexto; si no existe, cae al modo por defecto con <code>sqlite :memory:</code>.</p>
+  <p>Ejecuta PHPUnit por módulo y contexto. Si existe <code>test-config.json</code>, usa la configuración de DB y seeder del contexto; si no existe, cae al modo por defecto con <code>sqlite :memory:</code>. El XML contextual se genera con variables de DB forzadas (<code>force="true"</code>) y compatibilidad para <code>DB_MYSQL_DATABASE</code> cuando aplica.</p>
 
   <div class="code-wrapper">
     <div class="code-header"><span class="code-lang">bash</span><button class="copy-code-btn" onclick="copyCode(this)">Copiar</button></div>

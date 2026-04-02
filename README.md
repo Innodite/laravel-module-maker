@@ -478,6 +478,8 @@ php artisan innodite:test-module User --context=central --coverage --format=html
 - ✅ Permite correr un contexto (`--context`) o todos los contextos habilitados (`--all-contexts`)
 - ✅ Escanea recursivamente toda la carpeta `Tests/` sin asumir estructura fija
 - ✅ Crea/usa archivo de configuración PHPUnit editable en `Modules/{Modulo}/Tests/phpunit-{contexto}.xml`
+- ✅ Genera variables de entorno de DB con `force="true"` para evitar herencia accidental de valores del proceso
+- ✅ Cuando `db_database` está definido, también exporta `DB_MYSQL_DATABASE` para compatibilidad con configuraciones MySQL personalizadas
 - ✅ Puede ejecutar un `seeder` previo por contexto antes de PHPUnit
 - ✅ Genera reportes de coverage en múltiples formatos:
     - **HTML** → `docs/test-reports/{Module}/{contexto}/html/index.html` (navegable)
@@ -492,12 +494,12 @@ php artisan innodite:test-module User --context=central --coverage --format=html
 
 Genera o actualiza el archivo `test-config.json` dentro de la carpeta `Tests/` de cada módulo, leyendo los contextos desde `module-maker-config/contexts.json`.
 
-Para testing, el sync solo genera contextos válidos de ejecución:
+Para testing, el sync genera y sincroniza los contextos definidos en `contexts.json`.
 
-- `central`
-- tenants específicos (`energy_spain`, `telephony_spain`, `telephony_peru`, etc.)
+- Incluye contextos de negocio (`central`, `shared`, `tenant_shared`, tenants específicos, etc.)
+- Respeta el control por contexto mediante `enabled` en `test-config.json`
 
-No genera `shared` ni `tenant_shared`, porque esos contextos no representan una base de datos de prueba autónoma.
+Esto mantiene el paquete flexible: el usuario decide qué contextos ejecutar y cómo mapear `db_connection`/`db_database`.
 
 ```bash
 # Sincronizar un módulo
