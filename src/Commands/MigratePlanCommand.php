@@ -5,15 +5,14 @@ declare(strict_types=1);
 namespace Innodite\LaravelModuleMaker\Commands;
 
 use Illuminate\Console\Command;
-use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\File;
 use Innodite\LaravelModuleMaker\Services\MigrationPlanResolver;
+use Innodite\LaravelModuleMaker\Support\ContextResolver;
 use Throwable;
 
 class MigratePlanCommand extends Command
 {
     protected $signature = 'innodite:migrate-plan
-        {--manifest= : Manifiesto JSON (ej: central_order.json) en module-maker-config/migrations}
+        {--manifest= : Manifiesto JSON (ej: central.order.json) en module-maker-config/migrations}
         {--dry-run : Muestra el plan sin ejecutar migraciones ni seeders}
         {--seed : Ejecuta seeders después de migraciones}';
 
@@ -39,20 +38,15 @@ class MigratePlanCommand extends Command
 
         $migrations = $plan['migrations'];
         $seeders = $plan['seeders'];
-        $connectionName = $this->resolveExecutionConnection($manifestPath, $migrations, $seeders);
+        $connectionName = $this->resolveExecutionConnection($manifestPath, $migrations, $seeders, $dryRun);
+
+        if ($connectionName === null) {
+            return self::FAILURE;
+        }
 
         if (empty($migrations) && (!$runSeeders || empty($seeders))) {
             $this->components->warn("El manifiesto '{$manifestPath}' no contiene tareas para ejecutar.");
             return self::SUCCESS;
-        }
-
-        if (!$dryRun) {
-            $databaseValidationError = $this->validateDatabaseExists($connectionName);
-
-            if ($databaseValidationError !== null) {
-                $this->components->error($databaseValidationError);
-                return self::FAILURE;
-            }
         }
 
         $this->components->info("Manifiesto: {$manifestPath}");
@@ -135,77 +129,69 @@ class MigratePlanCommand extends Command
     }
 
     /**
+     * Resuelve la conexión de ejecución para un manifest.
+     *
+     * Flujo explícito (v3.5.0+):
+     *   1. Extrae el id del nombre del manifest (patrón {id}.order.json)
+     *   2. Busca el contexto en contexts.json via ContextResolver::find()
+     *   3. Valida que tenancy_strategy === 'manual' y que connection_key no esté vacío
+     *   4. Retorna connection_key del contexto
+     *
+     * Retorna null y muestra un error amigable si la validación falla.
+     *
      * @param array<int, string> $migrations
      * @param array<int, string> $seeders
      */
-    private function resolveExecutionConnection(string $manifestPath, array $migrations, array $seeders): string
+    private function resolveExecutionConnection(string $manifestPath, array $migrations, array $seeders, bool $dryRun = false): ?string
     {
         $manifestName = strtolower(basename($manifestPath));
 
-        if (str_starts_with($manifestName, 'tenant_')) {
-            return 'tenant';
-        }
-
-        $coordinates = array_merge($migrations, $seeders);
-
-        foreach ($coordinates as $coordinate) {
-            $normalized = strtolower($coordinate);
-
-            if (str_contains($normalized, ':tenant/') || str_contains($normalized, ':tenant\\')) {
-                return 'tenant';
-            }
-        }
-
-        return (string) config('database.default', 'mysql');
-    }
-
-    private function validateDatabaseExists(string $connectionName): ?string
-    {
-        $connection = config("database.connections.{$connectionName}");
-
-        if (!is_array($connection)) {
-            return "La conexión '{$connectionName}' no está configurada.";
-        }
-
-        $driver = (string) ($connection['driver'] ?? '');
-        $databaseName = (string) ($connection['database'] ?? '');
-
-        if ($driver === 'sqlite') {
-            if ($databaseName === '' || $databaseName === ':memory:') {
-                return null;
-            }
-
-            if (!File::exists($databaseName)) {
-                return "La base de datos '{$databaseName}' de la conexión '{$connectionName}' no existe.";
-            }
-
+        if (!preg_match('/^([a-z0-9][a-z0-9-]*)\.order\.json$/', $manifestName, $matches)) {
+            $this->components->error(
+                "El nombre del manifest '{$manifestName}' no tiene el formato esperado '{id}.order.json'."
+            );
             return null;
         }
 
-        if ($databaseName === '') {
-            return "La conexión '{$connectionName}' no tiene una base de datos configurada.";
-        }
+        $contextId = $matches[1];
 
         try {
-            $exists = match ($driver) {
-                'mysql', 'mariadb' => DB::connection($connectionName)
-                    ->table('information_schema.schemata')
-                    ->where('schema_name', $databaseName)
-                    ->exists(),
-                'pgsql' => !empty(DB::connection($connectionName)
-                    ->select('select 1 from pg_database where datname = ? limit 1', [$databaseName])),
-                'sqlsrv' => !empty(DB::connection($connectionName)
-                    ->select('select 1 from sys.databases where name = ?', [$databaseName])),
-                default => true,
-            };
-        } catch (Throwable $e) {
-            return "No se pudo validar la base de datos '{$databaseName}' de la conexión '{$connectionName}': {$e->getMessage()}";
+            $context = ContextResolver::find($contextId);
+        } catch (\Throwable) {
+            $this->components->error(
+                "No se encontró el contexto '{$contextId}' en contexts.json. " .
+                "Verifica que el manifest corresponda a un contexto registrado."
+            );
+            return null;
         }
 
-        if (!$exists) {
-            return "La base de datos '{$databaseName}' de la conexión '{$connectionName}' no existe.";
+        $tenancyStrategy = $context['tenancy_strategy'] ?? null;
+        if ($tenancyStrategy !== 'manual') {
+            $this->components->error(
+                "El contexto '{$contextId}' tiene tenancy_strategy='{$tenancyStrategy}'. " .
+                "Solo se permite ejecutar migrate-plan con tenancy_strategy='manual'."
+            );
+            return null;
         }
 
-        return null;
+        $connectionKey = $context['connection_key'] ?? null;
+        if ($connectionKey === null || $connectionKey === '') {
+            $this->components->error(
+                "El contexto '{$contextId}' no tiene un connection_key definido. " .
+                "Agrega un connection_key válido en contexts.json antes de ejecutar migrate-plan."
+            );
+            return null;
+        }
+
+        if (!$dryRun && !is_array(config("database.connections.{$connectionKey}"))) {
+            $this->components->error(
+                "La conexión '{$connectionKey}' del contexto '{$contextId}' no existe en config/database.php. " .
+                "Créala manualmente o ejecuta innodite:make-connections."
+            );
+            return null;
+        }
+
+        return $connectionKey;
     }
+
 }

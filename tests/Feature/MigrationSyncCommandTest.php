@@ -8,7 +8,7 @@ it('sincroniza manifiesto agregando migraciones y seeders faltantes', function (
     $manifestDir = $this->tempPath('module-maker-config/migrations');
     File::ensureDirectoryExists($manifestDir);
 
-    $manifestPath = "{$manifestDir}/central_order.json";
+    $manifestPath = "{$manifestDir}/central.order.json";
     File::put($manifestPath, json_encode([
         'migrations' => [
             'User:Shared/2026_01_01_000001_create_users_table.php',
@@ -28,7 +28,7 @@ it('sincroniza manifiesto agregando migraciones y seeders faltantes', function (
     File::put($seederMissing, "<?php\nnamespace Modules\\User\\Database\\Seeders\\Shared; class SharedUserSeeder {}\n");
 
     $this->artisan('innodite:migration-sync', [
-        '--manifest' => 'central_order.json',
+        '--manifest' => 'central.order.json',
     ])->assertSuccessful();
 
     $updated = json_decode(File::get($manifestPath), true);
@@ -42,7 +42,7 @@ it('no modifica el manifiesto en modo dry-run', function () {
     $manifestDir = $this->tempPath('module-maker-config/migrations');
     File::ensureDirectoryExists($manifestDir);
 
-    $manifestPath = "{$manifestDir}/central_order.json";
+    $manifestPath = "{$manifestDir}/central.order.json";
     $initial = [
         'migrations' => [],
         'seeders' => [],
@@ -55,7 +55,7 @@ it('no modifica el manifiesto en modo dry-run', function () {
     File::put($migMissing, "<?php\n");
 
     $this->artisan('innodite:migration-sync', [
-        '--manifest' => 'central_order.json',
+        '--manifest' => 'central.order.json',
         '--dry-run' => true,
     ])->assertSuccessful();
 
@@ -74,9 +74,11 @@ it('detecta contexts y sincroniza manifiestos por central y tenant automaticamen
         'contexts' => [
             'tenant' => [
                 [
+                    'id' => 'alpha',
                     'permission_prefix' => 'alpha',
                 ],
                 [
+                    'id' => 'beta',
                     'permission_prefix' => 'beta',
                 ],
             ],
@@ -105,9 +107,9 @@ it('detecta contexts y sincroniza manifiestos por central y tenant automaticamen
         '--yes' => true,
     ])->assertSuccessful();
 
-    $centralPlan = json_decode(File::get("{$manifestDir}/central_order.json"), true);
-    $alphaPlan = json_decode(File::get("{$manifestDir}/tenant_alpha_order.json"), true);
-    $betaPlan = json_decode(File::get("{$manifestDir}/tenant_beta_order.json"), true);
+    $centralPlan = json_decode(File::get("{$manifestDir}/central.order.json"), true);
+    $alphaPlan = json_decode(File::get("{$manifestDir}/alpha.order.json"), true);
+    $betaPlan = json_decode(File::get("{$manifestDir}/beta.order.json"), true);
 
     expect($centralPlan['migrations'])->toContain('User:Central/2026_01_01_000001_create_users_table.php')
         ->and($centralPlan['migrations'])->toContain('User:Shared/2026_01_01_000000_create_shared_table.php')

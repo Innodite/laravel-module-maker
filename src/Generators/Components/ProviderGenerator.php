@@ -184,16 +184,16 @@ class ProviderGenerator extends AbstractComponentGenerator
 
         $componentList = (! $this->isClean && ! empty($this->components))
             ? $this->components
-            : [['name' => $this->moduleName, 'context' => $this->componentConfig['context'] ?? null, 'context_name' => $this->componentConfig['context_name'] ?? null]];
+            : [['name' => $this->moduleName, 'context' => $this->componentConfig['context'] ?? null, 'context_id' => $this->componentConfig['context_id'] ?? null]];
 
         foreach ($componentList as $component) {
             $modelName   = Str::studly($component['name']);
             $contextKey  = $component['context'] ?? null;
-            $contextName = $component['context_name'] ?? null;
+            $contextId   = $component['context_id'] ?? null;
 
-            $nsPath = $this->resolveNamespacePath($contextKey, $contextName);
+            $nsPath = $this->resolveNamespacePath($contextKey, $contextId);
 
-            $classPrefix = $this->resolveClassPrefix($contextKey, $contextName);
+            $classPrefix = $this->resolveClassPrefix($contextKey, $contextId);
 
             $serviceClass = $classPrefix . "{$modelName}Service";
             $serviceIface = $serviceClass . 'Interface';
@@ -224,18 +224,18 @@ class ProviderGenerator extends AbstractComponentGenerator
      * Resuelve el namespace_path del contexto activo.
      *
      * @param  string|null  $contextKey   Clave del contexto
-     * @param  string|null  $contextName  Nombre del sub-contexto
+     * @param  string|null  $contextId    ID del contexto
      * @return string
      */
-    private function resolveNamespacePath(?string $contextKey, ?string $contextName): string
+    private function resolveNamespacePath(?string $contextKey, ?string $contextId): string
     {
         if ($contextKey === null) {
             return '';
         }
 
         try {
-            $ctx = $contextName !== null
-                ? ContextResolver::resolveItem($contextKey, $contextName)
+            $ctx = $contextId !== null
+                ? ContextResolver::resolveById($contextKey, $contextId)
                 : ContextResolver::resolve($contextKey);
 
             return $ctx['namespace_path'] ?? '';
@@ -248,18 +248,18 @@ class ProviderGenerator extends AbstractComponentGenerator
      * Resuelve el class_prefix del contexto activo.
      *
      * @param  string|null  $contextKey   Clave del contexto
-     * @param  string|null  $contextName  Nombre del sub-contexto
+     * @param  string|null  $contextId    ID del contexto
      * @return string
      */
-    private function resolveClassPrefix(?string $contextKey, ?string $contextName): string
+    private function resolveClassPrefix(?string $contextKey, ?string $contextId): string
     {
         if ($contextKey === null) {
             return '';
         }
 
         try {
-            $ctx = $contextName !== null
-                ? ContextResolver::resolveItem($contextKey, $contextName)
+            $ctx = $contextId !== null
+                ? ContextResolver::resolveById($contextKey, $contextId)
                 : ContextResolver::resolve($contextKey);
 
             return $ctx['class_prefix'] ?? '';

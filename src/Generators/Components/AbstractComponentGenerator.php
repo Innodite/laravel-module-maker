@@ -95,7 +95,7 @@ abstract class AbstractComponentGenerator
     /**
      * Retorna la configuración completa del contexto activo.
      *
-     * Usa 'context_name' del componentConfig para identificar el sub-contexto exacto
+     * Usa 'context_id' del componentConfig para identificar el sub-contexto exacto
      * dentro del array del contexto seleccionado (ej: 'Energía España' en contexts.tenant).
      * Si no hay 'context' definido, retorna array vacío (retrocompatibilidad).
      *
@@ -107,8 +107,8 @@ abstract class AbstractComponentGenerator
             return $this->resolvedContext;
         }
 
-        $contextKey  = $this->componentConfig['context'] ?? null;
-        $contextName = $this->componentConfig['context_name'] ?? null;
+        $contextKey = $this->componentConfig['context'] ?? null;
+        $contextId  = $this->componentConfig['context_id'] ?? null;
 
         if ($contextKey === null) {
             $this->resolvedContext = [];
@@ -116,8 +116,8 @@ abstract class AbstractComponentGenerator
         }
 
         try {
-            $this->resolvedContext = $contextName !== null
-                ? ContextResolver::resolveItem($contextKey, $contextName)
+            $this->resolvedContext = $contextId !== null
+                ? ContextResolver::resolveById($contextKey, $contextId)
                 : ContextResolver::resolve($contextKey);
         } catch (\InvalidArgumentException) {
             $this->resolvedContext = [];

@@ -37,7 +37,7 @@ class RouteInjectionService
      *
      * @param  string  $contextKey     Clave del contexto (central, shared, tenant_shared, tenant)
      * @param  string  $entityName     Nombre de la entidad en StudlyCase (ej: User)
-     * @param  string  $contextName    Nombre del sub-contexto (ej: INNODITE, App Central)
+     * @param  string  $contextId      ID del contexto (ej: central, clinic-one)
      * @param  string  $controllerFqcn FQCN completo del controlador
      * @param  array   $contextConfig  Configuración del contexto desde contexts.json
      * @return void
@@ -45,7 +45,7 @@ class RouteInjectionService
     public function inject(
         string $contextKey,
         string $entityName,
-        string $contextName,
+        string $contextId,
         string $controllerFqcn,
         array  $contextConfig
     ): void {
@@ -57,7 +57,7 @@ class RouteInjectionService
                 $routeFile,
                 $contextKey,
                 $entityName,
-                $contextName,
+                $contextId,
                 $controllerFqcn,
                 $contextConfig
             );
@@ -82,7 +82,7 @@ class RouteInjectionService
      * @param  string  $routeFile      Nombre del archivo (web.php | tenant.php)
      * @param  string  $contextKey     Clave del contexto
      * @param  string  $entityName     Nombre de la entidad
-     * @param  string  $contextName    Nombre del sub-contexto
+     * @param  string  $contextId      ID del contexto
      * @param  string  $controllerFqcn FQCN del controlador
      * @param  array   $contextConfig  Configuración del contexto
      * @return void
@@ -91,7 +91,7 @@ class RouteInjectionService
         string $routeFile,
         string $contextKey,
         string $entityName,
-        string $contextName,
+        string $contextId,
         string $controllerFqcn,
         array  $contextConfig
     ): void {
@@ -106,13 +106,13 @@ class RouteInjectionService
         $content = File::get($filePath);
 
         // ── Idempotencia ──────────────────────────────────────────────────────
-        if ($this->blockExists($content, $entityName, $contextKey, $contextName)) {
+        if ($this->blockExists($content, $entityName, $contextKey, $contextId)) {
             $this->line("  routes/{$routeFile}: bloque de '{$entityName}' ya existe. Sin cambios.");
             return;
         }
 
-        // ── Resolver marcador ─────────────────────────────────────────────────
-        $markerKey = $this->resolveMarkerKey($contextKey, $contextName, $routeFile);
+        // ── Resolver marcador ─────────────────────────────────────────
+        $markerKey = $this->resolveMarkerKey($contextKey, $contextId, $routeFile);
         $marker    = "// {{{$markerKey}}}";
 
         if (!str_contains($content, $marker)) {
@@ -144,7 +144,7 @@ class RouteInjectionService
         // ── Construir bloque ──────────────────────────────────────────────────
         $block = $this->buildBlock(
             entityName:       $entityName,
-            contextName:      $contextName ?: ucfirst($contextKey),
+            contextId:        $contextId ?: ucfirst($contextKey),
             controllerFqcn:   $controllerFqcn,
             middleware:       $contextConfig['route_middleware'] ?? [],
             routePrefix:      $routePrefix,
@@ -174,7 +174,7 @@ class RouteInjectionService
      * para que la seguridad sea heredada del grupo padre en el archivo de rutas.
      *
      * @param  string  $entityName       Nombre de la entidad (StudlyCase)
-     * @param  string  $contextName      Nombre del contexto para el comentario
+     * @param  string  $contextId        ID del contexto (ej: central, clinic-one)
      * @param  string  $controllerFqcn   FQCN del controlador
      * @param  array   $middleware        Array de middlewares
      * @param  string  $routePrefix       Prefijo de ruta calculado
@@ -184,7 +184,7 @@ class RouteInjectionService
      */
     private function buildBlock(
         string $entityName,
-        string $contextName,
+        string $contextId,
         string $controllerFqcn,
         array  $middleware,
         string $routePrefix,
@@ -198,7 +198,7 @@ class RouteInjectionService
         $lines = [];
 
         // ── Comentario de origen ──────────────────────────────────────────────
-        $lines[] = "{$i}// Bloque generado para: {$entityName} (Contexto: {$contextName})";
+        $lines[] = "{$i}// Bloque generado para: {$entityName} (Contexto: {$contextId})";
 
         // ── Variables de configuración ────────────────────────────────────────
         $lines[] = "{$i}\$routePrefix = '{$routePrefix}';";
@@ -253,14 +253,14 @@ class RouteInjectionService
      *   shared  + web.php          → CENTRAL_ROUTES_END  (Shared usa sección central en web)
      *   shared  + tenant.php       → TENANT_SHARED_ROUTES_END
      *   tenant_shared + tenant.php → TENANT_SHARED_ROUTES_END
-     *   tenant  + tenant.php       → TENANT_{NAME}_ROUTES_END
+     *   tenant  + tenant.php       → TENANT_{ID}_ROUTES_END
      *
      * @param  string  $contextKey   Clave del contexto
-     * @param  string  $contextName  Nombre del sub-contexto
+     * @param  string  $contextId    ID del contexto (ej: clinic-one)
      * @param  string  $routeFile    Archivo destino
      * @return string
      */
-    private function resolveMarkerKey(string $contextKey, string $contextName, string $routeFile): string
+    private function resolveMarkerKey(string $contextKey, string $contextId, string $routeFile): string
     {
         return match (true) {
             $contextKey === 'central'                                => 'CENTRAL_ROUTES_END',
@@ -268,7 +268,7 @@ class RouteInjectionService
             $contextKey === 'shared' && $routeFile === 'tenant.php' => 'TENANT_SHARED_ROUTES_END',
             $contextKey === 'tenant_shared'                          => 'TENANT_SHARED_ROUTES_END',
             $contextKey === 'tenant'
-                => 'TENANT_' . strtoupper(Str::snake(Str::studly($contextName))) . '_ROUTES_END',
+                => 'TENANT_' . strtoupper(Str::snake(Str::studly($contextId))) . '_ROUTES_END',
             default => 'ROUTES_END',
         };
     }
@@ -378,16 +378,16 @@ class RouteInjectionService
      * @param  string  $content      Contenido del archivo
      * @param  string  $entityName   Nombre de la entidad
      * @param  string  $contextKey   Clave del contexto
-     * @param  string  $contextName  Nombre del sub-contexto
+     * @param  string  $contextId    ID del contexto
      * @return bool
      */
     private function blockExists(
         string $content,
         string $entityName,
         string $contextKey,
-        string $contextName
+        string $contextId
     ): bool {
-        $contextLabel = $contextName ?: ucfirst($contextKey);
+        $contextLabel = $contextId ?: ucfirst($contextKey);
         $signature    = "// Bloque generado para: {$entityName} (Contexto: {$contextLabel})";
         return str_contains($content, $signature);
     }
@@ -405,7 +405,7 @@ class RouteInjectionService
     {
         $marker     = "// {{{$markerKey}}}";
         $middleware = $this->formatMiddlewareArray($contextConfig['route_middleware'] ?? ['web', 'auth', 'tenant']);
-        $tenantName = $contextConfig['name'] ?? 'Tenant';
+        $tenantName = $contextConfig['id'] ?? 'Tenant';
         $separator  = str_repeat('─', 60);
 
         $section = PHP_EOL

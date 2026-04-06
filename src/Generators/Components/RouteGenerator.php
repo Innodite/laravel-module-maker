@@ -266,7 +266,7 @@ class RouteGenerator extends AbstractComponentGenerator
         $permMiddleware  = $context['permission_middleware'];
         $permKey         = Str::snake(str_replace('-', '_', $functionality));
         $middleware      = $this->buildMiddlewareArray($context['route_middleware'] ?? []);
-        $label           = $context['name'] ?? $context['label'] ?? $classPrefix;
+        $label           = $context['id'] ?? $context['label'] ?? $classPrefix;
         $separator       = str_repeat('─', 74);
 
         $block = $this->buildRouteBlock(
@@ -305,14 +305,14 @@ class RouteGenerator extends AbstractComponentGenerator
         $tenants = ContextResolver::allTenants();
 
         foreach ($tenants as $tenantItem) {
-            // Sustituir temporalmente el context_name para generar cada bloque con los datos del tenant
-            $this->componentConfig['context_name'] = $tenantItem['name'];
+            // Sustituir temporalmente el context_id para generar cada bloque con los datos del tenant
+            $this->componentConfig['context_id'] = $tenantItem['id'];
             $this->resolveContextCache($tenantItem);
             $this->generateSingleTenantRoutes($routesDir, $tenantItem);
         }
 
         // Restaurar el contexto original
-        $this->componentConfig['context_name'] = null;
+        $this->componentConfig['context_id'] = null;
         $this->resolveContextCache(null);
     }
 

@@ -6,6 +6,7 @@ namespace Innodite\LaravelModuleMaker\Tests;
 
 use Illuminate\Support\Facades\File;
 use Innodite\LaravelModuleMaker\LaravelModuleMakerServiceProvider;
+use Innodite\LaravelModuleMaker\Support\ContextResolver;
 use Orchestra\Testbench\TestCase as Orchestra;
 
 abstract class TestCase extends Orchestra
@@ -34,6 +35,8 @@ abstract class TestCase extends Orchestra
 
     protected function tearDown(): void
     {
+        ContextResolver::flush();
+
         if (File::isDirectory($this->tempBase)) {
             File::deleteDirectory($this->tempBase);
         }

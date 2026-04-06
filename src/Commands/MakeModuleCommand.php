@@ -100,12 +100,12 @@ class MakeModuleCommand extends Command
             return Command::FAILURE;
         }
 
-        $contextName   = $contextItem['name'] ?? '';
+        $contextId     = $contextItem['id'] ?? '';
         $functionality = $this->resolveFunctionality($moduleName);
 
         $this->newLine();
         $this->components->info("Generando módulo <comment>{$moduleName}</comment>");
-        $this->displayConfigTable($moduleName, $contextKey, $contextName, $functionality);
+        $this->displayConfigTable($moduleName, $contextKey, $contextId, $functionality);
         $this->newLine();
 
         $filesGenerated = false;
@@ -113,10 +113,10 @@ class MakeModuleCommand extends Command
         try {
             // ── Paso 1: Generar estructura de archivos (Fases 1 & 2) ──────────
             $this->components->task('Creando estructura de archivos', function () use (
-                $moduleName, $contextKey, $functionality, $contextName, &$filesGenerated
+                $moduleName, $contextKey, $functionality, $contextId, &$filesGenerated
             ) {
                 (new ModuleGenerator($moduleName, true, null, $this))
-                    ->createCleanModuleWithContext($contextKey, $functionality, $contextName);
+                    ->createCleanModuleWithContext($contextKey, $functionality, $contextId);
 
                 $filesGenerated = true;
                 return true;
@@ -125,14 +125,14 @@ class MakeModuleCommand extends Command
             // ── Paso 2: Inyectar rutas en el proyecto (Fase 3) ────────────────
             if (!$this->option('no-routes')) {
                 $this->components->task('Inyectando rutas en el proyecto', function () use (
-                    $contextKey, $moduleName, $contextName, $contextItem
+                    $contextKey, $moduleName, $contextId, $contextItem
                 ) {
                     $controllerFqcn = $this->buildControllerFqcn($moduleName, $contextItem);
 
                     (new RouteInjectionService($this))->inject(
                         contextKey:     $contextKey,
                         entityName:     $moduleName,
-                        contextName:    $contextName,
+                        contextId:      $contextId,
                         controllerFqcn: $controllerFqcn,
                         contextConfig:  $contextItem
                     );
@@ -142,13 +142,13 @@ class MakeModuleCommand extends Command
             }
 
             $this->newLine();
-            $this->displaySuccess($moduleName, $contextKey, $contextName);
+            $this->displaySuccess($moduleName, $contextKey, $contextId);
 
             // ── Auditoría ─────────────────────────────────────────────────────
             ModuleAuditor::log('module.created', [
                 'module'        => $moduleName,
                 'context_key'   => $contextKey,
-                'context_name'  => $contextName,
+                'context_id'    => $contextId,
                 'functionality' => $functionality,
                 'routes'        => !$this->option('no-routes'),
             ]);
@@ -198,11 +198,11 @@ class MakeModuleCommand extends Command
             return Command::FAILURE;
         }
 
-        $contextName = $contextItem['name'] ?? '';
+        $contextId = $contextItem['id'] ?? '';
 
         $componentConfig = [
-            'context'      => $contextKey,
-            'context_name' => $contextName,
+            'context'    => $contextKey,
+            'context_id' => $contextId,
         ];
 
         $flags = [
@@ -230,12 +230,12 @@ class MakeModuleCommand extends Command
             // Inyectar rutas si se generó un controller
             if (!$this->option('no-routes') && ($flags['controller'] ?? false)) {
                 $this->components->task('Inyectando rutas', function () use (
-                    $contextKey, $moduleName, $contextName, $contextItem
+                    $contextKey, $moduleName, $contextId, $contextItem
                 ) {
                     (new RouteInjectionService($this))->inject(
                         contextKey:     $contextKey,
                         entityName:     $moduleName,
-                        contextName:    $contextName,
+                        contextId:      $contextId,
                         controllerFqcn: $this->buildControllerFqcn($moduleName, $contextItem),
                         contextConfig:  $contextItem
                     );
@@ -374,15 +374,30 @@ class MakeModuleCommand extends Command
 
         // Coincidencia directa con clave de contexto
         if (isset($allContexts[$option])) {
-            $items = $allContexts[$option];
-            if (count($items) === 1) {
-                return [$option, $items[0]];
+            $item = $allContexts[$option];
+            
+            if (!is_array($item)) {
+                throw new \InvalidArgumentException("Contexto '{$option}' tiene formato inválido.");
             }
+            
+            // Detectar si es array asociativo (contexto único) vs array indexado (lista)
+            $isAssociative = array_keys($item) !== range(0, count($item) - 1);
+            
+            // Array asociativo → contexto único (central, shared, tenant_shared)
+            if ($isAssociative) {
+                return [$option, $item];
+            }
+            
+            // Array indexado → múltiples variantes (ej. tenant)
+            if (count($item) === 1) {
+                return [$option, $item[0]];
+            }
+            
             // Múltiples variantes → preguntar cuál
-            return $this->askVariant($option, $items);
+            return $this->askVariant($option, $item);
         }
 
-        // Buscar en tenants por name, class_prefix o slug
+        // Buscar en tenants por id, class_prefix o slug
         foreach ($allContexts['tenant'] ?? [] as $item) {
             if ($this->tenantMatches($option, $item)) {
                 return ['tenant', $item];
@@ -392,7 +407,7 @@ class MakeModuleCommand extends Command
         // No encontrado → error descriptivo
         $available = implode(', ', array_keys($allContexts));
         $tenants   = implode(', ', array_map(
-            fn ($t) => Str::kebab(Str::studly($t['name'] ?? '')),
+            fn ($t) => $t['id'] ?? 'unknown',
             $allContexts['tenant'] ?? []
         ));
 
@@ -405,15 +420,14 @@ class MakeModuleCommand extends Command
 
     /**
      * Verifica si un tenant coincide con el input del usuario.
-     * Acepta: nombre exacto, class_prefix, o slug kebab-case.
+     * Acepta: id exacto, class_prefix, o route_prefix.
      */
     private function tenantMatches(string $option, array $item): bool
     {
-        $slug = Str::kebab(Str::studly($item['name'] ?? ''));
         return
-            strcasecmp($option, $item['name'] ?? '')         === 0 ||
+            strcasecmp($option, $item['id'] ?? '')           === 0 ||
             strcasecmp($option, $item['class_prefix'] ?? '') === 0 ||
-            $option === $slug;
+            strcasecmp($option, $item['route_prefix'] ?? '') === 0;
     }
 
     /**
@@ -426,17 +440,26 @@ class MakeModuleCommand extends Command
     {
         $keys        = array_keys($allContexts);
         $selectedKey = $this->choice('Selecciona el contexto:', $keys, 0);
-        $items       = $allContexts[$selectedKey];
+        $item        = $allContexts[$selectedKey];
 
-        if (empty($items)) {
-            throw new \InvalidArgumentException("El contexto '{$selectedKey}' no tiene variantes.");
+        if (!is_array($item)) {
+            throw new \InvalidArgumentException("El contexto '{$selectedKey}' tiene formato inválido.");
         }
 
-        if (count($items) === 1) {
-            return [$selectedKey, $items[0]];
+        // Detectar si es array asociativo (contexto único) vs array indexado (lista)
+        $isAssociative = array_keys($item) !== range(0, count($item) - 1);
+
+        // Array asociativo → contexto único
+        if ($isAssociative) {
+            return [$selectedKey, $item];
         }
 
-        return $this->askVariant($selectedKey, $items);
+        // Array indexado → lista de variantes
+        if (count($item) === 1) {
+            return [$selectedKey, $item[0]];
+        }
+
+        return $this->askVariant($selectedKey, $item);
     }
 
     /**
@@ -446,11 +469,11 @@ class MakeModuleCommand extends Command
      */
     private function askVariant(string $contextKey, array $items): array
     {
-        $names    = array_map(fn ($item) => $item['name'] ?? '?', $items);
+        $names = array_map(fn($item) => $item['id'] ?? '?', $items);
         $selected = $this->choice("Selecciona la variante de '{$contextKey}':", $names, 0);
 
         foreach ($items as $item) {
-            if (($item['name'] ?? '') === $selected) {
+            if (($item['id'] ?? '') === $selected) {
                 return [$contextKey, $item];
             }
         }
@@ -460,27 +483,23 @@ class MakeModuleCommand extends Command
 
     /**
      * Carga todos los contextos desde contexts.json.
+     * 
+     * ARQUITECTURA HÍBRIDA:
+     *   - central, shared, tenant_shared → objetos únicos (acceso directo)
+     *   - tenant → array de objetos (múltiples instancias)
      *
      * @throws \InvalidArgumentException Si no hay contexts.json o está vacío
      */
     private function loadContexts(): array
     {
         try {
-            $all = ContextResolver::all();
+            return ContextResolver::all();
         } catch (Throwable $e) {
             throw new \InvalidArgumentException(
                 "No se pudo leer contexts.json: {$e->getMessage()}\n"
                 . "Ejecuta: php artisan innodite:module-setup"
             );
         }
-
-        if (empty($all)) {
-            throw new \InvalidArgumentException(
-                "contexts.json está vacío. Edita module-maker-config/contexts.json."
-            );
-        }
-
-        return $all;
     }
 
     // ─── Helpers de orquestación ──────────────────────────────────────────────
@@ -550,7 +569,7 @@ class MakeModuleCommand extends Command
     private function displayConfigTable(
         string $moduleName,
         string $contextKey,
-        string $contextName,
+        string $contextId,
         string $functionality
     ): void {
         $this->table(
@@ -558,7 +577,7 @@ class MakeModuleCommand extends Command
             [
                 ['Módulo',        $moduleName],
                 ['Contexto',      $contextKey],
-                ['Variante',      $contextName],
+                ['Variante',      $contextId],
                 ['Prefijo ruta',  $functionality],
                 ['Inyectar rutas', $this->option('no-routes') ? 'No' : 'Sí'],
             ]
@@ -568,7 +587,7 @@ class MakeModuleCommand extends Command
     /**
      * Muestra el resumen final tras la generación exitosa.
      */
-    private function displaySuccess(string $moduleName, string $contextKey, string $contextName): void
+    private function displaySuccess(string $moduleName, string $contextKey, string $contextId): void
     {
         $this->components->info("Módulo <comment>{$moduleName}</comment> generado exitosamente.");
         $this->newLine();

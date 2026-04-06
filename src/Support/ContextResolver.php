@@ -5,16 +5,18 @@ declare(strict_types=1);
 namespace Innodite\LaravelModuleMaker\Support;
 
 use Illuminate\Support\Facades\File;
+use Innodite\LaravelModuleMaker\Exceptions\ConnectionNotConfiguredException;
+use Innodite\LaravelModuleMaker\Exceptions\ContextNotFoundException;
 
 /**
  * Resuelve la configuración de contextos del proyecto desde contexts.json.
  *
- * Estructura del archivo (v3.0.0):
- *   contexts → objeto con claves (central, shared, tenant_shared, tenant)
- *              cada clave contiene un ARRAY de sub-contextos con campo 'name'
+ * Arquitectura v3.5.0 - Búsqueda Híbrida por ID:
+ *   - central, shared, tenant_shared: Objetos directos (acceso O(1))
+ *   - tenant: Array de objetos (búsqueda con Collection->firstWhere)
  *
  * Prioridad de resolución:
- *   1. module-maker-config/contexts.json (project root — publicado por innodite:module-setup)
+ *   1. module-maker-config/contexts.json (project root)
  *   2. Template del paquete (stubs/contexts.json)
  */
 class ContextResolver
@@ -27,73 +29,137 @@ class ContextResolver
     private static ?array $data = null;
 
     /**
-     * Retorna el primer sub-contexto de una clave de contexto.
-     * Útil para contextos con un único item (ej: central, tenant_shared).
+     * Retorna un contexto por su ID usando búsqueda híbrida.
      *
-     * @param  string  $contextKey  Clave del contexto (ej: 'central', 'tenant_shared')
+     * Para contextos de objeto único (central, shared, tenant_shared):
+     *   - Acceso directo O(1)
+     *
+     * Para contexto tenant (array de tenants):
+     *   - Búsqueda con Collection->firstWhere('id', $id)
+     *
+     * @param  string  $contextKey  Clave del contexto (central|shared|tenant_shared|tenant)
+     * @param  string  $id          ID del contexto a buscar
      * @return array<string, mixed>
      *
-     * @throws \InvalidArgumentException Si el contexto no existe o está vacío
+     * @throws ContextNotFoundException Si el contexto o ID no existe
      */
-    public static function resolve(string $contextKey): array
+    public static function resolveById(string $contextKey, string $id): array
     {
-        $items = self::allContextItems($contextKey);
+        $all = self::all();
 
-        if (empty($items)) {
-            $available = implode(', ', array_keys(self::all()));
-            throw new \InvalidArgumentException(
-                "[ContextResolver] El contexto '{$contextKey}' no tiene items definidos en contexts.json.\n" .
-                "Contextos disponibles: {$available}\n" .
-                "Edita module-maker-config/contexts.json."
-            );
+        if (!isset($all[$contextKey])) {
+            throw ContextNotFoundException::contextKeyNotFound($contextKey, array_keys($all));
         }
 
-        return $items[0];
+        $context = $all[$contextKey];
+
+        // Contextos de objeto único (central, shared, tenant_shared)
+        if (is_array($context) && isset($context['id'])) {
+            if ($context['id'] === $id) {
+                return $context;
+            }
+
+            throw ContextNotFoundException::forId($contextKey, $id, [$context['id']]);
+        }
+
+        // Contexto tenant (array de objetos)
+        if (is_array($context) && !isset($context['id'])) {
+            $collection = collect($context);
+            $found = $collection->firstWhere('id', $id);
+
+            if ($found !== null) {
+                return $found;
+            }
+
+            $availableIds = $collection->pluck('id')->filter()->toArray();
+            throw ContextNotFoundException::forId($contextKey, $id, $availableIds);
+        }
+
+        throw ContextNotFoundException::contextKeyNotFound($contextKey, array_keys($all));
     }
 
     /**
-     * Retorna un sub-contexto específico buscándolo por su campo 'name'.
+     * Retorna el contexto único para claves de objeto (central, shared, tenant_shared).
      *
-     * @param  string  $contextKey  Clave del contexto (ej: 'tenant', 'shared')
-     * @param  string  $name        Valor del campo 'name' del sub-contexto
+     * @param  string  $contextKey  Clave del contexto
      * @return array<string, mixed>
      *
-     * @throws \InvalidArgumentException Si no se encuentra ningún item con ese name
+     * @throws ContextNotFoundException Si no existe o no es objeto único
      */
-    public static function resolveItem(string $contextKey, string $name): array
+    public static function resolve(string $contextKey): array
     {
-        foreach (self::allContextItems($contextKey) as $item) {
-            if (($item['name'] ?? '') === $name) {
-                return $item;
-            }
+        $all = self::all();
+
+        if (!isset($all[$contextKey])) {
+            throw ContextNotFoundException::contextKeyNotFound($contextKey, array_keys($all));
         }
 
-        $available = implode(', ', array_map(fn ($i) => $i['name'] ?? '?', self::allContextItems($contextKey)));
+        $context = $all[$contextKey];
+
+        if (is_array($context) && isset($context['id'])) {
+            return $context;
+        }
+
         throw new \InvalidArgumentException(
-            "[ContextResolver] No se encontró el item '{$name}' en el contexto '{$contextKey}'.\n" .
-            "Items disponibles: {$available}\n" .
-            "Edita module-maker-config/contexts.json."
+            "[ContextResolver] El contexto '{$contextKey}' no es un objeto único. " .
+            "Usa resolveById() para contextos con múltiples items."
         );
     }
 
     /**
-     * Retorna un tenant por su 'name'. Alias de resolveItem('tenant', $name).
+     * Busca un contexto por su campo 'id' en toda la estructura híbrida.
      *
-     * @param  string  $name  Valor del campo 'name' del tenant
+     * Búsqueda Híbrida:
+     *   - central, shared, tenant_shared: acceso directo por clave, verifica que 'id' coincide
+     *   - tenant: itera el array con Collection->firstWhere('id', $id)
+     *
+     * @param  string  $id  ID del contexto a buscar (ej: 'central', 'tenant-one')
      * @return array<string, mixed>
      *
-     * @throws \InvalidArgumentException Si el tenant no existe
+     * @throws ContextNotFoundException Si no se encuentra ningún contexto con ese ID
      */
-    public static function resolveTenant(string $name): array
+    public static function find(string $id): array
     {
-        return self::resolveItem('tenant', $name);
+        $all = self::all();
+
+        // 1. Acceso directo a contextos de objeto único (O(1))
+        foreach (['central', 'shared', 'tenant_shared'] as $key) {
+            if (isset($all[$key]) && is_array($all[$key]) && ($all[$key]['id'] ?? null) === $id) {
+                return $all[$key];
+            }
+        }
+
+        // 2. Búsqueda por iteración en el array de tenants
+        $tenants = $all['tenant'] ?? [];
+        if (is_array($tenants) && !isset($tenants['id'])) {
+            $found = collect($tenants)->firstWhere('id', $id);
+            if ($found !== null) {
+                return $found;
+            }
+        }
+
+        // 3. No encontrado → excepción descriptiva
+        $available = collect(self::allItems())->pluck('id')->filter()->values()->toArray();
+        throw ContextNotFoundException::forId('*', $id, $available);
+    }
+
+    /**
+     * Retorna un tenant por su ID. Alias de resolveById('tenant', $id).
+     *
+     * @param  string  $id  ID del tenant
+     * @return array<string, mixed>
+     *
+     * @throws ContextNotFoundException Si el tenant no existe
+     */
+    public static function resolveTenant(string $id): array
+    {
+        return self::resolveById('tenant', $id);
     }
 
     /**
      * Retorna todos los contextos arquitectónicos.
-     * Formato: { "central": [...], "shared": [...], "tenant": [...], "tenant_shared": [...] }
      *
-     * @return array<string, array>
+     * @return array<string, array|array<int, array>>
      */
     public static function all(): array
     {
@@ -101,46 +167,53 @@ class ContextResolver
     }
 
     /**
-     * Retorna el array de sub-contextos para una clave de contexto específica.
+     * Retorna el array de tenants del proyecto.
      *
-     * @param  string  $contextKey  Clave del contexto (ej: 'tenant', 'shared')
-     * @return array<int, array>
-     */
-    public static function allContextItems(string $contextKey): array
-    {
-        return self::all()[$contextKey] ?? [];
-    }
-
-    /**
-     * Retorna todos los tenants del proyecto (items del contexto 'tenant').
-     *
-     * @return array<int, array>
+     * @return array<int, array<string, mixed>>
      */
     public static function allTenants(): array
     {
-        return self::allContextItems('tenant');
+        $all = self::all();
+        $tenants = $all['tenant'] ?? [];
+
+        return is_array($tenants) && !isset($tenants['id']) ? $tenants : [];
     }
 
     /**
-     * Retorna TODOS los sub-contextos de TODOS los contextos en un array plano.
+     * Retorna TODOS los contextos (central, shared, tenant_shared + todos los tenants)
+     * en un array plano para iteración.
      *
-     * @return array<int, array>
+     * @return array<int, array<string, mixed>>
      */
     public static function allItems(): array
     {
+        $all = self::all();
         $items = [];
-        foreach (self::all() as $contextItems) {
-            foreach ($contextItems as $item) {
-                $items[] = $item;
+
+        foreach ($all as $key => $value) {
+            // Contexto de objeto único
+            if (is_array($value) && isset($value['id'])) {
+                $items[] = $value;
+                continue;
+            }
+
+            // Contexto tenant (array de objetos)
+            if ($key === 'tenant' && is_array($value)) {
+                foreach ($value as $tenant) {
+                    if (is_array($tenant) && isset($tenant['id'])) {
+                        $items[] = $tenant;
+                    }
+                }
             }
         }
+
         return $items;
     }
 
     /**
      * Retorna los tenants específicos. Alias de allTenants().
      *
-     * @return array<int, array>
+     * @return array<int, array<string, mixed>>
      */
     public static function getSpecificTenants(): array
     {
@@ -148,8 +221,7 @@ class ContextResolver
     }
 
     /**
-     * Retorna el archivo(s) de ruta definido para un contexto dado.
-     * Puede ser un string ('web.php') o un array (['web.php', 'tenant.php']) para Shared.
+     * Retorna el archivo de rutas para un contexto dado.
      *
      * @param  string  $contextKey  Clave del contexto
      * @return string|array<int, string>
@@ -161,12 +233,41 @@ class ContextResolver
     }
 
     /**
-     * Carga el archivo contexts.json. Prioriza el del proyecto sobre el del paquete.
-     * Usa cache estático para no releer el archivo durante la misma ejecución.
+     * Valida que todas las conexiones definidas en contexts.json
+     * existen en config/database.php.
+     *
+     * @return array<string, string>  Array asociativo [context_id => error_message]
+     */
+    public static function validateConnections(): array
+    {
+        $errors = [];
+        $allContexts = self::allItems();
+        $connections = array_keys(config('database.connections', []));
+
+        foreach ($allContexts as $context) {
+            $id = $context['id'] ?? null;
+            $connectionKey = $context['connection_key'] ?? null;
+
+            if ($connectionKey === null || $connectionKey === '') {
+                continue;
+            }
+
+            if (!in_array($connectionKey, $connections, true)) {
+                $errors[$id] = sprintf(
+                    "El contexto '%s' define connection_key='%s' pero no existe en config/database.php",
+                    $id,
+                    $connectionKey
+                );
+            }
+        }
+
+        return $errors;
+    }
+
+    /**
+     * Carga el archivo contexts.json.
      *
      * @return array<string, mixed>
-     *
-     * @throws \RuntimeException Si el JSON es inválido
      */
     private static function load(): array
     {
@@ -175,17 +276,20 @@ class ContextResolver
         }
 
         $path = self::resolvePath();
-        $json = File::get($path);
-        $data = json_decode($json, true);
-
-        if (json_last_error() !== JSON_ERROR_NONE) {
-            throw new \RuntimeException(
-                "[ContextResolver] Error al parsear contexts.json: " . json_last_error_msg() .
-                "\nRuta: {$path}"
-            );
+        
+        if (!File::exists($path)) {
+            throw new \RuntimeException("[ContextResolver] No se encontró contexts.json en: {$path}");
         }
 
-        self::$data = $data;
+        $contents = File::get($path);
+        $data = json_decode($contents, false); // false = retorna objetos stdClass
+
+        if (!is_object($data) || !isset($data->contexts)) {
+            throw new \RuntimeException("[ContextResolver] El archivo contexts.json no tiene estructura válida.");
+        }
+
+        // Convertir el objeto principal a array, pero mantener la estructura híbrida interna
+        self::$data = json_decode($contents, true);
         return self::$data;
     }
 
@@ -196,18 +300,48 @@ class ContextResolver
      *   1. module-maker-config/contexts.json (project root)
      *   2. Template del paquete (stubs/contexts.json)
      *
-     * @return string  Ruta absoluta al contexts.json
+     * @return string
      */
     private static function resolvePath(): string
     {
-        // 1. Ruta publicada en el proyecto (project root — config configurable)
         $projectPath = config('make-module.contexts_path');
         if ($projectPath && File::exists($projectPath)) {
             return $projectPath;
         }
 
-        // 2. Fallback: template del paquete
         return __DIR__ . '/../../stubs/contexts.json';
+    }
+
+    /**
+     * Valida que la connection_key de un contexto exista en config/database.php.
+     *
+     * Contextos sin connection_key (shared, tenant_shared) son ignorados.
+     *
+     * @param  string  $id  ID del contexto (ej: 'central', 'tenant-one')
+     * @return void
+     *
+     * @throws ConnectionNotConfiguredException Si la conexión no está registrada
+     */
+    public static function validateConnection(string $id): void
+    {
+        $context = self::find($id);
+
+        // Solo contextos con tenancy_strategy 'manual' requieren conexión explícita
+        if (($context['tenancy_strategy'] ?? null) !== 'manual') {
+            return;
+        }
+
+        $connectionKey = $context['connection_key'] ?? null;
+
+        if ($connectionKey === null || $connectionKey === '') {
+            return;
+        }
+
+        $connection = config("database.connections.{$connectionKey}");
+
+        if (!is_array($connection)) {
+            throw ConnectionNotConfiguredException::forContext($id, $connectionKey);
+        }
     }
 
     /**

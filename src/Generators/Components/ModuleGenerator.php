@@ -197,10 +197,10 @@ class ModuleGenerator
      *
      * @param  string       $contextKey    Clave del contexto (ej: 'central', 'tenant', 'tenant_shared')
      * @param  string       $functionality Nombre funcional para prefijo de ruta (ej: 'users')
-     * @param  string|null  $contextName   Valor del campo 'name' del sub-contexto
+     * @param  string|null  $contextId   Valor del campo 'id' del sub-contexto
      * @return void
      */
-    public function createCleanModuleWithContext(string $contextKey, string $functionality, ?string $contextName = null): void
+    public function createCleanModuleWithContext(string $contextKey, string $functionality, ?string $contextId = null): void
     {
         $this->createFolders();
         $this->createDocs();
@@ -210,7 +210,7 @@ class ModuleGenerator
         $componentConfig = [
             'name'          => $modelName,
             'context'       => $contextKey,
-            'context_name'  => $contextName,
+            'context_id'    => $contextId,
             'functionality' => $functionality,
         ];
 
@@ -237,8 +237,8 @@ class ModuleGenerator
 
         // Resolver el array de contexto para pasarlo a los nuevos generadores
         try {
-            $resolvedContext = $contextName !== null
-                ? ContextResolver::resolveItem($contextKey, $contextName)
+            $resolvedContext = $contextId !== null
+                ? ContextResolver::resolveById($contextKey, $contextId)
                 : ContextResolver::resolve($contextKey);
         } catch (\InvalidArgumentException) {
             $resolvedContext = [];
@@ -265,10 +265,10 @@ class ModuleGenerator
         }
 
         // ── Inyectar rutas en el proyecto ─────────────────────────────────────
-        $this->injectRoutes($contextKey, $contextName, $componentConfig);
+        $this->injectRoutes($contextKey, $contextId, $componentConfig);
 
         if ($this->command) {
-            $this->command->info("✅ Módulo '{$this->moduleName}' creado (contexto: {$contextKey} / {$contextName}).");
+            $this->command->info("✅ Módulo '{$this->moduleName}' creado (contexto: {$contextKey} / {$contextId}).");
         }
     }
 
@@ -318,7 +318,7 @@ class ModuleGenerator
      * Crea componentes individuales según los flags booleanos.
      *
      * @param  array  $flags            Mapa de flags: model, controller, service, repository, migration, request
-     * @param  array  $componentConfig  Contexto activo: context, context_name
+     * @param  array  $componentConfig  Contexto activo: context, context_id
      * @return void
      */
     public function createIndividualComponents(array $flags, array $componentConfig = []): void
@@ -353,7 +353,7 @@ class ModuleGenerator
         if (($flags['controller'] ?? false) && !empty($componentConfig['context'])) {
             $this->injectRoutes(
                 $componentConfig['context'],
-                $componentConfig['context_name'] ?? null,
+                $componentConfig['context_id'] ?? null,
                 $componentConfig
             );
         }
@@ -370,15 +370,15 @@ class ModuleGenerator
      * Solo se ejecuta si el contexto tiene configuración de ruta en contexts.json.
      *
      * @param  string  $contextKey      Clave del contexto
-     * @param  string|null  $contextName  Nombre del sub-contexto
+     * @param  string|null  $contextId  ID del contexto
      * @param  array   $componentConfig  Configuración del componente
      * @return void
      */
-    private function injectRoutes(string $contextKey, ?string $contextName, array $componentConfig): void
+    private function injectRoutes(string $contextKey, ?string $contextId, array $componentConfig): void
     {
         try {
-            $contextConfig = $contextName
-                ? ContextResolver::resolveItem($contextKey, $contextName)
+            $contextConfig = $contextId
+                ? ContextResolver::resolveById($contextKey, $contextId)
                 : ContextResolver::resolve($contextKey);
         } catch (\InvalidArgumentException) {
             return;
@@ -396,7 +396,7 @@ class ModuleGenerator
         $injector->inject(
             contextKey:     $contextKey,
             entityName:     $this->moduleName,
-            contextName:    $contextName ?? '',
+            contextId:      $contextId ?? '',
             controllerFqcn: $controllerFqcn,
             contextConfig:  $contextConfig
         );

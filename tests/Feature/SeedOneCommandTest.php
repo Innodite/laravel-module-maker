@@ -49,7 +49,7 @@ PHP);
 it('permite forzar un manifiesto especifico para un seeder con --manifest', function () {
     $manifestDir = $this->tempPath('module-maker-config/migrations');
     File::ensureDirectoryExists($manifestDir);
-    File::put("{$manifestDir}/central_order.json", json_encode([
+    File::put("{$manifestDir}/central.order.json", json_encode([
         'migrations' => [],
         'seeders' => ['Probe:Central/ExistingSeeder'],
     ], JSON_PRETTY_PRINT));
@@ -75,15 +75,15 @@ PHP);
 
     $this->artisan('innodite:seed-one', [
         'coordinate' => 'Probe:Central/ProbePermissionSeeder',
-        '--manifest' => 'central_order.json',
+        '--manifest' => 'central.order.json',
         '--yes' => true,
         '--dry-run' => true,
     ])
-        ->expectsOutputToContain('Destino: central_order.json')
+        ->expectsOutputToContain('Destino: central.order.json')
         ->expectsOutputToContain('se agregara al manifiesto antes de ejecutar')
         ->expectsOutputToContain('[DRY-RUN] Se agregaria la coordenada al manifiesto.')
         ->assertSuccessful();
 
-    $plan = json_decode(File::get("{$manifestDir}/central_order.json"), true);
+    $plan = json_decode(File::get("{$manifestDir}/central.order.json"), true);
     expect($plan['seeders'])->toBe(['Probe:Central/ExistingSeeder']);
 });

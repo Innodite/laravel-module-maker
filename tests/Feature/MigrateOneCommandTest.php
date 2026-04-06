@@ -7,7 +7,7 @@ use Illuminate\Support\Facades\File;
 it('detecta el manifiesto central para una migracion individual y muestra lo que hara en dry-run', function () {
     $manifestDir = $this->tempPath('module-maker-config/migrations');
     File::ensureDirectoryExists($manifestDir);
-    File::put("{$manifestDir}/central_order.json", json_encode([
+    File::put("{$manifestDir}/central.order.json", json_encode([
         'migrations' => [],
         'seeders' => [],
     ], JSON_PRETTY_PRINT));
@@ -21,12 +21,12 @@ it('detecta el manifiesto central para una migracion individual y muestra lo que
         '--yes' => true,
         '--dry-run' => true,
     ])
-        ->expectsOutputToContain('Destino: central_order.json')
+        ->expectsOutputToContain('Destino: central.order.json')
         ->expectsOutputToContain('se agregara al manifiesto antes de ejecutar')
         ->expectsOutputToContain('[DRY-RUN] Se agregaria la coordenada al manifiesto.')
         ->expectsOutputToContain('[DRY-RUN] Se ejecutaria la migracion especificada.')
         ->assertSuccessful();
 
-    $plan = json_decode(File::get("{$manifestDir}/central_order.json"), true);
+    $plan = json_decode(File::get("{$manifestDir}/central.order.json"), true);
     expect($plan['migrations'])->toBe([]);
 });

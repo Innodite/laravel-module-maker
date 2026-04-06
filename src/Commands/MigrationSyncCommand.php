@@ -14,7 +14,7 @@ use Throwable;
 class MigrationSyncCommand extends Command
 {
     protected $signature = 'innodite:migration-sync
-        {--manifest= : Manifiesto JSON (ej: central_order.json) en module-maker-config/migrations}
+        {--manifest= : Manifiesto JSON (ej: central.order.json) en module-maker-config/migrations}
         {--all-manifests : Detecta contexts.json y sincroniza manifiestos por alcance (central + tenants)}
         {--yes : Confirma automaticamente prompts de sincronizacion}
         {--dry-run : Muestra coordenadas faltantes sin escribir el manifiesto}';
@@ -122,7 +122,7 @@ class MigrationSyncCommand extends Command
         $manifest = trim($manifestName);
 
         if ($manifest === '') {
-            $manifest = 'central_order.json';
+            $manifest = 'central.order.json';
         }
 
         if (File::exists($manifest)) {
@@ -142,7 +142,7 @@ class MigrationSyncCommand extends Command
     }
 
     /**
-     * @return array<int, array{manifest: string, type: string, slug: string|null, label: string}>
+     * @return array<int, array{manifest: string, type: string, id: string|null, label: string}>
      */
     private function resolveTargets(): array
     {
@@ -152,7 +152,7 @@ class MigrationSyncCommand extends Command
             return [[
                 'manifest' => $manifestOption,
                 'type' => 'custom',
-                'slug' => null,
+                'id' => null,
                 'label' => 'custom',
             ]];
         }
@@ -161,14 +161,20 @@ class MigrationSyncCommand extends Command
     }
 
     /**
-     * @return array<int, array{manifest: string, type: string, slug: string|null, label: string}>
+     * Resuelve los manifiestos objetivo detectados automáticamente desde contexts.json.
+     *
+     * Arquitectura v3.5.0+:
+     *   - central.order.json: contiene Central + Shared
+     *   - {id}.order.json: un archivo por tenant usando su campo 'id' del JSON
+     *
+     * @return array<int, array{manifest: string, type: string, id: string|null, label: string}>
      */
     private function resolveAutoTargets(): array
     {
         $targets = [[
-            'manifest' => 'central_order.json',
+            'manifest' => 'central.order.json',
             'type' => 'central',
-            'slug' => null,
+            'id' => null,
             'label' => 'central+shared',
         ]];
 
@@ -192,16 +198,16 @@ class MigrationSyncCommand extends Command
                 continue;
             }
 
-            $slug = $this->resolveTenantSlug($tenant);
-            if ($slug === '') {
+            $id = (string) ($tenant['id'] ?? '');
+            if ($id === '') {
                 continue;
             }
 
             $targets[] = [
-                'manifest' => "tenant_{$slug}_order.json",
+                'manifest' => "{$id}.order.json",
                 'type' => 'tenant',
-                'slug' => $slug,
-                'label' => "tenant:{$slug}",
+                'id' => $id,
+                'label' => "tenant:{$id}",
             ];
         }
 
@@ -211,47 +217,6 @@ class MigrationSyncCommand extends Command
         }
 
         return array_values($unique);
-    }
-
-    private function resolveTenantSlug(array $tenant): string
-    {
-        $candidates = [
-            (string) ($tenant['permission_prefix'] ?? ''),
-            (string) ($tenant['route_prefix'] ?? ''),
-            (string) ($tenant['folder'] ?? ''),
-            (string) ($tenant['class_prefix'] ?? ''),
-            (string) ($tenant['name'] ?? ''),
-        ];
-
-        foreach ($candidates as $candidate) {
-            $slug = $this->normalizeSlug($candidate);
-            if ($slug !== '' && $slug !== 'tenant') {
-                return $slug;
-            }
-        }
-
-        return '';
-    }
-
-    private function normalizeSlug(string $value): string
-    {
-        $value = trim($value);
-        if ($value === '') {
-            return '';
-        }
-
-        if (str_contains($value, '/')) {
-            $parts = array_values(array_filter(explode('/', str_replace('\\', '/', $value))));
-            if (!empty($parts)) {
-                $value = (string) end($parts);
-            }
-        }
-
-        $value = Str::snake($value);
-        $ascii = strtolower(Str::ascii($value));
-        $ascii = preg_replace('/[^a-z0-9]+/', '_', $ascii) ?? '';
-
-        return trim($ascii, '_');
     }
 
     private function shouldProceed(): bool
@@ -268,8 +233,10 @@ class MigrationSyncCommand extends Command
     }
 
     /**
+     * Filtra coordenadas según pertenencia arquitectónica al target.
+     *
      * @param array<int, string> $coordinates
-     * @param array{manifest: string, type: string, slug: string|null, label: string} $target
+     * @param array{manifest: string, type: string, id: string|null, label: string} $target
      * @return array<int, string>
      */
     private function filterCoordinatesForTarget(array $coordinates, array $target): array
@@ -292,7 +259,7 @@ class MigrationSyncCommand extends Command
                 continue;
             }
 
-            if ($target['type'] === 'tenant' && is_string($target['slug']) && $this->isTenantScopeContext($contextPath, $target['slug'])) {
+            if ($target['type'] === 'tenant' && is_string($target['id']) && $this->isTenantScopeContext($contextPath, $target['id'])) {
                 $filtered[] = $coordinate;
             }
         }
@@ -332,8 +299,19 @@ class MigrationSyncCommand extends Command
             || str_starts_with($contextPath, 'shared/');
     }
 
-    private function isTenantScopeContext(string $contextPath, string $tenantSlug): bool
+    /**
+     * Verifica si una ruta contextual pertenece a un tenant específico.
+     *
+     * Arquitectura v3.5.0:
+     *   - Compara directamente con el 'id' del tenant (sin normalización)
+     *
+     * @param string $contextPath  Ruta normalizada (ej: 'tenant/clinic-one')
+     * @param string $tenantId     ID del tenant desde contexts.json (ej: 'clinic-one')
+     * @return bool
+     */
+    private function isTenantScopeContext(string $contextPath, string $tenantId): bool
     {
+        // migraciones/seeders compartidos por todos los tenants
         if ($contextPath === 'shared' || str_starts_with($contextPath, 'shared/')) {
             return true;
         }
@@ -342,6 +320,7 @@ class MigrationSyncCommand extends Command
             return true;
         }
 
+        // tenant específico: debe coincidir exactamente con el ID
         if (!str_starts_with($contextPath, 'tenant/')) {
             return false;
         }
@@ -351,7 +330,7 @@ class MigrationSyncCommand extends Command
             return false;
         }
 
-        return $this->normalizeSlug($parts[1]) === $this->normalizeSlug($tenantSlug);
+        return $parts[1] === $tenantId;
     }
 
     /**

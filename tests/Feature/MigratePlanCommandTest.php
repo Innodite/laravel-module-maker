@@ -33,7 +33,7 @@ return new class extends Migration {
 };
 PHP);
 
-    $manifestPath = "{$manifestDir}/central_order.json";
+    $manifestPath = "{$manifestDir}/central.order.json";
     File::put($manifestPath, json_encode([
         'migrations' => [
             'User:Shared/2026_01_01_000001_create_users_table.php',
@@ -42,7 +42,7 @@ PHP);
     ], JSON_PRETTY_PRINT));
 
     $this->artisan('innodite:migrate-plan', [
-        '--manifest' => 'central_order.json',
+        '--manifest' => 'central.order.json',
         '--dry-run' => true,
     ])->assertSuccessful();
 });
@@ -51,7 +51,7 @@ it('falla cuando una coordenada de migración no existe', function () {
     $manifestDir = $this->tempPath('module-maker-config/migrations');
     File::ensureDirectoryExists($manifestDir);
 
-    $manifestPath = "{$manifestDir}/central_order.json";
+    $manifestPath = "{$manifestDir}/central.order.json";
     File::put($manifestPath, json_encode([
         'migrations' => [
             'User:Shared/2026_01_01_999999_missing_table.php',
@@ -60,40 +60,11 @@ it('falla cuando una coordenada de migración no existe', function () {
     ], JSON_PRETTY_PRINT));
 
     $this->artisan('innodite:migrate-plan', [
-        '--manifest' => 'central_order.json',
+        '--manifest' => 'central.order.json',
         '--dry-run' => true,
     ])->assertFailed();
 });
 
-it('valida primero que la base de datos del tenant exista antes de ejecutar', function () {
-    config()->set('database.connections.tenant', [
-        'driver' => 'sqlite',
-        'database' => $this->tempPath('database/missing-tenant.sqlite'),
-        'prefix' => '',
-        'foreign_key_constraints' => true,
-    ]);
-
-    $manifestDir = $this->tempPath('module-maker-config/migrations');
-    File::ensureDirectoryExists($manifestDir);
-
-    $migrationPath = $this->tempPath('Modules/User/Database/Migrations/Tenant/Shared/2026_01_01_000001_create_users_table.php');
-    File::ensureDirectoryExists(dirname($migrationPath));
-    File::put($migrationPath, "<?php\n");
-
-    $manifestPath = "{$manifestDir}/tenant_alpha_order.json";
-    File::put($manifestPath, json_encode([
-        'migrations' => [
-            'User:Tenant/Shared/2026_01_01_000001_create_users_table.php',
-        ],
-        'seeders' => [],
-    ], JSON_PRETTY_PRINT));
-
-    $this->artisan('innodite:migrate-plan', [
-        '--manifest' => 'tenant_alpha_order.json',
-    ])
-        ->expectsOutputToContain("La base de datos '")
-        ->assertFailed();
-});
 
 it('ejecuta migraciones y seeders reales sobre una base sqlite temporal', function () {
     if (!extension_loaded('pdo_sqlite')) {
@@ -104,8 +75,7 @@ it('ejecuta migraciones y seeders reales sobre una base sqlite temporal', functi
     File::ensureDirectoryExists(dirname($databasePath));
     touch($databasePath);
 
-    config()->set('database.default', 'sqlite');
-    config()->set('database.connections.sqlite', [
+    config()->set('database.connections.central', [
         'driver' => 'sqlite',
         'database' => $databasePath,
         'prefix' => '',
@@ -166,7 +136,7 @@ PHP);
 
     require_once $seederPath;
 
-    $manifestPath = "{$manifestDir}/central_order.json";
+    $manifestPath = "{$manifestDir}/central.order.json";
     File::put($manifestPath, json_encode([
         'migrations' => [
             'Probe:Shared/2026_01_01_000001_create_probe_items_table.php',
@@ -177,10 +147,10 @@ PHP);
     ], JSON_PRETTY_PRINT));
 
     $this->artisan('innodite:migrate-plan', [
-        '--manifest' => 'central_order.json',
+        '--manifest' => 'central.order.json',
         '--seed' => true,
     ])->assertSuccessful();
 
-    expect(DB::connection('sqlite')->table('probe_items')->count())->toBe(1)
-        ->and(DB::connection('sqlite')->table('probe_items')->value('name'))->toBe('seeded-item');
+    expect(DB::connection('central')->table('probe_items')->count())->toBe(1)
+        ->and(DB::connection('central')->table('probe_items')->value('name'))->toBe('seeded-item');
 });

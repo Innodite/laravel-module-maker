@@ -15,7 +15,7 @@ class MigrationPlanResolver
      */
     public function resolveManifestPath(?string $manifestOption): string
     {
-        $manifest = trim((string) ($manifestOption ?: 'central_order.json'));
+        $manifest = trim((string) ($manifestOption ?: 'central.order.json'));
 
         if ($manifest === '') {
             throw new InvalidArgumentException('El nombre del manifiesto no puede estar vacío.');

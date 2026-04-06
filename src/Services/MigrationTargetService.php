@@ -7,6 +7,7 @@ namespace Innodite\LaravelModuleMaker\Services;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Str;
+use Innodite\LaravelModuleMaker\Support\ContextResolver;
 use Throwable;
 
 class MigrationTargetService
@@ -16,7 +17,7 @@ class MigrationTargetService
         $manifest = trim($manifestName);
 
         if ($manifest === '') {
-            $manifest = 'central_order.json';
+            $manifest = 'central.order.json';
         }
 
         if (File::exists($manifest)) {
@@ -36,6 +37,13 @@ class MigrationTargetService
     }
 
     /**
+     * Resuelve la conexión de ejecución para un manifest.
+     *
+     * Flujo explícito (v3.5.0+):
+     *   1. Extrae el id del nombre del manifest (patrón {id}.order.json)
+     *   2. Busca el contexto en contexts.json via ContextResolver::find()
+     *   3. Retorna connection_key del contexto, o config('database.default') si no tiene
+     *
      * @param array<int, string> $migrations
      * @param array<int, string> $seeders
      */
@@ -43,17 +51,15 @@ class MigrationTargetService
     {
         $manifestName = strtolower(basename($manifestPath));
 
-        if (str_starts_with($manifestName, 'tenant_')) {
-            return 'tenant';
-        }
-
-        $coordinates = array_merge($migrations, $seeders);
-
-        foreach ($coordinates as $coordinate) {
-            $normalized = strtolower($coordinate);
-
-            if (str_contains($normalized, ':tenant/') || str_contains($normalized, ':tenant\\')) {
-                return 'tenant';
+        if (preg_match('/^([a-z0-9][a-z0-9-]*)\.order\.json$/', $manifestName, $matches)) {
+            try {
+                $context = ContextResolver::find($matches[1]);
+                $connectionKey = $context['connection_key'] ?? null;
+                if ($connectionKey !== null && $connectionKey !== '') {
+                    return $connectionKey;
+                }
+            } catch (\Throwable) {
+                // contexto no encontrado → fallback al default
             }
         }
 
@@ -122,7 +128,13 @@ class MigrationTargetService
     }
 
     /**
-     * @return array<int, array{manifest: string, type: string, slug: string|null, label: string}>
+     * Resuelve targets de manifiestos para una coordenada dada.
+     *
+     * Arquitectura v3.5.0:
+     *   - central_order.json: Central + Shared
+     *   - {id}.order.json: Uno por tenant usando su campo 'id'
+     *
+     * @return array<int, array{manifest: string, type: string, id: string|null, label: string}>
      */
     public function resolveTargetsForCoordinate(string $coordinate, ?string $manifestOption = null): array
     {
@@ -132,7 +144,7 @@ class MigrationTargetService
             return [[
                 'manifest' => $manifestOption,
                 'type' => 'custom',
-                'slug' => null,
+                'id' => null,
                 'label' => 'custom',
             ]];
         }
@@ -156,12 +168,12 @@ class MigrationTargetService
             return array_values(array_filter($targets, static fn (array $target): bool => $target['type'] === 'tenant'));
         }
 
-        $tenantSlug = $this->resolveTenantSlugFromContextPath($contextPath);
-        if ($tenantSlug === '') {
+        $tenantId = $this->resolveTenantIdFromContextPath($contextPath);
+        if ($tenantId === '') {
             return [];
         }
 
-        return array_values(array_filter($targets, fn (array $target): bool => $target['type'] === 'tenant' && $this->normalizeSlug((string) $target['slug']) === $tenantSlug));
+        return array_values(array_filter($targets, fn (array $target): bool => $target['type'] === 'tenant' && ($target['id'] === $tenantId)));
     }
 
     /**
@@ -184,14 +196,20 @@ class MigrationTargetService
     }
 
     /**
-     * @return array<int, array{manifest: string, type: string, slug: string|null, label: string}>
+     * Resuelve manifiestos detectados automáticamente desde contexts.json.
+     *
+     * Arquitectura v3.5.0+:
+     *   - central.order.json: contiene Central + Shared
+     *   - {id}.order.json: uno por tenant usando su campo 'id'
+     *
+     * @return array<int, array{manifest: string, type: string, id: string|null, label: string}>
      */
     private function resolveAutoTargets(): array
     {
         $targets = [[
-            'manifest' => 'central_order.json',
+            'manifest' => 'central.order.json',
             'type' => 'central',
-            'slug' => null,
+            'id' => null,
             'label' => 'central+shared',
         ]];
 
@@ -215,16 +233,16 @@ class MigrationTargetService
                 continue;
             }
 
-            $slug = $this->resolveTenantSlug($tenant);
-            if ($slug === '') {
+            $id = (string) ($tenant['id'] ?? '');
+            if ($id === '') {
                 continue;
             }
 
             $targets[] = [
-                'manifest' => "tenant_{$slug}_order.json",
+                'manifest' => "{$id}.order.json",
                 'type' => 'tenant',
-                'slug' => $slug,
-                'label' => "tenant:{$slug}",
+                'id' => $id,
+                'label' => "tenant:{$id}",
             ];
         }
 
@@ -252,27 +270,13 @@ class MigrationTargetService
         return $this->normalizePath(substr($contextAndTarget, 0, $lastSlash));
     }
 
-    private function resolveTenantSlug(array $tenant): string
-    {
-        $candidates = [
-            (string) ($tenant['permission_prefix'] ?? ''),
-            (string) ($tenant['route_prefix'] ?? ''),
-            (string) ($tenant['folder'] ?? ''),
-            (string) ($tenant['class_prefix'] ?? ''),
-            (string) ($tenant['name'] ?? ''),
-        ];
-
-        foreach ($candidates as $candidate) {
-            $slug = $this->normalizeSlug($candidate);
-            if ($slug !== '' && $slug !== 'tenant') {
-                return $slug;
-            }
-        }
-
-        return '';
-    }
-
-    private function resolveTenantSlugFromContextPath(string $contextPath): string
+    /**
+     * Extrae el ID del tenant desde un contextPath (ej: 'tenant/clinic-one' → 'clinic-one').
+     *
+     * @param string $contextPath  Ruta normalizada del contexto
+     * @return string  ID del tenant o cadena vacía
+     */
+    private function resolveTenantIdFromContextPath(string $contextPath): string
     {
         $parts = explode('/', $contextPath);
 
@@ -280,28 +284,7 @@ class MigrationTargetService
             return '';
         }
 
-        return $this->normalizeSlug($parts[1]);
-    }
-
-    private function normalizeSlug(string $value): string
-    {
-        $value = trim($value);
-        if ($value === '') {
-            return '';
-        }
-
-        if (str_contains($value, '/')) {
-            $parts = array_values(array_filter(explode('/', str_replace('\\', '/', $value))));
-            if (!empty($parts)) {
-                $value = (string) end($parts);
-            }
-        }
-
-        $value = Str::snake($value);
-        $ascii = strtolower(Str::ascii($value));
-        $ascii = preg_replace('/[^a-z0-9]+/', '_', $ascii) ?? '';
-
-        return trim($ascii, '_');
+        return $parts[1];
     }
 
     private function normalizePath(string $value): string

@@ -57,6 +57,36 @@ class TestContextConfigService
                 continue;
             }
 
+            // Detectar si es array asociativo (contexto único) vs array indexado (lista)
+            $isAssociative = array_keys($items) !== range(0, count($items) - 1);
+            
+            // Array asociativo → contexto único (central, shared, tenant_shared)
+            if ($isAssociative) {
+                $item   = $items;
+                $folder = str_replace('\\', '/', (string) ($item['folder'] ?? ''));
+                
+                if ($folder === '') {
+                    continue;
+                }
+
+                $key = $this->resolveContextKey((string) $group, $item, $folder);
+
+                $definitions[$key] = [
+                    'key' => $key,
+                    'label' => (string) ($item['id'] ?? Str::headline($key)),
+                    'folder' => $folder,
+                    'group' => (string) $group,
+                    'db_connection' => null,
+                    'db_database' => null,
+                    'enabled' => true,
+                    'seeder' => null,
+                    'env' => [],
+                ];
+                
+                continue;
+            }
+            
+            // Array indexado → múltiples tenants
             foreach ($items as $item) {
                 if (!is_array($item)) {
                     continue;
@@ -71,7 +101,7 @@ class TestContextConfigService
 
                 $definitions[$key] = [
                     'key' => $key,
-                    'label' => (string) ($item['name'] ?? Str::headline($key)),
+                    'label' => (string) ($item['id'] ?? Str::headline($key)),
                     'folder' => $folder,
                     'group' => (string) $group,
                     'db_connection' => null,
@@ -206,11 +236,19 @@ class TestContextConfigService
             return $group;
         }
 
+        // Prioridad 1: ID del contexto (arquitectura v3.5.0)
+        $id = trim((string) ($item['id'] ?? ''));
+        if ($id !== '') {
+            return $this->normalizeContextKey($id);
+        }
+
+        // Prioridad 2: permission_prefix (legacy)
         $permissionPrefix = trim((string) ($item['permission_prefix'] ?? ''));
         if ($permissionPrefix !== '') {
             return $this->normalizeContextKey($permissionPrefix);
         }
 
+        // Fallback: basename del folder
         return $this->normalizeContextKey((string) basename($folder));
     }
 
