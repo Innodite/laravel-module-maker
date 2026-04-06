@@ -1,6 +1,6 @@
 # 🏗️ Innodite Laravel Module Maker
 
-**v3.1.0** — Generador de módulos Laravel con arquitectura de contextos dinámicos (Central, Shared, Tenant) para proyectos multi-tenant. Genera backend completo, inyecta rutas y crea vistas Vue 3 listas para usar — todo con un solo comando.
+**v3.5.3** — Generador de módulos Laravel con arquitectura de contextos dinámicos (Central, Shared, Tenant) para proyectos multi-tenant. Genera backend completo, inyecta rutas y crea vistas Vue 3 listas para usar — todo con un solo comando. Soporta múltiples entidades por módulo con subcarpeta aislada por entidad (`{Tipo}/{Contexto}/{Entidad}/`).
 
 ## ⚠️ Versiones Deprecadas
 
@@ -40,6 +40,10 @@ Versión mínima recomendada para uso nuevo:
 - [Publicar en Packagist](#-publicar-en-packagist--repositorio-privado)
 - [Changelog](#-changelog)
 - [Licencia](#-licencia)
+
+**Nuevos en v3.5.x:**
+- [Subcarpeta por entidad](#-subcarpeta-por-entidad-r05) — patrón `{Tipo}/{Contexto}/{Entidad}/`
+- [`innodite:add-entity`](#-innoditeadd-entity--agregar-entidad-a-módulo-existente) — nuevo comando para módulos multi-entidad
 
 ---
 
@@ -207,6 +211,65 @@ php artisan innodite:make-module User --json
 - Palabras reservadas de PHP y Laravel bloqueadas: `class`, `model`, `auth`, `route`, etc.
 - Módulos duplicados bloqueados con opción de añadir componentes
 - En caso de error, se ofrece **rollback** para eliminar archivos generados
+
+---
+
+### `innodite:add-entity` — Agregar entidad a módulo existente
+
+Agrega una nueva entidad a un módulo **ya existente**, generando sus componentes dentro de la subcarpeta de entidad correspondiente. Diseñado para módulos multi-entidad como `UserManagement` (con `User`, `Role`, `Permission`, `Module`).
+
+```bash
+# Agregar entidad Role al módulo UserManagement en contexto central
+php artisan innodite:add-entity UserManagement Role --context=central
+
+# Solo componentes específicos
+php artisan innodite:add-entity UserManagement Permission --context=central -M -C -S -R -G -Q
+
+# Sin inyectar rutas
+php artisan innodite:add-entity UserManagement Module --context=central --no-routes
+
+# Para un tenant específico
+php artisan innodite:add-entity UserManagement Role --context=acme
+```
+
+**Firma:**
+
+```
+innodite:add-entity {module} {entity} {--context=} [-M] [-C] [-S] [-R] [-G] [-Q] [--no-routes]
+```
+
+| Argumento | Descripción |
+|---|---|
+| `module` | Nombre del módulo existente (ej: `UserManagement`) |
+| `entity` | Nombre de la entidad nueva (ej: `Role`, `Permission`) |
+| `--context=` | ID del contexto destino (ej: `central`, `acme`) |
+| `-M` a `-Q` | Mismos flags que `make-module` (sin flags = genera todos los componentes) |
+| `--no-routes` | Omite la inyección de rutas |
+
+**Ejemplo de archivos generados** — `add-entity UserManagement Role --context=central`:
+
+```
+Modules/UserManagement/
+├── Models/Central/Role/CentralRole.php
+├── Http/Controllers/Central/Role/CentralRoleController.php
+├── Http/Requests/Central/Role/CentralRoleStoreRequest.php
+├── Http/Requests/Central/Role/CentralRoleUpdateRequest.php
+├── Services/Central/Role/CentralRoleService.php
+├── Services/Contracts/Central/Role/CentralRoleServiceInterface.php
+├── Repositories/Central/Role/CentralRoleRepository.php
+├── Repositories/Contracts/Central/Role/CentralRoleRepositoryInterface.php
+└── Database/Migrations/Central/Role/..._create_roles_table.php
+```
+
+**Diferencia con `make-module`:**
+
+| | `make-module` | `add-entity` |
+|---|---|---|
+| Crea módulo nuevo | ✅ | ❌ |
+| Agrega a módulo existente | ❌ | ✅ |
+| Valida que el módulo exista primero | — | ✅ |
+| Sin flags = genera todos los componentes | ✅ | ✅ |
+| Naming convention intacta | ✅ | ✅ |
 
 ---
 
@@ -612,17 +675,17 @@ Esta sección muestra la lista exacta de archivos que el paquete genera para el 
 
 ```
 Modules/User/
-├── Http/Controllers/Central/CentralUserController.php
-├── Http/Requests/Central/CentralUserStoreRequest.php
-├── Http/Requests/Central/CentralUserUpdateRequest.php
-├── Services/Central/CentralUserService.php
-├── Services/Contracts/Central/CentralUserServiceInterface.php
-├── Repositories/Central/CentralUserRepository.php
-├── Repositories/Contracts/Central/CentralUserRepositoryInterface.php
-├── Models/Central/CentralUser.php
-├── Database/Migrations/Central/XXXX_create_central_users_table.php
-├── Database/Seeders/Central/CentralUserSeeder.php
-├── Database/Factories/Central/CentralUserFactory.php
+├── Http/Controllers/Central/User/CentralUserController.php
+├── Http/Requests/Central/User/CentralUserStoreRequest.php
+├── Http/Requests/Central/User/CentralUserUpdateRequest.php
+├── Services/Central/User/CentralUserService.php
+├── Services/Contracts/Central/User/CentralUserServiceInterface.php
+├── Repositories/Central/User/CentralUserRepository.php
+├── Repositories/Contracts/Central/User/CentralUserRepositoryInterface.php
+├── Models/Central/User/CentralUser.php
+├── Database/Migrations/Central/User/XXXX_create_users_table.php
+├── Database/Seeders/Central/User/CentralUserSeeder.php
+├── Database/Factories/Central/User/CentralUserFactory.php
 ├── Tests/Feature/Central/CentralUserTest.php
 ├── Tests/Unit/Central/CentralUserServiceTest.php
 ├── Tests/Support/Central/CentralUserSupport.php
@@ -638,22 +701,24 @@ Modules/User/
 └── Routes/web.php
 ```
 
+> **v3.5.x** — Los componentes principales (Model, Controller, Requests, Service, Repository, Migration) se generan dentro de una subcarpeta con el nombre de la entidad: `{Tipo}/{Contexto}/{Entidad}/`. Las vistas Vue, Tests, Jobs, Notifications y Commands mantienen su estructura anterior (sin subcarpeta de entidad).
+
 ---
 
 ### Contexto `shared` — 16 archivos
 
 ```
 Modules/User/
-├── Http/Controllers/Shared/SharedUserController.php
-├── Http/Requests/Shared/SharedUserRequest.php
-├── Services/Shared/SharedUserService.php
-├── Services/Contracts/Shared/SharedUserServiceInterface.php
-├── Repositories/Shared/SharedUserRepository.php
-├── Repositories/Contracts/Shared/SharedUserRepositoryInterface.php
-├── Models/Shared/SharedUser.php
-├── Database/Migrations/Shared/XXXX_create_shared_users_table.php
-├── Database/Seeders/Shared/SharedUserSeeder.php
-├── Database/Factories/Shared/SharedUserFactory.php
+├── Http/Controllers/Shared/User/SharedUserController.php
+├── Http/Requests/Shared/User/SharedUserRequest.php
+├── Services/Shared/User/SharedUserService.php
+├── Services/Contracts/Shared/User/SharedUserServiceInterface.php
+├── Repositories/Shared/User/SharedUserRepository.php
+├── Repositories/Contracts/Shared/User/SharedUserRepositoryInterface.php
+├── Models/Shared/User/SharedUser.php
+├── Database/Migrations/Shared/User/XXXX_create_users_table.php
+├── Database/Seeders/Shared/User/SharedUserSeeder.php
+├── Database/Factories/Shared/User/SharedUserFactory.php
 ├── Tests/Feature/Shared/SharedUserTest.php
 ├── Tests/Unit/Shared/SharedUserServiceTest.php
 ├── Resources/js/Pages/Shared/SharedUserIndex.vue
@@ -668,16 +733,16 @@ Modules/User/
 
 ```
 Modules/User/
-├── Http/Controllers/Tenant/Shared/TenantSharedUserController.php
-├── Http/Requests/Tenant/Shared/TenantSharedUserRequest.php
-├── Services/Tenant/Shared/TenantSharedUserService.php
-├── Services/Contracts/Tenant/Shared/TenantSharedUserServiceInterface.php
-├── Repositories/Tenant/Shared/TenantSharedUserRepository.php
-├── Repositories/Contracts/Tenant/Shared/TenantSharedUserRepositoryInterface.php
-├── Models/Tenant/Shared/TenantSharedUser.php
-├── Database/Migrations/Tenant/Shared/XXXX_create_tenant_users_table.php
-├── Database/Seeders/Tenant/Shared/TenantSharedUserSeeder.php
-├── Database/Factories/Tenant/Shared/TenantSharedUserFactory.php
+├── Http/Controllers/Tenant/Shared/User/TenantSharedUserController.php
+├── Http/Requests/Tenant/Shared/User/TenantSharedUserRequest.php
+├── Services/Tenant/Shared/User/TenantSharedUserService.php
+├── Services/Contracts/Tenant/Shared/User/TenantSharedUserServiceInterface.php
+├── Repositories/Tenant/Shared/User/TenantSharedUserRepository.php
+├── Repositories/Contracts/Tenant/Shared/User/TenantSharedUserRepositoryInterface.php
+├── Models/Tenant/Shared/User/TenantSharedUser.php
+├── Database/Migrations/Tenant/Shared/User/XXXX_create_users_table.php
+├── Database/Seeders/Tenant/Shared/User/TenantSharedUserSeeder.php
+├── Database/Factories/Tenant/Shared/User/TenantSharedUserFactory.php
 ├── Tests/Feature/Tenant/Shared/TenantSharedUserTest.php
 ├── Tests/Unit/Tenant/Shared/TenantSharedUserServiceTest.php
 ├── Resources/js/Pages/Tenant/Shared/TenantSharedUserIndex.vue
@@ -693,17 +758,17 @@ Modules/User/
 
 ```
 Modules/User/
-├── Http/Controllers/Tenant/INNODITE/TenantINNODITEUserController.php
-├── Http/Requests/Tenant/INNODITE/TenantINNODITEUserStoreRequest.php
-├── Http/Requests/Tenant/INNODITE/TenantINNODITEUserUpdateRequest.php
-├── Services/Tenant/INNODITE/TenantINNODITEUserService.php
-├── Services/Contracts/Tenant/INNODITE/TenantINNODITEUserServiceInterface.php
-├── Repositories/Tenant/INNODITE/TenantINNODITEUserRepository.php
-├── Repositories/Contracts/Tenant/INNODITE/TenantINNODITEUserRepositoryInterface.php
-├── Models/Tenant/INNODITE/TenantINNODITEUser.php
-├── Database/Migrations/Tenant/INNODITE/XXXX_add_fields_to_innodite_table.php
-├── Database/Seeders/Tenant/INNODITE/TenantINNODITEUserSeeder.php
-├── Database/Factories/Tenant/INNODITE/TenantINNODITEUserFactory.php
+├── Http/Controllers/Tenant/INNODITE/User/TenantINNODITEUserController.php
+├── Http/Requests/Tenant/INNODITE/User/TenantINNODITEUserStoreRequest.php
+├── Http/Requests/Tenant/INNODITE/User/TenantINNODITEUserUpdateRequest.php
+├── Services/Tenant/INNODITE/User/TenantINNODITEUserService.php
+├── Services/Contracts/Tenant/INNODITE/User/TenantINNODITEUserServiceInterface.php
+├── Repositories/Tenant/INNODITE/User/TenantINNODITEUserRepository.php
+├── Repositories/Contracts/Tenant/INNODITE/User/TenantINNODITEUserRepositoryInterface.php
+├── Models/Tenant/INNODITE/User/TenantINNODITEUser.php
+├── Database/Migrations/Tenant/INNODITE/User/XXXX_create_users_table.php
+├── Database/Seeders/Tenant/INNODITE/User/TenantINNODITEUserSeeder.php
+├── Database/Factories/Tenant/INNODITE/User/TenantINNODITEUserFactory.php
 ├── Tests/Feature/Tenant/INNODITE/TenantINNODITEUserTest.php
 ├── Tests/Unit/Tenant/INNODITE/TenantINNODITEUserServiceTest.php
 ├── Resources/js/Pages/Tenant/INNODITE/TenantINNODITEUserIndex.vue
@@ -1198,7 +1263,9 @@ Es el único contexto sin prefijo de URL ni de nombre de ruta. `contextRoute('ro
 
 ## 🌳 Estructura de árbol de un módulo generado
 
-El siguiente árbol corresponde a `innodite:make-module User --context=central` (módulo completo, 24 archivos):
+El siguiente árbol corresponde a `innodite:make-module User --context=central` (módulo completo, 24 archivos).
+
+**Patrón v3.5.x:** Los componentes principales siguen `{Tipo}/{Contexto}/{Entidad}/{Archivo}`.
 
 ```
 Modules/
@@ -1206,38 +1273,48 @@ Modules/
     ├── Http/
     │   ├── Controllers/
     │   │   └── Central/
-    │   │       └── CentralUserController.php      (RendersInertiaModule + JSON)
+    │   │       └── User/
+    │   │           └── CentralUserController.php      (RendersInertiaModule + JSON)
     │   └── Requests/
     │       └── Central/
-    │           ├── CentralUserStoreRequest.php
-    │           └── CentralUserUpdateRequest.php
+    │           └── User/
+    │               ├── CentralUserStoreRequest.php
+    │               └── CentralUserUpdateRequest.php
     ├── Models/
     │   └── Central/
-    │       └── CentralUser.php                    (con $table definida)
+    │       └── User/
+    │           └── CentralUser.php                    (con $table definida)
     ├── Services/
     │   ├── Central/
-    │   │   └── CentralUserService.php
+    │   │   └── User/
+    │   │       └── CentralUserService.php
     │   └── Contracts/
     │       └── Central/
-    │           └── CentralUserServiceInterface.php
+    │           └── User/
+    │               └── CentralUserServiceInterface.php
     ├── Repositories/
     │   ├── Central/
-    │   │   └── CentralUserRepository.php
+    │   │   └── User/
+    │   │       └── CentralUserRepository.php
     │   └── Contracts/
     │       └── Central/
-    │           └── CentralUserRepositoryInterface.php
+    │           └── User/
+    │               └── CentralUserRepositoryInterface.php
     ├── Providers/
     │   └── UserServiceProvider.php                (binding automático Interface↔Implementation)
     ├── Database/
     │   ├── Migrations/
     │   │   └── Central/
-    │   │       └── *_create_central_users_table.php   (migración anónima)
+    │   │       └── User/
+    │   │           └── *_create_users_table.php   (migración anónima)
     │   ├── Seeders/
     │   │   └── Central/
-    │   │       └── CentralUserSeeder.php
+    │   │       └── User/
+    │   │           └── CentralUserSeeder.php
     │   └── Factories/
     │       └── Central/
-    │           └── CentralUserFactory.php
+    │           └── User/
+    │               └── CentralUserFactory.php
     ├── Tests/
     │   ├── Feature/
     │   │   └── Central/
@@ -1272,6 +1349,8 @@ Modules/
     └── Routes/
         └── web.php                                (rutas CRUD — referencia local)
 ```
+
+Con `innodite:add-entity User Role --context=central`, se añade dentro de `Modules/User/` una subcarpeta `Role/` paralela a `User/` en cada tipo de componente.
 
 ---
 
@@ -1348,11 +1427,14 @@ Modules/
 | Comando | Descripción |
 |---|---|
 | `innodite:make-module {Name}` | Genera módulo completo con backend, vistas Vue y rutas |
+| `innodite:add-entity {Module} {Entity}` | Agrega una entidad a un módulo existente |
 | `innodite:module-setup` | Inicializa configuración del paquete en el proyecto |
 | `innodite:module-check` | Diagnóstico de configuración, permisos y conflictos |
 | `innodite:check-env` | Verifica integración frontend-backend (bridge Inertia) |
 | `innodite:publish-frontend` | Publica composables Vue 3 (`useModuleContext`, `usePermissions`) |
 | `innodite:migrate-plan` | Ejecuta migraciones/seeders por manifiesto y orden explícito |
+| `innodite:migrate-one` | Ejecuta una migración puntual por coordenada |
+| `innodite:seed-one` | Ejecuta un seeder puntual por coordenada |
 | `innodite:migration-sync` | Escanea módulos y sincroniza faltantes en manifiestos |
 | `innodite:test-module` | Ejecuta tests de módulos con contexto y coverage (HTML, Text, Clover) |
 | `innodite:test-sync` | Sincroniza `Modules/{Modulo}/Tests/test-config.json` desde `contexts.json` |
@@ -1441,7 +1523,7 @@ Agregar en el `composer.json` del proyecto consumidor:
 ```
 
 ```bash
-composer require innodite/laravel-module-maker:^3.1
+composer require innodite/laravel-module-maker:^3.5
 ```
 
 ---
