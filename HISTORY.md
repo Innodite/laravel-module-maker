@@ -2,6 +2,28 @@
 
 ---
 
+## [2026-04-05] R03.3 — Tag v3.4.2 publicado + Deploy pendiente en Neocenter
+
+**Estado:** En progreso — requiere reinicio de equipo para continuar.
+
+**Completado:**
+- Tag `v3.4.2` creado y pusheado a GitHub (`git tag v3.4.2 && git push origin main && git push origin v3.4.2`)
+- `composer.json` y `composer.lock` en neocenter actualizados a `v3.4.2` via `composer require innodite/laravel-module-maker:v3.4.2 --ignore-platform-reqs`
+
+**Pendiente (bloqueado por reinicio):**
+- Actualizar vendor en neocenter: la extracción falló por archivos con permisos root en `vendor/innodite/laravel-module-maker/`. Solución: usar `./vendor/bin/sail composer install` dentro del contenedor Docker (Sail), que tiene permisos correctos.
+- Actualizar `module-maker-config/contexts.json` en neocenter: agregar `tenancy_strategy: "manual"` a los contextos con `connection_key`
+- Verificar `config/database.php` vs `contexts.json`
+- Verificar naming de manifests (`{id}.order.json`)
+- Probar todos los comandos: `migrate-plan`, `migration-sync`, `migrate-one`, `seed-one`
+
+**Nota técnica — permisos vendor:**
+Los archivos en `vendor/innodite/laravel-module-maker/` son propiedad de root en WSL. La solución es usar Sail (`./vendor/bin/sail composer install`) que ejecuta dentro del contenedor Docker con el usuario `sail` que tiene acceso correcto. El lock file ya está actualizado a v3.4.2.
+
+**Plan guardado en:** `C:\Users\Anthony Filgueira\.claude\plans\glittery-jingling-hoare.md`
+
+---
+
 ## [2026-04-05] R03.2 — Consolidar `resolveExecutionConnection` en `MigrationTargetService`
 
 **Problema:** La lógica de resolución de conexión estaba triplicada:
