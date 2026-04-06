@@ -1,9 +1,9 @@
 <!DOCTYPE html>
-<html lang="es">
+<html lang="en">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Laravel Module Maker — Innodite</title>
+<title>Laravel Module Maker — Innodite Docs</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
@@ -18,21 +18,16 @@
   --sidebar-text: #94a3b8;
   --sidebar-hover: #1e293b;
   --sidebar-active-text: #e2e8f0;
-  --sidebar-width: 260px;
+  --sidebar-width: 272px;
   --code-bg: #1e1e2e;
   --surface: #f8fafc;
   --surface-2: #f1f5f9;
   --border: #e2e8f0;
   --text: #0f172a;
   --text-muted: #64748b;
-  --badge-central: #7c3aed;
-  --badge-shared: #2563eb;
-  --badge-tenant-shared: #059669;
-  --badge-tenant: #d97706;
 }
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-
 html { scroll-behavior: smooth; font-size: 16px; }
 
 body {
@@ -44,7 +39,7 @@ body {
   overflow-x: hidden;
 }
 
-/* ── SIDEBAR ── */
+/* ─── SIDEBAR ─── */
 #sidebar {
   position: fixed;
   top: 0; left: 0;
@@ -58,70 +53,62 @@ body {
   flex-direction: column;
   transition: transform 0.3s ease;
 }
-
 #sidebar::-webkit-scrollbar { width: 4px; }
 #sidebar::-webkit-scrollbar-track { background: transparent; }
 #sidebar::-webkit-scrollbar-thumb { background: #334155; border-radius: 2px; }
 
 .sidebar-logo {
-  padding: 20px 20px 16px;
+  padding: 22px 20px 18px;
   border-bottom: 1px solid var(--sidebar-border);
   flex-shrink: 0;
 }
-
-.sidebar-logo .brand {
-  font-size: 15px;
-  font-weight: 700;
-  color: #e2e8f0;
-  letter-spacing: -0.3px;
-}
-
+.sidebar-logo .brand { font-size: 15px; font-weight: 700; color: #e2e8f0; letter-spacing: -0.3px; }
 .sidebar-logo .brand span { color: var(--primary-light); }
-
 .sidebar-logo .version-tag {
   display: inline-block;
-  margin-top: 5px;
+  margin-top: 6px;
   font-size: 10px;
   font-weight: 600;
-  padding: 2px 7px;
+  padding: 2px 8px;
   background: rgba(99,102,241,0.2);
   color: var(--primary-light);
   border-radius: 20px;
   letter-spacing: 0.5px;
 }
 
-.sidebar-nav { padding: 12px 0; flex: 1; }
-
-.nav-group { margin-bottom: 6px; }
-
+.sidebar-nav { padding: 14px 0 20px; flex: 1; }
+.nav-group { margin-bottom: 4px; }
 .nav-group-label {
-  padding: 6px 16px 4px;
+  padding: 8px 16px 4px;
   font-size: 10px;
   font-weight: 700;
   text-transform: uppercase;
-  letter-spacing: 1px;
+  letter-spacing: 1.2px;
   color: #475569;
 }
-
 .nav-group a {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 6px 16px;
+  gap: 9px;
+  padding: 7px 16px;
   color: var(--sidebar-text);
   text-decoration: none;
-  font-size: 13.5px;
+  font-size: 13px;
   font-weight: 400;
-  border-radius: 0;
-  transition: background 0.15s, color 0.15s;
   border-left: 2px solid transparent;
+  transition: background 0.15s, color 0.15s;
 }
-
-.nav-group a:hover {
-  background: var(--sidebar-hover);
-  color: var(--sidebar-active-text);
+.nav-group a .cmd-badge {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 10px;
+  background: rgba(99,102,241,0.15);
+  color: var(--primary-light);
+  padding: 1px 5px;
+  border-radius: 4px;
+  margin-left: auto;
+  flex-shrink: 0;
 }
-
+.nav-group a:hover { background: var(--sidebar-hover); color: var(--sidebar-active-text); }
 .nav-group a.active {
   background: rgba(99,102,241,0.12);
   color: var(--primary-light);
@@ -129,1514 +116,2199 @@ body {
   font-weight: 500;
 }
 
-/* ── MAIN CONTENT ── */
-#main {
-  margin-left: var(--sidebar-width);
-  flex: 1;
-  min-width: 0;
-}
+/* ─── MAIN ─── */
+#main { margin-left: var(--sidebar-width); flex: 1; min-width: 0; }
+.content-inner { max-width: 860px; margin: 0 auto; padding: 0 48px 100px; }
 
-.content-inner {
-  max-width: 820px;
-  margin: 0 auto;
-  padding: 0 40px 80px;
-}
-
-/* ── SECTIONS ── */
-section {
-  padding-top: 60px;
-  border-bottom: 1px solid var(--border);
-  padding-bottom: 20px;
-  margin-bottom: 20px;
-}
-
+/* ─── SECTIONS ─── */
+section { padding-top: 64px; border-bottom: 1px solid var(--border); padding-bottom: 24px; margin-bottom: 8px; }
 section:last-of-type { border-bottom: none; }
 
-.section-badge {
-  display: inline-block;
-  padding: 3px 10px;
-  border-radius: 20px;
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: 0.5px;
-  text-transform: uppercase;
-  margin-bottom: 10px;
-}
-.badge-central { background: rgba(124,58,237,0.12); color: #7c3aed; }
-.badge-shared { background: rgba(37,99,235,0.12); color: #2563eb; }
-.badge-tenant-shared { background: rgba(5,150,105,0.12); color: #059669; }
-.badge-tenant { background: rgba(217,119,6,0.12); color: #d97706; }
-.badge-primary { background: rgba(99,102,241,0.12); color: var(--primary); }
-
-h1 { font-size: 2.4rem; font-weight: 700; letter-spacing: -1px; color: var(--text); line-height: 1.2; margin-bottom: 16px; }
-h2 { font-size: 1.75rem; font-weight: 700; letter-spacing: -0.5px; margin-bottom: 12px; color: var(--text); }
-h3 { font-size: 1.2rem; font-weight: 600; margin: 24px 0 10px; color: var(--text); }
-h4 { font-size: 1rem; font-weight: 600; margin: 18px 0 8px; color: var(--text-muted); }
+/* ─── TYPOGRAPHY ─── */
+h1 { font-size: 2.5rem; font-weight: 700; letter-spacing: -1.2px; line-height: 1.2; margin-bottom: 16px; }
+h2 { font-size: 1.8rem; font-weight: 700; letter-spacing: -0.5px; margin-bottom: 14px; }
+h3 { font-size: 1.15rem; font-weight: 600; margin: 28px 0 10px; }
+h4 { font-size: 0.95rem; font-weight: 600; margin: 20px 0 8px; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px; }
 p { color: #334155; line-height: 1.75; margin-bottom: 14px; }
+ul, ol { padding-left: 22px; color: #334155; line-height: 1.75; margin-bottom: 14px; }
+li { margin-bottom: 4px; }
 
-/* ── HERO ── */
-.hero { padding-top: 56px; padding-bottom: 32px; }
-
+/* ─── HERO ─── */
+.hero { padding-top: 56px; padding-bottom: 40px; }
 .hero-badge {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 5px 12px;
+  display: inline-flex; align-items: center; gap: 8px;
+  padding: 5px 14px;
   background: rgba(99,102,241,0.1);
   border: 1px solid rgba(99,102,241,0.25);
   border-radius: 20px;
-  font-size: 12px;
-  font-weight: 600;
-  color: var(--primary);
-  margin-bottom: 20px;
+  font-size: 12px; font-weight: 600; color: var(--primary);
+  margin-bottom: 22px;
 }
-
-.hero-badge::before { content: ""; width: 6px; height: 6px; background: var(--primary); border-radius: 50%; animation: pulse 2s infinite; }
-
+.hero-badge::before {
+  content: ""; width: 7px; height: 7px;
+  background: var(--primary); border-radius: 50%;
+  animation: pulse 2s infinite;
+}
 @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
-
-.hero h1 .brand-name { color: var(--primary); }
-
-.hero-subtitle {
-  font-size: 1.05rem;
-  color: var(--text-muted);
-  max-width: 560px;
-  margin-bottom: 24px;
-  line-height: 1.7;
-}
+.hero h1 .brand { color: var(--primary); }
+.hero-subtitle { font-size: 1.05rem; color: var(--text-muted); max-width: 580px; margin-bottom: 28px; line-height: 1.75; }
 
 .install-box {
-  display: flex;
-  align-items: center;
-  gap: 0;
+  display: flex; align-items: center; gap: 0;
   background: var(--sidebar-bg);
-  border-radius: 10px;
-  padding: 14px 18px;
-  margin-bottom: 32px;
-  max-width: 520px;
+  border-radius: 12px; padding: 16px 20px;
+  margin-bottom: 36px; max-width: 560px;
   border: 1px solid #1e293b;
 }
-
-.install-box code {
-  font-family: 'JetBrains Mono', monospace;
-  color: #a5f3fc;
-  font-size: 14px;
-  flex: 1;
-}
-
+.install-box code { font-family: 'JetBrains Mono', monospace; color: #a5f3fc; font-size: 14px; flex: 1; }
 .install-box .copy-btn {
-  background: rgba(99,102,241,0.2);
-  border: none;
-  color: var(--primary-light);
-  padding: 5px 11px;
-  border-radius: 6px;
-  font-size: 12px;
-  cursor: pointer;
-  font-family: 'Inter', sans-serif;
-  font-weight: 500;
+  background: rgba(99,102,241,0.2); border: none;
+  color: var(--primary-light); padding: 6px 12px;
+  border-radius: 6px; font-size: 12px; cursor: pointer;
+  font-family: 'Inter', sans-serif; font-weight: 500;
   transition: background 0.15s;
 }
-
 .install-box .copy-btn:hover { background: rgba(99,102,241,0.35); }
 
-/* ── FEATURE GRID ── */
-.feature-grid {
-  display: grid;
-  grid-template-columns: repeat(2, 1fr);
-  gap: 14px;
-  margin-top: 8px;
-}
-
+/* ─── FEATURE GRID ─── */
+.feature-grid { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; margin-top: 10px; }
 .feature-card {
-  padding: 18px;
-  background: var(--surface);
-  border: 1px solid var(--border);
-  border-radius: 10px;
+  padding: 20px; background: var(--surface);
+  border: 1px solid var(--border); border-radius: 12px;
   transition: border-color 0.2s, box-shadow 0.2s;
 }
-
 .feature-card:hover { border-color: var(--primary-light); box-shadow: 0 0 0 3px rgba(99,102,241,0.08); }
+.feature-card .icon { font-size: 2rem; margin-bottom: 10px; display: block; }
+.feature-card .title { font-weight: 600; font-size: 14px; margin-bottom: 5px; }
+.feature-card .desc { font-size: 13px; color: var(--text-muted); line-height: 1.55; }
 
-.feature-card .icon { font-size: 1.8rem; margin-bottom: 8px; }
-.feature-card .title { font-weight: 600; font-size: 14px; margin-bottom: 4px; }
-.feature-card .desc { font-size: 13px; color: var(--text-muted); line-height: 1.5; }
+/* ─── COMMAND HEADER ─── */
+.cmd-header {
+  display: flex; align-items: flex-start; gap: 16px;
+  background: linear-gradient(135deg, #0f172a 0%, #1e1b4b 100%);
+  border-radius: 14px; padding: 24px 28px;
+  margin-bottom: 28px; border: 1px solid #312e81;
+}
+.cmd-header .cmd-icon { font-size: 2.4rem; flex-shrink: 0; }
+.cmd-header .cmd-info { flex: 1; }
+.cmd-header .cmd-name {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 1.2rem; font-weight: 500;
+  color: #a5f3fc; margin-bottom: 6px; display: block;
+}
+.cmd-header .cmd-desc { font-size: 14px; color: #94a3b8; line-height: 1.6; margin: 0; }
+.cmd-header .cmd-tags { display: flex; gap: 6px; margin-top: 10px; flex-wrap: wrap; }
+.cmd-tag {
+  font-size: 10px; font-weight: 600; padding: 2px 8px;
+  border-radius: 20px; letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+.cmd-tag-setup { background: rgba(16,185,129,0.2); color: #34d399; }
+.cmd-tag-generate { background: rgba(99,102,241,0.2); color: #818cf8; }
+.cmd-tag-migrate { background: rgba(245,158,11,0.2); color: #fbbf24; }
+.cmd-tag-seed { background: rgba(239,68,68,0.2); color: #f87171; }
+.cmd-tag-sync { background: rgba(6,182,212,0.2); color: #22d3ee; }
+.cmd-tag-check { background: rgba(168,85,247,0.2); color: #c084fc; }
+.cmd-tag-test { background: rgba(59,130,246,0.2); color: #60a5fa; }
+.cmd-tag-legacy { background: rgba(100,116,139,0.2); color: #94a3b8; }
+.cmd-tag-frontend { background: rgba(236,72,153,0.2); color: #f472b6; }
 
-/* ── STEPS ── */
+/* ─── STEPS ─── */
 .steps { display: flex; flex-direction: column; gap: 16px; margin: 20px 0; }
-
-.step {
-  display: flex;
-  gap: 16px;
-  align-items: flex-start;
-}
-
+.step { display: flex; gap: 16px; align-items: flex-start; }
 .step-num {
-  width: 28px;
-  height: 28px;
-  background: var(--primary);
-  color: white;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 12px;
-  font-weight: 700;
-  flex-shrink: 0;
-  margin-top: 2px;
+  width: 30px; height: 30px;
+  background: var(--primary); color: white; border-radius: 50%;
+  display: flex; align-items: center; justify-content: center;
+  font-size: 12px; font-weight: 700; flex-shrink: 0; margin-top: 1px;
 }
+.step-content { flex: 1; padding-top: 4px; }
+.step-content strong { display: block; margin-bottom: 4px; font-size: 14px; }
+.step-content p { margin: 0; font-size: 13.5px; }
 
-.step-content { flex: 1; }
-.step-content strong { display: block; margin-bottom: 6px; font-size: 14px; }
-
-/* ── CODE BLOCKS ── */
+/* ─── CODE BLOCKS ─── */
 .code-wrapper {
-  position: relative;
-  margin: 12px 0;
-  border-radius: 10px;
-  overflow: hidden;
+  position: relative; margin: 14px 0;
+  border-radius: 10px; overflow: hidden;
   border: 1px solid #2d3748;
 }
-
 .code-header {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 8px 14px;
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 8px 16px;
   background: #161b2e;
   border-bottom: 1px solid #2d3748;
 }
-
-.code-lang {
-  font-size: 11px;
-  font-weight: 600;
-  color: #64748b;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
-}
-
+.code-lang { font-size: 11px; font-weight: 600; color: #64748b; text-transform: uppercase; letter-spacing: 0.5px; }
+.code-file { font-size: 11px; color: #475569; font-family: 'JetBrains Mono', monospace; }
 .copy-code-btn {
-  background: transparent;
-  border: 1px solid #334155;
-  color: #64748b;
-  padding: 3px 9px;
-  border-radius: 5px;
-  font-size: 11px;
-  cursor: pointer;
-  font-family: 'Inter', sans-serif;
+  background: transparent; border: 1px solid #334155;
+  color: #64748b; padding: 3px 10px; border-radius: 5px;
+  font-size: 11px; cursor: pointer; font-family: 'Inter', sans-serif;
   transition: all 0.15s;
 }
-
 .copy-code-btn:hover { background: #1e293b; color: #94a3b8; border-color: #475569; }
 .copy-code-btn.copied { color: #34d399; border-color: #34d399; }
-
 .code-wrapper pre[class*="language-"] {
-  margin: 0;
-  border-radius: 0;
+  margin: 0; border-radius: 0;
   background: var(--code-bg) !important;
-  padding: 16px;
-  overflow-x: auto;
+  padding: 18px 20px; overflow-x: auto;
   font-family: 'JetBrains Mono', monospace;
-  font-size: 13px;
-  line-height: 1.65;
+  font-size: 13px; line-height: 1.7;
 }
 
-/* ── TABLES ── */
-.table-wrap { overflow-x: auto; margin: 14px 0; border-radius: 8px; border: 1px solid var(--border); }
-
-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 13.5px;
-}
-
+/* ─── OPTION TABLE ─── */
+.opt-table-wrap { overflow-x: auto; margin: 16px 0; border-radius: 10px; border: 1px solid var(--border); }
+table { width: 100%; border-collapse: collapse; font-size: 13.5px; }
 thead tr { background: var(--surface-2); }
 thead th {
-  padding: 10px 14px;
-  text-align: left;
-  font-weight: 600;
-  color: var(--text-muted);
-  font-size: 12px;
-  text-transform: uppercase;
-  letter-spacing: 0.5px;
+  padding: 11px 16px; text-align: left;
+  font-weight: 600; color: var(--text-muted);
+  font-size: 11.5px; text-transform: uppercase; letter-spacing: 0.5px;
   border-bottom: 1px solid var(--border);
 }
-
 tbody tr { border-bottom: 1px solid var(--border); }
 tbody tr:last-child { border-bottom: none; }
 tbody tr:hover { background: var(--surface); }
-tbody td { padding: 9px 14px; color: #334155; vertical-align: top; }
-
-.file-php { color: #4ade80; font-weight: 500; font-family: 'JetBrains Mono', monospace; font-size: 12px; }
-.file-vue { color: #22d3ee; font-weight: 700; font-family: 'JetBrains Mono', monospace; font-size: 12px; }
-.file-md { color: #fbbf24; font-family: 'JetBrains Mono', monospace; font-size: 12px; }
+tbody td { padding: 10px 16px; color: #334155; vertical-align: top; }
 
 code:not([class]) {
   font-family: 'JetBrains Mono', monospace;
   font-size: 12.5px;
-  background: #f1f5f9;
-  color: #7c3aed;
-  padding: 2px 6px;
-  border-radius: 4px;
+  background: #f1f5f9; color: #7c3aed;
+  padding: 2px 6px; border-radius: 4px;
   border: 1px solid #e2e8f0;
 }
 
-/* ── CALLOUTS ── */
+/* ─── CALLOUTS ─── */
 .callout {
-  padding: 14px 16px;
-  border-radius: 8px;
-  border-left: 4px solid;
-  margin: 16px 0;
-  font-size: 13.5px;
-  line-height: 1.65;
+  padding: 14px 18px; border-radius: 10px; border-left: 4px solid;
+  margin: 18px 0; font-size: 13.5px; line-height: 1.7;
 }
-.callout p { margin: 0; }
+.callout p, .callout ul { margin: 0; }
+.callout ul { margin-top: 8px; }
 .callout-info { background: #eff6ff; border-color: #3b82f6; color: #1e40af; }
 .callout-warn { background: #fffbeb; border-color: #f59e0b; color: #92400e; }
 .callout-tip { background: #f0fdf4; border-color: #22c55e; color: #166534; }
+.callout-danger { background: #fff1f2; border-color: #ef4444; color: #991b1b; }
+.callout strong { display: block; margin-bottom: 4px; }
 
-/* ── TABS ── */
-.tabs { margin: 16px 0; }
-.tab-header { display: flex; gap: 0; border-bottom: 2px solid var(--border); margin-bottom: 0; }
-.tab-btn {
-  padding: 8px 16px;
-  border: none;
-  background: transparent;
-  font-family: 'Inter', sans-serif;
-  font-size: 13px;
-  font-weight: 500;
-  color: var(--text-muted);
-  cursor: pointer;
-  border-bottom: 2px solid transparent;
-  margin-bottom: -2px;
-  transition: color 0.15s;
+/* ─── EXAMPLE CARDS ─── */
+.example-group { margin: 20px 0; }
+.example-label {
+  display: flex; align-items: center; gap: 8px;
+  font-size: 12px; font-weight: 600;
+  color: var(--text-muted); text-transform: uppercase;
+  letter-spacing: 0.8px; margin-bottom: 8px;
 }
-.tab-btn.active { color: var(--primary); border-bottom-color: var(--primary); }
-.tab-pane { display: none; }
+.example-label::before {
+  content: ""; display: inline-block;
+  width: 3px; height: 14px;
+  background: var(--primary); border-radius: 2px;
+}
+
+/* ─── CONTEXT BADGES ─── */
+.ctx-badge {
+  display: inline-block; padding: 2px 10px; border-radius: 20px;
+  font-size: 11px; font-weight: 700; letter-spacing: 0.5px;
+  text-transform: uppercase; margin-right: 4px;
+}
+.ctx-central { background: rgba(124,58,237,0.12); color: #7c3aed; }
+.ctx-shared { background: rgba(37,99,235,0.12); color: #2563eb; }
+.ctx-tenant-shared { background: rgba(5,150,105,0.12); color: #059669; }
+.ctx-tenant { background: rgba(217,119,6,0.12); color: #d97706; }
+
+/* ─── TABS ─── */
+.tabs { margin: 18px 0; }
+.tab-header { display: flex; gap: 0; border-bottom: 2px solid var(--border); }
+.tab-btn {
+  padding: 9px 18px; font-size: 13px; font-weight: 500;
+  color: var(--text-muted); background: none; border: none;
+  cursor: pointer; border-bottom: 2px solid transparent;
+  margin-bottom: -2px; transition: color 0.15s;
+  font-family: 'Inter', sans-serif;
+}
+.tab-btn.active { color: var(--primary); border-bottom-color: var(--primary); font-weight: 600; }
+.tab-btn:hover:not(.active) { color: var(--text); }
+.tab-pane { display: none; padding-top: 4px; }
 .tab-pane.active { display: block; }
 
-/* ── MOBILE TOGGLE ── */
-#sidebar-toggle {
-  display: none;
-  position: fixed;
-  bottom: 20px;
-  right: 20px;
-  z-index: 200;
-  width: 50px;
-  height: 50px;
-  background: var(--primary);
-  color: white;
-  border: none;
-  border-radius: 50%;
-  font-size: 20px;
-  cursor: pointer;
-  box-shadow: 0 4px 20px rgba(99,102,241,0.4);
-  align-items: center;
-  justify-content: center;
+/* ─── STRUCT TREE ─── */
+.struct-tree {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12.5px; line-height: 1.8;
+  background: var(--code-bg); color: #e2e8f0;
+  padding: 20px 24px; border-radius: 10px;
+  overflow-x: auto; margin: 14px 0;
+  border: 1px solid #2d3748;
+}
+.struct-tree .dir { color: #60a5fa; font-weight: 500; }
+.struct-tree .file-php { color: #4ade80; }
+.struct-tree .file-vue { color: #22d3ee; }
+.struct-tree .comment { color: #64748b; font-style: italic; }
+
+/* ─── COMMAND INDEX ─── */
+.cmd-index { display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px; margin: 20px 0; }
+.cmd-index-item {
+  display: flex; align-items: center; gap: 12px;
+  padding: 14px 16px; border-radius: 10px;
+  background: var(--surface); border: 1px solid var(--border);
+  text-decoration: none; color: var(--text);
+  transition: border-color 0.2s, box-shadow 0.2s, background 0.15s;
+}
+.cmd-index-item:hover {
+  border-color: var(--primary-light);
+  box-shadow: 0 0 0 3px rgba(99,102,241,0.08);
+  background: #fff;
+}
+.cmd-index-item .cmd-icon-sm { font-size: 1.5rem; flex-shrink: 0; }
+.cmd-index-item .cmd-info-sm .cmd-artisan {
+  font-family: 'JetBrains Mono', monospace;
+  font-size: 12px; color: var(--primary); font-weight: 500; display: block;
+}
+.cmd-index-item .cmd-info-sm .cmd-short { font-size: 12px; color: var(--text-muted); margin-top: 2px; display: block; }
+
+/* ─── SECTION BADGE ─── */
+.section-badge {
+  display: inline-block; padding: 3px 11px; border-radius: 20px;
+  font-size: 11px; font-weight: 700; letter-spacing: 0.5px;
+  text-transform: uppercase; margin-bottom: 12px;
+}
+.badge-primary { background: rgba(99,102,241,0.12); color: var(--primary); }
+.badge-warning { background: rgba(245,158,11,0.12); color: #d97706; }
+.badge-success { background: rgba(16,185,129,0.12); color: #059669; }
+.badge-info { background: rgba(59,130,246,0.12); color: #2563eb; }
+
+/* ─── MOBILE TOGGLE ─── */
+#menu-toggle {
+  display: none; position: fixed; bottom: 24px; right: 24px;
+  background: var(--primary); color: white;
+  border: none; border-radius: 50%; width: 48px; height: 48px;
+  font-size: 20px; cursor: pointer; z-index: 200;
+  box-shadow: 0 4px 12px rgba(99,102,241,0.4);
 }
 
-/* ── FOOTER ── */
-footer {
-  text-align: center;
-  padding: 32px 20px;
-  color: var(--text-muted);
-  font-size: 13px;
-  border-top: 1px solid var(--border);
-  margin-top: 20px;
-}
-footer a { color: var(--primary); text-decoration: none; }
-footer a:hover { text-decoration: underline; }
-
-/* ── RESPONSIVE ── */
-@media (max-width: 768px) {
+@media (max-width: 900px) {
+  :root { --sidebar-width: 260px; }
   #sidebar { transform: translateX(-100%); }
   #sidebar.open { transform: translateX(0); }
   #main { margin-left: 0; }
-  .content-inner { padding: 0 20px 60px; }
-  #sidebar-toggle { display: flex; }
-  .feature-grid { grid-template-columns: 1fr; }
-  h1 { font-size: 1.8rem; }
-  h2 { font-size: 1.4rem; }
+  .content-inner { padding: 0 20px 80px; }
+  #menu-toggle { display: flex; align-items: center; justify-content: center; }
+  .feature-grid, .cmd-index { grid-template-columns: 1fr; }
 }
 
-.sidebar-overlay {
-  display: none;
-  position: fixed;
-  inset: 0;
-  background: rgba(0,0,0,0.5);
-  z-index: 99;
-}
-.sidebar-overlay.open { display: block; }
+/* ─── SMOOTH ANCHOR OFFSET ─── */
+:target { scroll-margin-top: 32px; }
+
+/* ─── MISC ─── */
+hr { border: none; border-top: 1px solid var(--border); margin: 28px 0; }
+.mono { font-family: 'JetBrains Mono', monospace; }
+.muted { color: var(--text-muted); }
 </style>
 </head>
 <body>
 
-<!-- Sidebar overlay (mobile) -->
-<div class="sidebar-overlay" id="sidebar-overlay"></div>
-
-<!-- ── SIDEBAR ── -->
-<aside id="sidebar">
+<!-- ════════════════════════════════════════════
+     SIDEBAR
+════════════════════════════════════════════ -->
+<nav id="sidebar">
   <div class="sidebar-logo">
-    <div class="brand"><span>Innodite</span> Module Maker</div>
-    <div class="version-tag">v3.1.0</div>
+    <div class="brand">Innodite <span>Module Maker</span></div>
+    <div class="version-tag">v3.5.0 — Laravel 12</div>
   </div>
-  <nav class="sidebar-nav">
-    <div class="nav-group">
-      <div class="nav-group-label">Inicio</div>
-      <a href="#inicio">🏠 Inicio</a>
-    </div>
-    <div class="nav-group">
-      <div class="nav-group-label">Primeros Pasos</div>
-      <a href="#instalacion">📦 Instalación</a>
-      <a href="#configuracion">⚙️ Configuración</a>
-    </div>
-    <div class="nav-group">
-      <div class="nav-group-label">Contextos</div>
-      <a href="#central">🟣 Central</a>
-      <a href="#shared">🔵 Shared</a>
-      <a href="#tenant-shared">🟢 Tenant Shared</a>
-      <a href="#tenant">🟠 Tenant Específico</a>
-    </div>
-    <div class="nav-group">
-      <div class="nav-group-label">Frontend</div>
-      <a href="#bridge">🔗 Bridge</a>
-      <a href="#composables">🧩 Composables</a>
-      <a href="#vistas">🖼️ Vistas Vue</a>
-    </div>
-    <div class="nav-group">
-      <div class="nav-group-label">Comandos</div>
-      <a href="#comandos">🛠️ Artisan</a>
-    </div>
-    <div class="nav-group">
-      <div class="nav-group-label">Avanzado</div>
-      <a href="#auditoria">📋 Auditoría</a>
-      <a href="#publicar">🚀 Publicar</a>
-    </div>
-  </nav>
-</aside>
+  <div class="sidebar-nav">
 
-<!-- ── MAIN ── -->
+    <div class="nav-group">
+      <div class="nav-group-label">Getting Started</div>
+      <a href="#introduction">📖 Introduction</a>
+      <a href="#installation">⚡ Installation</a>
+      <a href="#quick-start">🚀 Quick Start</a>
+    </div>
+
+    <div class="nav-group">
+      <div class="nav-group-label">Configuration</div>
+      <a href="#contexts">🗂️ Contexts (contexts.json)</a>
+      <a href="#module-structure">📁 Module Structure</a>
+    </div>
+
+    <div class="nav-group">
+      <div class="nav-group-label">Commands</div>
+      <a href="#cmd-module-setup">🔧 module-setup <span class="cmd-badge">setup</span></a>
+      <a href="#cmd-make-module">✨ make-module <span class="cmd-badge">generate</span></a>
+      <a href="#cmd-migrate-plan">📋 migrate-plan <span class="cmd-badge">migrate</span></a>
+      <a href="#cmd-migrate-one">🎯 migrate-one <span class="cmd-badge">migrate</span></a>
+      <a href="#cmd-seed-one">🌱 seed-one <span class="cmd-badge">seed</span></a>
+      <a href="#cmd-migration-sync">🔄 migration-sync <span class="cmd-badge">sync</span></a>
+      <a href="#cmd-check-env">✅ check-env <span class="cmd-badge">check</span></a>
+      <a href="#cmd-module-check">🩺 module-check <span class="cmd-badge">check</span></a>
+      <a href="#cmd-test-module">🧪 test-module <span class="cmd-badge">test</span></a>
+      <a href="#cmd-test-sync">🔁 test-sync <span class="cmd-badge">sync</span></a>
+      <a href="#cmd-migrate-modules">📦 migrate-modules <span class="cmd-badge">legacy</span></a>
+      <a href="#cmd-publish-frontend">🖼️ publish-frontend <span class="cmd-badge">frontend</span></a>
+    </div>
+
+    <div class="nav-group">
+      <div class="nav-group-label">Advanced</div>
+      <a href="#multitenancy">🏢 Multitenancy</a>
+      <a href="#custom-stubs">✏️ Custom Stubs</a>
+      <a href="#middleware">🛡️ Context Middleware</a>
+      <a href="#traits">🎨 Traits & Helpers</a>
+      <a href="#exceptions">⚠️ Exceptions</a>
+    </div>
+
+  </div>
+</nav>
+
+<!-- ════════════════════════════════════════════
+     MAIN CONTENT
+════════════════════════════════════════════ -->
 <main id="main">
 <div class="content-inner">
 
-<!-- ──────────── HERO ──────────── -->
-<section id="inicio" class="hero">
-  <div class="hero-badge">v3.1.0 — Arquitectura de Contextos Dinámicos</div>
-  <h1>Laravel <span class="brand-name">Module Maker</span></h1>
+<!-- ─── HERO ─── -->
+<section class="hero" id="introduction">
+  <div class="hero-badge">Laravel 12 · PHP 8.3+ · Multi-tenant Ready</div>
+  <h1>Laravel <span class="brand">Module Maker</span></h1>
   <p class="hero-subtitle">
-    Genera hasta <strong>24 archivos por contexto</strong>: controllers, services, repositories, jobs, notifications, console commands, exceptions, migrations, factories, seeders, tests y vistas Vue — con un solo comando artisan, en segundos.
+    A powerful Artisan-first package for generating and managing modular Laravel applications
+    with first-class multi-tenancy support via explicit context configuration.
   </p>
-
   <div class="install-box">
-    <code id="install-cmd">composer require innodite/laravel-module-maker</code>
-    <button class="copy-btn" onclick="copyText('composer require innodite/laravel-module-maker', this)">Copiar</button>
+    <code>composer require innodite/laravel-module-maker</code>
+    <button class="copy-btn" onclick="copyInstall(this)">Copy</button>
   </div>
 
   <div class="feature-grid">
     <div class="feature-card">
-      <div class="icon">⚡</div>
-      <div class="title">Generación Completa</div>
-      <div class="desc">Scaffold de backend PHP + frontend Vue en un único comando. Todos los archivos correctamente nombrados y enlazados.</div>
+      <span class="icon">🏗️</span>
+      <div class="title">Full Module Scaffolding</div>
+      <div class="desc">Generate complete modules with Model, Controller, Service, Repository, Migrations, Seeders, Tests and Vue views in one command.</div>
     </div>
     <div class="feature-card">
-      <div class="icon">🎯</div>
-      <div class="title">Contextos Dinámicos</div>
-      <div class="desc">Define <code>contexts.json</code> con 4 tipos: central, shared, tenant_shared y tenant. Cada uno genera rutas e inyección de prefijos correctos.</div>
+      <span class="icon">🔑</span>
+      <div class="title">Explicit Multi-Tenancy</div>
+      <div class="desc">Define Central, Shared, Tenant-Shared and per-Tenant contexts in a single <code>contexts.json</code>. No magic — you control every connection.</div>
     </div>
     <div class="feature-card">
-      <div class="icon">🔗</div>
-      <div class="title">Bridge Frontend</div>
-      <div class="desc">Middleware que inyecta automáticamente <code>auth.context</code> y <code>auth.permissions</code> vía Inertia shared props.</div>
+      <span class="icon">📋</span>
+      <div class="title">Migration Manifests</div>
+      <div class="desc">Order-file system ensures migrations run in the exact sequence you define, per context, with full rollback and dry-run support.</div>
     </div>
     <div class="feature-card">
-      <div class="icon">📋</div>
-      <div class="title">Auditoría</div>
-      <div class="desc">Registro NDJSON de cada archivo generado: comando, contexto, módulo, archivo, timestamp y hash SHA-256.</div>
+      <span class="icon">🛡️</span>
+      <div class="title">Guard Rail Safety</div>
+      <div class="desc">Connection Guard validates every migration target against <code>config/database.php</code> before touching the database. No silent fallbacks.</div>
+    </div>
+    <div class="feature-card">
+      <span class="icon">✏️</span>
+      <div class="title">Custom Stubs</div>
+      <div class="desc">Override any stub per context folder. Your project's stubs always take priority over the package defaults.</div>
+    </div>
+    <div class="feature-card">
+      <span class="icon">🧪</span>
+      <div class="title">Test-First DX</div>
+      <div class="desc">Built-in test runner with per-module and per-context filtering, HTML/Clover coverage reports, and sync helpers.</div>
     </div>
   </div>
 </section>
 
-<!-- ──────────── INSTALACIÓN ──────────── -->
-<section id="instalacion">
-  <span class="section-badge badge-primary">Primeros Pasos</span>
-  <h2>Instalación</h2>
-  <p>Sigue estos cuatro pasos para tener el paquete completamente configurado en tu aplicación Laravel.</p>
+<!-- ─── INSTALLATION ─── -->
+<section id="installation">
+  <div class="section-badge badge-primary">Getting Started</div>
+  <h2>Installation</h2>
+  <p>The package auto-discovers its service provider in Laravel 12. Just require it and run the setup command.</p>
 
+  <div class="code-wrapper">
+    <div class="code-header"><span class="code-lang">bash</span><button class="copy-code-btn" onclick="copyCode(this)">Copy</button></div>
+    <pre class="language-bash"><code># 1. Install the package
+composer require innodite/laravel-module-maker
+
+# 2. Run setup (creates folders + config)
+php artisan innodite:module-setup
+
+# 3. Verify your environment
+php artisan innodite:check-env</code></pre>
+  </div>
+
+  <h3>Requirements</h3>
+  <div class="opt-table-wrap">
+    <table>
+      <thead><tr><th>Dependency</th><th>Version</th></tr></thead>
+      <tbody>
+        <tr><td>PHP</td><td>8.3+</td></tr>
+        <tr><td>Laravel</td><td>12.x</td></tr>
+        <tr><td>Laravel Modules (nWidart)</td><td>optional</td></tr>
+        <tr><td>Spatie Laravel-Permission</td><td>optional (for permissions)</td></tr>
+        <tr><td>Inertia.js</td><td>optional (for Vue views &amp; middleware)</td></tr>
+        <tr><td>Xdebug / PCOV</td><td>optional (for coverage reports)</td></tr>
+      </tbody>
+    </table>
+  </div>
+</section>
+
+<!-- ─── QUICK START ─── -->
+<section id="quick-start">
+  <div class="section-badge badge-success">Quick Start</div>
+  <h2>Quick Start in 5 Minutes</h2>
   <div class="steps">
     <div class="step">
       <div class="step-num">1</div>
       <div class="step-content">
-        <strong>Requerir el paquete vía Composer</strong>
-        <div class="code-wrapper">
-          <div class="code-header"><span class="code-lang">bash</span><button class="copy-code-btn" onclick="copyCode(this)">Copiar</button></div>
-          <pre><code class="language-bash">composer require innodite/laravel-module-maker</code></pre>
-        </div>
+        <strong>Run setup — creates your workspace</strong>
+        <div class="code-wrapper"><div class="code-header"><span class="code-lang">bash</span><button class="copy-code-btn" onclick="copyCode(this)">Copy</button></div>
+        <pre class="language-bash"><code>php artisan innodite:module-setup</code></pre></div>
       </div>
     </div>
     <div class="step">
       <div class="step-num">2</div>
       <div class="step-content">
-        <strong>Ejecutar el setup inicial (publica config y stubs)</strong>
-        <div class="code-wrapper">
-          <div class="code-header"><span class="code-lang">bash</span><button class="copy-code-btn" onclick="copyCode(this)">Copiar</button></div>
-          <pre><code class="language-bash">php artisan module:setup</code></pre>
-        </div>
-        <p style="margin-top:8px;font-size:13px;color:var(--text-muted)">Publica <code>contexts.json</code>, stubs personalizables y el archivo de configuración principal.</p>
+        <strong>Edit <code>module-maker-config/contexts.json</code> with your tenant list</strong>
+        <div class="code-wrapper"><div class="code-header"><span class="code-lang">json</span><span class="code-file">module-maker-config/contexts.json</span><button class="copy-code-btn" onclick="copyCode(this)">Copy</button></div>
+        <pre class="language-json"><code>{
+  "contexts": {
+    "central": {
+      "id": "central",
+      "tenancy_strategy": "manual",
+      "connection_key": "central",
+      "class_prefix": "Central",
+      "folder": "Central",
+      "namespace_path": "Central",
+      "route_file": "web.php",
+      "route_prefix": "central",
+      "route_name": "central."
+    },
+    "tenant": [
+      {
+        "id": "acme",
+        "tenancy_strategy": "manual",
+        "connection_key": "acme_db",
+        "class_prefix": "Acme",
+        "folder": "Tenant/Acme",
+        "namespace_path": "Tenant\\Acme",
+        "route_file": "tenant.php",
+        "route_prefix": "acme",
+        "route_name": "acme."
+      }
+    ]
+  }
+}</code></pre></div>
       </div>
     </div>
     <div class="step">
       <div class="step-num">3</div>
       <div class="step-content">
-        <strong>Publicar los composables Vue</strong>
-        <div class="code-wrapper">
-          <div class="code-header"><span class="code-lang">bash</span><button class="copy-code-btn" onclick="copyCode(this)">Copiar</button></div>
-          <pre><code class="language-bash">php artisan module:publish-frontend</code></pre>
-        </div>
-        <p style="margin-top:8px;font-size:13px;color:var(--text-muted)">Publica <code>useModuleContext.js</code> y <code>usePermissions.js</code> en <code>resources/js/composables/</code>.</p>
+        <strong>Generate your first module</strong>
+        <div class="code-wrapper"><div class="code-header"><span class="code-lang">bash</span><button class="copy-code-btn" onclick="copyCode(this)">Copy</button></div>
+        <pre class="language-bash"><code>php artisan innodite:make-module User --context=central</code></pre></div>
       </div>
     </div>
     <div class="step">
       <div class="step-num">4</div>
       <div class="step-content">
-        <strong>Registrar el middleware Bridge en bootstrap/app.php</strong>
-        <div class="code-wrapper">
-          <div class="code-header"><span class="code-lang">php</span><button class="copy-code-btn" onclick="copyCode(this)">Copiar</button></div>
-          <pre><code class="language-php">use Innodite\ModuleMaker\Http\Middleware\InnoditeBridgeMiddleware;
+        <strong>Sync the migration manifest and run migrations</strong>
+        <div class="code-wrapper"><div class="code-header"><span class="code-lang">bash</span><button class="copy-code-btn" onclick="copyCode(this)">Copy</button></div>
+        <pre class="language-bash"><code># Auto-detect and register new migrations
+php artisan innodite:migration-sync --all-manifests
 
-->withMiddleware(function (Middleware $middleware) {
-    $middleware->appendToGroup('web', InnoditeBridgeMiddleware::class);
-    $middleware->appendToGroup('api', InnoditeBridgeMiddleware::class);
-})</code></pre>
-        </div>
+# Execute from the central manifest
+php artisan innodite:migrate-plan --manifest=central.order.json</code></pre></div>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">5</div>
+      <div class="step-content">
+        <strong>Run your module tests</strong>
+        <div class="code-wrapper"><div class="code-header"><span class="code-lang">bash</span><button class="copy-code-btn" onclick="copyCode(this)">Copy</button></div>
+        <pre class="language-bash"><code>php artisan innodite:test-module User</code></pre></div>
       </div>
     </div>
   </div>
 </section>
 
-<!-- ──────────── CONFIGURACIÓN ──────────── -->
-<section id="configuracion">
-  <span class="section-badge badge-primary">Primeros Pasos</span>
-  <h2>Configuración</h2>
-  <p>El archivo <code>contexts.json</code> (en la raíz del proyecto) define todos los contextos disponibles para la generación de módulos.</p>
+<!-- ─── CONTEXTS ─── -->
+<section id="contexts">
+  <div class="section-badge badge-info">Configuration</div>
+  <h2>Contexts — <code>contexts.json</code></h2>
+  <p>Every behavior in Module Maker is driven by <code>module-maker-config/contexts.json</code>. This file defines the "worlds" your modules live in.</p>
 
-  <div class="code-wrapper">
-    <div class="code-header"><span class="code-lang">json</span><button class="copy-code-btn" onclick="copyCode(this)">Copiar</button></div>
-    <pre><code class="language-json">{
-  "contexts": [
-    {
-      "name": "central",
-      "type": "central",
-      "route_prefix": "central",
-      "permission_prefix": "central",
-      "route_file": "web.php",
-      "middleware": ["web", "auth"],
-      "sub_contexts": []
-    },
-    {
-      "name": "shared",
-      "type": "shared",
-      "route_prefix": "shared",
-      "permission_prefix": "shared",
-      "route_file": ["web.php", "tenant.php"],
-      "middleware": ["web", "auth"],
-      "sub_contexts": []
-    },
-    {
-      "name": "tenant_shared",
-      "type": "tenant_shared",
-      "route_prefix": null,
-      "permission_prefix": "tenant",
-      "route_file": "tenant.php",
-      "middleware": ["web", "auth", "tenant"],
-      "sub_contexts": []
-    },
-    {
-      "name": "tenant",
-      "type": "tenant",
-      "route_prefix": null,
-      "permission_prefix": "tenant",
-      "route_file": "tenant.php",
-      "middleware": ["web", "auth", "tenant"],
-      "sub_contexts": [
-        { "name": "TenantOne", "prefix": "tenant-one" },
-        { "name": "TenantTwo", "prefix": "tenant-two" }
-      ]
-    }
-  ]
-}</code></pre>
+  <div class="callout callout-warn">
+    <strong>⚠️ Hybrid Structure Rule</strong>
+    <p><code>central</code>, <code>shared</code>, and <code>tenant_shared</code> are JSON <strong>objects</strong>. <code>tenant</code> is a JSON <strong>array</strong> (supports multiple tenants). Never flatten everything into arrays.</p>
   </div>
 
-  <h3>Campos disponibles</h3>
-  <div class="table-wrap">
+  <h3>Available Context Types</h3>
+  <div class="opt-table-wrap">
     <table>
-      <thead><tr><th>Campo</th><th>Tipo</th><th>Descripción</th></tr></thead>
+      <thead><tr><th>Type</th><th>Description</th><th>Connection</th></tr></thead>
       <tbody>
-        <tr><td><code>name</code></td><td>string</td><td>Identificador único del contexto</td></tr>
-        <tr><td><code>type</code></td><td>enum</td><td><code>central</code> | <code>shared</code> | <code>tenant_shared</code> | <code>tenant</code></td></tr>
-        <tr><td><code>route_prefix</code></td><td>string|null</td><td>Prefijo de URL. <code>null</code> para tenant y tenant_shared</td></tr>
-        <tr><td><code>permission_prefix</code></td><td>string</td><td>Prefijo para permisos Spatie (ej. <code>central.users.view</code>)</td></tr>
-        <tr><td><code>route_file</code></td><td>string|array</td><td>Archivo(s) de rutas destino. Array solo para <code>shared</code></td></tr>
-        <tr><td><code>middleware</code></td><td>array</td><td>Middlewares aplicados al grupo de rutas generado</td></tr>
-        <tr><td><code>sub_contexts</code></td><td>array</td><td>Solo para tipo <code>tenant</code>. Lista de tenants con <code>name</code> y <code>prefix</code></td></tr>
+        <tr><td><span class="ctx-badge ctx-central">central</span></td><td>Shared admin/back-office database — one instance</td><td>Required (<code>connection_key</code>)</td></tr>
+        <tr><td><span class="ctx-badge ctx-shared">shared</span></td><td>Cross-tenant shared resources (no dedicated DB)</td><td>Not required</td></tr>
+        <tr><td><span class="ctx-badge ctx-tenant-shared">tenant_shared</span></td><td>Logic shared across all tenants, using each tenant's DB</td><td>Not required (resolved per tenant)</td></tr>
+        <tr><td><span class="ctx-badge ctx-tenant">tenant</span></td><td>Individual tenant instance with its own DB connection</td><td>Required (<code>connection_key</code>)</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>Context Fields Reference</h3>
+  <div class="opt-table-wrap">
+    <table>
+      <thead><tr><th>Field</th><th>Type</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td><code>id</code></td><td>string (kebab-case)</td><td>Unique identifier — used in manifests, CLI args, and route matching</td></tr>
+        <tr><td><code>tenancy_strategy</code></td><td><code>"manual"</code> or absent</td><td>Set to <code>"manual"</code> to enable connection Guard Rail</td></tr>
+        <tr><td><code>connection_key</code></td><td>string</td><td>Name of the connection in <code>config/database.php</code></td></tr>
+        <tr><td><code>class_prefix</code></td><td>PascalCase</td><td>PHP class prefix e.g. <code>Central</code>, <code>TenantAcme</code></td></tr>
+        <tr><td><code>folder</code></td><td>string</td><td>Subfolder within each component directory</td></tr>
+        <tr><td><code>namespace_path</code></td><td>string</td><td>PHP namespace fragment (uses <code>\\</code> separator)</td></tr>
+        <tr><td><code>route_file</code></td><td>string or array</td><td>Route file(s): <code>web.php</code>, <code>tenant.php</code>, <code>api.php</code></td></tr>
+        <tr><td><code>route_prefix</code></td><td>string</td><td>URL prefix for routes</td></tr>
+        <tr><td><code>route_name</code></td><td>string</td><td>Named route prefix (include trailing dot e.g. <code>central.</code>)</td></tr>
+        <tr><td><code>permission_prefix</code></td><td>string</td><td>Spatie permission prefix</td></tr>
+        <tr><td><code>route_middleware</code></td><td>array</td><td>Extra middleware for this context's route group</td></tr>
       </tbody>
     </table>
   </div>
 </section>
 
-<!-- ──────────── CENTRAL ──────────── -->
-<section id="central">
-  <span class="section-badge badge-central">Contexto</span>
-  <h2>Central</h2>
-  <p>El contexto <strong>central</strong> genera módulos para el panel de administración global de la aplicación. Las rutas se inyectan en <code>web.php</code> con el prefijo <code>/central/{module}</code>.</p>
+<!-- ─── MODULE STRUCTURE ─── -->
+<section id="module-structure">
+  <div class="section-badge badge-info">Configuration</div>
+  <h2>Generated Module Structure</h2>
+  <p>Every module generated by <code>innodite:make-module</code> follows this directory layout:</p>
+  <div class="struct-tree">
+<span class="dir">Modules/{ModuleName}/</span>
+├── <span class="dir">Database/</span>
+│   ├── <span class="dir">Factories/{Central/,Shared/,Tenant/...}</span>
+│   ├── <span class="dir">Migrations/{Central/,Shared/,Tenant/...}</span>
+│   └── <span class="dir">Seeders/{Central/,Shared/,Tenant/...}</span>
+├── <span class="dir">Docs/</span>
+│   ├── <span class="file-md">history.md</span>
+│   ├── <span class="file-md">architecture.md</span>
+│   └── <span class="file-md">schema.md</span>
+├── <span class="dir">Http/</span>
+│   ├── <span class="dir">Controllers/{Central/,Shared/,Tenant/...}</span>
+│   ├── <span class="dir">Middleware/</span>
+│   └── <span class="dir">Requests/{Central/,Shared/,Tenant/...}</span>
+├── <span class="dir">Models/{Central/,Shared/,Tenant/...}</span>
+├── <span class="dir">Providers/</span>
+│   └── <span class="file-php">{ModuleName}ServiceProvider.php</span>
+├── <span class="dir">Repositories/</span>
+│   ├── <span class="dir">Contracts/{...}</span>
+│   └── <span class="dir">{Central/,Shared/,Tenant/...}</span>
+├── <span class="dir">Resources/</span>
+│   ├── <span class="dir">js/Pages/{Central/,Shared/,Tenant/...}</span>  <span class="comment">← Vue components</span>
+│   ├── <span class="dir">views/</span>
+│   └── <span class="dir">lang/</span>
+├── <span class="dir">Routes/</span>  <span class="comment">← v3.0.0+ (legacy: routes/)</span>
+│   ├── <span class="file-php">web.php</span>
+│   ├── <span class="file-php">tenant.php</span>
+│   └── <span class="file-php">api.php</span>
+├── <span class="dir">Services/</span>
+│   ├── <span class="dir">Contracts/{...}</span>
+│   └── <span class="dir">{Central/,Shared/,Tenant/...}</span>
+├── <span class="dir">Console/Commands/{...}</span>
+├── <span class="dir">Jobs/{...}</span>
+├── <span class="dir">Notifications/{...}</span>
+├── <span class="dir">Exceptions/</span>
+└── <span class="dir">Tests/</span>
+    ├── <span class="dir">Feature/{Central/,Shared/,Tenant/...}</span>
+    ├── <span class="dir">Unit/{...}</span>
+    └── <span class="dir">Support/</span>
+  </div>
+  <div class="callout callout-tip">
+    <strong>💡 Tip</strong>
+    <p>The base context folders <code>Central/</code>, <code>Shared/</code>, and <code>Tenant/Shared/</code> are created automatically. Specific tenant folders like <code>Tenant/Acme/</code> are only created when you target that context explicitly.</p>
+  </div>
+</section>
 
-  <div class="code-wrapper">
-    <div class="code-header"><span class="code-lang">bash</span><button class="copy-code-btn" onclick="copyCode(this)">Copiar</button></div>
-    <pre><code class="language-bash">php artisan make:module Users --context=central</code></pre>
+<!-- ════════════════════════════════════════
+     COMMANDS INDEX
+════════════════════════════════════════ -->
+<section id="commands-index">
+  <div class="section-badge badge-primary">Commands</div>
+  <h2>All Commands at a Glance</h2>
+  <div class="cmd-index">
+    <a class="cmd-index-item" href="#cmd-module-setup"><span class="cmd-icon-sm">🔧</span><span class="cmd-info-sm"><span class="cmd-artisan">innodite:module-setup</span><span class="cmd-short">Initialize workspace &amp; config</span></span></a>
+    <a class="cmd-index-item" href="#cmd-make-module"><span class="cmd-icon-sm">✨</span><span class="cmd-info-sm"><span class="cmd-artisan">innodite:make-module</span><span class="cmd-short">Scaffold a full module</span></span></a>
+    <a class="cmd-index-item" href="#cmd-migrate-plan"><span class="cmd-icon-sm">📋</span><span class="cmd-info-sm"><span class="cmd-artisan">innodite:migrate-plan</span><span class="cmd-short">Run manifest migrations</span></span></a>
+    <a class="cmd-index-item" href="#cmd-migrate-one"><span class="cmd-icon-sm">🎯</span><span class="cmd-info-sm"><span class="cmd-artisan">innodite:migrate-one</span><span class="cmd-short">Migrate a single file</span></span></a>
+    <a class="cmd-index-item" href="#cmd-seed-one"><span class="cmd-icon-sm">🌱</span><span class="cmd-info-sm"><span class="cmd-artisan">innodite:seed-one</span><span class="cmd-short">Run a single seeder</span></span></a>
+    <a class="cmd-index-item" href="#cmd-migration-sync"><span class="cmd-icon-sm">🔄</span><span class="cmd-info-sm"><span class="cmd-artisan">innodite:migration-sync</span><span class="cmd-short">Auto-register new files</span></span></a>
+    <a class="cmd-index-item" href="#cmd-check-env"><span class="cmd-icon-sm">✅</span><span class="cmd-info-sm"><span class="cmd-artisan">innodite:check-env</span><span class="cmd-short">Verify environment setup</span></span></a>
+    <a class="cmd-index-item" href="#cmd-module-check"><span class="cmd-icon-sm">🩺</span><span class="cmd-info-sm"><span class="cmd-artisan">innodite:module-check</span><span class="cmd-short">Diagnose config issues</span></span></a>
+    <a class="cmd-index-item" href="#cmd-test-module"><span class="cmd-icon-sm">🧪</span><span class="cmd-info-sm"><span class="cmd-artisan">innodite:test-module</span><span class="cmd-short">Run module tests</span></span></a>
+    <a class="cmd-index-item" href="#cmd-test-sync"><span class="cmd-icon-sm">🔁</span><span class="cmd-info-sm"><span class="cmd-artisan">innodite:test-sync</span><span class="cmd-short">Sync phpunit configs</span></span></a>
+    <a class="cmd-index-item" href="#cmd-migrate-modules"><span class="cmd-icon-sm">📦</span><span class="cmd-info-sm"><span class="cmd-artisan">innodite:migrate-modules</span><span class="cmd-short">Upgrade v2 → v3 layout</span></span></a>
+    <a class="cmd-index-item" href="#cmd-publish-frontend"><span class="cmd-icon-sm">🖼️</span><span class="cmd-info-sm"><span class="cmd-artisan">innodite:publish-frontend</span><span class="cmd-short">Publish Vue composables</span></span></a>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════
+     CMD 1 — innodite:module-setup
+═══════════════════════════════════════════════════════════ -->
+<section id="cmd-module-setup">
+  <div class="cmd-header">
+    <div class="cmd-icon">🔧</div>
+    <div class="cmd-info">
+      <span class="cmd-name">php artisan innodite:module-setup</span>
+      <p class="cmd-desc">Initializes the complete Module Maker workspace. Creates the <code>Modules/</code> directory, publishes the <code>contexts.json</code> template, copies all stubs, and patches your <code>DatabaseSeeder.php</code> to include the module seeder chain. Run this once per project.</p>
+      <div class="cmd-tags">
+        <span class="cmd-tag cmd-tag-setup">setup</span>
+        <span class="cmd-tag cmd-tag-generate">one-time</span>
+      </div>
+    </div>
   </div>
 
-  <h3>Archivos generados (24 archivos)</h3>
-  <div class="table-wrap">
+  <h3>What it creates</h3>
+  <div class="code-wrapper">
+    <div class="code-header"><span class="code-lang">text</span></div>
+    <pre class="language-text"><code>project-root/
+├── Modules/                                  ← Module home directory
+├── module-maker-config/
+│   ├── contexts.json                         ← Edit this to define your tenants
+│   └── stubs/
+│       └── contextual/
+│           ├── Central/                      ← Context-specific stubs
+│           ├── Shared/
+│           ├── Tenant/
+│           └── *.stub                        ← Generic fallback stubs
+└── database/seeders/DatabaseSeeder.php       ← Patched to call InnoditeModuleSeeder</code></pre>
+  </div>
+
+  <h3>Examples</h3>
+
+  <div class="example-group">
+    <div class="example-label">Basic Setup</div>
+    <div class="code-wrapper">
+      <div class="code-header"><span class="code-lang">bash</span><button class="copy-code-btn" onclick="copyCode(this)">Copy</button></div>
+      <pre class="language-bash"><code># Run once after installing the package
+php artisan innodite:module-setup</code></pre>
+    </div>
+  </div>
+
+  <div class="example-group">
+    <div class="example-label">Typical workflow after setup</div>
+    <div class="code-wrapper">
+      <div class="code-header"><span class="code-lang">bash</span><button class="copy-code-btn" onclick="copyCode(this)">Copy</button></div>
+      <pre class="language-bash"><code># 1. Run setup
+php artisan innodite:module-setup
+
+# 2. Open the generated contexts.json and add your tenants
+# module-maker-config/contexts.json
+
+# 3. Add your DB connections to config/database.php
+# Then register the .env variables in .env
+
+# 4. Verify everything is wired correctly
+php artisan innodite:check-env
+php artisan innodite:module-check</code></pre>
+    </div>
+  </div>
+
+  <div class="example-group">
+    <div class="example-label">Register middleware (bootstrap/app.php — Laravel 11+)</div>
+    <div class="code-wrapper">
+      <div class="code-header"><span class="code-lang">php</span><span class="code-file">bootstrap/app.php</span><button class="copy-code-btn" onclick="copyCode(this)">Copy</button></div>
+      <pre class="language-php"><code>->withMiddleware(function (Middleware $middleware) {
+    $middleware->appendToGroup('web', [
+        \Innodite\LaravelModuleMaker\Middleware\InnoditeContextBridge::class,
+    ]);
+})</code></pre>
+    </div>
+  </div>
+
+  <div class="callout callout-tip">
+    <strong>💡 Re-running setup</strong>
+    <p>The command is safe to re-run — it will not overwrite your <code>contexts.json</code> or any custom stubs you've modified. It only creates files that don't already exist.</p>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════
+     CMD 2 — innodite:make-module
+═══════════════════════════════════════════════════════════ -->
+<section id="cmd-make-module">
+  <div class="cmd-header">
+    <div class="cmd-icon">✨</div>
+    <div class="cmd-info">
+      <span class="cmd-name">php artisan innodite:make-module {name} [options]</span>
+      <p class="cmd-desc">The core generator. Scaffolds a complete module with all its components (Model, Controller, Service, Repository, Migration, Seeder, Requests, Factory, Tests, Vue views) for a specific context. Supports interactive context selection or explicit targeting.</p>
+      <div class="cmd-tags">
+        <span class="cmd-tag cmd-tag-generate">generator</span>
+        <span class="cmd-tag cmd-tag-setup">multi-context</span>
+      </div>
+    </div>
+  </div>
+
+  <h3>Signature</h3>
+  <div class="code-wrapper">
+    <div class="code-header"><span class="code-lang">bash</span><button class="copy-code-btn" onclick="copyCode(this)">Copy</button></div>
+    <pre class="language-bash"><code>php artisan innodite:make-module {name}
+                                {--context=}        # explicit context ID
+                                {--json}            # use module-maker-config/{module}.json
+                                {--no-routes}       # skip route injection
+                                {-M|--model}        # generate only the Model
+                                {-C|--controller}   # generate only the Controller
+                                {-S|--service}      # generate only the Service
+                                {-R|--repository}   # generate only the Repository
+                                {-G|--migration}    # generate only the Migration
+                                {-Q|--request}      # generate only the Request</code></pre>
+  </div>
+
+  <h3>Options</h3>
+  <div class="opt-table-wrap">
     <table>
-      <thead><tr><th>Archivo</th><th>Ruta en Modules/User/</th><th>Descripción</th></tr></thead>
+      <thead><tr><th>Option</th><th>Type</th><th>Description</th></tr></thead>
       <tbody>
-        <tr><td class="file-php">CentralUserController.php</td><td><code>Http/Controllers/Central/</code></td><td>Usa trait <code>RendersInertiaModule</code>, index() → renderModule()</td></tr>
-        <tr><td class="file-php">CentralUserStoreRequest.php</td><td><code>Http/Requests/Central/</code></td><td>Form Request para creación</td></tr>
-        <tr><td class="file-php">CentralUserUpdateRequest.php</td><td><code>Http/Requests/Central/</code></td><td>Form Request para actualización</td></tr>
-        <tr><td class="file-php">CentralUserService.php</td><td><code>Services/Central/</code></td><td>Lógica de negocio</td></tr>
-        <tr><td class="file-php">CentralUserServiceInterface.php</td><td><code>Services/Contracts/Central/</code></td><td>Contrato del servicio</td></tr>
-        <tr><td class="file-php">CentralUserRepository.php</td><td><code>Repositories/Central/</code></td><td>Capa de datos Eloquent</td></tr>
-        <tr><td class="file-php">CentralUserRepositoryInterface.php</td><td><code>Repositories/Contracts/Central/</code></td><td>Contrato del repositorio</td></tr>
-        <tr><td class="file-php">CentralUser.php</td><td><code>Models/Central/</code></td><td>Modelo Eloquent</td></tr>
-        <tr><td class="file-php">XXXX_create_central_users_table.php</td><td><code>Database/Migrations/Central/</code></td><td>Migración anónima</td></tr>
-        <tr><td class="file-php">CentralUserSeeder.php</td><td><code>Database/Seeders/Central/</code></td><td>Seeder del módulo</td></tr>
-        <tr><td class="file-php">CentralUserFactory.php</td><td><code>Database/Factories/Central/</code></td><td>Factory para testing</td></tr>
-        <tr><td class="file-php">CentralUserTest.php</td><td><code>Tests/Feature/Central/</code></td><td>Feature test</td></tr>
-        <tr><td class="file-php">CentralUserServiceTest.php</td><td><code>Tests/Unit/Central/</code></td><td>Unit test del servicio</td></tr>
-        <tr><td class="file-php">CentralUserSupport.php</td><td><code>Tests/Support/Central/</code></td><td>Helper de test (solo Central)</td></tr>
-        <tr><td class="file-php">CentralUserExportJob.php</td><td><code>Jobs/Central/</code></td><td>Job para exportación/procesamiento</td></tr>
-        <tr><td class="file-php">CentralUserWelcomeNotification.php</td><td><code>Notifications/Central/</code></td><td>Notificación (mail/broadcast)</td></tr>
-        <tr><td class="file-php">CentralUserCleanupCommand.php</td><td><code>Console/Commands/Central/</code></td><td>Artisan command de mantenimiento</td></tr>
-        <tr><td class="file-php">CentralUserNotFoundException.php</td><td><code>Exceptions/Central/</code></td><td>Excepción tipada (solo Central)</td></tr>
-        <tr><td class="file-php">UserServiceProvider.php</td><td><code>Providers/</code></td><td>Binding Interface↔Implementation</td></tr>
-        <tr><td class="file-vue">CentralUserIndex.vue</td><td><code>Resources/js/Pages/Central/</code></td><td>Lista paginada, datos via axios.get</td></tr>
-        <tr><td class="file-vue">CentralUserCreate.vue</td><td><code>Resources/js/Pages/Central/</code></td><td>Formulario, axios.post</td></tr>
-        <tr><td class="file-vue">CentralUserEdit.vue</td><td><code>Resources/js/Pages/Central/</code></td><td>Edición, axios.get + axios.put</td></tr>
-        <tr><td class="file-vue">CentralUserShow.vue</td><td><code>Resources/js/Pages/Central/</code></td><td>Detalle, axios.get</td></tr>
+        <tr><td><code>name</code></td><td>argument</td><td>Entity name in singular, PascalCase. e.g. <code>User</code>, <code>BlogPost</code></td></tr>
+        <tr><td><code>--context=</code></td><td>option</td><td>Context ID from <code>contexts.json</code>. e.g. <code>central</code>, <code>acme</code>. If omitted, an interactive selector appears.</td></tr>
+        <tr><td><code>--json</code></td><td>flag</td><td>Load component configuration from <code>module-maker-config/{name}.json</code> instead of defaults</td></tr>
+        <tr><td><code>--no-routes</code></td><td>flag</td><td>Skip automatic route injection into the route files</td></tr>
+        <tr><td><code>-M / --model</code></td><td>flag</td><td>Generate only the Model component</td></tr>
+        <tr><td><code>-C / --controller</code></td><td>flag</td><td>Generate only the Controller component</td></tr>
+        <tr><td><code>-S / --service</code></td><td>flag</td><td>Generate only the Service + ServiceInterface</td></tr>
+        <tr><td><code>-R / --repository</code></td><td>flag</td><td>Generate only the Repository + RepositoryInterface</td></tr>
+        <tr><td><code>-G / --migration</code></td><td>flag</td><td>Generate only the Migration file</td></tr>
+        <tr><td><code>-Q / --request</code></td><td>flag</td><td>Generate only Request classes (Store + Update)</td></tr>
       </tbody>
     </table>
   </div>
 
-  <h3>Controller generado — RendersInertiaModule</h3>
-  <div class="callout callout-info">
-    <p><strong>Regla obligatoria:</strong> Todos los controllers usan el trait <code>RendersInertiaModule</code>. El método <code>index()</code> siempre retorna <code>renderModule()</code> para navegar a la vista. Los datos se cargan <strong>exclusivamente vía axios</strong> desde la vista Vue al montarse.</p>
+  <h3>Examples</h3>
+
+  <div class="example-group">
+    <div class="example-label">Example 1 — Full module for the central database</div>
+    <div class="code-wrapper">
+      <div class="code-header"><span class="code-lang">bash</span><button class="copy-code-btn" onclick="copyCode(this)">Copy</button></div>
+      <pre class="language-bash"><code># Generates ALL components for the central context
+php artisan innodite:make-module User --context=central
+
+# Creates:
+# Modules/User/Models/Central/CentralUser.php
+# Modules/User/Http/Controllers/Central/CentralUserController.php
+# Modules/User/Services/Central/CentralUserService.php
+# Modules/User/Services/Contracts/Central/CentralUserServiceInterface.php
+# Modules/User/Repositories/Central/CentralUserRepository.php
+# Modules/User/Repositories/Contracts/Central/CentralUserRepositoryInterface.php
+# Modules/User/Database/Migrations/Central/{timestamp}_create_central_users_table.php
+# Modules/User/Database/Seeders/Central/CentralUserDatabaseSeeder.php
+# Modules/User/Http/Requests/Central/CentralStoreUserRequest.php
+# Modules/User/Http/Requests/Central/CentralUpdateUserRequest.php
+# Modules/User/Database/Factories/Central/CentralUserFactory.php
+# Modules/User/Resources/js/Pages/Central/User/{Index,Create,Edit,Show}.vue
+# Modules/User/Tests/Feature/Central/CentralUserTest.php</code></pre>
+    </div>
   </div>
+
+  <div class="example-group">
+    <div class="example-label">Example 2 — Full module for a specific tenant</div>
+    <div class="code-wrapper">
+      <div class="code-header"><span class="code-lang">bash</span><button class="copy-code-btn" onclick="copyCode(this)">Copy</button></div>
+      <pre class="language-bash"><code># Generate module for tenant with id "acme" in contexts.json
+php artisan innodite:make-module Invoice --context=acme
+
+# Files are placed under Tenant/Acme/ subfolders
+# Modules/Invoice/Models/Tenant/Acme/AcmeInvoice.php
+# Modules/Invoice/Http/Controllers/Tenant/Acme/AcmeInvoiceController.php
+# ... and so on</code></pre>
+    </div>
+  </div>
+
+  <div class="example-group">
+    <div class="example-label">Example 3 — Interactive context selection (no --context flag)</div>
+    <div class="code-wrapper">
+      <div class="code-header"><span class="code-lang">bash</span><button class="copy-code-btn" onclick="copyCode(this)">Copy</button></div>
+      <pre class="language-bash"><code># No --context → the CLI shows an interactive menu with all available contexts
+php artisan innodite:make-module Product
+
+# Output:
+# Which context should this module target?
+# [0] central
+# [1] shared
+# [2] tenant-shared
+# [3] acme
+# [4] beta-corp
+# > _</code></pre>
+    </div>
+  </div>
+
+  <div class="example-group">
+    <div class="example-label">Example 4 — Generate only specific components</div>
+    <div class="code-wrapper">
+      <div class="code-header"><span class="code-lang">bash</span><button class="copy-code-btn" onclick="copyCode(this)">Copy</button></div>
+      <pre class="language-bash"><code># Only generate Service + Repository for an existing module
+php artisan innodite:make-module Order --context=central -S -R
+
+# Only generate the Migration
+php artisan innodite:make-module Payment --context=acme -G
+
+# Only generate the Controller
+php artisan innodite:make-module Invoice --context=shared -C
+
+# Service + Controller + Request (API-style, no repository)
+php artisan innodite:make-module Report --context=central -S -C -Q</code></pre>
+    </div>
+  </div>
+
+  <div class="example-group">
+    <div class="example-label">Example 5 — Skip route injection</div>
+    <div class="code-wrapper">
+      <div class="code-header"><span class="code-lang">bash</span><button class="copy-code-btn" onclick="copyCode(this)">Copy</button></div>
+      <pre class="language-bash"><code># Useful when you want to manage routes manually
+php artisan innodite:make-module Webhook --context=central --no-routes</code></pre>
+    </div>
+  </div>
+
+  <div class="example-group">
+    <div class="example-label">Example 6 — Same module, multiple contexts (multitenancy pattern)</div>
+    <div class="code-wrapper">
+      <div class="code-header"><span class="code-lang">bash</span><button class="copy-code-btn" onclick="copyCode(this)">Copy</button></div>
+      <pre class="language-bash"><code># Create the Invoice module for each tenant separately
+php artisan innodite:make-module Invoice --context=acme
+php artisan innodite:make-module Invoice --context=beta-corp
+php artisan innodite:make-module Invoice --context=gamma-ltd
+
+# Each tenant gets its own classes under Tenant/{TenantFolder}/
+# but they all live inside Modules/Invoice/</code></pre>
+    </div>
+  </div>
+
+  <div class="example-group">
+    <div class="example-label">Example 7 — Shared module (no DB connection required)</div>
+    <div class="code-wrapper">
+      <div class="code-header"><span class="code-lang">bash</span><button class="copy-code-btn" onclick="copyCode(this)">Copy</button></div>
+      <pre class="language-bash"><code># Shared utilities module — no connection_key needed
+php artisan innodite:make-module Notification --context=shared</code></pre>
+    </div>
+  </div>
+
+  <div class="callout callout-info">
+    <strong>ℹ️ Name Validation</strong>
+    <p>The <code>name</code> argument is validated against PHP/Laravel reserved words and must be a valid identifier (letters, numbers, underscore). It is automatically converted to PascalCase.</p>
+  </div>
+
+  <h3>Generated Route Injection</h3>
+  <p>When route injection is active (default), the command adds route blocks to the matching route file using idempotent markers. Re-running the command will never duplicate routes.</p>
   <div class="code-wrapper">
-    <div class="code-header"><span class="code-lang">php</span><button class="copy-code-btn" onclick="copyCode(this)">Copiar</button></div>
-    <pre><code class="language-php">class CentralUserController extends Controller
+    <div class="code-header"><span class="code-lang">php</span><span class="code-file">routes/web.php (after injection)</span><button class="copy-code-btn" onclick="copyCode(this)">Copy</button></div>
+    <pre class="language-php"><code>use Modules\User\Http\Controllers\Central\CentralUserController;
+
+Route::group(['prefix' => 'central', 'middleware' => ['web']], function () {
+    Route::resource('users', CentralUserController::class);
+    // {{CENTRAL_ROUTES_END}}
+});</code></pre>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════
+     CMD 3 — innodite:migrate-plan
+═══════════════════════════════════════════════════════════ -->
+<section id="cmd-migrate-plan">
+  <div class="cmd-header">
+    <div class="cmd-icon">📋</div>
+    <div class="cmd-info">
+      <span class="cmd-name">php artisan innodite:migrate-plan [options]</span>
+      <p class="cmd-desc">Executes all migrations and optionally seeders defined in a manifest order file (<code>*.order.json</code>). Validates the DB connection through the Guard Rail before touching anything. Supports dry-run mode for safe previewing.</p>
+      <div class="cmd-tags">
+        <span class="cmd-tag cmd-tag-migrate">migrations</span>
+        <span class="cmd-tag cmd-tag-seed">seeders</span>
+      </div>
+    </div>
+  </div>
+
+  <h3>Signature</h3>
+  <div class="code-wrapper">
+    <div class="code-header"><span class="code-lang">bash</span><button class="copy-code-btn" onclick="copyCode(this)">Copy</button></div>
+    <pre class="language-bash"><code>php artisan innodite:migrate-plan
+    {--manifest=}   # manifest file to use (default: central.order.json)
+    {--dry-run}     # preview plan without executing
+    {--seed}        # also run seeders after migrations</code></pre>
+  </div>
+
+  <h3>Options</h3>
+  <div class="opt-table-wrap">
+    <table>
+      <thead><tr><th>Option</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td><code>--manifest=</code></td><td>Name or path of the manifest file. Defaults to <code>central.order.json</code>. Can be just the filename (e.g. <code>acme.order.json</code>).</td></tr>
+        <tr><td><code>--dry-run</code></td><td>Shows the migration plan without executing anything. DB connection check is skipped in dry-run.</td></tr>
+        <tr><td><code>--seed</code></td><td>After all migrations complete, run the seeders listed in the manifest.</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>Examples</h3>
+
+  <div class="example-group">
+    <div class="example-label">Example 1 — Run central migrations</div>
+    <div class="code-wrapper">
+      <div class="code-header"><span class="code-lang">bash</span><button class="copy-code-btn" onclick="copyCode(this)">Copy</button></div>
+      <pre class="language-bash"><code># Default manifest = central.order.json
+php artisan innodite:migrate-plan
+
+# Explicit manifest
+php artisan innodite:migrate-plan --manifest=central.order.json</code></pre>
+    </div>
+  </div>
+
+  <div class="example-group">
+    <div class="example-label">Example 2 — Run migrations for a specific tenant</div>
+    <div class="code-wrapper">
+      <div class="code-header"><span class="code-lang">bash</span><button class="copy-code-btn" onclick="copyCode(this)">Copy</button></div>
+      <pre class="language-bash"><code># Tenant "acme" (must have connection_key "acme_db" in config/database.php)
+php artisan innodite:migrate-plan --manifest=acme.order.json
+
+# Tenant "beta-corp"
+php artisan innodite:migrate-plan --manifest=beta-corp.order.json</code></pre>
+    </div>
+  </div>
+
+  <div class="example-group">
+    <div class="example-label">Example 3 — Preview without executing (dry-run)</div>
+    <div class="code-wrapper">
+      <div class="code-header"><span class="code-lang">bash</span><button class="copy-code-btn" onclick="copyCode(this)">Copy</button></div>
+      <pre class="language-bash"><code># Safe preview — nothing is touched in the database
+php artisan innodite:migrate-plan --manifest=acme.order.json --dry-run
+
+# Output example:
+# [DRY-RUN] Would migrate: User/2024_01_01_create_users_table.php (acme_db)
+# [DRY-RUN] Would migrate: Invoice/2024_01_10_create_invoices_table.php (acme_db)
+# [DRY-RUN] 2 migrations pending. Not executed (dry-run mode).</code></pre>
+    </div>
+  </div>
+
+  <div class="example-group">
+    <div class="example-label">Example 4 — Migrate AND seed in one command</div>
+    <div class="code-wrapper">
+      <div class="code-header"><span class="code-lang">bash</span><button class="copy-code-btn" onclick="copyCode(this)">Copy</button></div>
+      <pre class="language-bash"><code># Useful for fresh environments, CI/CD pipelines
+php artisan innodite:migrate-plan --manifest=central.order.json --seed
+
+# With dry-run to preview both migrations and seeders
+php artisan innodite:migrate-plan --manifest=central.order.json --seed --dry-run</code></pre>
+    </div>
+  </div>
+
+  <div class="example-group">
+    <div class="example-label">Example 5 — Batch: run all tenants</div>
+    <div class="code-wrapper">
+      <div class="code-header"><span class="code-lang">bash</span><button class="copy-code-btn" onclick="copyCode(this)">Copy</button></div>
+      <pre class="language-bash"><code># Shell script for all tenant manifests
+for manifest in module-maker-config/migrations/*.order.json; do
+  filename=$(basename "$manifest")
+  echo "==> Migrating: $filename"
+  php artisan innodite:migrate-plan --manifest="$filename"
+done</code></pre>
+    </div>
+  </div>
+
+  <h3>Manifest File Format</h3>
+  <p>Manifests are stored in <code>module-maker-config/migrations/</code>:</p>
+  <div class="code-wrapper">
+    <div class="code-header"><span class="code-lang">json</span><span class="code-file">module-maker-config/migrations/central.order.json</span><button class="copy-code-btn" onclick="copyCode(this)">Copy</button></div>
+    <pre class="language-json"><code>{
+  "migrations": [
+    "User:Central/2024_01_01_000000_create_central_users_table.php",
+    "Role:Central/2024_01_02_000000_create_central_roles_table.php",
+    "Permission:Central/2024_01_03_000000_create_central_permissions_table.php"
+  ],
+  "seeders": [
+    "User:Central/CentralUserDatabaseSeeder",
+    "Role:Central/CentralRoleDatabaseSeeder"
+  ]
+}</code></pre>
+  </div>
+
+  <div class="callout callout-danger">
+    <strong>🛡️ Guard Rail</strong>
+    <p>Before any migration runs, the Guard Rail validates that the <code>connection_key</code> from <code>contexts.json</code> exists in <code>config/database.php</code>. If it doesn't, a <code>ConnectionNotConfiguredException</code> is thrown and nothing executes. <code>--dry-run</code> skips this check.</p>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════
+     CMD 4 — innodite:migrate-one
+═══════════════════════════════════════════════════════════ -->
+<section id="cmd-migrate-one">
+  <div class="cmd-header">
+    <div class="cmd-icon">🎯</div>
+    <div class="cmd-info">
+      <span class="cmd-name">php artisan innodite:migrate-one {coordinate} [options]</span>
+      <p class="cmd-desc">Runs a single migration identified by its coordinate string. Automatically detects which manifest(s) the migration belongs to, validates the DB connection, registers the coordinate if missing, and executes the migration on the correct connection.</p>
+      <div class="cmd-tags">
+        <span class="cmd-tag cmd-tag-migrate">migrations</span>
+        <span class="cmd-tag cmd-tag-sync">targeted</span>
+      </div>
+    </div>
+  </div>
+
+  <h3>Signature</h3>
+  <div class="code-wrapper">
+    <div class="code-header"><span class="code-lang">bash</span><button class="copy-code-btn" onclick="copyCode(this)">Copy</button></div>
+    <pre class="language-bash"><code>php artisan innodite:migrate-one {coordinate}
+    {--manifest=}   # force a specific manifest
+    {--yes}         # skip confirmation prompts
+    {--dry-run}     # preview without executing</code></pre>
+  </div>
+
+  <h3>Understanding the Coordinate Format</h3>
+  <p>A <strong>coordinate</strong> uniquely identifies a migration file: <code>ModuleName:ContextPath/filename.php</code></p>
+  <div class="opt-table-wrap">
+    <table>
+      <thead><tr><th>Coordinate</th><th>Resolves to</th></tr></thead>
+      <tbody>
+        <tr><td><code>User:Central/2024_01_01_create_users_table.php</code></td><td><code>Modules/User/Database/Migrations/Central/2024_01_01_create_users_table.php</code></td></tr>
+        <tr><td><code>Invoice:Tenant/Acme/2024_02_01_create_invoices_table.php</code></td><td><code>Modules/Invoice/Database/Migrations/Tenant/Acme/2024_02_01_create_invoices_table.php</code></td></tr>
+        <tr><td><code>Order:Shared/2024_03_01_create_orders_table.php</code></td><td><code>Modules/Order/Database/Migrations/Shared/2024_03_01_create_orders_table.php</code></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>Options</h3>
+  <div class="opt-table-wrap">
+    <table>
+      <thead><tr><th>Option</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td><code>coordinate</code></td><td>Required. The migration coordinate in <code>ModuleName:ContextPath/filename.php</code> format.</td></tr>
+        <tr><td><code>--manifest=</code></td><td>Force a specific manifest. Without this, the command auto-detects the correct manifest(s).</td></tr>
+        <tr><td><code>--yes</code></td><td>Auto-confirm all prompts (useful in scripts/CI).</td></tr>
+        <tr><td><code>--dry-run</code></td><td>Preview what would happen without touching the DB.</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>Examples</h3>
+
+  <div class="example-group">
+    <div class="example-label">Example 1 — Migrate a central table</div>
+    <div class="code-wrapper">
+      <div class="code-header"><span class="code-lang">bash</span><button class="copy-code-btn" onclick="copyCode(this)">Copy</button></div>
+      <pre class="language-bash"><code>php artisan innodite:migrate-one "User:Central/2024_01_01_000000_create_central_users_table.php"</code></pre>
+    </div>
+  </div>
+
+  <div class="example-group">
+    <div class="example-label">Example 2 — Migrate a tenant-specific table</div>
+    <div class="code-wrapper">
+      <div class="code-header"><span class="code-lang">bash</span><button class="copy-code-btn" onclick="copyCode(this)">Copy</button></div>
+      <pre class="language-bash"><code>php artisan innodite:migrate-one "Invoice:Tenant/Acme/2024_02_01_000000_create_acme_invoices_table.php"</code></pre>
+    </div>
+  </div>
+
+  <div class="example-group">
+    <div class="example-label">Example 3 — Dry-run before executing</div>
+    <div class="code-wrapper">
+      <div class="code-header"><span class="code-lang">bash</span><button class="copy-code-btn" onclick="copyCode(this)">Copy</button></div>
+      <pre class="language-bash"><code>php artisan innodite:migrate-one "Product:Central/2024_03_01_000000_create_central_products_table.php" --dry-run</code></pre>
+    </div>
+  </div>
+
+  <div class="example-group">
+    <div class="example-label">Example 4 — Force a specific manifest and skip prompt</div>
+    <div class="code-wrapper">
+      <div class="code-header"><span class="code-lang">bash</span><button class="copy-code-btn" onclick="copyCode(this)">Copy</button></div>
+      <pre class="language-bash"><code>php artisan innodite:migrate-one \
+  "Order:Tenant/BetaCorp/2024_04_01_create_beta_orders_table.php" \
+  --manifest=beta-corp.order.json \
+  --yes</code></pre>
+    </div>
+  </div>
+
+  <div class="example-group">
+    <div class="example-label">Example 5 — Migration exists in multiple manifests (interactive)</div>
+    <div class="code-wrapper">
+      <div class="code-header"><span class="code-lang">bash</span><button class="copy-code-btn" onclick="copyCode(this)">Copy</button></div>
+      <pre class="language-bash"><code># When a coordinate maps to multiple manifests (e.g. Shared context),
+# the command shows an interactive selector:
+php artisan innodite:migrate-one "Notification:Shared/2024_05_01_create_notifications_table.php"
+
+# Output:
+# This migration appears in multiple manifests. Which one to use?
+# [0] central.order.json (central)
+# [1] acme.order.json (acme)
+# [2] beta-corp.order.json (beta-corp)
+# > _</code></pre>
+    </div>
+  </div>
+
+  <div class="callout callout-tip">
+    <strong>💡 Auto-register</strong>
+    <p>If the coordinate isn't already in the manifest, <code>migrate-one</code> automatically registers it before executing. This keeps your manifests in sync without needing <code>migration-sync</code>.</p>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════
+     CMD 5 — innodite:seed-one
+═══════════════════════════════════════════════════════════ -->
+<section id="cmd-seed-one">
+  <div class="cmd-header">
+    <div class="cmd-icon">🌱</div>
+    <div class="cmd-info">
+      <span class="cmd-name">php artisan innodite:seed-one {coordinate} [options]</span>
+      <p class="cmd-desc">Runs a single seeder class identified by its coordinate string. Identical flow to <code>migrate-one</code> but for seeders: resolves the FQCN, validates the connection, registers if missing, and executes on the correct database.</p>
+      <div class="cmd-tags">
+        <span class="cmd-tag cmd-tag-seed">seeders</span>
+        <span class="cmd-tag cmd-tag-sync">targeted</span>
+      </div>
+    </div>
+  </div>
+
+  <h3>Signature</h3>
+  <div class="code-wrapper">
+    <div class="code-header"><span class="code-lang">bash</span><button class="copy-code-btn" onclick="copyCode(this)">Copy</button></div>
+    <pre class="language-bash"><code>php artisan innodite:seed-one {coordinate}
+    {--manifest=}   # force a specific manifest
+    {--yes}         # skip confirmation prompts
+    {--dry-run}     # preview without executing</code></pre>
+  </div>
+
+  <h3>Seeder Coordinate Format</h3>
+  <p>Seeder coordinates use the class name instead of a filename: <code>ModuleName:ContextPath/SeederClassName</code></p>
+  <div class="opt-table-wrap">
+    <table>
+      <thead><tr><th>Coordinate</th><th>Resolved FQCN</th></tr></thead>
+      <tbody>
+        <tr><td><code>User:Central/CentralUserDatabaseSeeder</code></td><td><code>Modules\User\Database\Seeders\Central\CentralUserDatabaseSeeder</code></td></tr>
+        <tr><td><code>Role:Central/CentralRoleDatabaseSeeder</code></td><td><code>Modules\Role\Database\Seeders\Central\CentralRoleDatabaseSeeder</code></td></tr>
+        <tr><td><code>Plan:Tenant/Acme/AcmePlanDatabaseSeeder</code></td><td><code>Modules\Plan\Database\Seeders\Tenant\Acme\AcmePlanDatabaseSeeder</code></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>Examples</h3>
+
+  <div class="example-group">
+    <div class="example-label">Example 1 — Seed users in central database</div>
+    <div class="code-wrapper">
+      <div class="code-header"><span class="code-lang">bash</span><button class="copy-code-btn" onclick="copyCode(this)">Copy</button></div>
+      <pre class="language-bash"><code>php artisan innodite:seed-one "User:Central/CentralUserDatabaseSeeder"</code></pre>
+    </div>
+  </div>
+
+  <div class="example-group">
+    <div class="example-label">Example 2 — Seed a tenant-specific seeder</div>
+    <div class="code-wrapper">
+      <div class="code-header"><span class="code-lang">bash</span><button class="copy-code-btn" onclick="copyCode(this)">Copy</button></div>
+      <pre class="language-bash"><code>php artisan innodite:seed-one "Plan:Tenant/Acme/AcmePlanDatabaseSeeder"</code></pre>
+    </div>
+  </div>
+
+  <div class="example-group">
+    <div class="example-label">Example 3 — Dry-run to preview what will run</div>
+    <div class="code-wrapper">
+      <div class="code-header"><span class="code-lang">bash</span><button class="copy-code-btn" onclick="copyCode(this)">Copy</button></div>
+      <pre class="language-bash"><code>php artisan innodite:seed-one "Role:Central/CentralRoleDatabaseSeeder" --dry-run
+
+# Output:
+# [DRY-RUN] Would seed: Modules\Role\Database\Seeders\Central\CentralRoleDatabaseSeeder
+# [DRY-RUN] Connection: central
+# [DRY-RUN] Not executed (dry-run mode).</code></pre>
+    </div>
+  </div>
+
+  <div class="example-group">
+    <div class="example-label">Example 4 — CI/CD pipeline: seed without prompts</div>
+    <div class="code-wrapper">
+      <div class="code-header"><span class="code-lang">bash</span><button class="copy-code-btn" onclick="copyCode(this)">Copy</button></div>
+      <pre class="language-bash"><code>php artisan innodite:seed-one "User:Central/CentralUserDatabaseSeeder" --yes
+php artisan innodite:seed-one "Role:Central/CentralRoleDatabaseSeeder" --yes</code></pre>
+    </div>
+  </div>
+
+  <div class="example-group">
+    <div class="example-label">Example 5 — Target a specific manifest explicitly</div>
+    <div class="code-wrapper">
+      <div class="code-header"><span class="code-lang">bash</span><button class="copy-code-btn" onclick="copyCode(this)">Copy</button></div>
+      <pre class="language-bash"><code>php artisan innodite:seed-one \
+  "Invoice:Tenant/BetaCorp/BetaCorpInvoiceDatabaseSeeder" \
+  --manifest=beta-corp.order.json \
+  --yes</code></pre>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════
+     CMD 6 — innodite:migration-sync
+═══════════════════════════════════════════════════════════ -->
+<section id="cmd-migration-sync">
+  <div class="cmd-header">
+    <div class="cmd-icon">🔄</div>
+    <div class="cmd-info">
+      <span class="cmd-name">php artisan innodite:migration-sync [options]</span>
+      <p class="cmd-desc">Scans all <code>Modules/*/Database/Migrations/</code> and <code>Modules/*/Database/Seeders/</code> directories, detects files and classes not yet registered in any manifest, and adds them automatically. Keeps your order files in perfect sync with your codebase.</p>
+      <div class="cmd-tags">
+        <span class="cmd-tag cmd-tag-sync">sync</span>
+        <span class="cmd-tag cmd-tag-migrate">manifests</span>
+      </div>
+    </div>
+  </div>
+
+  <h3>Signature</h3>
+  <div class="code-wrapper">
+    <div class="code-header"><span class="code-lang">bash</span><button class="copy-code-btn" onclick="copyCode(this)">Copy</button></div>
+    <pre class="language-bash"><code>php artisan innodite:migration-sync
+    {--manifest=}       # sync only one specific manifest
+    {--all-manifests}   # sync all manifests (central + all tenants)
+    {--yes}             # skip confirmation prompts
+    {--dry-run}         # preview changes without writing</code></pre>
+  </div>
+
+  <h3>Options</h3>
+  <div class="opt-table-wrap">
+    <table>
+      <thead><tr><th>Option</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td><code>--manifest=</code></td><td>Sync only the specified manifest (e.g. <code>acme.order.json</code>).</td></tr>
+        <tr><td><code>--all-manifests</code></td><td>Scan and sync all manifests: <code>central.order.json</code> + one per tenant.</td></tr>
+        <tr><td><code>--yes</code></td><td>Skip confirmation — useful in automation.</td></tr>
+        <tr><td><code>--dry-run</code></td><td>Show what would be added without modifying files.</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>Examples</h3>
+
+  <div class="example-group">
+    <div class="example-label">Example 1 — Sync all manifests (recommended after make-module)</div>
+    <div class="code-wrapper">
+      <div class="code-header"><span class="code-lang">bash</span><button class="copy-code-btn" onclick="copyCode(this)">Copy</button></div>
+      <pre class="language-bash"><code># After generating new modules, auto-register everything
+php artisan innodite:migration-sync --all-manifests
+
+# Output:
+# Syncing central.order.json...
+#   + User:Central/2024_01_01_000000_create_central_users_table.php
+#   + User:Central/CentralUserDatabaseSeeder
+# Syncing acme.order.json...
+#   + Invoice:Tenant/Acme/2024_02_01_000000_create_acme_invoices_table.php
+# Done. 3 coordinates added across 2 manifests.</code></pre>
+    </div>
+  </div>
+
+  <div class="example-group">
+    <div class="example-label">Example 2 — Sync only the central manifest</div>
+    <div class="code-wrapper">
+      <div class="code-header"><span class="code-lang">bash</span><button class="copy-code-btn" onclick="copyCode(this)">Copy</button></div>
+      <pre class="language-bash"><code>php artisan innodite:migration-sync --manifest=central.order.json</code></pre>
+    </div>
+  </div>
+
+  <div class="example-group">
+    <div class="example-label">Example 3 — Preview before committing (dry-run)</div>
+    <div class="code-wrapper">
+      <div class="code-header"><span class="code-lang">bash</span><button class="copy-code-btn" onclick="copyCode(this)">Copy</button></div>
+      <pre class="language-bash"><code>php artisan innodite:migration-sync --all-manifests --dry-run
+
+# Shows every coordinate that would be added
+# without writing to any .order.json file</code></pre>
+    </div>
+  </div>
+
+  <div class="example-group">
+    <div class="example-label">Example 4 — CI/CD: sync after deploy</div>
+    <div class="code-wrapper">
+      <div class="code-header"><span class="code-lang">bash</span><button class="copy-code-btn" onclick="copyCode(this)">Copy</button></div>
+      <pre class="language-bash"><code># Recommended deploy script
+php artisan innodite:migration-sync --all-manifests --yes
+php artisan innodite:migrate-plan --manifest=central.order.json
+php artisan innodite:migrate-plan --manifest=acme.order.json</code></pre>
+    </div>
+  </div>
+
+  <div class="example-group">
+    <div class="example-label">Example 5 — After adding a migration manually</div>
+    <div class="code-wrapper">
+      <div class="code-header"><span class="code-lang">bash</span><button class="copy-code-btn" onclick="copyCode(this)">Copy</button></div>
+      <pre class="language-bash"><code># You manually created a migration in Modules/Billing/Database/Migrations/Central/
+# Register it into the manifest without running it yet
+php artisan innodite:migration-sync --manifest=central.order.json --yes
+
+# Then review the manifest before running
+cat module-maker-config/migrations/central.order.json</code></pre>
+    </div>
+  </div>
+
+  <div class="callout callout-tip">
+    <strong>💡 Best Practice</strong>
+    <p>Run <code>innodite:migration-sync --all-manifests</code> right after every <code>innodite:make-module</code> call. This ensures your manifests always reflect the current state of your <code>Modules/</code> directory.</p>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════
+     CMD 7 — innodite:check-env
+═══════════════════════════════════════════════════════════ -->
+<section id="cmd-check-env">
+  <div class="cmd-header">
+    <div class="cmd-icon">✅</div>
+    <div class="cmd-info">
+      <span class="cmd-name">php artisan innodite:check-env</span>
+      <p class="cmd-desc">Audits your Laravel application's environment to ensure all components required by Module Maker are properly configured. Checks permissions, Inertia sharing, and middleware registration, then provides copy-paste code snippets for any missing setup.</p>
+      <div class="cmd-tags">
+        <span class="cmd-tag cmd-tag-check">diagnostics</span>
+        <span class="cmd-tag cmd-tag-setup">environment</span>
+      </div>
+    </div>
+  </div>
+
+  <h3>What it checks</h3>
+  <div class="steps">
+    <div class="step">
+      <div class="step-num">1</div>
+      <div class="step-content">
+        <strong>User model permissions support</strong>
+        <p>Verifies that your <code>App\Models\User</code> implements either Spatie's <code>HasPermissions</code> or the <code>InnoditeUserPermissions</code> interface.</p>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">2</div>
+      <div class="step-content">
+        <strong>HandleInertiaRequests middleware</strong>
+        <p>Checks that <code>auth.permissions</code> is shared in the <code>HandleInertiaRequests::share()</code> method.</p>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">3</div>
+      <div class="step-content">
+        <strong>InnoditeContextBridge middleware</strong>
+        <p>Verifies the context bridge middleware is registered in the <code>web</code> middleware group.</p>
+      </div>
+    </div>
+  </div>
+
+  <h3>Examples</h3>
+
+  <div class="example-group">
+    <div class="example-label">Example 1 — Run environment check</div>
+    <div class="code-wrapper">
+      <div class="code-header"><span class="code-lang">bash</span><button class="copy-code-btn" onclick="copyCode(this)">Copy</button></div>
+      <pre class="language-bash"><code>php artisan innodite:check-env
+
+# Example output (all passing):
+# ✅ User model implements HasPermissions (Spatie)
+# ✅ HandleInertiaRequests shares auth.permissions
+# ✅ InnoditeContextBridge is registered in web group
+
+# Example output (with issues):
+# ❌ User model does not implement permissions interface
+#    → Add HasPermissions trait from Spatie, OR implement InnoditeUserPermissions
+#
+#    // Option A: Spatie
+#    use Spatie\Permission\Traits\HasPermissions;
+#    class User extends Authenticatable { use HasPermissions; }
+#
+#    // Option B: Custom interface
+#    use Innodite\LaravelModuleMaker\Contracts\InnoditeUserPermissions;
+#    class User extends Authenticatable implements InnoditeUserPermissions {
+#        public function getInnoditePermissions(): array { return [...]; }
+#    }</code></pre>
+    </div>
+  </div>
+
+  <div class="example-group">
+    <div class="example-label">Fix: Adding InnoditeUserPermissions to User model</div>
+    <div class="code-wrapper">
+      <div class="code-header"><span class="code-lang">php</span><span class="code-file">app/Models/User.php</span><button class="copy-code-btn" onclick="copyCode(this)">Copy</button></div>
+      <pre class="language-php"><code>use Innodite\LaravelModuleMaker\Contracts\InnoditeUserPermissions;
+
+class User extends Authenticatable implements InnoditeUserPermissions
+{
+    public function getInnoditePermissions(): array
+    {
+        // Your custom permission resolution:
+        return $this->roles
+            ->flatMap(fn($r) => $r->permissions)
+            ->pluck('name')
+            ->unique()
+            ->values()
+            ->toArray();
+    }
+}</code></pre>
+    </div>
+  </div>
+
+  <div class="example-group">
+    <div class="example-label">Fix: Register middleware in bootstrap/app.php</div>
+    <div class="code-wrapper">
+      <div class="code-header"><span class="code-lang">php</span><span class="code-file">bootstrap/app.php</span><button class="copy-code-btn" onclick="copyCode(this)">Copy</button></div>
+      <pre class="language-php"><code>->withMiddleware(function (Middleware $middleware) {
+    $middleware->appendToGroup('web', [
+        \Innodite\LaravelModuleMaker\Middleware\InnoditeContextBridge::class,
+    ]);
+})</code></pre>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════
+     CMD 8 — innodite:module-check
+═══════════════════════════════════════════════════════════ -->
+<section id="cmd-module-check">
+  <div class="cmd-header">
+    <div class="cmd-icon">🩺</div>
+    <div class="cmd-info">
+      <span class="cmd-name">php artisan innodite:module-check</span>
+      <p class="cmd-desc">Deep diagnostic tool for your Module Maker installation. Validates <code>contexts.json</code> integrity, checks filesystem write permissions, detects module name collisions, and reports the state of the audit log. Think of it as a health check for your entire module system.</p>
+      <div class="cmd-tags">
+        <span class="cmd-tag cmd-tag-check">diagnostics</span>
+        <span class="cmd-tag cmd-tag-check">health</span>
+      </div>
+    </div>
+  </div>
+
+  <h3>Diagnostic Checks</h3>
+  <div class="opt-table-wrap">
+    <table>
+      <thead><tr><th>Check</th><th>What it validates</th></tr></thead>
+      <tbody>
+        <tr><td><strong>contexts.json integrity</strong></td><td>Valid JSON, required keys present, hybrid structure correct (tenant must be array)</td></tr>
+        <tr><td><strong>Write permissions</strong></td><td><code>Modules/</code>, <code>routes/</code>, <code>storage/logs/</code> are writable by the web server</td></tr>
+        <tr><td><strong>Module name collisions</strong></td><td>No two modules share the same name (case-insensitive)</td></tr>
+        <tr><td><strong>DB connections</strong></td><td>All <code>connection_key</code> values exist in <code>config/database.php</code></td></tr>
+        <tr><td><strong>Audit log</strong></td><td>Status and size of <code>storage/logs/module_maker.log</code></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>Examples</h3>
+
+  <div class="example-group">
+    <div class="example-label">Example 1 — Run a full system health check</div>
+    <div class="code-wrapper">
+      <div class="code-header"><span class="code-lang">bash</span><button class="copy-code-btn" onclick="copyCode(this)">Copy</button></div>
+      <pre class="language-bash"><code>php artisan innodite:module-check
+
+# Example output:
+# ── Module Maker Health Check ──────────────────────────
+# ✅ contexts.json — Valid JSON, 4 contexts defined
+# ✅ Modules/       — Writable
+# ✅ routes/        — Writable
+# ✅ storage/logs/  — Writable
+# ✅ DB connections — All 3 connections found in config/database.php
+# ✅ Module names   — No collisions detected (12 modules)
+# ℹ️  Audit log     — 847 entries, 124 KB
+# ──────────────────────────────────────────────────────
+# All checks passed.</code></pre>
+    </div>
+  </div>
+
+  <div class="example-group">
+    <div class="example-label">Example 2 — Output when there are issues</div>
+    <div class="code-wrapper">
+      <div class="code-header"><span class="code-lang">bash</span><button class="copy-code-btn" onclick="copyCode(this)">Copy</button></div>
+      <pre class="language-bash"><code># Output with issues:
+# ❌ contexts.json — "tenant" key must be an array, got object
+#    Fix: wrap your tenant definition in [ ... ]
+#
+# ❌ DB connections — Connection "gamma_db" not found in config/database.php
+#    Context: gamma-ltd
+#    Add to config/database.php:
+#    'gamma_db' => [
+#        'driver' => 'mysql',
+#        'host'   => env('GAMMA_DB_HOST', '127.0.0.1'),
+#        ...
+#    ]</code></pre>
+    </div>
+  </div>
+
+  <div class="example-group">
+    <div class="example-label">Example 3 — Useful after adding a new tenant</div>
+    <div class="code-wrapper">
+      <div class="code-header"><span class="code-lang">bash</span><button class="copy-code-btn" onclick="copyCode(this)">Copy</button></div>
+      <pre class="language-bash"><code># After editing contexts.json to add a new tenant, verify:
+php artisan innodite:module-check
+
+# Then immediately run check-env too for full coverage:
+php artisan innodite:check-env</code></pre>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════
+     CMD 9 — innodite:test-module
+═══════════════════════════════════════════════════════════ -->
+<section id="cmd-test-module">
+  <div class="cmd-header">
+    <div class="cmd-icon">🧪</div>
+    <div class="cmd-info">
+      <span class="cmd-name">php artisan innodite:test-module [module] [options]</span>
+      <p class="cmd-desc">Runs PHPUnit tests for one or all modules with fine-grained filtering by context. Supports code coverage reporting in HTML, text, and Clover formats. Reports are saved to <code>docs/test-reports/</code>.</p>
+      <div class="cmd-tags">
+        <span class="cmd-tag cmd-tag-test">testing</span>
+        <span class="cmd-tag cmd-tag-test">coverage</span>
+      </div>
+    </div>
+  </div>
+
+  <h3>Signature</h3>
+  <div class="code-wrapper">
+    <div class="code-header"><span class="code-lang">bash</span><button class="copy-code-btn" onclick="copyCode(this)">Copy</button></div>
+    <pre class="language-bash"><code>php artisan innodite:test-module {module?}
+    {--all}              # run tests for ALL modules
+    {--context=}         # filter by context (central, shared, acme...)
+    {--all-contexts}     # run tests for all contexts
+    {--coverage}         # enable code coverage (requires Xdebug or PCOV)
+    {--format=*}         # coverage format: html, text, clover (repeatable)
+    {--filter=}          # PHPUnit --filter string
+    {--stop-on-failure}  # stop as soon as one test fails
+    {--no-output}        # suppress PHPUnit output</code></pre>
+  </div>
+
+  <h3>Options</h3>
+  <div class="opt-table-wrap">
+    <table>
+      <thead><tr><th>Option</th><th>Description</th></tr></thead>
+      <tbody>
+        <tr><td><code>module</code></td><td>Module name to test (e.g. <code>User</code>, <code>Invoice</code>). Omit to use <code>--all</code>.</td></tr>
+        <tr><td><code>--all</code></td><td>Run tests for every module in <code>Modules/</code>.</td></tr>
+        <tr><td><code>--context=</code></td><td>Filter tests to a specific context directory (e.g. <code>--context=central</code>).</td></tr>
+        <tr><td><code>--all-contexts</code></td><td>Run tests across all context subfolders.</td></tr>
+        <tr><td><code>--coverage</code></td><td>Enable code coverage. Requires Xdebug 3+ or PCOV extension.</td></tr>
+        <tr><td><code>--format=</code></td><td>Coverage report format. Accepts: <code>html</code>, <code>text</code>, <code>clover</code>. Repeatable.</td></tr>
+        <tr><td><code>--filter=</code></td><td>Passed directly to PHPUnit's <code>--filter</code> option.</td></tr>
+        <tr><td><code>--stop-on-failure</code></td><td>Abort the test suite on first failure.</td></tr>
+        <tr><td><code>--no-output</code></td><td>Suppress PHPUnit console output (useful in pipelines).</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>Examples</h3>
+
+  <div class="example-group">
+    <div class="example-label">Example 1 — Test a single module</div>
+    <div class="code-wrapper">
+      <div class="code-header"><span class="code-lang">bash</span><button class="copy-code-btn" onclick="copyCode(this)">Copy</button></div>
+      <pre class="language-bash"><code>php artisan innodite:test-module User</code></pre>
+    </div>
+  </div>
+
+  <div class="example-group">
+    <div class="example-label">Example 2 — Test a module filtered by context</div>
+    <div class="code-wrapper">
+      <div class="code-header"><span class="code-lang">bash</span><button class="copy-code-btn" onclick="copyCode(this)">Copy</button></div>
+      <pre class="language-bash"><code># Only run tests under Modules/User/Tests/Feature/Central/
+php artisan innodite:test-module User --context=central
+
+# Only run tenant-specific tests
+php artisan innodite:test-module Invoice --context=acme</code></pre>
+    </div>
+  </div>
+
+  <div class="example-group">
+    <div class="example-label">Example 3 — Run all module tests</div>
+    <div class="code-wrapper">
+      <div class="code-header"><span class="code-lang">bash</span><button class="copy-code-btn" onclick="copyCode(this)">Copy</button></div>
+      <pre class="language-bash"><code>php artisan innodite:test-module --all</code></pre>
+    </div>
+  </div>
+
+  <div class="example-group">
+    <div class="example-label">Example 4 — Generate HTML coverage report</div>
+    <div class="code-wrapper">
+      <div class="code-header"><span class="code-lang">bash</span><button class="copy-code-btn" onclick="copyCode(this)">Copy</button></div>
+      <pre class="language-bash"><code># Requires Xdebug or PCOV
+php artisan innodite:test-module User --coverage --format=html
+
+# Report saved to: docs/test-reports/User/coverage-html/index.html</code></pre>
+    </div>
+  </div>
+
+  <div class="example-group">
+    <div class="example-label">Example 5 — Multiple coverage formats at once</div>
+    <div class="code-wrapper">
+      <div class="code-header"><span class="code-lang">bash</span><button class="copy-code-btn" onclick="copyCode(this)">Copy</button></div>
+      <pre class="language-bash"><code># Generate HTML for humans + Clover for CI
+php artisan innodite:test-module User --coverage --format=html --format=clover</code></pre>
+    </div>
+  </div>
+
+  <div class="example-group">
+    <div class="example-label">Example 6 — Filter to specific test methods</div>
+    <div class="code-wrapper">
+      <div class="code-header"><span class="code-lang">bash</span><button class="copy-code-btn" onclick="copyCode(this)">Copy</button></div>
+      <pre class="language-bash"><code># Run only tests whose name contains "create"
+php artisan innodite:test-module User --filter=create
+
+# Run only the CentralUserTest class
+php artisan innodite:test-module User --filter=CentralUserTest</code></pre>
+    </div>
+  </div>
+
+  <div class="example-group">
+    <div class="example-label">Example 7 — CI/CD pipeline</div>
+    <div class="code-wrapper">
+      <div class="code-header"><span class="code-lang">bash</span><button class="copy-code-btn" onclick="copyCode(this)">Copy</button></div>
+      <pre class="language-bash"><code># Run all tests, stop on first failure, output Clover for coverage badge
+php artisan innodite:test-module --all \
+  --stop-on-failure \
+  --coverage \
+  --format=clover \
+  --no-output</code></pre>
+    </div>
+  </div>
+
+  <div class="callout callout-warn">
+    <strong>⚠️ Coverage requirements</strong>
+    <p>Code coverage requires either <strong>Xdebug 3+</strong> (with <code>xdebug.mode=coverage</code>) or the <strong>PCOV</strong> extension. Without one of these, <code>--coverage</code> will fail gracefully with an informative error message.</p>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════
+     CMD 10 — innodite:test-sync
+═══════════════════════════════════════════════════════════ -->
+<section id="cmd-test-sync">
+  <div class="cmd-header">
+    <div class="cmd-icon">🔁</div>
+    <div class="cmd-info">
+      <span class="cmd-name">php artisan innodite:test-sync</span>
+      <p class="cmd-desc">Synchronizes PHPUnit configuration files between modules and contexts. Ensures each module and each context have the correct <code>phpunit.xml</code> settings for test discovery, database connections, and environment setup.</p>
+      <div class="cmd-tags">
+        <span class="cmd-tag cmd-tag-test">testing</span>
+        <span class="cmd-tag cmd-tag-sync">config sync</span>
+      </div>
+    </div>
+  </div>
+
+  <h3>Examples</h3>
+
+  <div class="example-group">
+    <div class="example-label">Example 1 — Sync after adding a new context or module</div>
+    <div class="code-wrapper">
+      <div class="code-header"><span class="code-lang">bash</span><button class="copy-code-btn" onclick="copyCode(this)">Copy</button></div>
+      <pre class="language-bash"><code># After adding a new tenant to contexts.json:
+php artisan innodite:test-sync
+
+# After generating a new module:
+php artisan innodite:make-module Report --context=central
+php artisan innodite:test-sync</code></pre>
+    </div>
+  </div>
+
+  <div class="example-group">
+    <div class="example-label">Example 2 — Recommended workflow</div>
+    <div class="code-wrapper">
+      <div class="code-header"><span class="code-lang">bash</span><button class="copy-code-btn" onclick="copyCode(this)">Copy</button></div>
+      <pre class="language-bash"><code># Full synchronization workflow
+php artisan innodite:migration-sync --all-manifests
+php artisan innodite:test-sync
+php artisan innodite:test-module --all</code></pre>
+    </div>
+  </div>
+
+  <div class="callout callout-tip">
+    <strong>💡 When to run test-sync</strong>
+    <p>Run <code>innodite:test-sync</code> whenever you add a new context to <code>contexts.json</code>, or after generating multiple modules at once. It ensures PHPUnit can discover tests in the correct paths.</p>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════
+     CMD 11 — innodite:migrate-modules
+═══════════════════════════════════════════════════════════ -->
+<section id="cmd-migrate-modules">
+  <div class="cmd-header">
+    <div class="cmd-icon">📦</div>
+    <div class="cmd-info">
+      <span class="cmd-name">php artisan innodite:migrate-modules [options]</span>
+      <p class="cmd-desc">Legacy migration utility. Upgrades module route directories from the v2.x convention (<code>routes/</code>) to the v3.0.0+ convention (<code>Routes/</code> with capital R). Only needed when upgrading existing projects from Module Maker v2.x to v3+.</p>
+      <div class="cmd-tags">
+        <span class="cmd-tag cmd-tag-legacy">legacy</span>
+        <span class="cmd-tag cmd-tag-migrate">v2 → v3</span>
+      </div>
+    </div>
+  </div>
+
+  <h3>Signature</h3>
+  <div class="code-wrapper">
+    <div class="code-header"><span class="code-lang">bash</span><button class="copy-code-btn" onclick="copyCode(this)">Copy</button></div>
+    <pre class="language-bash"><code>php artisan innodite:migrate-modules
+    {--dry-run}   # preview what would be renamed</code></pre>
+  </div>
+
+  <h3>What it does</h3>
+  <p>Scans all modules in <code>Modules/</code> and renames <code>routes/</code> → <code>Routes/</code> for any module still using the old convention. The Service Provider auto-discovers both directories during the transition.</p>
+
+  <h3>Examples</h3>
+
+  <div class="example-group">
+    <div class="example-label">Example 1 — Preview before renaming</div>
+    <div class="code-wrapper">
+      <div class="code-header"><span class="code-lang">bash</span><button class="copy-code-btn" onclick="copyCode(this)">Copy</button></div>
+      <pre class="language-bash"><code>php artisan innodite:migrate-modules --dry-run
+
+# Output:
+# [DRY-RUN] Would rename: Modules/User/routes/ → Modules/User/Routes/
+# [DRY-RUN] Would rename: Modules/Invoice/routes/ → Modules/Invoice/Routes/
+# [DRY-RUN] 2 modules need updating. Not executed.</code></pre>
+    </div>
+  </div>
+
+  <div class="example-group">
+    <div class="example-label">Example 2 — Apply the migration</div>
+    <div class="code-wrapper">
+      <div class="code-header"><span class="code-lang">bash</span><button class="copy-code-btn" onclick="copyCode(this)">Copy</button></div>
+      <pre class="language-bash"><code>php artisan innodite:migrate-modules</code></pre>
+    </div>
+  </div>
+
+  <div class="callout callout-info">
+    <strong>ℹ️ New projects</strong>
+    <p>If you started with Module Maker v3.0.0+, you never need this command. All new modules are generated with <code>Routes/</code> (capital R) from the start.</p>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════
+     CMD 12 — innodite:publish-frontend
+═══════════════════════════════════════════════════════════ -->
+<section id="cmd-publish-frontend">
+  <div class="cmd-header">
+    <div class="cmd-icon">🖼️</div>
+    <div class="cmd-info">
+      <span class="cmd-name">php artisan innodite:publish-frontend</span>
+      <p class="cmd-desc">Publishes Vue 3 composables and frontend utilities from the package to your project's resources directory. After publishing, you can customize these files freely — they won't be overwritten on package updates.</p>
+      <div class="cmd-tags">
+        <span class="cmd-tag cmd-tag-frontend">Vue 3</span>
+        <span class="cmd-tag cmd-tag-frontend">Inertia</span>
+      </div>
+    </div>
+  </div>
+
+  <h3>Examples</h3>
+
+  <div class="example-group">
+    <div class="example-label">Example 1 — Publish Vue composables</div>
+    <div class="code-wrapper">
+      <div class="code-header"><span class="code-lang">bash</span><button class="copy-code-btn" onclick="copyCode(this)">Copy</button></div>
+      <pre class="language-bash"><code>php artisan innodite:publish-frontend
+
+# Publishes to:
+# resources/js/composables/useInnoditeModule.js
+# resources/js/composables/useInnoditeContext.js
+# resources/js/composables/useInnoditePermissions.js</code></pre>
+    </div>
+  </div>
+
+  <div class="example-group">
+    <div class="example-label">Example 2 — Using the published composables in Vue</div>
+    <div class="code-wrapper">
+      <div class="code-header"><span class="code-lang">javascript</span><span class="code-file">resources/js/Pages/Central/User/Index.vue</span><button class="copy-code-btn" onclick="copyCode(this)">Copy</button></div>
+      <pre class="language-javascript"><code>import { useInnoditeContext } from '@/composables/useInnoditeContext'
+import { useInnoditePermissions } from '@/composables/useInnoditePermissions'
+
+const { context, routePrefix, permissionPrefix } = useInnoditeContext()
+const { can, canAny } = useInnoditePermissions()
+
+// Check if user can create users in current context
+const canCreate = can('users.create')
+
+// Conditionally show buttons based on context
+console.log(routePrefix.value)  // e.g. "central"</code></pre>
+    </div>
+  </div>
+
+  <div class="example-group">
+    <div class="example-label">Example 3 — Using RendersInertiaModule in a Controller</div>
+    <div class="code-wrapper">
+      <div class="code-header"><span class="code-lang">php</span><span class="code-file">Modules/User/Http/Controllers/Central/CentralUserController.php</span><button class="copy-code-btn" onclick="copyCode(this)">Copy</button></div>
+      <pre class="language-php"><code>use Innodite\LaravelModuleMaker\Traits\RendersInertiaModule;
+
+class CentralUserController extends Controller
 {
     use RendersInertiaModule;
 
-    public function index(): InertiaResponse
+    public function index()
     {
-        return $this->renderModule('User', 'CentralUserIndex'); // Solo navega a la vista
+        return $this->renderModule('User', 'CentralUserList', [
+            'users' => User::paginate(15),
+        ]);
+        // → Inertia::render('User::Central/UserList', [...])
     }
 
-    public function list(Request $request): JsonResponse
+    public function show(User $user)
     {
-        return response()->json($this->service->paginate($request->all())); // Datos para axios
+        return $this->renderModule('User', 'CentralUserShow', [
+            'user' => $user,
+        ]);
+        // → Inertia::render('User::Central/UserShow', [...])
     }
+}</code></pre>
+    </div>
+  </div>
+</section>
 
-    public function store(Request $request): JsonResponse
+<!-- ═══════════════════════════════════════════════════════════
+     ADVANCED — MULTITENANCY
+═══════════════════════════════════════════════════════════ -->
+<section id="multitenancy">
+  <div class="section-badge badge-warning">Advanced</div>
+  <h2>Multitenancy — Manual Strategy</h2>
+  <p>Module Maker uses an <strong>explicit manual tenancy strategy</strong>. There is no middleware magic switching connections — you define <em>exactly</em> which database connection each context uses.</p>
+
+  <h3>How it works</h3>
+  <div class="steps">
+    <div class="step">
+      <div class="step-num">1</div>
+      <div class="step-content">
+        <strong>Define tenants in contexts.json</strong>
+        <div class="code-wrapper"><div class="code-header"><span class="code-lang">json</span><button class="copy-code-btn" onclick="copyCode(this)">Copy</button></div>
+        <pre class="language-json"><code>{
+  "contexts": {
+    "central": {
+      "id": "central",
+      "tenancy_strategy": "manual",
+      "connection_key": "central"
+    },
+    "tenant": [
+      { "id": "acme",     "tenancy_strategy": "manual", "connection_key": "acme_db" },
+      { "id": "beta",     "tenancy_strategy": "manual", "connection_key": "beta_db" },
+      { "id": "gamma",    "tenancy_strategy": "manual", "connection_key": "gamma_db" }
+    ]
+  }
+}</code></pre></div>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">2</div>
+      <div class="step-content">
+        <strong>Register connections in config/database.php</strong>
+        <div class="code-wrapper"><div class="code-header"><span class="code-lang">php</span><span class="code-file">config/database.php</span><button class="copy-code-btn" onclick="copyCode(this)">Copy</button></div>
+        <pre class="language-php"><code>'connections' => [
+    'central' => [
+        'driver'   => 'mysql',
+        'host'     => env('CENTRAL_DB_HOST', '127.0.0.1'),
+        'database' => env('CENTRAL_DB_DATABASE', 'central'),
+        'username' => env('CENTRAL_DB_USERNAME', 'root'),
+        'password' => env('CENTRAL_DB_PASSWORD', ''),
+    ],
+    'acme_db' => [
+        'driver'   => 'mysql',
+        'host'     => env('ACME_DB_HOST', '127.0.0.1'),
+        'database' => env('ACME_DB_DATABASE', 'acme'),
+        'username' => env('ACME_DB_USERNAME', 'root'),
+        'password' => env('ACME_DB_PASSWORD', ''),
+    ],
+    'beta_db' => [...],
+    'gamma_db' => [...],
+]</code></pre></div>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">3</div>
+      <div class="step-content">
+        <strong>Generate modules per context and per tenant</strong>
+        <div class="code-wrapper"><div class="code-header"><span class="code-lang">bash</span><button class="copy-code-btn" onclick="copyCode(this)">Copy</button></div>
+        <pre class="language-bash"><code># Central admin module
+php artisan innodite:make-module AdminDashboard --context=central
+
+# Tenant-specific modules
+php artisan innodite:make-module Invoice --context=acme
+php artisan innodite:make-module Invoice --context=beta
+php artisan innodite:make-module Invoice --context=gamma</code></pre></div>
+      </div>
+    </div>
+    <div class="step">
+      <div class="step-num">4</div>
+      <div class="step-content">
+        <strong>Run migrations per tenant</strong>
+        <div class="code-wrapper"><div class="code-header"><span class="code-lang">bash</span><button class="copy-code-btn" onclick="copyCode(this)">Copy</button></div>
+        <pre class="language-bash"><code>php artisan innodite:migrate-plan --manifest=central.order.json
+php artisan innodite:migrate-plan --manifest=acme.order.json
+php artisan innodite:migrate-plan --manifest=beta.order.json
+php artisan innodite:migrate-plan --manifest=gamma.order.json</code></pre></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════
+     ADVANCED — CUSTOM STUBS
+═══════════════════════════════════════════════════════════ -->
+<section id="custom-stubs">
+  <div class="section-badge badge-warning">Advanced</div>
+  <h2>Custom Stubs</h2>
+  <p>Every generated file is produced from a stub template. You can override any stub at the project level — per context, or as a generic fallback.</p>
+
+  <h3>Stub Resolution Priority</h3>
+  <div class="steps">
+    <div class="step"><div class="step-num">1</div><div class="step-content"><strong>Project context-specific stub</strong><p><code>module-maker-config/stubs/contextual/Central/model.stub</code></p></div></div>
+    <div class="step"><div class="step-num">2</div><div class="step-content"><strong>Project generic stub</strong><p><code>module-maker-config/stubs/contextual/model.stub</code></p></div></div>
+    <div class="step"><div class="step-num">3</div><div class="step-content"><strong>Package context-specific stub</strong><p><code>vendor/innodite/laravel-module-maker/stubs/contextual/Central/model.stub</code></p></div></div>
+    <div class="step"><div class="step-num">4</div><div class="step-content"><strong>Package generic stub</strong><p><code>vendor/innodite/laravel-module-maker/stubs/contextual/model.stub</code></p></div></div>
+  </div>
+
+  <h3>Available Stub Placeholders</h3>
+  <div class="opt-table-wrap">
+    <table>
+      <thead><tr><th>Placeholder</th><th>Example Value</th></tr></thead>
+      <tbody>
+        <tr><td><code>{{ namespace }}</code></td><td><code>Modules\User\Models\Central</code></td></tr>
+        <tr><td><code>{{ modelName }}</code></td><td><code>CentralUser</code></td></tr>
+        <tr><td><code>{{ controllerName }}</code></td><td><code>CentralUserController</code></td></tr>
+        <tr><td><code>{{ serviceInterface }}</code></td><td><code>Modules\User\Services\Contracts\Central\CentralUserServiceInterface</code></td></tr>
+        <tr><td><code>{{ serviceInstance }}</code></td><td><code>centralUserService</code></td></tr>
+        <tr><td><code>{{ repositoryInterfaceName }}</code></td><td><code>CentralUserRepositoryInterface</code></td></tr>
+        <tr><td><code>{{ module }}</code></td><td><code>User</code></td></tr>
+        <tr><td><code>{{ viewName }}</code></td><td><code>User::Central/UserList</code></td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <h3>Example: Custom Model Stub</h3>
+  <div class="code-wrapper">
+    <div class="code-header"><span class="code-lang">php</span><span class="code-file">module-maker-config/stubs/contextual/model.stub</span><button class="copy-code-btn" onclick="copyCode(this)">Copy</button></div>
+    <pre class="language-php"><code>&lt;?php
+
+namespace {{ namespace }};
+
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Factories\HasFactory;
+use Illuminate\Database\Eloquent\SoftDeletes;
+
+class {{ modelName }} extends Model
+{
+    use HasFactory, SoftDeletes;
+
+    protected $guarded = ['id'];
+
+    protected $casts = [
+        'created_at' => 'datetime',
+        'updated_at' => 'datetime',
+        'deleted_at' => 'datetime',
+    ];
+}</code></pre>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════
+     ADVANCED — MIDDLEWARE
+═══════════════════════════════════════════════════════════ -->
+<section id="middleware">
+  <div class="section-badge badge-warning">Advanced</div>
+  <h2>InnoditeContextBridge Middleware</h2>
+  <p>The context bridge middleware automatically detects the active context from the current request and shares it — along with the user's permissions — to your Inertia frontend on every request.</p>
+
+  <h3>What it shares with Inertia</h3>
+  <div class="code-wrapper">
+    <div class="code-header"><span class="code-lang">javascript</span><span class="code-file">Available in all Vue pages via usePage().props.auth</span><button class="copy-code-btn" onclick="copyCode(this)">Copy</button></div>
+    <pre class="language-javascript"><code>// Inertia shared props
+{
+  auth: {
+    context: {
+      route_prefix: "acme",        // matches the active context
+      permission_prefix: "acme"    // for building permission strings
+    },
+    permissions: [
+      "acme_users_index",
+      "acme_invoices_store",
+      "acme_invoices_destroy"
+      // ...all permissions for the current user
+    ]
+  }
+}</code></pre>
+  </div>
+
+  <h3>Context Detection Strategy</h3>
+  <p>The middleware compares the current request against ALL contexts in priority order:</p>
+  <ol>
+    <li><strong>Route name prefix</strong> — matches <code>route_name</code> from contexts.json</li>
+    <li><strong>URL path prefix</strong> — matches <code>route_prefix</strong> from contexts.json</li>
+  </ol>
+
+  <h3>Using context data in Vue components</h3>
+  <div class="code-wrapper">
+    <div class="code-header"><span class="code-lang">javascript</span><span class="code-file">resources/js/Pages/Acme/Invoice/Index.vue</span><button class="copy-code-btn" onclick="copyCode(this)">Copy</button></div>
+    <pre class="language-javascript"><code>import { usePage, computed } from '@inertiajs/vue3'
+
+const page = usePage()
+
+const context = computed(() => page.props.auth.context)
+const permissions = computed(() => page.props.auth.permissions)
+
+// Check permission dynamically using context prefix
+const canCreate = computed(() =>
+  permissions.value.includes(`${context.value.permission_prefix}_invoices_store`)
+)
+
+// Build route names dynamically
+const indexRoute = computed(() =>
+  `${context.value.route_prefix}.invoices.index`
+)
+</code></pre>
+  </div>
+</section>
+
+<!-- ═══════════════════════════════════════════════════════════
+     ADVANCED — TRAITS
+═══════════════════════════════════════════════════════════ -->
+<section id="traits">
+  <div class="section-badge badge-warning">Advanced</div>
+  <h2>Traits &amp; Helpers</h2>
+
+  <h3>RendersInertiaModule</h3>
+  <p>Add this trait to any controller to get automatic Inertia view resolution based on the component name prefix.</p>
+
+  <div class="code-wrapper">
+    <div class="code-header"><span class="code-lang">php</span><button class="copy-code-btn" onclick="copyCode(this)">Copy</button></div>
+    <pre class="language-php"><code>use Innodite\LaravelModuleMaker\Traits\RendersInertiaModule;
+
+class AcmeInvoiceController extends Controller
+{
+    use RendersInertiaModule;
+
+    public function index()
     {
-        return response()->json($this->service->create($request->validated()), 201);
+        // "AcmeInvoiceList" → prefix "Acme" → folder "Tenant/Acme"
+        return $this->renderModule('Invoice', 'AcmeInvoiceList', [
+            'invoices' => Invoice::on('acme_db')->paginate(20),
+        ]);
+        // Resolves to: Inertia::render('Invoice::Tenant/Acme/InvoiceList', [...])
     }
 }</code></pre>
   </div>
 
-  <h3>Ruta inyectada en web.php</h3>
+  <h3>ContextResolver — Programmatic Access</h3>
+  <p>Use <code>ContextResolver</code> anywhere in your code to access context configuration:</p>
   <div class="code-wrapper">
-    <div class="code-header"><span class="code-lang">php</span><button class="copy-code-btn" onclick="copyCode(this)">Copiar</button></div>
-    <pre><code class="language-php">Route::prefix('central')->middleware(['web', 'auth'])->group(function () {
-    Route::resource('users', \App\Http\Controllers\Central\CentralUsersController::class);
-});</code></pre>
-  </div>
+    <div class="code-header"><span class="code-lang">php</span><button class="copy-code-btn" onclick="copyCode(this)">Copy</button></div>
+    <pre class="language-php"><code>use Innodite\LaravelModuleMaker\Support\ContextResolver;
 
-  <h3>Cómo contextRoute() resuelve</h3>
-  <div class="code-wrapper">
-    <div class="code-header"><span class="code-lang">javascript</span><button class="copy-code-btn" onclick="copyCode(this)">Copiar</button></div>
-    <pre><code class="language-javascript">const { contextRoute } = useModuleContext()
-// Con route_prefix = "central":
-contextRoute('users.index')  // => "central.users.index"
-contextRoute('users.store')  // => "central.users.store"</code></pre>
+// Find a context by ID (searches central, shared, AND all tenants)
+$context = ContextResolver::find('acme');
+// ['id' => 'acme', 'connection_key' => 'acme_db', ...]
+
+// Get only the central context (object lookup)
+$central = ContextResolver::resolve('central');
+
+// Get all tenants as a flat array
+$tenants = ContextResolver::allTenants();
+
+// Get ALL contexts as a flat array (including central, shared, etc.)
+$all = ContextResolver::allItems();
+
+// Validate that a connection exists in config/database.php
+ContextResolver::validateConnection('acme');  // throws if not found</code></pre>
   </div>
 </section>
 
-<!-- ──────────── SHARED ──────────── -->
-<section id="shared">
-  <span class="section-badge badge-shared">Contexto</span>
-  <h2>Shared</h2>
-  <p>El contexto <strong>shared</strong> es especial: genera módulos accesibles tanto desde el panel central como desde el panel tenant. Por eso <code>route_file</code> es un <strong>array</strong> <code>["web.php", "tenant.php"]</code> — el paquete inyecta el bloque de rutas en ambos archivos.</p>
+<!-- ═══════════════════════════════════════════════════════════
+     ADVANCED — EXCEPTIONS
+═══════════════════════════════════════════════════════════ -->
+<section id="exceptions">
+  <div class="section-badge badge-warning">Advanced</div>
+  <h2>Exceptions</h2>
+  <p>Module Maker uses typed exceptions for all error conditions — never silent failures.</p>
 
-  <div class="callout callout-info">
-    <p><strong>Dualidad de rutas:</strong> El mismo controller atiende requests de <code>/shared/users</code> (web.php) y de <code>/shared/users</code> dentro del tenant (tenant.php). El middleware Bridge distingue el contexto.</p>
-  </div>
-
-  <div class="code-wrapper">
-    <div class="code-header"><span class="code-lang">bash</span><button class="copy-code-btn" onclick="copyCode(this)">Copiar</button></div>
-    <pre><code class="language-bash">php artisan make:module Users --context=shared</code></pre>
-  </div>
-
-  <h3>Rutas inyectadas (dos archivos)</h3>
   <div class="tabs">
     <div class="tab-header">
-      <button class="tab-btn active" onclick="switchTab(this, 'shared-web')">web.php</button>
-      <button class="tab-btn" onclick="switchTab(this, 'shared-tenant')">tenant.php</button>
+      <button class="tab-btn active" onclick="switchTab(this, 'tab-ctx-not-found')">ContextNotFoundException</button>
+      <button class="tab-btn" onclick="switchTab(this, 'tab-conn-not-cfg')">ConnectionNotConfiguredException</button>
     </div>
-    <div class="tab-pane active" id="shared-web">
+    <div id="tab-ctx-not-found" class="tab-pane active">
       <div class="code-wrapper">
-        <div class="code-header"><span class="code-lang">php</span><button class="copy-code-btn" onclick="copyCode(this)">Copiar</button></div>
-        <pre><code class="language-php">// routes/web.php
-Route::prefix('shared')->middleware(['web', 'auth'])->group(function () {
-    Route::resource('users', \App\Http\Controllers\Shared\SharedUsersController::class);
-});</code></pre>
-      </div>
-    </div>
-    <div class="tab-pane" id="shared-tenant">
-      <div class="code-wrapper">
-        <div class="code-header"><span class="code-lang">php</span><button class="copy-code-btn" onclick="copyCode(this)">Copiar</button></div>
-        <pre><code class="language-php">// routes/tenant.php
-Route::prefix('shared')->middleware(['web', 'auth', 'tenant'])->group(function () {
-    Route::resource('users', \App\Http\Controllers\Shared\SharedUsersController::class);
-});</code></pre>
-      </div>
-    </div>
-  </div>
+        <div class="code-header"><span class="code-lang">php</span><button class="copy-code-btn" onclick="copyCode(this)">Copy</button></div>
+        <pre class="language-php"><code>// Extends InvalidArgumentException
+use Innodite\LaravelModuleMaker\Exceptions\ContextNotFoundException;
 
-  <h3>Archivos generados (16 archivos)</h3>
-  <div class="table-wrap">
-    <table>
-      <thead><tr><th>Archivo</th><th>Ruta en Modules/User/</th></tr></thead>
-      <tbody>
-        <tr><td class="file-php">SharedUserController.php</td><td><code>Http/Controllers/Shared/</code></td></tr>
-        <tr><td class="file-php">SharedUserRequest.php</td><td><code>Http/Requests/Shared/</code></td></tr>
-        <tr><td class="file-php">SharedUserService.php</td><td><code>Services/Shared/</code></td></tr>
-        <tr><td class="file-php">SharedUserServiceInterface.php</td><td><code>Services/Contracts/Shared/</code></td></tr>
-        <tr><td class="file-php">SharedUserRepository.php</td><td><code>Repositories/Shared/</code></td></tr>
-        <tr><td class="file-php">SharedUserRepositoryInterface.php</td><td><code>Repositories/Contracts/Shared/</code></td></tr>
-        <tr><td class="file-php">SharedUser.php</td><td><code>Models/Shared/</code></td></tr>
-        <tr><td class="file-php">XXXX_create_shared_users_table.php</td><td><code>Database/Migrations/Shared/</code></td></tr>
-        <tr><td class="file-php">SharedUserSeeder.php</td><td><code>Database/Seeders/Shared/</code></td></tr>
-        <tr><td class="file-php">SharedUserFactory.php</td><td><code>Database/Factories/Shared/</code></td></tr>
-        <tr><td class="file-php">SharedUserTest.php</td><td><code>Tests/Feature/Shared/</code></td></tr>
-        <tr><td class="file-php">SharedUserServiceTest.php</td><td><code>Tests/Unit/Shared/</code></td></tr>
-        <tr><td class="file-vue">SharedUserIndex.vue</td><td><code>Resources/js/Pages/Shared/</code></td></tr>
-        <tr><td class="file-vue">SharedUserCreate.vue</td><td><code>Resources/js/Pages/Shared/</code></td></tr>
-        <tr><td class="file-vue">SharedUserEdit.vue</td><td><code>Resources/js/Pages/Shared/</code></td></tr>
-        <tr><td class="file-vue">SharedUserShow.vue</td><td><code>Resources/js/Pages/Shared/</code></td></tr>
-      </tbody>
-    </table>
-  </div>
-</section>
-
-<!-- ──────────── TENANT SHARED ──────────── -->
-<section id="tenant-shared">
-  <span class="section-badge badge-tenant-shared">Contexto</span>
-  <h2>Tenant Shared</h2>
-  <p>El contexto <strong>tenant_shared</strong> genera módulos que viven exclusivamente dentro del scope tenant, compartidos por todos los tenants, pero <strong>sin route_prefix</strong>. Las rutas van directamente en <code>tenant.php</code> sin prefijo de URL adicional.</p>
-
-  <div class="callout callout-tip">
-    <p><strong>Sin route_prefix:</strong> <code>route_prefix</code> es <code>null</code>, por lo que <code>contextRoute('users.index')</code> resuelve directamente a <code>tenant.users.index</code> usando el <code>permission_prefix</code> como referencia de nombre.</p>
-  </div>
-
-  <div class="code-wrapper">
-    <div class="code-header"><span class="code-lang">bash</span><button class="copy-code-btn" onclick="copyCode(this)">Copiar</button></div>
-    <pre><code class="language-bash">php artisan make:module Users --context=tenant_shared</code></pre>
-  </div>
-
-  <h3>Ruta inyectada en tenant.php</h3>
-  <div class="code-wrapper">
-    <div class="code-header"><span class="code-lang">php</span><button class="copy-code-btn" onclick="copyCode(this)">Copiar</button></div>
-    <pre><code class="language-php">// routes/tenant.php
-Route::middleware(['web', 'auth', 'tenant'])->group(function () {
-    Route::resource('users', \App\Http\Controllers\TenantShared\TenantSharedUsersController::class);
-});</code></pre>
-  </div>
-
-  <h3>Archivos generados (17 archivos)</h3>
-  <div class="table-wrap">
-    <table>
-      <thead><tr><th>Archivo</th><th>Ruta en Modules/User/</th></tr></thead>
-      <tbody>
-        <tr><td class="file-php">TenantSharedUserController.php</td><td><code>Http/Controllers/Tenant/Shared/</code></td></tr>
-        <tr><td class="file-php">TenantSharedUserRequest.php</td><td><code>Http/Requests/Tenant/Shared/</code></td></tr>
-        <tr><td class="file-php">TenantSharedUserService.php</td><td><code>Services/Tenant/Shared/</code></td></tr>
-        <tr><td class="file-php">TenantSharedUserServiceInterface.php</td><td><code>Services/Contracts/Tenant/Shared/</code></td></tr>
-        <tr><td class="file-php">TenantSharedUserRepository.php</td><td><code>Repositories/Tenant/Shared/</code></td></tr>
-        <tr><td class="file-php">TenantSharedUserRepositoryInterface.php</td><td><code>Repositories/Contracts/Tenant/Shared/</code></td></tr>
-        <tr><td class="file-php">TenantSharedUser.php</td><td><code>Models/Tenant/Shared/</code></td></tr>
-        <tr><td class="file-php">XXXX_create_tenant_users_table.php</td><td><code>Database/Migrations/Tenant/Shared/</code></td></tr>
-        <tr><td class="file-php">TenantSharedUserSeeder.php</td><td><code>Database/Seeders/Tenant/Shared/</code></td></tr>
-        <tr><td class="file-php">TenantSharedUserFactory.php</td><td><code>Database/Factories/Tenant/Shared/</code></td></tr>
-        <tr><td class="file-php">TenantSharedUserTest.php</td><td><code>Tests/Feature/Tenant/Shared/</code></td></tr>
-        <tr><td class="file-php">TenantSharedUserServiceTest.php</td><td><code>Tests/Unit/Tenant/Shared/</code></td></tr>
-        <tr><td class="file-php">TenantSharedUserReportJob.php</td><td><code>Jobs/Tenant/Shared/</code></td></tr>
-        <tr><td class="file-vue">TenantSharedUserIndex.vue</td><td><code>Resources/js/Pages/Tenant/Shared/</code></td></tr>
-        <tr><td class="file-vue">TenantSharedUserCreate.vue</td><td><code>Resources/js/Pages/Tenant/Shared/</code></td></tr>
-        <tr><td class="file-vue">TenantSharedUserEdit.vue</td><td><code>Resources/js/Pages/Tenant/Shared/</code></td></tr>
-        <tr><td class="file-vue">TenantSharedUserShow.vue</td><td><code>Resources/js/Pages/Tenant/Shared/</code></td></tr>
-      </tbody>
-    </table>
-  </div>
-</section>
-
-<!-- ──────────── TENANT ESPECÍFICO ──────────── -->
-<section id="tenant">
-  <span class="section-badge badge-tenant">Contexto</span>
-  <h2>Tenant Específico</h2>
-  <p>El contexto <strong>tenant</strong> genera módulos para un tenant concreto, definido en <code>sub_contexts</code>. Cada sub-contexto tiene su propio prefijo de URL y namespace de archivos.</p>
-
-  <div class="code-wrapper">
-    <div class="code-header"><span class="code-lang">bash</span><button class="copy-code-btn" onclick="copyCode(this)">Copiar</button></div>
-    <pre><code class="language-bash">php artisan make:module Users --context=tenant --sub-context=TenantOne</code></pre>
-  </div>
-
-  <h3>Ruta inyectada en tenant.php (para TenantOne)</h3>
-  <div class="code-wrapper">
-    <div class="code-header"><span class="code-lang">php</span><button class="copy-code-btn" onclick="copyCode(this)">Copiar</button></div>
-    <pre><code class="language-php">// routes/tenant.php
-Route::prefix('tenant-one')->middleware(['web', 'auth', 'tenant'])->group(function () {
-    Route::resource('users', \App\Http\Controllers\TenantOne\TenantOneUsersController::class);
-});</code></pre>
-  </div>
-
-  <h3>Archivos generados — ej. INNODITE (20 archivos)</h3>
-  <div class="table-wrap">
-    <table>
-      <thead><tr><th>Archivo</th><th>Ruta en Modules/User/</th></tr></thead>
-      <tbody>
-        <tr><td class="file-php">TenantINNODITEUserController.php</td><td><code>Http/Controllers/Tenant/INNODITE/</code></td></tr>
-        <tr><td class="file-php">TenantINNODITEUserStoreRequest.php</td><td><code>Http/Requests/Tenant/INNODITE/</code></td></tr>
-        <tr><td class="file-php">TenantINNODITEUserUpdateRequest.php</td><td><code>Http/Requests/Tenant/INNODITE/</code></td></tr>
-        <tr><td class="file-php">TenantINNODITEUserService.php</td><td><code>Services/Tenant/INNODITE/</code></td></tr>
-        <tr><td class="file-php">TenantINNODITEUserServiceInterface.php</td><td><code>Services/Contracts/Tenant/INNODITE/</code></td></tr>
-        <tr><td class="file-php">TenantINNODITEUserRepository.php</td><td><code>Repositories/Tenant/INNODITE/</code></td></tr>
-        <tr><td class="file-php">TenantINNODITEUserRepositoryInterface.php</td><td><code>Repositories/Contracts/Tenant/INNODITE/</code></td></tr>
-        <tr><td class="file-php">TenantINNODITEUser.php</td><td><code>Models/Tenant/INNODITE/</code></td></tr>
-        <tr><td class="file-php">XXXX_add_fields_to_innodite_table.php</td><td><code>Database/Migrations/Tenant/INNODITE/</code></td></tr>
-        <tr><td class="file-php">TenantINNODITEUserSeeder.php</td><td><code>Database/Seeders/Tenant/INNODITE/</code></td></tr>
-        <tr><td class="file-php">TenantINNODITEUserFactory.php</td><td><code>Database/Factories/Tenant/INNODITE/</code></td></tr>
-        <tr><td class="file-php">TenantINNODITEUserTest.php</td><td><code>Tests/Feature/Tenant/INNODITE/</code></td></tr>
-        <tr><td class="file-php">TenantINNODITEUserServiceTest.php</td><td><code>Tests/Unit/Tenant/INNODITE/</code></td></tr>
-        <tr><td class="file-php">TenantINNODITEUserReportJob.php</td><td><code>Jobs/Tenant/INNODITE/</code></td></tr>
-        <tr><td class="file-php">TenantINNODITEUserCustomAlert.php</td><td><code>Notifications/Tenant/INNODITE/</code></td></tr>
-        <tr><td class="file-php">TenantINNODITEUserImportCommand.php</td><td><code>Console/Commands/Tenant/INNODITE/</code></td></tr>
-        <tr><td class="file-vue">TenantINNODITEUserIndex.vue</td><td><code>Resources/js/Pages/Tenant/INNODITE/</code></td></tr>
-        <tr><td class="file-vue">TenantINNODITEUserCreate.vue</td><td><code>Resources/js/Pages/Tenant/INNODITE/</code></td></tr>
-        <tr><td class="file-vue">TenantINNODITEUserEdit.vue</td><td><code>Resources/js/Pages/Tenant/INNODITE/</code></td></tr>
-        <tr><td class="file-vue">TenantINNODITEUserShow.vue</td><td><code>Resources/js/Pages/Tenant/INNODITE/</code></td></tr>
-      </tbody>
-    </table>
-  </div>
-
-  <h3>Resolución contextRoute() con sub-contexto</h3>
-  <div class="code-wrapper">
-    <div class="code-header"><span class="code-lang">javascript</span><button class="copy-code-btn" onclick="copyCode(this)">Copiar</button></div>
-    <pre><code class="language-javascript">const { contextRoute } = useModuleContext()
-// El Bridge inyecta route_prefix = "tenant-one" para este usuario:
-contextRoute('users.index')  // => "tenant-one.users.index"
-contextRoute('users.store')  // => "tenant-one.users.store"</code></pre>
-  </div>
-</section>
-
-<!-- ──────────── BRIDGE ──────────── -->
-<section id="bridge">
-  <span class="section-badge badge-primary">Frontend</span>
-  <h2>Bridge Middleware</h2>
-  <p><code>InnoditeBridgeMiddleware</code> se ejecuta en cada request y comparte vía <code>Inertia::share()</code> los datos de contexto y permisos necesarios para el frontend.</p>
-
-  <h3>Props inyectadas</h3>
-  <div class="table-wrap">
-    <table>
-      <thead><tr><th>Prop</th><th>Tipo</th><th>Ejemplo</th><th>Descripción</th></tr></thead>
-      <tbody>
-        <tr><td><code>auth.context.route_prefix</code></td><td>string|null</td><td><code>"central"</code></td><td>Prefijo de ruta del contexto del usuario autenticado</td></tr>
-        <tr><td><code>auth.context.permission_prefix</code></td><td>string</td><td><code>"central"</code></td><td>Prefijo para construir nombres de permisos</td></tr>
-        <tr><td><code>auth.context.name</code></td><td>string</td><td><code>"central"</code></td><td>Nombre del contexto</td></tr>
-        <tr><td><code>auth.permissions</code></td><td>array</td><td><code>["central.users.view"]</code></td><td>Lista de permisos del usuario autenticado</td></tr>
-      </tbody>
-    </table>
-  </div>
-
-  <h3>Cadena de resolución de permisos</h3>
-  <div class="callout callout-info">
-    <p>El Bridge intenta resolver permisos en este orden: <strong>Spatie Permission</strong> → <strong>InnoditeUserPermissions (custom)</strong> → <strong>array vacío (fail-safe)</strong>. Nunca lanza excepción si el sistema de permisos no está instalado.</p>
-  </div>
-
-  <div class="code-wrapper">
-    <div class="code-header"><span class="code-lang">php</span><button class="copy-code-btn" onclick="copyCode(this)">Copiar</button></div>
-    <pre><code class="language-php">// Resolución interna del Bridge (simplificado)
+// Thrown when find('unknown-id') fails
 try {
-    $permissions = $user->getAllPermissions()->pluck('name')->toArray(); // Spatie
-} catch (\Throwable $e) {
-    try {
-        $permissions = $user->innoditePermissions(); // Custom interface
-    } catch (\Throwable $e2) {
-        $permissions = []; // Fail-safe
-    }
+    $ctx = ContextResolver::find('unknown-id');
+} catch (ContextNotFoundException $e) {
+    // "Context 'unknown-id' not found. Available: central, shared, acme, beta"
+    echo $e->getMessage();
 }
 
-Inertia::share([
-    'auth.context' => [
-        'name'               => $context['name'],
-        'route_prefix'       => $context['route_prefix'],
-        'permission_prefix'  => $context['permission_prefix'],
-    ],
-    'auth.permissions' => $permissions,
-]);</code></pre>
-  </div>
+// Factory methods:
+ContextNotFoundException::forId('tenant', 'unknown-id', ['acme', 'beta']);
+ContextNotFoundException::contextKeyNotFound('tenant', ['central', 'shared']);
+ContextNotFoundException::invalidConnectionKey('acme', '');</code></pre>
+      </div>
+    </div>
+    <div id="tab-conn-not-cfg" class="tab-pane">
+      <div class="code-wrapper">
+        <div class="code-header"><span class="code-lang">php</span><button class="copy-code-btn" onclick="copyCode(this)">Copy</button></div>
+        <pre class="language-php"><code>// Extends RuntimeException
+use Innodite\LaravelModuleMaker\Exceptions\ConnectionNotConfiguredException;
 
-  <h3>Registro en bootstrap/app.php</h3>
-  <div class="code-wrapper">
-    <div class="code-header"><span class="code-lang">php</span><button class="copy-code-btn" onclick="copyCode(this)">Copiar</button></div>
-    <pre><code class="language-php">use Innodite\ModuleMaker\Http\Middleware\InnoditeBridgeMiddleware;
+// Thrown by Guard Rail when connection_key is missing from config/database.php
+try {
+    $connection = $targetService->resolveExecutionConnection('acme.order.json');
+} catch (ConnectionNotConfiguredException $e) {
+    // "La conexión 'acme_db' para el contexto 'acme' no está definida en
+    //  config/database.php. Regístrela antes de ejecutar migraciones."
+    echo $e->getMessage();
+}
 
-return Application::configure(basePath: dirname(__DIR__))
-    ->withRouting(...)
-    ->withMiddleware(function (Middleware $middleware) {
-        $middleware->appendToGroup('web', InnoditeBridgeMiddleware::class);
-        $middleware->appendToGroup('api', InnoditeBridgeMiddleware::class);
-    })
-    ->create();</code></pre>
-  </div>
-</section>
-
-<!-- ──────────── COMPOSABLES ──────────── -->
-<section id="composables">
-  <span class="section-badge badge-primary">Frontend</span>
-  <h2>Composables Vue</h2>
-  <p>El paquete publica dos composables en <code>resources/js/composables/</code> que consumen las props del Bridge.</p>
-
-  <h3>useModuleContext.js</h3>
-  <p>Provee <code>contextRoute()</code> para construir nombres de rutas de forma context-aware, y <code>contextPermission()</code> para construir nombres de permisos.</p>
-
-  <div class="code-wrapper">
-    <div class="code-header"><span class="code-lang">javascript</span><button class="copy-code-btn" onclick="copyCode(this)">Copiar</button></div>
-    <pre><code class="language-javascript">import { useModuleContext } from '@/composables/useModuleContext'
-
-const { contextRoute, contextPermission, context } = useModuleContext()
-
-// Construcción de rutas:
-contextRoute('users.index')    // "central.users.index"
-contextRoute('users.store')    // "central.users.store"
-
-// Construcción de permisos:
-contextPermission('users.view')  // "central.users.view"
-contextPermission('users.edit')  // "central.users.edit"
-
-// Acceso al contexto completo:
-console.log(context.value.name)           // "central"
-console.log(context.value.route_prefix)   // "central"</code></pre>
-  </div>
-
-  <h3>usePermissions.js</h3>
-  <p>Provee helpers reactivos para verificar permisos contra la lista inyectada por el Bridge.</p>
-
-  <div class="code-wrapper">
-    <div class="code-header"><span class="code-lang">javascript</span><button class="copy-code-btn" onclick="copyCode(this)">Copiar</button></div>
-    <pre><code class="language-javascript">import { usePermissions } from '@/composables/usePermissions'
-import { useModuleContext } from '@/composables/useModuleContext'
-
-const { can, canAny, canAll } = usePermissions()
-const { contextPermission } = useModuleContext()
-
-// Verificación individual:
-can(contextPermission('users.view'))     // true | false
-
-// Al menos uno:
-canAny(['central.users.view', 'central.users.edit'])  // true | false
-
-// Todos:
-canAll(['central.users.view', 'central.users.edit'])  // true | false</code></pre>
-  </div>
-
-  <h3>Estrategia de permisos dual</h3>
-  <div class="table-wrap">
-    <table>
-      <thead><tr><th>Helper</th><th>Comportamiento</th><th>Caso de uso</th></tr></thead>
-      <tbody>
-        <tr><td><code>can(perm)</code></td><td>Comprueba si <code>perm</code> está en <code>auth.permissions</code></td><td>Botones individuales, rutas protegidas</td></tr>
-        <tr><td><code>canAny(perms[])</code></td><td><code>OR</code> — al menos uno</td><td>Mostrar sección si tiene cualquier acceso</td></tr>
-        <tr><td><code>canAll(perms[])</code></td><td><code>AND</code> — todos requeridos</td><td>Acciones destructivas con múltiples permisos</td></tr>
-      </tbody>
-    </table>
+// Factory method:
+ConnectionNotConfiguredException::forContext('acme', 'acme_db');</code></pre>
+      </div>
+    </div>
   </div>
 </section>
 
-<!-- ──────────── VISTAS VUE ──────────── -->
-<section id="vistas">
-  <span class="section-badge badge-primary">Frontend</span>
-  <h2>Vistas Vue Generadas</h2>
-  <p>Cada módulo genera 4 vistas Inertia.js. Las vistas usan <code>axios</code> para llamadas API y los composables para routing y permisos.</p>
-
-  <h3>Arquitectura de vistas</h3>
-  <div class="table-wrap">
-    <table>
-      <thead><tr><th>Vista</th><th>Estrategia de datos</th><th>Descripción</th></tr></thead>
-      <tbody>
-        <tr><td class="file-vue">*Index.vue</td><td>Inertia props + axios</td><td>Listado con paginación, búsqueda y acciones</td></tr>
-        <tr><td class="file-vue">*Create.vue</td><td>Inertia form helpers</td><td>Formulario de creación con validación reactiva</td></tr>
-        <tr><td class="file-vue">*Edit.vue</td><td>Inertia props + form</td><td>Formulario de edición prellenado</td></tr>
-        <tr><td class="file-vue">*Show.vue</td><td>Inertia props</td><td>Vista de detalle, solo lectura</td></tr>
-      </tbody>
-    </table>
-  </div>
-
-  <h3>Ejemplo: CentralUsersIndex.vue</h3>
-  <div class="code-wrapper">
-    <div class="code-header"><span class="code-lang">javascript</span><button class="copy-code-btn" onclick="copyCode(this)">Copiar</button></div>
-    <pre><code class="language-javascript">&lt;script setup&gt;
-import { ref, onMounted } from 'vue'
-import { useModuleContext } from '@/composables/useModuleContext'
-import { usePermissions } from '@/composables/usePermissions'
-
-const { contextRoute } = useModuleContext()
-const { can } = usePermissions()
-const users = ref([])
-
-onMounted(async () => {
-  const { data } = await axios.get(route(contextRoute('users.index')))
-  users.value = data.data
-})
-&lt;/script&gt;
-
-&lt;template&gt;
-  &lt;div&gt;
-    &lt;button
-      v-if="can('central.users.create')"
-      @click="$inertia.visit(route(contextRoute('users.create')))"
-    &gt;
-      Nuevo Usuario
-    &lt;/button&gt;
-    &lt;table&gt;
-      &lt;tr v-for="user in users" :key="user.id"&gt;
-        &lt;td&gt;{{ user.name }}&lt;/td&gt;
-        &lt;td&gt;{{ user.email }}&lt;/td&gt;
-      &lt;/tr&gt;
-    &lt;/table&gt;
-  &lt;/div&gt;
-&lt;/template&gt;</code></pre>
-  </div>
-</section>
-
-<!-- ──────────── COMANDOS ──────────── -->
-<section id="comandos">
-  <span class="section-badge badge-primary">Comandos</span>
-  <h2>Comandos Artisan</h2>
-
-  <h3>Todos los comandos disponibles</h3>
-  <div class="table-wrap">
-    <table>
-      <thead><tr><th>Comando</th><th>Descripción</th></tr></thead>
-      <tbody>
-        <tr><td><code>innodite:make-module {Name}</code></td><td>Genera módulo completo — hasta 24 archivos por contexto</td></tr>
-        <tr><td><code>innodite:module-setup</code></td><td>Setup inicial: publica config, stubs y contexts.json</td></tr>
-        <tr><td><code>innodite:module-check</code></td><td>Diagnóstico: integridad contexts.json, permisos de escritura, colisiones</td></tr>
-        <tr><td><code>innodite:check-env</code></td><td>Verifica integración: User model, HandleInertiaRequests, Bridge middleware</td></tr>
-        <tr><td><code>innodite:publish-frontend</code></td><td>Publica composables Vue en resources/js/Composables/</td></tr>
-        <tr><td><code>innodite:migrate-plan</code></td><td>Ejecuta migraciones y seeders en orden explícito desde manifiestos JSON</td></tr>
-        <tr><td><code>innodite:migrate-one</code></td><td>Ejecuta una migración específica con confirmación y auto-registro en manifiesto</td></tr>
-        <tr><td><code>innodite:seed-one</code></td><td>Ejecuta un seeder específico con confirmación y auto-registro en manifiesto</td></tr>
-        <tr><td><code>innodite:migration-sync</code></td><td>Escanea módulos y agrega coordenadas faltantes al manifiesto</td></tr>
-        <tr><td><code>innodite:test-sync</code></td><td>Sincroniza <code>Modules/{Modulo}/Tests/test-config.json</code> desde <code>contexts.json</code></td></tr>
-        <tr><td><code>innodite:test-module</code></td><td>Ejecuta tests por módulo/contexto con coverage por contexto</td></tr>
-      </tbody>
-    </table>
-  </div>
-
-  <h3>Referencia avanzada comando por comando</h3>
-  <p>Guía operativa para equipos técnicos: entrada, flujo interno, salida y errores frecuentes.</p>
-
-  <h4><code>innodite:make-module</code> (generador principal)</h4>
-  <p>Genera backend + frontend por contexto. Resuelve placeholders, crea archivos por componente e inyecta rutas (salvo <code>--no-routes</code>).</p>
-  <ul>
-    <li>Valida nombre (PascalCase, no reservado, no colisión).</li>
-    <li>Resuelve contexto/sub-contexto desde <code>contexts.json</code>.</li>
-    <li>Genera archivos en <code>Modules/{Name}/...</code> con stubs contextuales.</li>
-    <li>Registra auditoría en <code>storage/logs/module_maker.log</code>.</li>
-  </ul>
-
-  <h4><code>innodite:module-setup</code></h4>
-  <p>Inicializa estructura base del paquete en el proyecto: config, stubs y contexts.</p>
-
-  <h4><code>innodite:module-check</code></h4>
-  <p>Diagnóstico de entorno: integridad de <code>contexts.json</code>, permisos de escritura, colisiones y últimos eventos de auditoría.</p>
-
-  <h4><code>innodite:check-env</code></h4>
-  <p>Valida el contrato Frontend-Backend (User model, Inertia shared props y Bridge middleware) e imprime snippets correctivos cuando falta algo.</p>
-
-  <h4><code>innodite:publish-frontend</code></h4>
-  <p>Publica composables Vue (<code>useModuleContext</code>, <code>usePermissions</code>) en <code>resources/js/Composables</code>. Usa <code>--force</code> para sobreescribir.</p>
-
-  <h4><code>innodite:test-sync</code></h4>
-  <p>Sincroniza <code>test-config.json</code> por módulo desde <code>contexts.json</code>, conservando overrides manuales y usando <code>enabled</code> para controlar ejecución.</p>
-
-  <h4><code>innodite:test-module</code></h4>
-  <p>Ejecuta PHPUnit por módulo/contexto. Genera XML contextual en <code>Tests/</code>, fuerza env de DB con <code>force="true"</code> y expone <code>DB_MYSQL_DATABASE</code> cuando aplica.</p>
-  <ul>
-    <li>Soporta <code>--context</code> y <code>--all-contexts</code>.</li>
-    <li>Coverage en HTML/Text/Clover por contexto.</li>
-    <li>Logs de fallo persistentes en <code>storage/logs/module_maker/test_failures</code>.</li>
-  </ul>
-
-  <h4><code>innodite:migrate-plan</code>, <code>innodite:migrate-one</code>, <code>innodite:seed-one</code>, <code>innodite:migration-sync</code></h4>
-  <p>Suite de migraciones/seeders por coordenadas y manifiestos JSON. Permite ejecución determinística, operaciones quirúrgicas y sincronización idempotente de manifiestos.</p>
-  <ul>
-    <li><code>migrate-plan</code>: orquestación completa por manifiesto.</li>
-    <li><code>migrate-one</code>: migración puntual con auto-registro en manifiesto.</li>
-    <li><code>seed-one</code>: seeder puntual con auto-registro en manifiesto.</li>
-    <li><code>migration-sync</code>: escaneo y append de faltantes sin duplicados.</li>
-  </ul>
-
-  <h3>Migración por manifiesto: <code>innodite:migrate-plan</code></h3>
-  <p>Este comando resuelve coordenadas lógicas y ejecuta cada migración en el orden declarado, evitando errores por dependencias implícitas entre módulos.</p>
-  <p>Antes de ejecutar, valida la conexión objetivo y verifica que la base de datos exista para evitar procesos parciales o disparados contra una BD incorrecta.</p>
-
-  <div class="code-wrapper">
-    <div class="code-header"><span class="code-lang">bash</span><button class="copy-code-btn" onclick="copyCode(this)">Copiar</button></div>
-    <pre><code class="language-bash"># Manifiesto por defecto
-php artisan innodite:migrate-plan
-
-# Manifiesto específico
-php artisan innodite:migrate-plan --manifest=tenant_innodite_order.json
-
-# Simulación sin ejecutar en BD
-php artisan innodite:migrate-plan --manifest=tenant_innodite_order.json --dry-run
-
-# Ejecutar migraciones y luego seeders
-php artisan innodite:migrate-plan --manifest=tenant_innodite_order.json --seed</code></pre>
-  </div>
-
-  <h4>Formato de coordenadas</h4>
-  <div class="table-wrap">
-    <table>
-      <thead><tr><th>Tipo</th><th>Formato</th><th>Ejemplo</th></tr></thead>
-      <tbody>
-        <tr><td>Migración</td><td><code>Modulo:Contexto/Archivo.php</code></td><td><code>User:Shared/2026_01_01_000001_create_users_table.php</code></td></tr>
-        <tr><td>Seeder</td><td><code>Modulo:Contexto/ClaseSeeder</code></td><td><code>Roles:Tenant/Shared/TenantSharedRoleSeeder</code></td></tr>
-      </tbody>
-    </table>
-  </div>
-
-  <h4>Ejemplo de manifiesto</h4>
-  <div class="code-wrapper">
-    <div class="code-header"><span class="code-lang">json</span><button class="copy-code-btn" onclick="copyCode(this)">Copiar</button></div>
-    <pre><code class="language-json">{
-  "migrations": [
-    "User:Shared/2026_01_01_000001_create_users_table.php",
-    "Roles:Tenant/Shared/2026_02_01_000001_create_tenant_roles_table.php",
-    "Custom:Tenant/INNODITE/2026_03_01_000001_innodite_extra_table.php"
-  ],
-  "seeders": [
-    "User:Shared/SharedUserSeeder",
-    "Roles:Tenant/Shared/TenantSharedRoleSeeder",
-    "Custom:Tenant/INNODITE/TenantINNODITECustomSeeder"
-  ]
-}</code></pre>
-  </div>
-
-  <div class="callout callout-info">
-    <p><strong>Tip:</strong> Si una coordenada no existe, el comando muestra la ruta esperada para corregir el manifiesto en segundos. Si la base objetivo no existe, aborta antes de ejecutar.</p>
-  </div>
-
-  <h3>Ejecución individual de migración: <code>innodite:migrate-one</code></h3>
-  <p>Permite ejecutar una migración puntual sin correr el manifiesto completo. Antes de ejecutar, muestra exactamente dónde va a correr y puede registrar la coordenada en el manifiesto si todavía no existe.</p>
-
-  <div class="code-wrapper">
-    <div class="code-header"><span class="code-lang">bash</span><button class="copy-code-btn" onclick="copyCode(this)">Copiar</button></div>
-    <pre><code class="language-bash"># Ejecutar una migración específica
-php artisan innodite:migrate-one "Products:Tenant/Alpha/2026_01_01_000001_create_products_table.php"
-
-# Forzar un manifiesto concreto
-php artisan innodite:migrate-one "Forms:Shared/2026_01_01_000001_create_forms_table.php" --manifest=central_order.json
-
-# Simular sin tocar manifiesto ni BD
-php artisan innodite:migrate-one "Forms:Shared/2026_01_01_000001_create_forms_table.php" --dry-run
-
-# Omitir confirmaciones interactivas
-php artisan innodite:migrate-one "Products:Tenant/Alpha/2026_01_01_000001_create_products_table.php" --yes</code></pre>
-  </div>
-
-  <h4>Qué muestra antes de ejecutar</h4>
-  <div class="table-wrap">
-    <table>
-      <thead><tr><th>Dato</th><th>Descripción</th></tr></thead>
-      <tbody>
-        <tr><td>Tipo</td><td>migración</td></tr>
-        <tr><td>Coordenada</td><td>Valor exacto recibido por el comando</td></tr>
-        <tr><td>Conexión</td><td>Conexión Laravel contra la que se ejecutará</td></tr>
-        <tr><td>Base de datos</td><td>Nombre real de la base destino</td></tr>
-        <tr><td>Manifiesto</td><td>Archivo que se actualizará si falta la coordenada</td></tr>
-        <tr><td>Archivo</td><td>Ruta real del archivo de migración que se ejecutará</td></tr>
-      </tbody>
-    </table>
-  </div>
-
-  <div class="callout callout-success">
-    <p><strong>Confirmación obligatoria:</strong> El comando pide aprobación antes de ejecutar. Solo se omite con <code>--yes</code>.</p>
-  </div>
-
-  <h3>Ejecución individual de seeder: <code>innodite:seed-one</code></h3>
-  <p>Permite ejecutar un seeder puntual sin correr el manifiesto completo. Antes de ejecutar, muestra exactamente dónde va a correr y puede registrar la coordenada en el manifiesto si todavía no existe.</p>
-
-  <div class="code-wrapper">
-    <div class="code-header"><span class="code-lang">bash</span><button class="copy-code-btn" onclick="copyCode(this)">Copiar</button></div>
-    <pre><code class="language-bash"># Ejecutar un seeder específico
-php artisan innodite:seed-one "UserManagement:Tenant/Shared/TenantSharedPermissionSeeder"
-
-# Forzar un manifiesto concreto
-php artisan innodite:seed-one "Forms:Shared/SharedFormsSeeder" --manifest=central_order.json
-
-# Simular sin tocar manifiesto ni BD
-php artisan innodite:seed-one "Forms:Shared/SharedFormsSeeder" --dry-run
-
-# Omitir confirmaciones interactivas
-php artisan innodite:seed-one "UserManagement:Tenant/Shared/TenantSharedPermissionSeeder" --yes</code></pre>
-  </div>
-
-  <h4>Qué muestra antes de ejecutar</h4>
-  <div class="table-wrap">
-    <table>
-      <thead><tr><th>Dato</th><th>Descripción</th></tr></thead>
-      <tbody>
-        <tr><td>Tipo</td><td>seeder</td></tr>
-        <tr><td>Coordenada</td><td>Valor exacto recibido por el comando</td></tr>
-        <tr><td>Conexión</td><td>Conexión Laravel contra la que se ejecutará</td></tr>
-        <tr><td>Base de datos</td><td>Nombre real de la base destino</td></tr>
-        <tr><td>Manifiesto</td><td>Archivo que se actualizará si falta la coordenada</td></tr>
-        <tr><td>Clase</td><td>FQCN real del seeder que se ejecutará</td></tr>
-      </tbody>
-    </table>
-  </div>
-
-  <div class="callout callout-success">
-    <p><strong>Confirmación obligatoria:</strong> El comando pide aprobación antes de ejecutar. Solo se omite con <code>--yes</code>.</p>
-  </div>
-
-  <h3>Sincronización automática: <code>innodite:migration-sync</code></h3>
-  <p>Escanea todo <code>Modules/*/Database/Migrations</code> y <code>Modules/*/Database/Seeders</code>, calcula coordenadas y agrega faltantes al manifiesto sin duplicar registros.</p>
-
-  <div class="code-wrapper">
-    <div class="code-header"><span class="code-lang">bash</span><button class="copy-code-btn" onclick="copyCode(this)">Copiar</button></div>
-    <pre><code class="language-bash"># Sincronizar manifiesto por defecto
-php artisan innodite:migration-sync
-
-# Sincronizar manifiesto específico
-php artisan innodite:migration-sync --manifest=tenant_innodite_order.json
-
-# Ver faltantes sin escribir
-php artisan innodite:migration-sync --manifest=tenant_innodite_order.json --dry-run</code></pre>
-  </div>
-
-  <h4>Flujo interno del sync</h4>
-  <div class="table-wrap">
-    <table>
-      <thead><tr><th>Paso</th><th>Acción</th></tr></thead>
-      <tbody>
-        <tr><td>1</td><td>Crea <code>module-maker-config/migrations/</code> si no existe</td></tr>
-        <tr><td>2</td><td>Crea manifiesto vacío si no existe</td></tr>
-        <tr><td>3</td><td>Escanea migraciones y seeders contextuales de todos los módulos</td></tr>
-        <tr><td>4</td><td>Compara con el contenido actual del manifiesto</td></tr>
-        <tr><td>5</td><td>Hace append solo de faltantes (idempotente)</td></tr>
-      </tbody>
-    </table>
-  </div>
-
-  <div class="callout callout-success">
-    <p><strong>Práctica recomendada:</strong> Ejecuta <code>innodite:migration-sync --dry-run</code> en CI para detectar drift entre código y manifiesto antes del deploy.</p>
-  </div>
-
-  <h3>Sincronización de configuración de tests: <code>innodite:test-sync</code></h3>
-  <p>Genera o actualiza el archivo <code>test-config.json</code> dentro de <code>Modules/{Modulo}/Tests/</code>, leyendo los contextos definidos en <code>module-maker-config/contexts.json</code>.</p>
-  <p>Para testing, el sync genera y sincroniza los contextos definidos en <code>contexts.json</code>. La ejecución se controla por contexto con el flag <code>enabled</code> en <code>test-config.json</code>.</p>
-
-  <div class="code-wrapper">
-    <div class="code-header"><span class="code-lang">bash</span><button class="copy-code-btn" onclick="copyCode(this)">Copiar</button></div>
-    <pre><code class="language-bash"># Sincronizar un módulo
-php artisan innodite:test-sync User
-
-# Sincronizar todos los módulos
-php artisan innodite:test-sync --all</code></pre>
-  </div>
-
-  <h4>Reglas del sync</h4>
-  <div class="table-wrap">
-    <table>
-      <thead><tr><th>Regla</th><th>Comportamiento</th></tr></thead>
-      <tbody>
-        <tr><td>Archivo destino</td><td><code>Modules/{Modulo}/Tests/test-config.json</code></td></tr>
-        <tr><td>Primera ejecución</td><td>Crea el archivo con todos los contextos detectados</td></tr>
-        <tr><td>Re-ejecuciones</td><td>Agrega contextos faltantes sin pisar overrides existentes</td></tr>
-        <tr><td>DB por contexto</td><td>El usuario define <code>db_connection</code> y <code>db_database</code>; el sync no asume valores por defecto</td></tr>
-        <tr><td>Selección de ejecución</td><td>El contexto participa en <code>--all-contexts</code> solo si tiene <code>enabled=true</code></td></tr>
-        <tr><td>Campos editables</td><td><code>db_connection</code>, <code>db_database</code>, <code>seeder</code>, <code>enabled</code>, <code>env</code></td></tr>
-      </tbody>
-    </table>
-  </div>
-
-  <h3>Tests por contexto con coverage: <code>innodite:test-module</code></h3>
-  <p>Ejecuta PHPUnit por módulo y contexto. Si existe <code>test-config.json</code>, usa la configuración de DB y seeder del contexto; si no existe, cae al modo por defecto con <code>sqlite :memory:</code>. El XML contextual se genera con variables de DB forzadas (<code>force="true"</code>) y compatibilidad para <code>DB_MYSQL_DATABASE</code> cuando aplica.</p>
-
-  <div class="code-wrapper">
-    <div class="code-header"><span class="code-lang">bash</span><button class="copy-code-btn" onclick="copyCode(this)">Copiar</button></div>
-    <pre><code class="language-bash"># Ejecutar módulo en modo default
-php artisan innodite:test-module User
-
-# Ejecutar un contexto específico
-php artisan innodite:test-module User --context=central
-
-# Ejecutar todos los contextos habilitados
-php artisan innodite:test-module User --all-contexts
-
-# Coverage por contexto
-php artisan innodite:test-module User --context=central --coverage --format=html --format=clover</code></pre>
-  </div>
-
-  <h4>Salida de coverage</h4>
-  <div class="table-wrap">
-    <table>
-      <thead><tr><th>Formato</th><th>Ruta</th></tr></thead>
-      <tbody>
-        <tr><td>Config PHPUnit por contexto</td><td><code>Modules/{Modulo}/Tests/phpunit-{contexto}.xml</code></td></tr>
-        <tr><td>HTML</td><td><code>docs/test-reports/{Modulo}/{contexto}/html/index.html</code></td></tr>
-        <tr><td>Clover</td><td><code>docs/test-reports/{Modulo}/{contexto}/clover.xml</code></td></tr>
-        <tr><td>Text</td><td>Consola (stdout)</td></tr>
-      </tbody>
-    </table>
-  </div>
-
-  <h3>Flags de make:module</h3>
-  <div class="table-wrap">
-    <table>
-      <thead><tr><th>Flag</th><th>Tipo</th><th>Descripción</th></tr></thead>
-      <tbody>
-        <tr><td><code>--context=</code></td><td>string</td><td>Contexto destino (requerido si hay más de uno)</td></tr>
-        <tr><td><code>--sub-context=</code></td><td>string</td><td>Sub-contexto para tipo tenant (ej. TenantOne)</td></tr>
-        <tr><td><code>--force</code></td><td>bool</td><td>Sobreescribir archivos existentes sin preguntar</td></tr>
-        <tr><td><code>--no-vue</code></td><td>bool</td><td>Omitir generación de vistas Vue</td></tr>
-        <tr><td><code>--no-tests</code></td><td>bool</td><td>Omitir generación de tests</td></tr>
-        <tr><td><code>--dry-run</code></td><td>bool</td><td>Simular generación sin escribir archivos</td></tr>
-      </tbody>
-    </table>
-  </div>
-
-  <h3>Palabras reservadas (validación)</h3>
-  <div class="callout callout-warn">
-    <p><strong>Nombres inválidos:</strong> El comando rechaza módulos con nombres que colisionen con clases internas de PHP o Laravel: <code>App</code>, <code>Auth</code>, <code>Cache</code>, <code>Config</code>, <code>DB</code>, <code>Event</code>, <code>Http</code>, <code>Log</code>, <code>Route</code>, <code>Session</code>, <code>Storage</code>, <code>View</code>, entre otros.</p>
-  </div>
-
-  <div class="code-wrapper">
-    <div class="code-header"><span class="code-lang">bash</span><button class="copy-code-btn" onclick="copyCode(this)">Copiar</button></div>
-    <pre><code class="language-bash"># Ejemplos de uso
-php artisan make:module Products --context=central
-php artisan make:module Invoices --context=shared
-php artisan make:module Reports --context=tenant_shared
-php artisan make:module Orders --context=tenant --sub-context=TenantOne
-php artisan make:module Dashboard --context=central --dry-run
-php artisan module:check Products --context=central</code></pre>
-  </div>
-</section>
-
-<!-- ──────────── AUDITORÍA ──────────── -->
-<section id="auditoria">
-  <span class="section-badge badge-primary">Avanzado</span>
-  <h2>Auditoría</h2>
-  <p>Cada generación exitosa registra una entrada en <code>storage/logs/module-maker.ndjson</code> en formato NDJSON (newline-delimited JSON), uno por línea.</p>
-
-  <h3>Ejemplo de entrada NDJSON</h3>
-  <div class="code-wrapper">
-    <div class="code-header"><span class="code-lang">json</span><button class="copy-code-btn" onclick="copyCode(this)">Copiar</button></div>
-    <pre><code class="language-json">{"event":"module_generated","module":"Users","context":"central","sub_context":null,"file":"app/Http/Controllers/Central/CentralUsersController.php","sha256":"a1b2c3d4e5f6...","timestamp":"2026-04-01T14:32:00Z","command":"make:module Users --context=central"}
-{"event":"module_generated","module":"Users","context":"central","sub_context":null,"file":"resources/js/Pages/Central/Users/CentralUsersIndex.vue","sha256":"f6e5d4c3b2a1...","timestamp":"2026-04-01T14:32:00Z","command":"make:module Users --context=central"}</code></pre>
-  </div>
-
-  <h3>Eventos registrados</h3>
-  <div class="table-wrap">
-    <table>
-      <thead><tr><th>Evento</th><th>Cuándo ocurre</th></tr></thead>
-      <tbody>
-        <tr><td><code>module_generated</code></td><td>Archivo generado exitosamente</td></tr>
-        <tr><td><code>module_skipped</code></td><td>Archivo omitido porque ya existe (sin --force)</td></tr>
-        <tr><td><code>module_overwritten</code></td><td>Archivo sobreescrito con --force</td></tr>
-        <tr><td><code>module_error</code></td><td>Error al generar un archivo específico</td></tr>
-        <tr><td><code>setup_completed</code></td><td>module:setup ejecutado exitosamente</td></tr>
-      </tbody>
-    </table>
-  </div>
-</section>
-
-<!-- ──────────── PUBLICAR ──────────── -->
-<section id="publicar">
-  <span class="section-badge badge-primary">Avanzado</span>
-  <h2>Publicar Assets</h2>
-  <p>El paquete soporta publicación selectiva de sus componentes mediante tags de vendor publish.</p>
-
-  <div class="code-wrapper">
-    <div class="code-header"><span class="code-lang">bash</span><button class="copy-code-btn" onclick="copyCode(this)">Copiar</button></div>
-    <pre><code class="language-bash"># Publicar todo
-php artisan vendor:publish --provider="Innodite\ModuleMaker\ModuleMakerServiceProvider"
-
-# Solo configuración
-php artisan vendor:publish --tag=module-maker-config
-
-# Solo stubs (para personalizar plantillas)
-php artisan vendor:publish --tag=module-maker-stubs
-
-# Solo composables Vue
-php artisan module:publish-frontend</code></pre>
-  </div>
-
-  <h3>Estructura de stubs contextuales (4 carpetas × 26 stubs)</h3>
-  <div class="code-wrapper">
-    <div class="code-header"><span class="code-lang">text</span><button class="copy-code-btn" onclick="copyCode(this)">Copiar</button></div>
-    <pre><code>module-maker-config/stubs/contextual/
-├── Central/          ← Personaliza stubs solo para contexto Central
-│   ├── controller.stub
-│   ├── service.stub
-│   ├── job.stub
-│   └── ... (26 stubs)
-├── Shared/           ← Personaliza stubs solo para contexto Shared
-├── TenantShared/     ← Personaliza stubs solo para Tenant Shared
-└── TenantName/       ← Personaliza stubs para todos los tenants específicos</code></pre>
-  </div>
-
-  <div class="callout callout-tip">
-    <p><strong>Resolución por prioridad:</strong> El paquete busca el stub en este orden: (1) custom por contexto, (2) custom genérico, (3) paquete por contexto, (4) paquete genérico. Puedes sobrescribir solo el stub de Central sin afectar los demás contextos.</p>
-  </div>
-
-  <h3>Stubs disponibles por contexto</h3>
-  <div class="table-wrap">
-    <table>
-      <thead><tr><th>Stub</th><th>Central</th><th>Shared</th><th>TenantShared</th><th>TenantName</th></tr></thead>
-      <tbody>
-        <tr><td><code>controller.stub</code></td><td>✅</td><td>✅</td><td>✅</td><td>✅</td></tr>
-        <tr><td><code>service.stub / service-interface.stub</code></td><td>✅</td><td>✅</td><td>✅</td><td>✅</td></tr>
-        <tr><td><code>repository.stub / repository-interface.stub</code></td><td>✅</td><td>✅</td><td>✅</td><td>✅</td></tr>
-        <tr><td><code>model.stub</code></td><td>✅</td><td>✅</td><td>✅</td><td>✅</td></tr>
-        <tr><td><code>request-store.stub / request-update.stub</code></td><td>✅</td><td>—</td><td>—</td><td>✅</td></tr>
-        <tr><td><code>request.stub</code></td><td>—</td><td>✅</td><td>✅</td><td>—</td></tr>
-        <tr><td><code>migration.stub / seeder.stub / factory.stub</code></td><td>✅</td><td>✅</td><td>✅</td><td>✅</td></tr>
-        <tr><td><code>job.stub</code></td><td>✅ ExportJob</td><td>—</td><td>✅ ReportJob</td><td>✅ ReportJob</td></tr>
-        <tr><td><code>notification.stub</code></td><td>✅ Welcome</td><td>—</td><td>—</td><td>✅ CustomAlert</td></tr>
-        <tr><td><code>console-command.stub</code></td><td>✅ Cleanup</td><td>—</td><td>—</td><td>✅ Import</td></tr>
-        <tr><td><code>exception.stub</code></td><td>✅ NotFound</td><td>—</td><td>—</td><td>—</td></tr>
-        <tr><td><code>test.stub / test-unit.stub</code></td><td>✅</td><td>✅</td><td>✅</td><td>✅</td></tr>
-        <tr><td><code>test-support.stub</code></td><td>✅</td><td>—</td><td>—</td><td>—</td></tr>
-        <tr><td><code>vue-index/create/edit/show.stub</code></td><td>✅ 4 vistas</td><td>✅ 4 vistas</td><td>✅ 4 vistas</td><td>✅ 4 vistas</td></tr>
-      </tbody>
-    </table>
-  </div>
-</section>
-
-<footer>
-  <p>
-    <strong>Laravel Module Maker</strong> &mdash; MIT License &mdash;
-    &copy; 2026 <a href="https://github.com/anthonyfilgueira" target="_blank">Anthony Filgueira</a>
-    &mdash;
-    <a href="https://github.com/innodite/laravel-module-maker" target="_blank">GitHub</a>
-  </p>
-  <p style="margin-top:8px;font-size:12px;color:#94a3b8">innodite/laravel-module-maker v3.0.0 — Release Candidate</p>
-</footer>
-
-</div>
+</div><!-- /content-inner -->
 </main>
 
-<!-- Mobile toggle button -->
-<button id="sidebar-toggle" aria-label="Toggle sidebar">☰</button>
+<button id="menu-toggle" onclick="toggleSidebar()">☰</button>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/prism.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-php.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-bash.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-php.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-json.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/prism/1.29.0/components/prism-javascript.min.js"></script>
 
 <script>
-// ── COPY UTILITIES ──
-function copyText(text, btn) {
-  navigator.clipboard.writeText(text).then(() => {
+// ─── Copy install command ───
+function copyInstall(btn) {
+  navigator.clipboard.writeText('composer require innodite/laravel-module-maker').then(() => {
     const orig = btn.textContent;
-    btn.textContent = '¡Copiado!';
-    setTimeout(() => btn.textContent = orig, 1800);
+    btn.textContent = 'Copied!';
+    setTimeout(() => btn.textContent = orig, 2000);
   });
 }
 
+// ─── Copy code blocks ───
 function copyCode(btn) {
   const pre = btn.closest('.code-wrapper').querySelector('pre');
-  const text = pre.textContent;
-  navigator.clipboard.writeText(text.trim()).then(() => {
-    btn.textContent = '¡Copiado!';
+  navigator.clipboard.writeText(pre.textContent.trim()).then(() => {
+    btn.textContent = 'Copied!';
     btn.classList.add('copied');
-    setTimeout(() => {
-      btn.textContent = 'Copiar';
-      btn.classList.remove('copied');
-    }, 1800);
+    setTimeout(() => { btn.textContent = 'Copy'; btn.classList.remove('copied'); }, 2000);
   });
 }
 
-// ── TAB SWITCHER ──
-function switchTab(btn, paneId) {
+// ─── Tabs ───
+function switchTab(btn, targetId) {
   const tabsEl = btn.closest('.tabs');
   tabsEl.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
   tabsEl.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
   btn.classList.add('active');
-  document.getElementById(paneId).classList.add('active');
+  document.getElementById(targetId).classList.add('active');
 }
 
-// ── MOBILE SIDEBAR TOGGLE ──
-const sidebar = document.getElementById('sidebar');
-const overlay = document.getElementById('sidebar-overlay');
-const toggleBtn = document.getElementById('sidebar-toggle');
+// ─── Mobile menu ───
+function toggleSidebar() {
+  document.getElementById('sidebar').classList.toggle('open');
+}
 
-toggleBtn.addEventListener('click', () => {
-  sidebar.classList.toggle('open');
-  overlay.classList.toggle('open');
-});
-
-overlay.addEventListener('click', () => {
-  sidebar.classList.remove('open');
-  overlay.classList.remove('open');
-});
-
-// ── SMOOTH SCROLL + CLOSE MOBILE SIDEBAR ──
-document.querySelectorAll('#sidebar a[href^="#"]').forEach(link => {
-  link.addEventListener('click', e => {
-    e.preventDefault();
-    const target = document.querySelector(link.getAttribute('href'));
-    if (target) {
-      target.scrollIntoView({ behavior: 'smooth', block: 'start' });
-      sidebar.classList.remove('open');
-      overlay.classList.remove('open');
-    }
-  });
-});
-
-// ── ACTIVE SECTION TRACKING (IntersectionObserver) ──
-const navLinks = document.querySelectorAll('#sidebar a[href^="#"]');
+// ─── Active nav highlighting via IntersectionObserver ───
 const sections = document.querySelectorAll('section[id]');
+const navLinks = document.querySelectorAll('#sidebar a[href^="#"]');
 
-const observer = new IntersectionObserver(entries => {
+const observer = new IntersectionObserver((entries) => {
   entries.forEach(entry => {
     if (entry.isIntersecting) {
-      const id = entry.target.id;
+      const id = entry.target.getAttribute('id');
       navLinks.forEach(link => {
-        link.classList.toggle('active', link.getAttribute('href') === '#' + id);
+        link.classList.toggle('active', link.getAttribute('href') === `#${id}`);
       });
     }
   });
-}, {
-  rootMargin: '-10% 0px -80% 0px',
-  threshold: 0
-});
+}, { rootMargin: '-20% 0px -70% 0px' });
 
-sections.forEach(section => observer.observe(section));
+sections.forEach(s => observer.observe(s));
+
+// ─── Close sidebar on nav click (mobile) ───
+navLinks.forEach(link => {
+  link.addEventListener('click', () => {
+    document.getElementById('sidebar').classList.remove('open');
+  });
+});
 </script>
 </body>
 </html>
