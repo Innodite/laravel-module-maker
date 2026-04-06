@@ -6,7 +6,7 @@ namespace Innodite\LaravelModuleMaker\Commands;
 
 use Illuminate\Console\Command;
 use Innodite\LaravelModuleMaker\Services\MigrationPlanResolver;
-use Innodite\LaravelModuleMaker\Support\ContextResolver;
+use Innodite\LaravelModuleMaker\Services\MigrationTargetService;
 use Throwable;
 
 class MigratePlanCommand extends Command
@@ -21,6 +21,7 @@ class MigratePlanCommand extends Command
     public function handle(): int
     {
         $resolver = new MigrationPlanResolver();
+        $targetService = new MigrationTargetService();
         $dryRun = (bool) $this->option('dry-run');
         $runSeeders = (bool) $this->option('seed');
 
@@ -38,9 +39,11 @@ class MigratePlanCommand extends Command
 
         $migrations = $plan['migrations'];
         $seeders = $plan['seeders'];
-        $connectionName = $this->resolveExecutionConnection($manifestPath, $migrations, $seeders, $dryRun);
 
-        if ($connectionName === null) {
+        try {
+            $connectionName = $targetService->resolveExecutionConnection($manifestPath, $dryRun);
+        } catch (\Throwable $e) {
+            $this->components->error($e->getMessage());
             return self::FAILURE;
         }
 
@@ -126,72 +129,6 @@ class MigratePlanCommand extends Command
         }
 
         return self::SUCCESS;
-    }
-
-    /**
-     * Resuelve la conexión de ejecución para un manifest.
-     *
-     * Flujo explícito (v3.5.0+):
-     *   1. Extrae el id del nombre del manifest (patrón {id}.order.json)
-     *   2. Busca el contexto en contexts.json via ContextResolver::find()
-     *   3. Valida que tenancy_strategy === 'manual' y que connection_key no esté vacío
-     *   4. Retorna connection_key del contexto
-     *
-     * Retorna null y muestra un error amigable si la validación falla.
-     *
-     * @param array<int, string> $migrations
-     * @param array<int, string> $seeders
-     */
-    private function resolveExecutionConnection(string $manifestPath, array $migrations, array $seeders, bool $dryRun = false): ?string
-    {
-        $manifestName = strtolower(basename($manifestPath));
-
-        if (!preg_match('/^([a-z0-9][a-z0-9-]*)\.order\.json$/', $manifestName, $matches)) {
-            $this->components->error(
-                "El nombre del manifest '{$manifestName}' no tiene el formato esperado '{id}.order.json'."
-            );
-            return null;
-        }
-
-        $contextId = $matches[1];
-
-        try {
-            $context = ContextResolver::find($contextId);
-        } catch (\Throwable) {
-            $this->components->error(
-                "No se encontró el contexto '{$contextId}' en contexts.json. " .
-                "Verifica que el manifest corresponda a un contexto registrado."
-            );
-            return null;
-        }
-
-        $tenancyStrategy = $context['tenancy_strategy'] ?? null;
-        if ($tenancyStrategy !== 'manual') {
-            $this->components->error(
-                "El contexto '{$contextId}' tiene tenancy_strategy='{$tenancyStrategy}'. " .
-                "Solo se permite ejecutar migrate-plan con tenancy_strategy='manual'."
-            );
-            return null;
-        }
-
-        $connectionKey = $context['connection_key'] ?? null;
-        if ($connectionKey === null || $connectionKey === '') {
-            $this->components->error(
-                "El contexto '{$contextId}' no tiene un connection_key definido. " .
-                "Agrega un connection_key válido en contexts.json antes de ejecutar migrate-plan."
-            );
-            return null;
-        }
-
-        if (!$dryRun && !is_array(config("database.connections.{$connectionKey}"))) {
-            $this->components->error(
-                "La conexión '{$connectionKey}' del contexto '{$contextId}' no existe en config/database.php. " .
-                "Créala manualmente o ejecuta innodite:make-connections."
-            );
-            return null;
-        }
-
-        return $connectionKey;
     }
 
 }

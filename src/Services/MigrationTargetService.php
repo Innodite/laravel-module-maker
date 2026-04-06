@@ -7,6 +7,7 @@ namespace Innodite\LaravelModuleMaker\Services;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Str;
+use Innodite\LaravelModuleMaker\Exceptions\ConnectionNotConfiguredException;
 use Innodite\LaravelModuleMaker\Support\ContextResolver;
 use Throwable;
 
@@ -37,33 +38,60 @@ class MigrationTargetService
     }
 
     /**
-     * Resuelve la conexión de ejecución para un manifest.
+     * Resuelve y valida la conexión de ejecución para un manifest.
      *
-     * Flujo explícito (v3.5.0+):
-     *   1. Extrae el id del nombre del manifest (patrón {id}.order.json)
-     *   2. Busca el contexto en contexts.json via ContextResolver::find()
-     *   3. Retorna connection_key del contexto, o config('database.default') si no tiene
+     * Cadena de validaciones:
+     *   1. Formato del manifest → /^([a-z0-9][a-z0-9-]*)\.order\.json$/
+     *   2. Contexto existe en contexts.json
+     *   3. tenancy_strategy === 'manual'
+     *   4. connection_key no vacío
+     *   5. Conexión existe en config/database.php (solo si !$dryRun)
      *
-     * @param array<int, string> $migrations
-     * @param array<int, string> $seeders
+     * @throws \InvalidArgumentException Si el formato, contexto, strategy o connection_key fallan
+     * @throws ConnectionNotConfiguredException Si la conexión no existe en config/database.php
      */
-    public function resolveExecutionConnection(string $manifestPath, array $migrations, array $seeders): string
+    public function resolveExecutionConnection(string $manifestPath, bool $dryRun = false): string
     {
         $manifestName = strtolower(basename($manifestPath));
 
-        if (preg_match('/^([a-z0-9][a-z0-9-]*)\.order\.json$/', $manifestName, $matches)) {
-            try {
-                $context = ContextResolver::find($matches[1]);
-                $connectionKey = $context['connection_key'] ?? null;
-                if ($connectionKey !== null && $connectionKey !== '') {
-                    return $connectionKey;
-                }
-            } catch (\Throwable) {
-                // contexto no encontrado → fallback al default
-            }
+        if (!preg_match('/^([a-z0-9][a-z0-9-]*)\.order\.json$/', $manifestName, $matches)) {
+            throw new \InvalidArgumentException(
+                "El nombre del manifest '{$manifestName}' no tiene el formato esperado '{id}.order.json'."
+            );
         }
 
-        return (string) config('database.default', 'mysql');
+        $contextId = $matches[1];
+
+        try {
+            $context = ContextResolver::find($contextId);
+        } catch (\Throwable) {
+            throw new \InvalidArgumentException(
+                "No se encontró el contexto '{$contextId}' en contexts.json. " .
+                "Verifica que el manifest corresponda a un contexto registrado."
+            );
+        }
+
+        $tenancyStrategy = $context['tenancy_strategy'] ?? null;
+        if ($tenancyStrategy !== 'manual') {
+            throw new \InvalidArgumentException(
+                "El contexto '{$contextId}' tiene tenancy_strategy='{$tenancyStrategy}'. " .
+                "Solo se permite ejecutar migraciones con tenancy_strategy='manual'."
+            );
+        }
+
+        $connectionKey = $context['connection_key'] ?? null;
+        if ($connectionKey === null || $connectionKey === '') {
+            throw new \InvalidArgumentException(
+                "El contexto '{$contextId}' no tiene un connection_key definido. " .
+                "Agrega un connection_key válido en contexts.json antes de ejecutar migraciones."
+            );
+        }
+
+        if (!$dryRun && !is_array(config("database.connections.{$connectionKey}"))) {
+            throw ConnectionNotConfiguredException::forContext($contextId, $connectionKey);
+        }
+
+        return $connectionKey;
     }
 
     public function resolveDatabaseName(string $connectionName): string

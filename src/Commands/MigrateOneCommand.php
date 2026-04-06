@@ -6,10 +6,8 @@ namespace Innodite\LaravelModuleMaker\Commands;
 
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\File;
-use Innodite\LaravelModuleMaker\Exceptions\ConnectionNotConfiguredException;
 use Innodite\LaravelModuleMaker\Services\MigrationPlanResolver;
 use Innodite\LaravelModuleMaker\Services\MigrationTargetService;
-use Innodite\LaravelModuleMaker\Support\ContextResolver;
 use Symfony\Component\Console\Input\InputInterface;
 use Throwable;
 
@@ -65,24 +63,16 @@ class MigrateOneCommand extends Command
 
             $alreadyRegistered = in_array($coordinate, $plan['migrations'], true);
 
-            $connectionName = $targetService->resolveExecutionConnection(
-                $manifestPath,
-                [$coordinate],
-                []
-            );
+            try {
+                $connectionName = $targetService->resolveExecutionConnection($manifestPath, $dryRun);
+            } catch (\Throwable $e) {
+                $this->components->error($e->getMessage());
+                return self::FAILURE;
+            }
+
             $databaseName = $targetService->resolveDatabaseName($connectionName);
 
             if (!$dryRun) {
-                // Guard Rail R03: validar que connection_key esté registrada en config/database.php
-                if (preg_match('/^([a-z0-9][a-z0-9-]*)\.order\.json$/', basename($manifestPath), $m)) {
-                    try {
-                        ContextResolver::validateConnection($m[1]);
-                    } catch (ConnectionNotConfiguredException $e) {
-                        $this->components->error($e->getMessage());
-                        return self::FAILURE;
-                    }
-                }
-
                 $databaseValidationError = $targetService->validateDatabaseExists($connectionName);
                 if ($databaseValidationError !== null) {
                     $this->components->error($databaseValidationError);

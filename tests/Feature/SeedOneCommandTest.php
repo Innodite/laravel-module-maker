@@ -7,21 +7,21 @@ use Illuminate\Support\Facades\File;
 it('detecta el manifiesto tenant para un seeder individual y muestra lo que hara en dry-run', function () {
     $manifestDir = $this->tempPath('module-maker-config/migrations');
     File::ensureDirectoryExists($manifestDir);
-    File::put("{$manifestDir}/tenant_alpha_order.json", json_encode([
+    File::put("{$manifestDir}/tenant-one.order.json", json_encode([
         'migrations' => [],
         'seeders' => [],
     ], JSON_PRETTY_PRINT));
 
-    $seederPath = $this->tempPath('Modules/Probe/Database/Seeders/Tenant/Shared/TenantSharedProbeSeeder.php');
+    $seederPath = $this->tempPath('Modules/Probe/Database/Seeders/Tenant/TenantOne/TenantOneProbeSeeder.php');
     File::ensureDirectoryExists(dirname($seederPath));
     File::put($seederPath, <<<'PHP'
 <?php
 
-namespace Modules\Probe\Database\Seeders\Tenant\Shared;
+namespace Modules\Probe\Database\Seeders\Tenant\TenantOne;
 
 use Illuminate\Database\Seeder;
 
-class TenantSharedProbeSeeder extends Seeder
+class TenantOneProbeSeeder extends Seeder
 {
     public function run(): void
     {
@@ -32,17 +32,17 @@ PHP);
     require_once $seederPath;
 
     $this->artisan('innodite:seed-one', [
-        'coordinate' => 'Probe:Tenant/Shared/TenantSharedProbeSeeder',
-        '--manifest' => 'tenant_alpha_order.json',
+        'coordinate' => 'Probe:Tenant/TenantOne/TenantOneProbeSeeder',
+        '--manifest' => 'tenant-one.order.json',
         '--yes' => true,
         '--dry-run' => true,
     ])
-        ->expectsOutputToContain('Destino: tenant_alpha_order.json')
+        ->expectsOutputToContain('Destino: tenant-one.order.json')
         ->expectsOutputToContain('Tipo:          seeder')
         ->expectsOutputToContain('[DRY-RUN] Se ejecutaria el seeder especificado.')
         ->assertSuccessful();
 
-    $plan = json_decode(File::get("{$manifestDir}/tenant_alpha_order.json"), true);
+    $plan = json_decode(File::get("{$manifestDir}/tenant-one.order.json"), true);
     expect($plan['seeders'])->toBe([]);
 });
 
