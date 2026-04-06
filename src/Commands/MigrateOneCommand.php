@@ -189,7 +189,9 @@ class MigrateOneCommand extends Command
 
     private function executeMigration(string $path, string $connectionName): bool
     {
-        return $this->components->task('Ejecutando migracion especifica', function () use ($path, $connectionName) {
+        $success = false;
+
+        $this->components->task('Ejecutando migracion especifica', function () use ($path, $connectionName, &$success) {
             $exitCode = $this->call('migrate', [
                 '--path' => $path,
                 '--database' => $connectionName,
@@ -197,7 +199,11 @@ class MigrateOneCommand extends Command
                 '--force' => true,
             ]);
 
-            return $exitCode === self::SUCCESS;
+            $success = $exitCode === self::SUCCESS;
+
+            return $success;
         });
+
+        return $success;
     }
 }
