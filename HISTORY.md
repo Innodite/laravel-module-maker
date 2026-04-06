@@ -2,6 +2,31 @@
 
 ---
 
+## [2026-04-06] v3.5.4 — Documentación completa + badges de CI en README y GitHub Pages
+
+**Tag:** `v3.5.4`
+
+**Cambios:**
+
+- **README.md** — Reescritura completa para reflejar v3.5.x:
+  - Badges: Tests, Coverage, Latest Version, PHP, Laravel, License
+  - Nueva sección `innodite:add-entity` con firma, flags, tabla comparativa vs `make-module` y ejemplo de archivos generados
+  - Todos los árboles de archivos (central, shared, tenant_shared, tenant) actualizados al patrón `{Tipo}/{Contexto}/{Entidad}/`
+  - Árbol del módulo generado con subcarpeta por entidad
+  - Tabla de comandos: añadidos `add-entity`, `migrate-one`, `seed-one`; eliminado `migrate-modules`
+  - `composer require` actualizado a `^3.5`
+
+- **docs/index.html (GitHub Pages)** — Actualización completa:
+  - Badges de CI/CD, versión, PHP, Laravel y licencia en el hero
+  - Versión `v3.5.3` en el sidebar
+  - Sidebar: `migrate-modules (legacy)` → `add-entity (generate)`
+  - Feature grid: nueva tarjeta _Multi-Entity Modules_
+  - `make-module`: descripción menciona el patrón v3.5 y enlaza a `add-entity`; rutas de ejemplo actualizadas
+  - Module structure: patrón `{Context}/{Entity}/` con callout explicativo
+  - Sección `cmd-migrate-modules` reemplazada por `cmd-add-entity` con: firma, tabla de opciones, 4 ejemplos y 2 callouts
+
+---
+
 ## [2026-04-06] v3.5.3 — Fix: ModelGenerator y RequestGenerator usan buildPath/buildNamespace
 
 **Tag:** `v3.5.3`
