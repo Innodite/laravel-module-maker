@@ -6,6 +6,7 @@ use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Database\Eloquent\Factories\Factory;
+use Innodite\LaravelModuleMaker\Commands\AddEntityCommand;
 use Innodite\LaravelModuleMaker\Commands\CheckEnvCommand;
 use Innodite\LaravelModuleMaker\Commands\MakeModuleCommand;
 use Innodite\LaravelModuleMaker\Commands\MigrateOneCommand;
@@ -57,6 +58,7 @@ class LaravelModuleMakerServiceProvider extends ServiceProvider
         if ($this->app->runningInConsole()) {
             $this->commands([
                 MakeModuleCommand::class,
+                AddEntityCommand::class,
                 MigrateOneCommand::class,
                 MigratePlanCommand::class,
                 MigrationSyncCommand::class,

@@ -2,6 +2,40 @@
 
 ---
 
+## [2026-04-06] v3.5.0 — R05+R06: Subfolder por entidad + comando `innodite:add-entity`
+
+**Tag:** `v3.5.0`
+
+**Motivación:** Los módulos con múltiples entidades (ej. `UserManagement` con `User`, `Role`, `Permission`, `Module`) mezclaban todos los archivos en la misma carpeta de contexto. Se introduce una subcarpeta por entidad para mantener el módulo limpio y escalable.
+
+**R05 — Refactor estructural: subfolder por entidad en todos los generadores**
+- `AbstractComponentGenerator::buildPath()` — añade `/{Entity}` al final de la ruta
+- `AbstractComponentGenerator::buildNamespace()` — añade `\{Entity}` al namespace
+- `AbstractComponentGenerator::buildContractsPath()` — ídem para Contracts
+- `AbstractComponentGenerator::buildContractsNamespace()` — ídem para Contracts
+- Nuevo método `getEntityFolder()` que lee `componentConfig['entity']`
+- `ModuleGenerator::createCleanModuleWithContext()` — añade `'entity' => $modelName` al componentConfig
+- `ModuleGenerator::createDynamicModule()` — añade `'entity' => $modelName` en cada componente
+- `ModuleGenerator::createIndividualComponents()` — acepta `?string $entityName = null`, propaga al componentConfig
+- `ModuleGenerator::injectRoutes()` — usa `componentConfig['entity']` para el namespace del controlador
+- `MakeModuleCommand::buildControllerFqcn()` — acepta `?string $entityName = null`, incluye entity en namespace
+
+**Patrón nuevo:** `{Tipo}/{Contexto}/{Entidad}/{Archivo}` — naming convention intacta.
+
+**R06 — Nuevo comando `innodite:add-entity`**
+- Nuevo archivo `src/Commands/AddEntityCommand.php`
+- Firma: `innodite:add-entity {module} {entity} {--context=} [-M] [-C] [-S] [-R] [-G] [-Q] [--no-routes]`
+- Valida que el módulo exista antes de generar
+- Sin flags activos: genera todos los componentes
+- Registrado en `LaravelModuleMakerServiceProvider`
+- Documentado en `skills/module-maker.md`
+
+**Caso de uso:** `php artisan innodite:add-entity UserManagement Role --context=central` genera `Models/Central/Role/CentralRole.php`, `Http/Controllers/Central/Role/CentralRoleController.php`, etc.
+
+**Retrocompatibilidad:** Si `componentConfig['entity']` no está definido (legacy), `getEntityFolder()` retorna cadena vacía y los paths se comportan exactamente igual que antes.
+
+---
+
 ## [2026-04-06] v3.4.6 — Corrección de 6 errores detectados en pruebas manuales
 
 **Tag:** `v3.4.6`

@@ -1,20 +1,62 @@
-# Roadmap de Desarrollo - Fase: Conectividad y Sincronización
+# Roadmap de Desarrollo
 
-## ✅ Prioridad 1: Core & Identidad (R01) — COMPLETADO [2026-04-05]
-- **Actividad:** Refactorizar `ContextResolver.php` y estabilizar `MakeModuleCommand`.
-- **Estado:** `ContextResolver` ya implementaba búsqueda híbrida correctamente. Bug real encontrado y corregido en `MakeModuleCommand`: variable `$contextName` indefinida causaba `TypeError` → `Command::FAILURE` en todos los tests de generación. Fix: `$contextName = $contextId` en `handleFullModule()` y `handleComponentMode()`.
+## 🔴 Prioridad 5: Refactor estructural — subfolder por entidad en todos los generadores (R05)
 
-## ✅ Prioridad 2: Sincronización de Orden (R02) — COMPLETADO [2026-04-05]
-- **Actividad:** Actualizar `MigrationSyncCommand.php`.
-- **Estado:** Ya implementado y funcional. `resolveAutoTargets()` lee `$decoded['contexts']['tenant']` (array indexado) e itera correctamente generando `{id}.order.json` por cada tenant. Los 3 tests de `MigrationSyncCommandTest` pasan.
+- **Actividad:** Ajustar `AbstractComponentGenerator` para que cada entidad genere sus archivos dentro de su propio subfolder, siguiendo el patrón `{Tipo}/{Contexto}/{Entidad}/{Archivo}`.
+- **Problema actual:** Todas las entidades de un módulo caen en la misma carpeta de contexto (`Models/Central/User.php`, `Models/Central/Role.php` — mezclados).
+- **Objetivo:** Cada entidad tiene su propio espacio limpio e independiente dentro del módulo:
+  ```
+  Models/Central/User/CentralUser.php
+  Models/Central/Role/CentralRole.php
+  Http/Controllers/Central/User/CentralUserController.php
+  Http/Controllers/Tenant/EnergySpain/Role/EnergySpainRoleController.php
+  Services/Contracts/Tenant/Shared/Permission/TenantSharedPermissionServiceInterface.php
+  ```
+- **Convenciones de nombres:** Se mantienen intactas (`CentralRoleController.php`, no `RoleController.php`). Solo cambia la subcarpeta donde vive el archivo.
+- **Aplica a todos los contextos:** `central`, `shared`, `tenant_shared`, y todos los tenants específicos.
+- **Detalle técnico:**
+  - `AbstractComponentGenerator::buildPath()` y `buildNamespace()` añaden `/{EntityName}` al final de la ruta/namespace.
+  - `buildContractsPath()` y `buildContractsNamespace()` — ídem.
+  - `ModuleGenerator::createFolders()` crea el subfolder de la entidad inicial.
+  - Los stubs existentes no cambian.
+- **Archivos a modificar:**
+  - `src/Generators/Components/AbstractComponentGenerator.php`
+  - `src/Generators/Components/ModuleGenerator.php`
 
-## ✅ Prioridad 3: Validación Preventiva de Seguridad (R03) — COMPLETADO [2026-04-05]
-- **Actividad:** Normalización de manifests + Guard Rail de conexiones.
-- **Estado:** `central_order.json` renombrado a `central.order.json`. `resolveExecutionConnection()` reemplazado con lookup explícito vía `ContextResolver::find()`. Guard Rail integrado en `MigratePlanCommand`, `MigrateOneCommand`, `SeedOneCommand`. Nueva excepción `ConnectionNotConfiguredException`. 3 tests de regresión añadidos.
+---
 
-## ✅ Prioridad 3.1: Refactor Guard + Fix dry-run (R03.1) — COMPLETADO [2026-04-05]
-- **Actividad:** Consolidar Guard Rail en `resolveExecutionConnection()`, eliminar fallback a `database.default`, soportar dry-run correctamente, corregir tests PendingCommand.
-- **Estado:** `resolveExecutionConnection()` retorna `?string`; valida formato → contexto → `tenancy_strategy='manual'` → `connection_key` → config/database.php (solo `!$dryRun`). Bug de PendingCommand documentado y corregido en tests. 28 passing, 1 skipped.
+## 🔴 Prioridad 6: Nuevo comando `innodite:add-entity` (R06)
+
+- **Actividad:** Crear el comando `innodite:add-entity` que agrega una nueva entidad a un módulo ya existente.
+- **Motivación:** `make-module` usa `{name}` como nombre del módulo Y de la entidad simultáneamente. No es posible agregar `Role` dentro de `UserManagement` — generaría un módulo llamado `Role` independiente.
+- **Firma:**
+  ```bash
+  php artisan innodite:add-entity {module} {entity} {--context=} [-M] [-C] [-S] [-R] [-G] [-Q] [--no-routes]
+  ```
+- **Ejemplo:**
+  ```bash
+  php artisan innodite:add-entity UserManagement Role --context=central -M -C -S -R -G -Q
+  # Genera dentro de Modules/UserManagement/:
+  #   Models/Central/Role/CentralRole.php
+  #   Http/Controllers/Central/Role/CentralRoleController.php
+  #   Services/Central/Role/CentralRoleService.php + Interface
+  #   Repositories/Central/Role/CentralRoleRepository.php + Interface
+  #   Database/Migrations/Central/Role/..._create_roles_table.php
+  #   Http/Requests/Central/Role/CentralRoleStoreRequest.php
+  ```
+- **Caso de uso real:** Módulo `UserManagement` con entidades `User`, `Module`, `Role`, `Permission` — cada una en su propio subfolder, todas bajo el mismo módulo contenedor.
+- **Detalle técnico:**
+  - Nuevo archivo `src/Commands/AddEntityCommand.php`.
+  - `ModuleGenerator::createIndividualComponents()` acepta `?string $entityName = null` para desacoplar módulo de entidad.
+  - Registrar `AddEntityCommand::class` en `LaravelModuleMakerServiceProvider`.
+  - **Dependencia:** Requiere R05 implementado primero.
+- **Archivos a crear/modificar:**
+  - `src/Commands/AddEntityCommand.php` (nuevo)
+  - `src/Generators/Components/ModuleGenerator.php`
+  - `src/LaravelModuleMakerServiceProvider.php`
+  - `skills/module-maker.md`
+
+---
 
 ## 🟡 Prioridad 4: DX - Generador de Conexiones (R04)
 - **Actividad:** Nuevo comando `innodite:make-connections`.

@@ -21,6 +21,7 @@ src/
     ModuleCheckCommand.php          — innodite:module-check
     TestModuleCommand.php           — innodite:test-module
     TestSyncCommand.php             — innodite:test-sync
+    AddEntityCommand.php            — innodite:add-entity
     PublishFrontendCommand.php      — innodite:publish-frontend
 
   Contracts/
@@ -616,7 +617,46 @@ Requiere un nombre de módulo o la flag `--all`. Sin argumentos el comando falla
 
 ---
 
-### 11. `innodite:publish-frontend`
+### 11. `innodite:add-entity`
+
+```bash
+php artisan innodite:add-entity {module} {entity} {--context=} [-M] [-C] [-S] [-R] [-G] [-Q] [--no-routes]
+```
+
+Agrega una nueva entidad a un módulo **ya existente**, generando sus archivos en una subcarpeta propia dentro de cada capa del módulo.
+
+**Patrón de rutas:** `{Tipo}/{Contexto}/{Entidad}/{Archivo}` — naming convention intacta.
+
+**Ejemplos:**
+```bash
+# Agregar entidad Role completa al módulo UserManagement en contexto central
+php artisan innodite:add-entity UserManagement Role --context=central
+
+# Solo controller + service + repository para un tenant específico
+php artisan innodite:add-entity UserManagement Permission --context=energy-spain -C -S -R
+
+# Sin inyección de rutas
+php artisan innodite:add-entity UserManagement Module --context=tenant_shared -M -G --no-routes
+```
+
+**Resultado para `UserManagement Role --context=central`:**
+- `Models/Central/Role/CentralRole.php`
+- `Http/Controllers/Central/Role/CentralRoleController.php`
+- `Services/Central/Role/CentralRoleService.php` + `Contracts/CentralRoleServiceInterface.php`
+- `Repositories/Central/Role/CentralRoleRepository.php` + `Contracts/CentralRoleRepositoryInterface.php`
+- `Database/Migrations/Central/Role/..._create_roles_table.php`
+- `Http/Requests/Central/Role/CentralRoleStoreRequest.php`
+
+**Notas:**
+- Si `{entity}` = `{module}`, el comportamiento es equivalente a `make-module` con flags individuales.
+- Sin flags, genera todos los componentes (model, controller, service, repository, migration, request).
+- Aplica a todos los contextos: `central`, `shared`, `tenant_shared`, tenants específicos.
+
+**Archivo:** `src/Commands/AddEntityCommand.php`
+
+---
+
+### 12. `innodite:publish-frontend`
 
 ```bash
 php artisan innodite:publish-frontend

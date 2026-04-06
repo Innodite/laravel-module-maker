@@ -151,6 +151,19 @@ abstract class AbstractComponentGenerator
     }
 
     /**
+     * Retorna el nombre de la entidad para usarlo como subcarpeta dentro de la carpeta de contexto.
+     * Patrón: {Tipo}/{Contexto}/{Entidad}/
+     * Ej: Models/Central/User/, Http/Controllers/Tenant/EnergySpain/Role/
+     * Retorna cadena vacía si no hay entidad definida (retrocompatibilidad).
+     *
+     * @return string
+     */
+    protected function getEntityFolder(): string
+    {
+        return $this->componentConfig['entity'] ?? '';
+    }
+
+    /**
     * Retorna el fragmento de namespace del contexto.
     * Ej: 'Central', 'Shared', 'Tenant\\Shared', 'Tenant\\Alpha'
      *
@@ -162,43 +175,47 @@ abstract class AbstractComponentGenerator
     }
 
     /**
-    * Construye el namespace completo para un tipo de componente dentro del módulo.
-    * Ej: buildNamespace('Http\\Controllers') → 'Modules\Products\Http\Controllers\Tenant\Alpha'
+     * Construye el namespace completo para un tipo de componente dentro del módulo.
+     * Patrón: Modules\{Module}\{Type}\{ContextNs}\{Entity}
+     * Ej: buildNamespace('Http\\Controllers') → 'Modules\Products\Http\Controllers\Tenant\Alpha\Product'
      *
      * @param  string  $componentType  Tipo de componente (ej: 'Http\\Controllers', 'Services', 'Models')
      * @return string
      */
     protected function buildNamespace(string $componentType): string
     {
-        $base  = "Modules\\{$this->moduleName}\\{$componentType}";
-        $ctxNs = $this->getContextNamespacePath();
+        $base   = "Modules\\{$this->moduleName}\\{$componentType}";
+        $ctxNs  = $this->getContextNamespacePath();
+        $entity = $this->getEntityFolder();
 
-        return $ctxNs ? "{$base}\\{$ctxNs}" : $base;
+        $ns = $ctxNs ? "{$base}\\{$ctxNs}" : $base;
+
+        return $entity ? "{$ns}\\{$entity}" : $ns;
     }
 
     /**
      * Construye el namespace de la carpeta Contracts para un tipo de componente.
-     *
-     * Según WORKPLAN v3.0.0, los Contracts viven en la raíz del tipo,
-     * no dentro de la carpeta de contexto:
-     *   Services/Contracts/Tenant/INNODITE/  (no Services/Tenant/INNODITE/Contracts/)
-     *
-     * Ej: buildContractsNamespace('Services') → 'Modules\User\Services\Contracts\Tenant\INNODITE'
+     * Patrón: Modules\{Module}\{Type}\Contracts\{ContextNs}\{Entity}
+     * Ej: buildContractsNamespace('Services') → 'Modules\User\Services\Contracts\Tenant\INNODITE\Role'
      *
      * @param  string  $componentType  Tipo de componente (ej: 'Services', 'Repositories')
      * @return string
      */
     protected function buildContractsNamespace(string $componentType): string
     {
-        $base  = "Modules\\{$this->moduleName}\\{$componentType}\\Contracts";
-        $ctxNs = $this->getContextNamespacePath();
+        $base   = "Modules\\{$this->moduleName}\\{$componentType}\\Contracts";
+        $ctxNs  = $this->getContextNamespacePath();
+        $entity = $this->getEntityFolder();
 
-        return $ctxNs ? "{$base}\\{$ctxNs}" : $base;
+        $ns = $ctxNs ? "{$base}\\{$ctxNs}" : $base;
+
+        return $entity ? "{$ns}\\{$entity}" : $ns;
     }
 
     /**
-    * Construye la ruta absoluta de carpeta para un tipo de componente dentro del módulo.
-    * Ej: buildPath('Http/Controllers') → '.../Products/Http/Controllers/Tenant/Alpha'
+     * Construye la ruta absoluta de carpeta para un tipo de componente dentro del módulo.
+     * Patrón: {ModulePath}/{Type}/{ContextFolder}/{Entity}/
+     * Ej: buildPath('Http/Controllers') → '.../Products/Http/Controllers/Tenant/Alpha/Product'
      *
      * @param  string  $componentType  Tipo de componente (ej: 'Http/Controllers', 'Services', 'Models')
      * @return string
@@ -207,18 +224,17 @@ abstract class AbstractComponentGenerator
     {
         $base   = $this->getComponentBasePath() . "/{$componentType}";
         $folder = $this->getContextFolder();
+        $entity = $this->getEntityFolder();
 
-        return $folder ? "{$base}/{$folder}" : $base;
+        $path = $folder ? "{$base}/{$folder}" : $base;
+
+        return $entity ? "{$path}/{$entity}" : $path;
     }
 
     /**
      * Construye la ruta absoluta a la carpeta Contracts para un tipo de componente.
-     *
-     * Según WORKPLAN v3.0.0, la estructura es:
-     *   {Module}/{Type}/Contracts/{ContextFolder}/
-     * No: {Module}/{Type}/{ContextFolder}/Contracts/
-     *
-     * Ej: buildContractsPath('Services') → '.../User/Services/Contracts/Tenant/INNODITE'
+     * Patrón: {ModulePath}/{Type}/Contracts/{ContextFolder}/{Entity}/
+     * Ej: buildContractsPath('Services') → '.../User/Services/Contracts/Tenant/INNODITE/Role'
      *
      * @param  string  $componentType  Tipo de componente (ej: 'Services', 'Repositories')
      * @return string
@@ -227,8 +243,11 @@ abstract class AbstractComponentGenerator
     {
         $base   = $this->getComponentBasePath() . "/{$componentType}/Contracts";
         $folder = $this->getContextFolder();
+        $entity = $this->getEntityFolder();
 
-        return $folder ? "{$base}/{$folder}" : $base;
+        $path = $folder ? "{$base}/{$folder}" : $base;
+
+        return $entity ? "{$path}/{$entity}" : $path;
     }
 
     /**

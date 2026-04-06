@@ -209,6 +209,7 @@ class ModuleGenerator
 
         $componentConfig = [
             'name'          => $modelName,
+            'entity'        => $modelName,
             'context'       => $contextKey,
             'context_id'    => $contextId,
             'functionality' => $functionality,
@@ -297,6 +298,11 @@ class ModuleGenerator
             $modelName   = Str::studly($component['name']);
             $requestName = "{$modelName}StoreRequest";
 
+            // Garantizar que 'entity' está en el config para el subfolder por entidad
+            if (!isset($component['entity'])) {
+                $component['entity'] = $modelName;
+            }
+
             (new ModelGenerator($this->moduleName, $this->modulePath, false, $modelName, $component['attributes'] ?? [], $component['relations'] ?? [], [], $component))->generate();
             (new ControllerGenerator($this->moduleName, $this->modulePath, false, $modelName, $component))->generate();
             (new ServiceGenerator($this->moduleName, $this->modulePath, false, $modelName, $component))->generate();
@@ -317,13 +323,19 @@ class ModuleGenerator
     /**
      * Crea componentes individuales según los flags booleanos.
      *
-     * @param  array  $flags            Mapa de flags: model, controller, service, repository, migration, request
-     * @param  array  $componentConfig  Contexto activo: context, context_id
+     * @param  array        $flags            Mapa de flags: model, controller, service, repository, migration, request
+     * @param  array        $componentConfig  Contexto activo: context, context_id
+     * @param  string|null  $entityName       Nombre de la entidad (por defecto: igual al módulo)
      * @return void
      */
-    public function createIndividualComponents(array $flags, array $componentConfig = []): void
+    public function createIndividualComponents(array $flags, array $componentConfig = [], ?string $entityName = null): void
     {
-        $modelName = $this->moduleName;
+        $modelName = $entityName ?? $this->moduleName;
+
+        // Garantizar que 'entity' está en componentConfig para el subfolder por entidad
+        if (!isset($componentConfig['entity'])) {
+            $componentConfig['entity'] = $modelName;
+        }
 
         if ($flags['model'] ?? false) {
             (new ModelGenerator($this->moduleName, $this->modulePath, true, $modelName, [], [], [], $componentConfig))->generate();
@@ -384,12 +396,13 @@ class ModuleGenerator
             return;
         }
 
-        // El controlador principal del módulo es el del contexto activo
-        $controllerClass = ($contextConfig['class_prefix'] ?? '') . $this->moduleName . 'Controller';
+        // El controlador usa la entidad (puede diferir del módulo en add-entity)
+        $entityName      = $componentConfig['entity'] ?? $this->moduleName;
+        $controllerClass = ($contextConfig['class_prefix'] ?? '') . $entityName . 'Controller';
         $nsPath          = $contextConfig['namespace_path'] ?? '';
         $controllerNs    = $nsPath
-            ? "Modules\\{$this->moduleName}\\Http\\Controllers\\{$nsPath}"
-            : "Modules\\{$this->moduleName}\\Http\\Controllers";
+            ? "Modules\\{$this->moduleName}\\Http\\Controllers\\{$nsPath}\\{$entityName}"
+            : "Modules\\{$this->moduleName}\\Http\\Controllers\\{$entityName}";
         $controllerFqcn  = "{$controllerNs}\\{$controllerClass}";
 
         $injector = new RouteInjectionService($this->command);

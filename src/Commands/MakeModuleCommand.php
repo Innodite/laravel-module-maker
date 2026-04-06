@@ -505,21 +505,27 @@ class MakeModuleCommand extends Command
     // ─── Helpers de orquestación ──────────────────────────────────────────────
 
     /**
-     * Construye el FQCN del controlador principal del módulo para el contexto dado.
+     * Construye el FQCN del controlador para el contexto dado.
+     * Con la nueva estructura de subfolder por entidad, el patrón es:
+     *   Modules\{Module}\Http\Controllers\{ContextNs}\{Entity}\{Prefix}{Entity}Controller
      *
-     * Sub-proceso atómico:
-     *   class_prefix='Central', moduleName='User' → CentralUserController
-     *   namespace_path='Central' → Modules\User\Http\Controllers\Central\CentralUserController
+     * En make-module, entity = module (son el mismo nombre).
+     * En add-entity, entity es diferente del module (se pasa explícitamente).
+     *
+     * @param  string  $moduleName   Nombre del módulo contenedor
+     * @param  array   $contextItem  Configuración del contexto
+     * @param  string|null  $entityName  Nombre de la entidad (por defecto igual a $moduleName)
      */
-    private function buildControllerFqcn(string $moduleName, array $contextItem): string
+    private function buildControllerFqcn(string $moduleName, array $contextItem, ?string $entityName = null): string
     {
+        $entity    = $entityName ?? $moduleName;
         $prefix    = $contextItem['class_prefix']   ?? '';
         $nsPath    = $contextItem['namespace_path'] ?? '';
-        $className = "{$prefix}{$moduleName}Controller";
+        $className = "{$prefix}{$entity}Controller";
 
         $namespace = $nsPath
-            ? "Modules\\{$moduleName}\\Http\\Controllers\\{$nsPath}"
-            : "Modules\\{$moduleName}\\Http\\Controllers";
+            ? "Modules\\{$moduleName}\\Http\\Controllers\\{$nsPath}\\{$entity}"
+            : "Modules\\{$moduleName}\\Http\\Controllers\\{$entity}";
 
         return "{$namespace}\\{$className}";
     }
