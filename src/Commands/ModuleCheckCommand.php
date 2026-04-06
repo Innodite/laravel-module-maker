@@ -92,7 +92,8 @@ class ModuleCheckCommand extends Command
         }
 
         // Verificar estructura interna de cada sub-contexto
-        $requiredItemKeys = ['name', 'class_prefix', 'folder', 'namespace_path', 'route_file'];
+        // Claves presentes en el schema real de contexts.json (sin 'name' que no es estándar)
+        $requiredItemKeys = ['id', 'class_prefix', 'folder', 'namespace_path', 'route_file'];
         $errors           = [];
 
         foreach ($data['contexts'] as $contextKey => $items) {
@@ -228,7 +229,8 @@ class ModuleCheckCommand extends Command
                 foreach ($migFiles as $migFile) {
                     $basename = $migFile->getFilenameWithoutExtension();
                     // Extraer la parte del nombre sin el timestamp
-                    $migName = preg_replace('/^\d{4}_\d{2}_\d{2}_\d{6}_/', '', $basename);
+                    // Soporta tanto timestamps estándar (6 dígitos) como con microsegundos (12+ dígitos)
+                    $migName = preg_replace('/^\d{4}_\d{2}_\d{2}_\d+_/', '', $basename);
                     if ($migName && in_array($migName, $migNames, true)) {
                         $collisions[] = "{$name} → migración duplicada: {$migName}";
                     }
