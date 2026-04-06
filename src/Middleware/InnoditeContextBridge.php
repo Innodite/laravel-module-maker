@@ -71,7 +71,7 @@ class InnoditeContextBridge
         $empty = ['route_prefix' => null, 'permission_prefix' => null];
 
         try {
-            $allContexts = ContextResolver::all();
+            $allContexts = ContextResolver::allItems();
         } catch (\Throwable) {
             return $empty;
         }
@@ -79,25 +79,23 @@ class InnoditeContextBridge
         $currentRouteName = $request->route()?->getName() ?? '';
         $currentPath      = ltrim($request->path(), '/');
 
-        foreach ($allContexts as $items) {
-            foreach ($items as $item) {
-                // Coincidencia por nombre de ruta
-                $routeName = $item['route_name'] ?? null;
-                if ($routeName && str_starts_with($currentRouteName, $routeName)) {
-                    return [
-                        'route_prefix'      => $item['route_prefix'] ?? null,
-                        'permission_prefix' => $item['permission_prefix'] ?? null,
-                    ];
-                }
+        foreach ($allContexts as $item) {
+            // Coincidencia por nombre de ruta
+            $routeName = $item['route_name'] ?? null;
+            if ($routeName && str_starts_with($currentRouteName, $routeName)) {
+                return [
+                    'route_prefix'      => $item['route_prefix'] ?? null,
+                    'permission_prefix' => $item['permission_prefix'] ?? null,
+                ];
+            }
 
-                // Coincidencia por path URL
-                $routePrefix = $item['route_prefix'] ?? null;
-                if ($routePrefix && str_starts_with($currentPath, $routePrefix)) {
-                    return [
-                        'route_prefix'      => $routePrefix,
-                        'permission_prefix' => $item['permission_prefix'] ?? null,
-                    ];
-                }
+            // Coincidencia por path URL
+            $routePrefix = $item['route_prefix'] ?? null;
+            if ($routePrefix && str_starts_with($currentPath, $routePrefix)) {
+                return [
+                    'route_prefix'      => $routePrefix,
+                    'permission_prefix' => $item['permission_prefix'] ?? null,
+                ];
             }
         }
 
