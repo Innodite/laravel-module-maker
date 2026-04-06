@@ -2,6 +2,39 @@
 
 ---
 
+## [2026-04-05] R03.2 — Consolidar `resolveExecutionConnection` en `MigrationTargetService`
+
+**Problema:** La lógica de resolución de conexión estaba triplicada:
+1. `MigratePlanCommand` tenía un método privado `resolveExecutionConnection()` con la lógica completa (R03.1)
+2. `MigrationTargetService::resolveExecutionConnection()` tenía la lógica antigua con fallback silencioso a `config('database.default')`
+3. `MigrateOneCommand` y `SeedOneCommand` tenían el Guard Rail R03 como bloque separado en `handle()`, sin validar `tenancy_strategy`
+
+**Decisión:** Un solo método en el servicio. Los comandos no repiten lógica — solo llaman y atrapan excepciones.
+
+**Flujo final en `MigrationTargetService::resolveExecutionConnection(string $manifestPath, bool $dryRun = false): string`:**
+```
+formato inválido          → throw InvalidArgumentException
+contexto no encontrado    → throw InvalidArgumentException
+tenancy_strategy ≠ manual → throw InvalidArgumentException
+connection_key vacío      → throw InvalidArgumentException
+!dryRun && conexión no en config/database.php → throw ConnectionNotConfiguredException
+→ return $connectionKey
+```
+
+**Cambios aplicados:**
+- `src/Services/MigrationTargetService.php`: firma `(string, array, array): string` → `(string, bool): string`; lanza excepciones en lugar de retornar fallback; import de `ConnectionNotConfiguredException`
+- `src/Commands/MigratePlanCommand.php`: eliminado método privado `resolveExecutionConnection()`; eliminado import `ContextResolver`; usa `$targetService->resolveExecutionConnection($manifestPath, $dryRun)` en try/catch
+- `src/Commands/MigrateOneCommand.php`: eliminados imports `ConnectionNotConfiguredException` y `ContextResolver`; eliminado bloque Guard Rail R03; llamada actualizada a `resolveExecutionConnection($manifestPath, $dryRun)` en try/catch
+- `src/Commands/SeedOneCommand.php`: ídem que MigrateOneCommand
+- `src/Exceptions/ConnectionNotConfiguredException.php`: mensaje de `forContext()` normalizado al canónico ("del contexto", "no existe", "Créala manualmente o ejecuta innodite:make-connections")
+- `tests/Feature/SeedOneCommandTest.php`: manifest legacy `tenant_alpha_order.json` → `tenant-one.order.json`; coordenada y seeder actualizados al naming v3.5.0
+
+**Resultado:** −54 líneas netas. 28 passing, 1 skipped (pdo_sqlite).
+
+**Invariante:** El único lugar donde vive la lógica de validación de conexión es `MigrationTargetService::resolveExecutionConnection()`. Cualquier nuevo comando que acceda a BD debe usar este método.
+
+---
+
 ## [2026-04-05] R03.1 — Refactor `resolveExecutionConnection` + Fix dry-run + Fix Tests PendingCommand
 
 **Problema 1 — Fallback silencioso:** `resolveExecutionConnection()` en `MigratePlanCommand` usaba `config('database.default', 'mysql')` como fallback cuando no encontraba `connection_key`. Esto enmascaraba errores de configuración y permitía ejecutar migraciones contra la BD equivocada.
