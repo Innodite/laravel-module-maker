@@ -33,10 +33,7 @@
             "namespace_path": "Tenant\\Shared",
             "route_file": "tenant.php",
             "route_prefix": "",
-            "route_name": "",
-            "permission_prefix": "",
-            "permission_middleware": "",
-            "route_middleware":[]
+            "route_name": ""
         },
 
         "tenant": [
