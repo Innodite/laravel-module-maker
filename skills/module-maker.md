@@ -21,7 +21,6 @@ src/
     ModuleCheckCommand.php          — innodite:module-check
     TestModuleCommand.php           — innodite:test-module
     TestSyncCommand.php             — innodite:test-sync
-    MigrateModulesCommand.php       — innodite:migrate-modules (legacy v2→v3)
     PublishFrontendCommand.php      — innodite:publish-frontend
 
   Contracts/
@@ -609,24 +608,15 @@ php artisan innodite:test-module {module?} {--all} {--context=} {--all-contexts}
 ### 10. `innodite:test-sync`
 
 ```bash
-php artisan innodite:test-sync
+php artisan innodite:test-sync {module?} {--all}
 ```
 
 Sincroniza configuración de tests entre módulos (phpunit configs por contexto).
+Requiere un nombre de módulo o la flag `--all`. Sin argumentos el comando falla.
 
 ---
 
-### 11. `innodite:migrate-modules`
-
-```bash
-php artisan innodite:migrate-modules {--dry-run}
-```
-
-Migra módulos de v2.x (`routes/`) a v3.0.0 (`Routes/`). Solo necesario en proyectos legacy.
-
----
-
-### 12. `innodite:publish-frontend`
+### 11. `innodite:publish-frontend`
 
 ```bash
 php artisan innodite:publish-frontend

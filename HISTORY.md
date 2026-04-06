@@ -2,6 +2,30 @@
 
 ---
 
+## [2026-04-06] v3.4.6 — Corrección de 6 errores detectados en pruebas manuales
+
+**Tag:** `v3.4.6`
+
+**Errores corregidos:**
+
+- **ERROR-001 (CRÍTICO)** `innodite:module-check` — TypeError en `ModuleCheckCommand::checkContextsJson()`. El loop asumía estructura indexada para todos los contextos. Fix: detectar contextos objeto único (`isset($items['id'])`) y envolver en array antes de iterar. También corregido el conteo de contextos (`$count`).
+- **ERROR-002** `innodite:test-sync` — Documentación incorrecta en `skills/module-maker.md`. La firma real es `{module?} {--all}`, no sin argumentos.
+- **ERROR-003** `innodite:check-env` — Falso positivo al buscar modelo User. `findUserModel()` ahora busca también en `Modules/*/Models/**/*User*.php`.
+- **ERROR-004** `innodite:migrate-modules` — Comando inexistente. Se eliminó `MigrateModulesCommand.php` y sus referencias en `skills/module-maker.md`.
+- **ERROR-005** Contaminación de stdout al bootear. `RouteInjectionService::appendTenantSection()` ahora elimina `?>` al final del archivo antes de inyectar el bloque tenant, evitando que PHP salga de modo PHP y emita output.
+- **ERROR-006** `-G` repetido generaba migraciones duplicadas. `MigrationGenerator::generate()` ahora hace `glob()` para detectar migración existente y retorna con warning si ya existe.
+
+**Archivos modificados:**
+- `src/Commands/ModuleCheckCommand.php`
+- `src/Commands/CheckEnvCommand.php`
+- `src/Commands/MigrateModulesCommand.php` (eliminado)
+- `src/Services/RouteInjectionService.php`
+- `src/Generators/Components/MigrationGenerator.php`
+- `skills/module-maker.md`
+- `PRUEBAS_MAKE_MODULE.md` (nuevo — reporte de pruebas)
+
+---
+
 ## [2026-04-05] R03.3 — Tag v3.4.2 publicado + Deploy pendiente en Neocenter
 
 **Estado:** En progreso — requiere reinicio de equipo para continuar.

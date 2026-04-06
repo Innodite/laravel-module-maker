@@ -101,7 +101,15 @@ class ModuleCheckCommand extends Command
                 continue;
             }
 
-            foreach ($items as $i => $item) {
+            // Estructura híbrida: central/shared/tenant_shared son objetos únicos (tienen 'id'),
+            // tenant es un array indexado de objetos. Normalizar a array iterable.
+            $subItems = isset($items['id']) ? [$items] : $items;
+
+            foreach ($subItems as $i => $item) {
+                if (!is_array($item)) {
+                    $errors[] = "contexts.{$contextKey}[{$i}] debe ser un array";
+                    continue;
+                }
                 foreach ($requiredItemKeys as $k) {
                     if (!array_key_exists($k, $item)) {
                         $errors[] = "contexts.{$contextKey}[{$i}] falta la clave '{$k}'";
@@ -117,7 +125,12 @@ class ModuleCheckCommand extends Command
             return false;
         }
 
-        $count = array_sum(array_map('count', $data['contexts']));
+        $count = 0;
+        foreach ($data['contexts'] as $items) {
+            if (is_array($items)) {
+                $count += isset($items['id']) ? 1 : count($items);
+            }
+        }
         $this->components->twoColumnDetail(
             basename($path),
             "<fg=green>OK — {$count} sub-contextos encontrados</>"

@@ -107,6 +107,13 @@ class MigrationGenerator extends AbstractComponentGenerator
         $tableName   = $this->tableName ?: Str::snake(Str::plural($this->migrationName));
         $tableSchema = $this->getMigrationSchema($this->attributes, $this->indexes);
 
+        // Idempotencia: si ya existe una migración para esta tabla en este contexto, no duplicar.
+        $existingFiles = glob("{$migrationDirectoryPath}/*_create_{$tableName}_table.php") ?: [];
+        if (!empty($existingFiles)) {
+            $this->warn("Migración para '{$tableName}' ya existe en " . basename(dirname($migrationDirectoryPath)) . "/Database/Migrations. Se omite la generación.");
+            return;
+        }
+
         // Timestamp con microsegundos para evitar colisiones entre archivos del mismo contexto
         $uniqueTimestamp = Carbon::now()->format('Y_m_d_Hisu');
         $fileName        = "{$uniqueTimestamp}_create_{$tableName}_table.php";

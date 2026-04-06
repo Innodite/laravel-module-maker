@@ -408,6 +408,13 @@ class RouteInjectionService
         $tenantName = $contextConfig['id'] ?? 'Tenant';
         $separator  = str_repeat('─', 60);
 
+        // Si el archivo termina con un tag de cierre PHP (?>) el contenido añadido
+        // quedaría en modo texto y se imprimiría en stdout al bootear. Se elimina.
+        $trimmed = rtrim($content);
+        if (str_ends_with($trimmed, '?>')) {
+            $content = substr($trimmed, 0, -2) . PHP_EOL;
+        }
+
         $section = PHP_EOL
             . PHP_EOL . "// {$separator}"
             . PHP_EOL . "// {$tenantName}"

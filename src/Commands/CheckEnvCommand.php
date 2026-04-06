@@ -60,7 +60,7 @@ class CheckEnvCommand extends Command
         $userFile = $this->findUserModel();
 
         if ($userFile === null) {
-            $this->components->error('No se encontró el modelo User en app/Models/User.php ni app/User.php.');
+            $this->components->error('No se encontró el modelo User en app/Models/User.php, app/User.php ni en Modules/*/Models/.');
             return false;
         }
 
@@ -209,7 +209,7 @@ class CheckEnvCommand extends Command
 
     // ─── Helpers ──────────────────────────────────────────────────────────────
 
-    /** Busca el modelo User en las ubicaciones estándar de Laravel. */
+    /** Busca el modelo User en las ubicaciones estándar de Laravel y en Modules/. */
     private function findUserModel(): ?string
     {
         $paths = [
@@ -223,7 +223,13 @@ class CheckEnvCommand extends Command
             }
         }
 
-        return null;
+        // Búsqueda en Modules/*/Models/**/*User*.php (proyectos modularizados)
+        $modulesGlob = glob(base_path('Modules/*/Models/*User*.php')) ?: [];
+        $deepGlob    = glob(base_path('Modules/*/Models/**/*User*.php')) ?: [];
+
+        $found = array_merge($modulesGlob, $deepGlob);
+
+        return !empty($found) ? $found[0] : null;
     }
 
     /** Renderiza un bloque de código con fondo oscuro para destacarlo visualmente. */
