@@ -403,15 +403,15 @@ class RouteInjectionService
      */
     private function appendTenantSection(string $content, string $markerKey, array $contextConfig): string
     {
-        $marker     = "// {{{$markerKey}}}";
+        $marker     = '// {{' . $markerKey . '}}';
         $middleware = $this->formatMiddlewareArray($contextConfig['route_middleware'] ?? ['web', 'auth', 'tenant']);
         $tenantName = $contextConfig['id'] ?? 'Tenant';
         $separator  = str_repeat('─', 60);
 
-        // Si el archivo termina con un tag de cierre PHP (?>) el contenido añadido
-        // quedaría en modo texto y se imprimiría en stdout al bootear. Se elimina.
+        // Si el archivo termina con un tag de cierre PHP el contenido añadido
+        // quedaría fuera del modo PHP y se imprimiría en stdout al bootear. Se elimina.
         $trimmed = rtrim($content);
-        if (str_ends_with($trimmed, '?>')) {
+        if (str_ends_with($trimmed, '?' . '>')) {
             $content = substr($trimmed, 0, -2) . PHP_EOL;
         }
 
