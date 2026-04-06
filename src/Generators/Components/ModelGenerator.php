@@ -85,22 +85,25 @@ class ModelGenerator extends AbstractComponentGenerator
      */
     public function generate(): void
     {
-        $modelDirectoryPath = $this->getComponentBasePath() . '/' . self::MODEL_DIRECTORY;
+        $modelDirectoryPath = $this->buildPath('Models');
         $this->ensureDirectoryExists($modelDirectoryPath);
 
-        $useStatements = $this->getUseStatements();
+        $prefix    = $this->getClassPrefix();
+        $className = $prefix ? $prefix . $this->modelName : $this->modelName;
+
+        $useStatements    = $this->getUseStatements();
         $relationsMethods = $this->getRelationsMethods();
 
         $stubContent = $this->getStubContent(self::MODEL_STUB_FILE, $this->isClean, [
-            'namespace' => $this->getNamespace(),
-            'modelName' => $this->modelName,
-            'table' => $this->getTableProperty(),
-            'fillable' => $this->getFillableProperty(),
+            'namespace'     => $this->getNamespace(),
+            'modelName'     => $className,
+            'table'         => $this->getTableProperty(),
+            'fillable'      => $this->getFillableProperty(),
             'useStatements' => $useStatements,
-            'relations' => $relationsMethods,
+            'relations'     => $relationsMethods,
         ]);
 
-        $this->putFile("{$modelDirectoryPath}/{$this->modelName}.php", $stubContent, "Modelo '{$this->modelName}' creado en Modules/{$this->moduleName}/Models");
+        $this->putFile("{$modelDirectoryPath}/{$className}.php", $stubContent, "Modelo '{$className}' creado en Modules/{$this->moduleName}/Models");
     }
 
     /**
@@ -110,7 +113,7 @@ class ModelGenerator extends AbstractComponentGenerator
      */
     protected function getNamespace(): string
     {
-        return "Modules\\{$this->moduleName}\\Models";
+        return $this->buildNamespace('Models');
     }
 
     /**

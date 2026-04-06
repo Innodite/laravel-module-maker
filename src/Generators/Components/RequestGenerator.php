@@ -50,16 +50,20 @@ class RequestGenerator extends AbstractComponentGenerator
             return;
         }
 
-        $contextFolderPath = $contextFolder;                            // ej: "Central", "Tenant/Shared"
-        $contextNamespace  = str_replace('/', '\\', $contextFolderPath); // ej: "Central", "Tenant\\Shared"
-        $moduleNamespace   = "Modules\\{$this->moduleName}";
-        $className         = $this->getClassPrefix() . $this->moduleName;
-        $requestDir        = $this->getComponentBasePath() . '/Http/Requests/' . $contextFolderPath;
+        $requestDir      = $this->buildPath('Http/Requests');
+        $moduleNamespace = "Modules\\{$this->moduleName}";
+        $entity          = $this->componentConfig['entity'] ?? $this->moduleName;
+        $className       = $this->getClassPrefix() . $entity;
+
+        // Namespace del stub: contexto + entidad (espejo de buildPath)
+        $ctxNs    = str_replace('/', '\\', $contextFolder); // ej: "Central", "Tenant\\Shared"
+        $entityNs = $this->getEntityFolder();               // ej: "Role", ""
+        $contextNamespace = $entityNs ? "{$ctxNs}\\{$entityNs}" : $ctxNs;
 
         $this->ensureDirectoryExists($requestDir);
 
         // TenantShared → único Request genérico (usa stub legacy con nombre contextual)
-        $isTenantShared = ($contextKey === 'tenant_shared' || ($contextKey === 'shared' && str_contains($contextFolderPath, 'Tenant')));
+        $isTenantShared = ($contextKey === 'tenant_shared' || ($contextKey === 'shared' && str_contains($contextFolder, 'Tenant')));
 
         if ($isTenantShared) {
             $stub = $this->getStubContent('request.stub', $this->isClean, [
@@ -70,7 +74,7 @@ class RequestGenerator extends AbstractComponentGenerator
             $this->putFile(
                 "{$requestDir}/{$className}Request.php",
                 $stub,
-                "Request {$className}Request.php creado en Modules/{$this->moduleName}/Http/Requests/{$contextFolderPath}"
+                "Request {$className}Request.php creado en Modules/{$this->moduleName}/Http/Requests/{$contextFolder}"
             );
             return;
         }
@@ -91,13 +95,13 @@ class RequestGenerator extends AbstractComponentGenerator
         $this->putFile(
             "{$requestDir}/{$className}StoreRequest.php",
             $storeStub,
-            "Request {$className}StoreRequest.php creado en Modules/{$this->moduleName}/Http/Requests/{$contextFolderPath}"
+            "Request {$className}StoreRequest.php creado en Modules/{$this->moduleName}/Http/Requests/{$contextFolder}"
         );
 
         $this->putFile(
             "{$requestDir}/{$className}UpdateRequest.php",
             $updateStub,
-            "Request {$className}UpdateRequest.php creado en Modules/{$this->moduleName}/Http/Requests/{$contextFolderPath}"
+            "Request {$className}UpdateRequest.php creado en Modules/{$this->moduleName}/Http/Requests/{$contextFolder}"
         );
     }
 }
