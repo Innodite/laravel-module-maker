@@ -35,4 +35,4 @@ jobs:
         run: composer install --no-interaction --prefer-dist --no-progress
 
       - name: Run test suite
-        run: ./vendor/bin/pest
+        run: ./vendor/bin/pest --no-coverage
