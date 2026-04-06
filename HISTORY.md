@@ -2,6 +2,26 @@
 
 ---
 
+## [2026-04-06] v3.5.3 — Fix: ModelGenerator y RequestGenerator usan buildPath/buildNamespace
+
+**Tag:** `v3.5.3`
+
+**Problema:** `ModelGenerator` y `RequestGenerator` tenían lógica de construcción de rutas/namespaces hardcodeada que ignoraba `buildPath()` y `buildNamespace()` del `AbstractComponentGenerator`. Como resultado, los archivos generados no seguían el patrón R05 (`{Tipo}/{Contexto}/{Entidad}/`):
+- `ModelGenerator` generaba `Models/EntityName.php` (sin contexto ni entidad)
+- `RequestGenerator` generaba `Http/Requests/Central/CentralModuleNameStoreRequest.php` (sin subcarpeta de entidad, nombre con moduleName en lugar de entityName)
+
+**Correcciones:**
+- `ModelGenerator::generate()`: usa `buildPath('Models')` para el directorio; `$className = $prefix . $modelName`; pasa `$className` al stub como `modelName`
+- `ModelGenerator::getNamespace()`: delega a `buildNamespace('Models')`
+- `RequestGenerator::generate()`: usa `buildPath('Http/Requests')` para el directorio; lee `entity` de `componentConfig['entity'] ?? moduleName` para construir `$className`; construye `$contextNamespace` del stub como `{ctxNs}\\{entityNs}`
+
+**Resultado verificado en neocenter v3.5.3:**
+- `Models/Central/TestR053/CentralTestR053.php` ✅
+- `Http/Requests/Central/TestR053/CentralTestR053StoreRequest.php` ✅
+- `add-entity TestR053 Role --context=central` → `Models/Central/Role/CentralRole.php` ✅
+
+---
+
 ## [2026-04-06] v3.5.0 — R05+R06: Subfolder por entidad + comando `innodite:add-entity`
 
 **Tag:** `v3.5.0`
