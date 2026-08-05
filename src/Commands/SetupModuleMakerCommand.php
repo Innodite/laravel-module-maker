@@ -37,11 +37,15 @@ class SetupModuleMakerCommand extends Command
         $this->configureMode();
 
         // ── Carpeta de módulos ────────────────────────────────────────────────
-        $modulesPath = base_path('Modules');
+        // Las rutas salen de la configuración, no de base_path(): son las MISMAS que leen los
+        // generadores. Instalar en un sitio mientras se genera y se leen stubs de otro es la
+        // familia de fallo de siempre —dos mitades que dejan de coincidir—, y aquí el síntoma es
+        // desconcertante: el usuario edita un stub publicado y el paquete sigue usando el suyo.
+        $modulesPath = config('make-module.module_path');
         $this->ensureDirectory($modulesPath, "Modules/");
 
         // ── Carpeta de configuración (project root) ───────────────────────────
-        $configPath = base_path('module-maker-config');
+        $configPath = config('make-module.config_path');
         $this->ensureDirectory($configPath, "module-maker-config/");
 
         // ── Stubs ─────────────────────────────────────────────────────────────
@@ -185,7 +189,11 @@ class SetupModuleMakerCommand extends Command
     protected function publishStubs(string $configPath): void
     {
         $packageStubsPath = dirname(__DIR__, 2) . '/stubs/contextual';
-        $destPath         = "{$configPath}/stubs/contextual";
+
+        // La carpeta destino es la que LEE el resolutor de stubs (nivel 2), no una derivada de
+        // $configPath: si el proyecto reconfigura `stubs.path`, publicar en otro sitio deja al
+        // usuario editando archivos que nadie lee.
+        $destPath = config('make-module.stubs.path') . '/contextual';
 
         if (!File::isDirectory($packageStubsPath)) {
             $this->warn("   No se encontró stubs/contextual/ en el paquete. Creando carpeta vacía...");

@@ -468,8 +468,23 @@ class RouteGenerator extends AbstractComponentGenerator
     }
 
     /**
-     * Comportamiento legacy para componentes sin contexto definido.
-     * Mantiene retrocompatibilidad con proyectos que no usan contexts.json.
+     * Rutas sin eje de contexto: single-app, y los proyectos v3 que no usan contexts.json.
+     *
+     * Dos cosas se arreglaron aquí, y las dos las destapó el arnés al poner el archivo generado
+     * contra el árbol:
+     *
+     *   1. El import se armaba dentro del stub —`Modules\{Módulo}\Http\Controllers\{Clase}`—
+     *      **sin la carpeta de la subfuncionalidad**, que es carpeta en todas las capas desde
+     *      TASK-004a. Las cinco rutas del módulo apuntaban a un controlador inexistente: sintaxis
+     *      correcta, archivo escrito, 500 en cada petición. Ahora el FQCN lo entrega quien sabe
+     *      dónde vive la clase, `buildNamespace()`, que es el mismo que decidió dónde escribirla.
+     *
+     *   2. Escribía con `file_put_contents` directo, así que **no pasaba por el chequeo de
+     *      salida**: el sexto agujero de la red, después de los cinco que cerró TASK-003b. Un
+     *      `routes/web.php` que no parsea tumba la aplicación entera, no un módulo.
+     *
+     * Lo que este camino NO hace todavía —prefijo de ruta y middleware de permiso por modo— es
+     * de F-4 (FEAT-005), que rehace el flujo de rutas entero.
      *
      * @return void
      */
@@ -478,23 +493,20 @@ class RouteGenerator extends AbstractComponentGenerator
         $routesDir = $this->getComponentBasePath() . '/Routes';
         $this->ensureDirectoryExists($routesDir);
 
-        $controllerName = "{$this->modelName}Controller";
+        $controllerName = $this->prefixClass("{$this->modelName}Controller");
+        $controllerFqcn = $this->buildNamespace('Http\\Controllers') . '\\' . $controllerName;
 
-        $stubApi = $this->getStubContent('route-api.stub', $this->isClean, [
-            'StudlyModule'   => $this->moduleName,
-            'snakeModule'    => Str::snake($this->moduleName),
-            'controllerName' => $controllerName,
-        ]);
-        file_put_contents("{$routesDir}/api.php", $stubApi);
-
-        $stubWeb = $this->getStubContent('route-web.stub', $this->isClean, [
-            'StudlyModule'   => $this->moduleName,
-            'snakeModule'    => Str::snake($this->moduleName),
-            'controllerName' => $controllerName,
-        ]);
-        file_put_contents("{$routesDir}/web.php", $stubWeb);
-
-        $this->info("✅ Rutas legacy creadas: Modules/{$this->moduleName}/Routes/");
+        foreach (['api.php' => 'route-api.stub', 'web.php' => 'route-web.stub'] as $archivo => $stub) {
+            $this->putFile(
+                "{$routesDir}/{$archivo}",
+                $this->getStubContent($stub, $this->isClean, [
+                    'controllerFqcn' => $controllerFqcn,
+                    'snakeModule'    => Str::snake($this->moduleName),
+                    'controllerName' => $controllerName,
+                ]),
+                "Rutas creadas: Modules/{$this->moduleName}/Routes/{$archivo}"
+            );
+        }
     }
 
     /**

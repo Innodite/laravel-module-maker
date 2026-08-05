@@ -3,7 +3,7 @@
 declare(strict_types=1);
 
 use Illuminate\Support\Facades\Route;
-use Modules\{{{ StudlyModule }}}\Http\Controllers\{{{ controllerName }}};
+use {{{ controllerFqcn }}};
 
 Route::prefix('api/{{{ snakeModule }}}')
     ->name('api.{{{ snakeModule }}}.')

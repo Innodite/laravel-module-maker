@@ -2,10 +2,9 @@
 
 declare(strict_types=1);
 
-use Illuminate\Support\Facades\Artisan;
-use Illuminate\Support\Facades\File;
 use Innodite\LaravelModuleMaker\Exceptions\GeneratedFileRejectedException;
 use Innodite\LaravelModuleMaker\Support\GeneratedFileCheck;
+use Innodite\LaravelModuleMaker\Support\ModuleMode;
 
 /**
  * El chequeo de salida es la red que sostiene las fases siguientes: mientras se reescriben
@@ -107,19 +106,9 @@ it('no revisa la sintaxis de lo que no es PHP', function () {
 });
 
 it('el factory generado compila y apunta al modelo con su prefijo de contexto', function () {
-    Artisan::call('innodite:make-module', [
-        'name'        => 'Permission',
-        '--context'   => 'central',
-        '--no-routes' => true,
-    ]);
+    $modulo = $this->generateModule('Permission', ModuleMode::MultitenantPerTenant, 'central');
 
-    $factory = $this->tempPath('Modules/Permission/Database/Factories/Central/Permission/CentralPermissionFactory.php');
-
-    expect(File::exists($factory))->toBeTrue(
-        'El factory debe generarse. Si no está, el chequeo lo rechazó: lee el error del comando.'
-    );
-
-    $content = File::get($factory);
+    $content = $modulo->contents('Database/Factories/Central/Permission/CentralPermissionFactory.php');
 
     // La regresión de B13: el stub pedía modelNamespace y attributes, el generador entregaba
     // modelUses y definitionAttributes. Los dos quedaban literales y el archivo no cargaba.
@@ -135,9 +124,6 @@ it('el factory generado compila y apunta al modelo con su prefijo de contexto', 
 
     // El cruce que faltaba: que la clase importada exista de verdad donde dice. Un import
     // correcto en sintaxis a un archivo que nadie escribió pasa el parser y falla al ejecutar.
-    expect(File::exists($this->tempPath('Modules/Permission/Models/Central/Permission/CentralPermission.php')))
-        ->toBeTrue(
-            'El modelo debe estar en la ruta que el factory importa. Si el ModelGenerator lo escribe '
-            . 'en otro sitio, el import es válido para el parser y roto en ejecución.'
-        );
+    // Desde TASK-005 lo hace el arnés para TODOS los imports del módulo, no solo para este.
+    $modulo->assertInternalImportsExist();
 });

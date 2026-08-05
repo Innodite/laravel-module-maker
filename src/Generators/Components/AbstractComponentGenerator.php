@@ -109,30 +109,75 @@ abstract class AbstractComponentGenerator
      */
     protected function getContext(): array
     {
-        if ($this->resolvedContext !== null) {
-            return $this->resolvedContext;
-        }
+        return $this->resolvedContext ??= $this->resolveContextFor($this->componentConfig);
+    }
 
+    /**
+     * Resuelve la configuración de contexto de una configuración CUALQUIERA, no solo la propia.
+     *
+     * La necesita el generador que trabaja sobre varios componentes a la vez —el Provider, que
+     * registra los bindings de todas las subfuncionalidades del módulo—: sin esto tiene que armar
+     * los namespaces por su cuenta, que es exactamente lo que hacía y por lo que acabó importando
+     * clases que nadie escribe.
+     *
+     * @param  array<string, mixed>  $config
+     * @return array<string, mixed>
+     */
+    protected function resolveContextFor(array $config): array
+    {
         // La cadena vacía es «sin contexto», no «un contexto llamado ''»: es lo que entrega el
         // comando en single-app, donde no hay eje de contexto que resolver.
-        $contextKey = $this->componentConfig['context'] ?? null;
+        $contextKey = $config['context'] ?? null;
         $contextKey = $contextKey ?: null;
-        $contextId  = $this->componentConfig['context_id'] ?? null;
+        $contextId  = $config['context_id'] ?? null;
 
         if ($contextKey === null) {
-            $this->resolvedContext = [];
-            return $this->resolvedContext;
+            return [];
         }
 
         try {
-            $this->resolvedContext = $contextId !== null
+            return $contextId !== null
                 ? ContextResolver::resolveById($contextKey, $contextId)
                 : ContextResolver::resolve($contextKey);
         } catch (\InvalidArgumentException) {
-            $this->resolvedContext = [];
+            return [];
+        }
+    }
+
+    /**
+     * El namespace de un componente de OTRA configuración, con las mismas reglas que buildNamespace().
+     *
+     * Mismo cálculo, distinta fuente: el contexto solo si el modo tiene eje, y la subfuncionalidad
+     * como último tramo. Que el Provider use esto en vez de concatenar por su cuenta es lo que
+     * garantiza que su `use` y el archivo que escribe el generador de esa capa digan lo mismo.
+     *
+     * @param  array<string, mixed>  $config
+     */
+    protected function namespaceForComponent(string $componentType, array $config, bool $contracts = false): string
+    {
+        $base  = "Modules\\{$this->moduleName}\\{$componentType}" . ($contracts ? '\\Contracts' : '');
+        $ctxNs = $this->mode()->hasContextAxis()
+            ? ($this->resolveContextFor($config)['namespace_path'] ?? '')
+            : '';
+        $sub   = $config['subFeature'] ?? '';
+
+        $ns = $ctxNs ? "{$base}\\{$ctxNs}" : $base;
+
+        return $sub ? "{$ns}\\{$sub}" : $ns;
+    }
+
+    /**
+     * El prefijo de clase de OTRA configuración — si el modo lo pide (C5 · R6).
+     *
+     * @param  array<string, mixed>  $config
+     */
+    protected function classPrefixFor(array $config): string
+    {
+        if (! $this->mode()->usesClassPrefix()) {
+            return '';
         }
 
-        return $this->resolvedContext;
+        return $this->resolveContextFor($config)['class_prefix'] ?? '';
     }
 
     /**

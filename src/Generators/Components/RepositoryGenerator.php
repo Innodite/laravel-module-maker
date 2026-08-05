@@ -96,15 +96,20 @@ class RepositoryGenerator extends AbstractComponentGenerator
         $repoInterface         = $this->prefixClass("{$this->modelName}RepositoryInterface");
         $modelInstance         = Str::camel($this->modelName);
         $namespace             = $this->buildNamespace('Repositories');
-        // FQCN del model para el `use` statement (el modelo vive en Models/{contextFolder}/)
-        $modelFqcn             = $this->buildNamespace('Models') . '\\' . $this->modelName;
+        // El modelo se llama como lo escribió el ModelGenerator: CON el prefijo del contexto si el
+        // modo lo pide. Sin él, en multitenant el repositorio importaba `…\Central\Invoice\Invoice`
+        // cuando la clase generada es `CentralInvoice` — la segunda mitad de B13 otra vez, y aquí
+        // se lleva por delante toda la persistencia del módulo, porque el Repository es la única
+        // capa que toca Eloquent.
+        $modelClass            = $this->prefixClass($this->modelName);
+        $modelFqcn             = $this->buildNamespace('Models') . '\\' . $modelClass;
         // FQCN del repository interface para el `use` statement
         $repoInterfaceNs       = $this->buildContractsNamespace('Repositories') . '\\' . $repoInterface;
 
         $stub = $this->getStubContent('repository.stub', $this->isClean, [
             'namespace'                    => $namespace,
             'repositoryName'               => $repoName,
-            'modelName'                    => $this->modelName,
+            'modelName'                    => $modelClass,
             'modelNamespace'               => $modelFqcn,
             'repositoryInterfaceName'      => $repoInterface,
             'repositoryInterfaceNamespace' => $repoInterfaceNs,
