@@ -65,7 +65,7 @@ class VueGenerator extends AbstractComponentGenerator
             $content = $this->getStubContent(
                 $stubFile,
                 $this->isClean,
-                array_merge($placeholders, ['{{ vueComponentName }}' => $componentName])
+                array_merge($placeholders, ['vueComponentName' => $componentName])
             );
 
             File::put($targetFile, $content);
@@ -78,31 +78,22 @@ class VueGenerator extends AbstractComponentGenerator
     /**
      * Construye el mapa de placeholders comunes a los 4 stubs Vue.
      *
+     * Claves desnudas: envolverlas aquí era B15 — el trait las envolvía otra vez y no se
+     * sustituía ninguna, así que las cuatro vistas salían con los placeholders literales,
+     * incluida la ruta que piden a Axios. El método que sí sabía resolver ese formato
+     * —replacePlaceholdersInContent()— no lo llamaba nadie (A10), y por eso el fallo era
+     * silencioso: la pieza correcta existía, muerta, al lado de la llamada equivocada.
+     *
      * @return array<string, string>
      */
     private function buildPlaceholders(): array
     {
-        $entityPlural   = Str::kebab(Str::plural(Str::snake($this->modelName)));
-        $entitySingular = Str::kebab(Str::snake($this->modelName));
-
         return [
-            '{{ moduleName }}'     => $this->moduleName,
-            '{{ entityPlural }}'   => $entityPlural,
-            '{{ entitySingular }}' => $entitySingular,
-            '{{ entityLabel }}'    => $this->modelName,
+            'moduleName'     => $this->moduleName,
+            'entityPlural'   => Str::kebab(Str::plural(Str::snake($this->modelName))),
+            'entitySingular' => Str::kebab(Str::snake($this->modelName)),
+            'entityLabel'    => $this->modelName,
         ];
-    }
-
-    /**
-     * Reemplaza todos los placeholders en el contenido del stub.
-     *
-     * @param  string               $content
-     * @param  array<string,string> $placeholders
-     * @return string
-     */
-    private function replacePlaceholdersInContent(string $content, array $placeholders): string
-    {
-        return str_replace(array_keys($placeholders), array_values($placeholders), $content);
     }
 
     /**

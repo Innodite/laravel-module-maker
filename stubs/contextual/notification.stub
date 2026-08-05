@@ -1,13 +1,13 @@
 <?php
 
-namespace {{ moduleNamespace }}\Notifications\{{ contextFolder }};
+namespace {{{ moduleNamespace }}}\Notifications\{{{ contextFolder }}};
 
 use Illuminate\Bus\Queueable;
 use Illuminate\Notifications\Notification;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
 
-class {{ className }}{{ notificationSuffix }} extends Notification implements ShouldQueue
+class {{{ className }}}{{{ notificationSuffix }}} extends Notification implements ShouldQueue
 {
     use Queueable;
 
@@ -19,7 +19,7 @@ class {{ className }}{{ notificationSuffix }} extends Notification implements Sh
     public function toMail(object $notifiable): MailMessage
     {
         return (new MailMessage)
-            ->subject('{{ moduleName }} Notification')
-            ->line('Welcome to {{ moduleName }}.');
+            ->subject('{{{ moduleName }}} Notification')
+            ->line('Welcome to {{{ moduleName }}}.');
     }
 }

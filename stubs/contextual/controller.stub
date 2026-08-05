@@ -2,51 +2,51 @@
 
 declare(strict_types=1);
 
-namespace {{ namespace }};
+namespace {{{ namespace }}};
 
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
 use Inertia\Response as InertiaResponse;
 use Innodite\LaravelModuleMaker\Traits\RendersInertiaModule;
-use {{ serviceInterfaceNamespace }};
+use {{{ serviceInterfaceNamespace }}};
 
-class {{ controllerName }} extends Controller
+class {{{ controllerName }}} extends Controller
 {
     use RendersInertiaModule;
 
     public function __construct(
-        private readonly {{ serviceInterface }} ${{ serviceInstance }},
+        private readonly {{{ serviceInterface }}} ${{{ serviceInstance }}},
     ) {}
 
     public function index(): InertiaResponse
     {
-        return $this->renderModule('{{ module }}', '{{ viewName }}');
+        return $this->renderModule('{{{ module }}}', '{{{ viewName }}}');
     }
 
     public function list(Request $request): JsonResponse
     {
-        return response()->json($this->{{ serviceInstance }}->paginate($request->all()));
+        return response()->json($this->{{{ serviceInstance }}}->paginate($request->all()));
     }
 
     public function store(Request $request): JsonResponse
     {
-        return response()->json($this->{{ serviceInstance }}->create($request->validated()), 201);
+        return response()->json($this->{{{ serviceInstance }}}->create($request->validated()), 201);
     }
 
     public function show(int $id): JsonResponse
     {
-        return response()->json($this->{{ serviceInstance }}->findById($id));
+        return response()->json($this->{{{ serviceInstance }}}->findById($id));
     }
 
     public function update(Request $request, int $id): JsonResponse
     {
-        return response()->json($this->{{ serviceInstance }}->update($id, $request->validated()));
+        return response()->json($this->{{{ serviceInstance }}}->update($id, $request->validated()));
     }
 
     public function destroy(int $id): JsonResponse
     {
-        $this->{{ serviceInstance }}->delete($id);
+        $this->{{{ serviceInstance }}}->delete($id);
         return response()->json(null, 204);
     }
 }

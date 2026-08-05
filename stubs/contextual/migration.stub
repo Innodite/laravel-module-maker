@@ -8,15 +8,15 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::create('{{ tableName }}', function (Blueprint $table) {
+        Schema::create('{{{ tableName }}}', function (Blueprint $table) {
             $table->id();
-            {{ columns }}
+            {{{ columns }}}
             $table->timestamps();
         });
     }
 
     public function down(): void
     {
-        Schema::dropIfExists('{{ tableName }}');
+        Schema::dropIfExists('{{{ tableName }}}');
     }
 };

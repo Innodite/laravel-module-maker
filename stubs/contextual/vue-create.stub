@@ -12,28 +12,28 @@ const errors   = ref({})
 const saving   = ref(false)
 
 async function submit() {
-    if (!can('{{ entityPlural }}.create')) return
+    if (!can('{{{ entityPlural }}}.create')) return
 
     saving.value = true
     errors.value = {}
 
     try {
-        await axios.post(route(contextRoute('{{ entityPlural }}.store')), form.value)
-        router.visit(route(contextRoute('{{ entityPlural }}.index')))
+        await axios.post(route(contextRoute('{{{ entityPlural }}}.store')), form.value)
+        router.visit(route(contextRoute('{{{ entityPlural }}}.index')))
     } catch (err) {
         if (err.response?.status === 422) {
             errors.value = err.response.data.errors ?? {}
         } else {
             alert(err.response?.data?.message ?? 'Error al guardar el registro.')
         }
-        console.error('[{{ vueComponentName }}]', err)
+        console.error('[{{{ vueComponentName }}}]', err)
     } finally {
         saving.value = false
     }
 }
 
 function goBack() {
-    router.visit(route(contextRoute('{{ entityPlural }}.index')))
+    router.visit(route(contextRoute('{{{ entityPlural }}}.index')))
 }
 </script>
 
@@ -45,7 +45,7 @@ function goBack() {
             <button @click="goBack" class="text-gray-400 hover:text-gray-600 transition">
                 ← Volver
             </button>
-            <h1 class="text-2xl font-semibold text-gray-800">Nuevo {{ entityLabel }}</h1>
+            <h1 class="text-2xl font-semibold text-gray-800">Nuevo {{{ entityLabel }}}</h1>
         </div>
 
         <form @submit.prevent="submit" class="space-y-5">

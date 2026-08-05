@@ -2,9 +2,9 @@
 
 declare(strict_types=1);
 
-namespace {{ namespace }};
+namespace {{{ namespace }}};
 
-interface {{ serviceInterfaceName }}
+interface {{{ serviceInterfaceName }}}
 {
     public function paginate(array $filters = []): mixed;
     public function list(array $filters = []): mixed;

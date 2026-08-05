@@ -20,7 +20,7 @@ async function fetchItem() {
     loading.value = true
     try {
         const { data } = await axios.get(
-            route(contextRoute('{{ entityPlural }}.show'), { id: props.id })
+            route(contextRoute('{{{ entityPlural }}}.show'), { id: props.id })
         )
         form.value = { ...data }
     } catch (err) {
@@ -32,31 +32,31 @@ async function fetchItem() {
 }
 
 async function submit() {
-    if (!can('{{ entityPlural }}.edit')) return
+    if (!can('{{{ entityPlural }}}.edit')) return
 
     saving.value = true
     errors.value = {}
 
     try {
         await axios.put(
-            route(contextRoute('{{ entityPlural }}.update'), { id: props.id }),
+            route(contextRoute('{{{ entityPlural }}}.update'), { id: props.id }),
             form.value
         )
-        router.visit(route(contextRoute('{{ entityPlural }}.index')))
+        router.visit(route(contextRoute('{{{ entityPlural }}}.index')))
     } catch (err) {
         if (err.response?.status === 422) {
             errors.value = err.response.data.errors ?? {}
         } else {
             alert(err.response?.data?.message ?? 'Error al actualizar el registro.')
         }
-        console.error('[{{ vueComponentName }}]', err)
+        console.error('[{{{ vueComponentName }}}]', err)
     } finally {
         saving.value = false
     }
 }
 
 function goBack() {
-    router.visit(route(contextRoute('{{ entityPlural }}.index')))
+    router.visit(route(contextRoute('{{{ entityPlural }}}.index')))
 }
 
 onMounted(() => fetchItem())
@@ -70,7 +70,7 @@ onMounted(() => fetchItem())
             <button @click="goBack" class="text-gray-400 hover:text-gray-600 transition">
                 ← Volver
             </button>
-            <h1 class="text-2xl font-semibold text-gray-800">Editar {{ entityLabel }}</h1>
+            <h1 class="text-2xl font-semibold text-gray-800">Editar {{{ entityLabel }}}</h1>
         </div>
 
         <!-- Loader -->

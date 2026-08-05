@@ -2,11 +2,11 @@
 
 declare(strict_types=1);
 
-namespace {{ namespace }};
+namespace {{{ namespace }}};
 
 use Tests\TestCase;
 
-class {{ testName }} extends TestCase
+class {{{ testName }}} extends TestCase
 {
     public function test_example(): void
     {

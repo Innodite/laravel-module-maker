@@ -18,7 +18,7 @@ async function fetchItem() {
     loading.value = true
     try {
         const { data } = await axios.get(
-            route(contextRoute('{{ entityPlural }}.show'), { id: props.id })
+            route(contextRoute('{{{ entityPlural }}}.show'), { id: props.id })
         )
         item.value = data
     } catch (err) {
@@ -30,24 +30,24 @@ async function fetchItem() {
 }
 
 async function destroy() {
-    if (!can('{{ entityPlural }}.delete')) return
+    if (!can('{{{ entityPlural }}}.delete')) return
     if (!confirm('¿Estás seguro de eliminar este registro?')) return
     try {
         await axios.delete(
-            route(contextRoute('{{ entityPlural }}.destroy'), { id: props.id })
+            route(contextRoute('{{{ entityPlural }}}.destroy'), { id: props.id })
         )
-        router.visit(route(contextRoute('{{ entityPlural }}.index')))
+        router.visit(route(contextRoute('{{{ entityPlural }}}.index')))
     } catch (err) {
         alert(err.response?.data?.message ?? 'No se pudo eliminar el registro.')
     }
 }
 
 function goToEdit() {
-    router.visit(route(contextRoute('{{ entityPlural }}.edit'), { id: props.id }))
+    router.visit(route(contextRoute('{{{ entityPlural }}}.edit'), { id: props.id }))
 }
 
 function goBack() {
-    router.visit(route(contextRoute('{{ entityPlural }}.index')))
+    router.visit(route(contextRoute('{{{ entityPlural }}}.index')))
 }
 
 onMounted(() => fetchItem())
@@ -62,18 +62,18 @@ onMounted(() => fetchItem())
                 <button @click="goBack" class="text-gray-400 hover:text-gray-600 transition">
                     ← Volver
                 </button>
-                <h1 class="text-2xl font-semibold text-gray-800">Detalle: {{ entityLabel }}</h1>
+                <h1 class="text-2xl font-semibold text-gray-800">Detalle: {{{ entityLabel }}}</h1>
             </div>
             <div class="flex gap-2">
                 <button
-                    v-if="can('{{ entityPlural }}.edit')"
+                    v-if="can('{{{ entityPlural }}}.edit')"
                     @click="goToEdit"
                     class="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition"
                 >
                     Editar
                 </button>
                 <button
-                    v-if="can('{{ entityPlural }}.delete')"
+                    v-if="can('{{{ entityPlural }}}.delete')"
                     @click="destroy"
                     class="px-4 py-2 bg-red-500 text-white text-sm font-medium rounded-lg hover:bg-red-600 transition"
                 >

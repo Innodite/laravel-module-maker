@@ -1,10 +1,10 @@
 <?php
 
-namespace {{ moduleNamespace }}\Http\Requests\{{ contextFolder }};
+namespace {{{ moduleNamespace }}}\Http\Requests\{{{ contextFolder }}};
 
 use Illuminate\Foundation\Http\FormRequest;
 
-class {{ className }}UpdateRequest extends FormRequest
+class {{{ className }}}UpdateRequest extends FormRequest
 {
     public function authorize(): bool
     {

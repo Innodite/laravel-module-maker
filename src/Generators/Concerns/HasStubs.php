@@ -3,6 +3,7 @@
 namespace Innodite\LaravelModuleMaker\Generators\Concerns;
 
 use Illuminate\Support\Facades\File;
+use Innodite\LaravelModuleMaker\Support\StubPlaceholder;
 
 /**
  * Trait HasStubs
@@ -14,6 +15,8 @@ use Illuminate\Support\Facades\File;
  *
  * ContextFolder is passed as $contextFolder (e.g. "Central", "Tenant/Shared").
  * $isClean and $context are kept for signature compatibility.
+ *
+ * Placeholders are `{{{ key }}}` — see StubPlaceholder for why triple.
  */
 trait HasStubs
 {
@@ -42,10 +45,13 @@ trait HasStubs
         $stubPath = $this->getStubPath($stubFile, $isClean, $context);
 
         if (!File::exists($stubPath)) {
+            // El nivel 3 es el propio paquete: si aquí no está, no falta publicar nada
+            // —publicar stubs dejó de ser parte de instalar—, falta el archivo.
             throw new \Exception(
                 "El archivo stub '{$stubFile}' no se encuentra.\n" .
                 "Buscado en: {$stubPath}\n" .
-                "Ejecuta 'php artisan innodite:module-setup' para publicar los stubs."
+                "Ese es un stub del paquete, no del proyecto: reinstala con 'composer reinstall innodite/laravel-module-maker'.\n" .
+                "Si lo que querías era personalizarlo, publícalo con 'php artisan innodite:stubs publish {$stubFile}'."
             );
         }
 
@@ -128,17 +134,22 @@ trait HasStubs
     }
 
     /**
-     * Reemplaza los marcadores de posición {{ key }} en el contenido del stub.
+     * Resuelve los placeholders {{{ key }}} del contenido del stub.
      *
-     * @param  string  $stub          Contenido del stub
-     * @param  array   $placeholders  Mapa de marcadores → valores (sin llaves)
+     * Las claves llegan **desnudas** —`['modelName' => 'Role']`— y quien las envuelve es
+     * StubPlaceholder::wrap(), una sola vez. Una clave que llegue ya envuelta lanza, en vez
+     * de no sustituir nada en silencio: así fue B15, y costó cuatro vistas rotas por módulo.
+     *
+     * @param  string                $stub          Contenido del stub
+     * @param  array<string, string> $placeholders  Mapa clave desnuda → valor
      * @return string
      */
     protected function replacePlaceholders(string $stub, array $placeholders): string
     {
         foreach ($placeholders as $key => $value) {
-            $stub = str_replace("{{ {$key} }}", $value, $stub);
+            $stub = str_replace(StubPlaceholder::wrap((string) $key), $value, $stub);
         }
+
         return $stub;
     }
 }

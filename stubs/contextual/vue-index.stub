@@ -16,7 +16,7 @@ async function fetchItems(page = 1) {
     loading.value = true
     error.value   = null
     try {
-        const { data } = await axios.get(route(contextRoute('{{ entityPlural }}.index')), {
+        const { data } = await axios.get(route(contextRoute('{{{ entityPlural }}}.index')), {
             params: { page }
         })
         items.value = data.data
@@ -27,7 +27,7 @@ async function fetchItems(page = 1) {
         }
     } catch (err) {
         error.value = err.response?.data?.message ?? 'Error al cargar los datos.'
-        console.error('[{{ vueComponentName }}]', err)
+        console.error('[{{{ vueComponentName }}}]', err)
     } finally {
         loading.value = false
     }
@@ -36,7 +36,7 @@ async function fetchItems(page = 1) {
 async function destroy(id) {
     if (!confirm('¿Estás seguro de eliminar este registro?')) return
     try {
-        await axios.delete(route(contextRoute('{{ entityPlural }}.destroy'), { id }))
+        await axios.delete(route(contextRoute('{{{ entityPlural }}}.destroy'), { id }))
         await fetchItems(meta.value.current_page)
     } catch (err) {
         alert(err.response?.data?.message ?? 'No se pudo eliminar el registro.')
@@ -44,15 +44,15 @@ async function destroy(id) {
 }
 
 function goToCreate() {
-    router.visit(route(contextRoute('{{ entityPlural }}.create')))
+    router.visit(route(contextRoute('{{{ entityPlural }}}.create')))
 }
 
 function goToEdit(id) {
-    router.visit(route(contextRoute('{{ entityPlural }}.edit'), { id }))
+    router.visit(route(contextRoute('{{{ entityPlural }}}.edit'), { id }))
 }
 
 function goToShow(id) {
-    router.visit(route(contextRoute('{{ entityPlural }}.show'), { id }))
+    router.visit(route(contextRoute('{{{ entityPlural }}}.show'), { id }))
 }
 
 onMounted(() => fetchItems())
@@ -63,13 +63,13 @@ onMounted(() => fetchItems())
 
         <!-- Cabecera -->
         <div class="flex items-center justify-between mb-6">
-            <h1 class="text-2xl font-semibold text-gray-800">{{ entityLabel }}</h1>
+            <h1 class="text-2xl font-semibold text-gray-800">{{{ entityLabel }}}</h1>
             <button
-                v-if="can('{{ entityPlural }}.create')"
+                v-if="can('{{{ entityPlural }}}.create')"
                 @click="goToCreate"
                 class="inline-flex items-center px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition"
             >
-                + Nuevo {{ entityLabel }}
+                + Nuevo {{{ entityLabel }}}
             </button>
         </div>
 
@@ -117,14 +117,14 @@ onMounted(() => fetchItems())
                             </td>
                             <td class="px-4 py-3 text-right space-x-3">
                                 <button
-                                    v-if="can('{{ entityPlural }}.edit')"
+                                    v-if="can('{{{ entityPlural }}}.edit')"
                                     @click="goToEdit(item.id)"
                                     class="text-blue-600 hover:underline text-xs"
                                 >
                                     Editar
                                 </button>
                                 <button
-                                    v-if="can('{{ entityPlural }}.delete')"
+                                    v-if="can('{{{ entityPlural }}}.delete')"
                                     @click="destroy(item.id)"
                                     class="text-red-500 hover:underline text-xs"
                                 >

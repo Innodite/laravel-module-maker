@@ -2,19 +2,19 @@
 
 declare(strict_types=1);
 
-namespace {{ namespace }};
+namespace {{{ namespace }}};
 
 use Illuminate\Database\Eloquent\Factories\Factory;
-use {{ modelNamespace }};
+use {{{ modelNamespace }}};
 
-class {{ factoryName }}Factory extends Factory
+class {{{ factoryName }}}Factory extends Factory
 {
-    protected $model = {{ modelName }}::class;
+    protected $model = {{{ modelName }}}::class;
 
     public function definition(): array
     {
         return [
-            {{ attributes }}
+            {{{ attributes }}}
         ];
     }
 }
