@@ -6,6 +6,7 @@ namespace Innodite\LaravelModuleMaker\Services;
 
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Str;
+use Innodite\LaravelModuleMaker\Support\GeneratedFileCheck;
 
 /**
  * RouteInjectionService — Motor de Inyección de Rutas (WORKPLAN Fase 3)
@@ -160,6 +161,11 @@ class RouteInjectionService
         $markerLine  = $indent . $marker;
         $replacement = $block . PHP_EOL . PHP_EOL . $markerLine;
         $content     = str_replace($markerLine, $replacement, $content);
+
+        // El archivo de rutas del proyecto es el sitio donde más caro sale escribir algo roto:
+        // un `routes/web.php` que no parsea tumba la aplicación entera, no un módulo. El
+        // marcador sobrevive al chequeo porque no lleva espacios interiores — ver StubPlaceholder.
+        GeneratedFileCheck::assertWritable($filePath, $content);
 
         File::put($filePath, $content);
         $this->info("✅ Rutas de '{$entityName}' inyectadas en routes/{$routeFile} [{$marker}]");

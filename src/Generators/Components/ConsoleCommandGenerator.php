@@ -7,6 +7,7 @@ namespace Innodite\LaravelModuleMaker\Generators\Components;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Str;
 use Innodite\LaravelModuleMaker\Generators\Concerns\HasStubs;
+use Innodite\LaravelModuleMaker\Generators\Concerns\WritesGeneratedFiles;
 
 /**
  * Genera el archivo de Console Command para el contexto dado.
@@ -18,6 +19,7 @@ use Innodite\LaravelModuleMaker\Generators\Concerns\HasStubs;
 class ConsoleCommandGenerator
 {
     use HasStubs;
+    use WritesGeneratedFiles;
 
     public function __construct(
         private readonly array  $context,
@@ -65,6 +67,10 @@ class ConsoleCommandGenerator
 
         $dir = $this->modulePath . '/Console/Commands/' . $contextFolder;
         File::ensureDirectoryExists($dir);
-        File::put($dir . '/' . $className . $commandSuffix . '.php', $content);
+        $this->putFile(
+            $dir . '/' . $className . $commandSuffix . '.php',
+            $content,
+            "Comando generado: {$className}{$commandSuffix}.php"
+        );
     }
 }

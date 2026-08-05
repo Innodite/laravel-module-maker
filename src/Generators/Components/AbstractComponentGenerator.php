@@ -7,6 +7,7 @@ namespace Innodite\LaravelModuleMaker\Generators\Components;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Str;
 use Innodite\LaravelModuleMaker\Generators\Concerns\HasStubs;
+use Innodite\LaravelModuleMaker\Generators\Concerns\WritesGeneratedFiles;
 use Innodite\LaravelModuleMaker\Support\ContextResolver;
 use Symfony\Component\Console\Output\OutputInterface;
 
@@ -22,6 +23,7 @@ use Symfony\Component\Console\Output\OutputInterface;
 abstract class AbstractComponentGenerator
 {
     use HasStubs;
+    use WritesGeneratedFiles;
 
     protected string $moduleName;
     protected string $modulePath;
@@ -299,19 +301,8 @@ abstract class AbstractComponentGenerator
         File::ensureDirectoryExists($directoryPath);
     }
 
-    /**
-     * Escribe el contenido en un archivo y muestra un mensaje de éxito en consola.
-     *
-     * @param  string  $filePath  Ruta absoluta del archivo a escribir
-     * @param  string  $content   Contenido a escribir
-     * @param  string  $message   Mensaje a mostrar en consola
-     * @return void
-     */
-    protected function putFile(string $filePath, string $content, string $message): void
-    {
-        File::put($filePath, $content);
-        $this->info("✅ {$message}");
-    }
+    // putFile() vive en WritesGeneratedFiles: la comparten también los cinco generadores que
+    // no heredan de esta clase, y el chequeo de salida tiene que alcanzarlos igual.
 
     // ─── Output ───────────────────────────────────────────────────────────────
 

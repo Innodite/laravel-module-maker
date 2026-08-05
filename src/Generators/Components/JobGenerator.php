@@ -6,6 +6,7 @@ namespace Innodite\LaravelModuleMaker\Generators\Components;
 
 use Illuminate\Support\Facades\File;
 use Innodite\LaravelModuleMaker\Generators\Concerns\HasStubs;
+use Innodite\LaravelModuleMaker\Generators\Concerns\WritesGeneratedFiles;
 
 /**
  * Genera el archivo del Job para el contexto dado.
@@ -18,6 +19,7 @@ use Innodite\LaravelModuleMaker\Generators\Concerns\HasStubs;
 class JobGenerator
 {
     use HasStubs;
+    use WritesGeneratedFiles;
 
     public function __construct(
         private readonly array  $context,
@@ -55,6 +57,10 @@ class JobGenerator
 
         $dir = $this->modulePath . '/Jobs/' . $contextFolder;
         File::ensureDirectoryExists($dir);
-        File::put($dir . '/' . $className . $jobSuffix . '.php', $content);
+        $this->putFile(
+            $dir . '/' . $className . $jobSuffix . '.php',
+            $content,
+            "Job generado: {$className}{$jobSuffix}.php"
+        );
     }
 }

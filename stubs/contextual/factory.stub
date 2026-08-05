@@ -6,6 +6,7 @@ namespace {{{ namespace }}};
 
 use Illuminate\Database\Eloquent\Factories\Factory;
 use {{{ modelNamespace }}};
+{{{ modelUses }}}
 
 class {{{ factoryName }}}Factory extends Factory
 {
@@ -14,7 +15,7 @@ class {{{ factoryName }}}Factory extends Factory
     public function definition(): array
     {
         return [
-            {{{ attributes }}}
+            {{{ definitionAttributes }}}
         ];
     }
 }

@@ -6,6 +6,7 @@ namespace Innodite\LaravelModuleMaker\Generators\Components;
 
 use Illuminate\Support\Facades\File;
 use Innodite\LaravelModuleMaker\Generators\Concerns\HasStubs;
+use Innodite\LaravelModuleMaker\Generators\Concerns\WritesGeneratedFiles;
 
 /**
  * Genera el archivo de Test Support (helper factory) para el contexto Central.
@@ -16,6 +17,7 @@ use Innodite\LaravelModuleMaker\Generators\Concerns\HasStubs;
 class SupportTestGenerator
 {
     use HasStubs;
+    use WritesGeneratedFiles;
 
     public function __construct(
         private readonly array  $context,
@@ -48,6 +50,10 @@ class SupportTestGenerator
 
         $dir = $this->modulePath . '/Tests/Support/' . $contextFolder;
         File::ensureDirectoryExists($dir);
-        File::put($dir . '/' . $className . 'Support.php', $content);
+        $this->putFile(
+            $dir . '/' . $className . 'Support.php',
+            $content,
+            "Soporte de pruebas generado: {$className}Support.php"
+        );
     }
 }

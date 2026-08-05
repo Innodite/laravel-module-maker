@@ -68,8 +68,7 @@ class VueGenerator extends AbstractComponentGenerator
                 array_merge($placeholders, ['vueComponentName' => $componentName])
             );
 
-            File::put($targetFile, $content);
-            $this->info("✅ Vista generada: {$componentName}.vue");
+            $this->putFile($targetFile, $content, "Vista generada: {$componentName}.vue");
         }
     }
 

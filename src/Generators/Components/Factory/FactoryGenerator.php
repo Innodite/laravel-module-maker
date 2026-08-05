@@ -59,11 +59,17 @@ class FactoryGenerator extends AbstractComponentGenerator
         $definitionAttributes = $this->generateDefinitionAttributes();
         $modelUsesString = implode("\n", array_unique($this->modelUses));
 
+        // El modelo lleva el prefijo del contexto (CentralPermission), así que el factory
+        // tiene que importar ESE, no el nombre sin prefijo: apuntar a una clase que no existe
+        // es la otra mitad de B13.
+        $modelClass = $this->prefixClass($this->modelName);
+
         $stub = $this->getStubContent(self::STUB_FILE, $this->isClean, [
             'module' => $this->moduleName,
-            'namespace' => "Modules\\{$this->moduleName}\\Database\\Factories",
+            'namespace' => $this->buildNamespace('Database\\Factories'),
             'factoryName' => $this->factoryName,
-            'modelName' => $this->modelName,
+            'modelName' => $modelClass,
+            'modelNamespace' => $this->buildNamespace('Models') . '\\' . $modelClass,
             'modelUses' => $modelUsesString,
             'definitionAttributes' => $definitionAttributes,
         ]);

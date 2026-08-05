@@ -6,6 +6,7 @@ namespace Innodite\LaravelModuleMaker\Generators\Components;
 
 use Illuminate\Support\Facades\File;
 use Innodite\LaravelModuleMaker\Generators\Concerns\HasStubs;
+use Innodite\LaravelModuleMaker\Generators\Concerns\WritesGeneratedFiles;
 
 /**
  * Genera el archivo de Exception (NotFoundException) para el contexto Central.
@@ -16,6 +17,7 @@ use Innodite\LaravelModuleMaker\Generators\Concerns\HasStubs;
 class ExceptionGenerator
 {
     use HasStubs;
+    use WritesGeneratedFiles;
 
     public function __construct(
         private readonly array  $context,
@@ -48,6 +50,10 @@ class ExceptionGenerator
 
         $dir = $this->modulePath . '/Exceptions/' . $contextFolder;
         File::ensureDirectoryExists($dir);
-        File::put($dir . '/' . $className . 'NotFoundException.php', $content);
+        $this->putFile(
+            $dir . '/' . $className . 'NotFoundException.php',
+            $content,
+            "Excepción generada: {$className}NotFoundException.php"
+        );
     }
 }

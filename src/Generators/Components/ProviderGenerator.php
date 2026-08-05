@@ -142,8 +142,14 @@ class ProviderGenerator extends AbstractComponentGenerator
         }
 
         if ($modified) {
-            File::put($filePath, $content);
-            $this->info("✅ Provider actualizado con nuevos bindings: {$this->moduleName}ServiceProvider.php");
+            // Por putFile, no por File::put: aquí se reescribe un archivo que YA existe en el
+            // proyecto. Si la inyección lo dejara sin cerrar, escribirlo rompería el provider
+            // del módulo entero — no solo el archivo nuevo de turno.
+            $this->putFile(
+                $filePath,
+                $content,
+                "Provider actualizado con nuevos bindings: {$this->moduleName}ServiceProvider.php"
+            );
         } else {
             $this->info("   Provider sin cambios (bindings ya registrados).");
         }

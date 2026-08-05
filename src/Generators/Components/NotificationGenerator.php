@@ -6,6 +6,7 @@ namespace Innodite\LaravelModuleMaker\Generators\Components;
 
 use Illuminate\Support\Facades\File;
 use Innodite\LaravelModuleMaker\Generators\Concerns\HasStubs;
+use Innodite\LaravelModuleMaker\Generators\Concerns\WritesGeneratedFiles;
 
 /**
  * Genera el archivo de Notification para el contexto dado.
@@ -17,6 +18,7 @@ use Innodite\LaravelModuleMaker\Generators\Concerns\HasStubs;
 class NotificationGenerator
 {
     use HasStubs;
+    use WritesGeneratedFiles;
 
     public function __construct(
         private readonly array  $context,
@@ -54,6 +56,10 @@ class NotificationGenerator
 
         $dir = $this->modulePath . '/Notifications/' . $contextFolder;
         File::ensureDirectoryExists($dir);
-        File::put($dir . '/' . $className . $notificationSuffix . '.php', $content);
+        $this->putFile(
+            $dir . '/' . $className . $notificationSuffix . '.php',
+            $content,
+            "Notificación generada: {$className}{$notificationSuffix}.php"
+        );
     }
 }
