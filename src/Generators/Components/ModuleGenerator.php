@@ -163,6 +163,26 @@ class ModuleGenerator
     // ─── Orchestrators ────────────────────────────────────────────────────────
 
     /**
+     * Ejecuta un generador, conectándole antes la consola del comando.
+     *
+     * Sin esta línea, los 20 mensajes «✅ archivo creado» que los generadores escriben **no se
+     * ven nunca**: `setOutput()` existía y no lo llamaba nadie, así que el usuario veía
+     * «Creando estructura de archivos» y luego nada, sin saber qué se había escrito. El método
+     * no era código sin propósito, era un cable sin conectar — y por eso se conecta en vez de
+     * borrarse. El `--dry-run` de la fase 6 necesita exactamente esta vía para listar sin escribir.
+     *
+     * @param  object  $generator  Un generador de componente, con o sin consola propia
+     */
+    private function run(object $generator): void
+    {
+        if ($this->command && method_exists($generator, 'setOutput')) {
+            $generator->setOutput($this->command->getOutput());
+        }
+
+        $generator->generate();
+    }
+
+    /**
      * Crea un módulo limpio sin contexto (fallback cuando no hay contexts.json).
      *
      * @return void
@@ -174,17 +194,17 @@ class ModuleGenerator
 
         $modelName = $this->moduleName;
 
-        (new ModelGenerator($this->moduleName, $this->modulePath, true, $modelName))->generate();
-        (new ControllerGenerator($this->moduleName, $this->modulePath, true, $modelName))->generate();
-        (new ServiceGenerator($this->moduleName, $this->modulePath, true, $modelName))->generate();
-        (new RepositoryGenerator($this->moduleName, $this->modulePath, true, $modelName))->generate();
-        (new RequestGenerator($this->moduleName, $this->modulePath, true, "{$modelName}StoreRequest"))->generate();
-        (new ProviderGenerator($this->moduleName, $this->modulePath, true))->generate();
-        (new RouteGenerator($this->moduleName, $this->modulePath, true, $modelName))->generate();
-        (new MigrationGenerator($this->moduleName, $this->modulePath, true, $modelName))->generate();
-        (new SeederGenerator($this->moduleName, $this->modulePath, true, "{$modelName}Seeder"))->generate();
-        (new FactoryGenerator($this->moduleName, $this->modulePath, true, $modelName, $modelName))->generate();
-        (new TestGenerator($this->moduleName, $this->modulePath, true, "{$modelName}Test"))->generate();
+        $this->run(new ModelGenerator($this->moduleName, $this->modulePath, true, $modelName));
+        $this->run(new ControllerGenerator($this->moduleName, $this->modulePath, true, $modelName));
+        $this->run(new ServiceGenerator($this->moduleName, $this->modulePath, true, $modelName));
+        $this->run(new RepositoryGenerator($this->moduleName, $this->modulePath, true, $modelName));
+        $this->run(new RequestGenerator($this->moduleName, $this->modulePath, true, "{$modelName}StoreRequest"));
+        $this->run(new ProviderGenerator($this->moduleName, $this->modulePath, true));
+        $this->run(new RouteGenerator($this->moduleName, $this->modulePath, true, $modelName));
+        $this->run(new MigrationGenerator($this->moduleName, $this->modulePath, true, $modelName));
+        $this->run(new SeederGenerator($this->moduleName, $this->modulePath, true, "{$modelName}Seeder"));
+        $this->run(new FactoryGenerator($this->moduleName, $this->modulePath, true, $modelName, $modelName));
+        $this->run(new TestGenerator($this->moduleName, $this->modulePath, true, "{$modelName}Test"));
 
         if ($this->command) {
             $this->command->info("✅ Módulo '{$this->moduleName}' creado (estructura básica sin contexto).");
@@ -216,20 +236,20 @@ class ModuleGenerator
         ];
 
         // El modelo sí lleva contexto en v3: vive en Models/{ContextFolder}/
-        (new ModelGenerator($this->moduleName, $this->modulePath, true, $modelName, [], [], [], $componentConfig))->generate();
-        (new ControllerGenerator($this->moduleName, $this->modulePath, true, $modelName, $componentConfig))->generate();
-        (new ServiceGenerator($this->moduleName, $this->modulePath, true, $modelName, $componentConfig))->generate();
-        (new RepositoryGenerator($this->moduleName, $this->modulePath, true, $modelName, $componentConfig))->generate();
-        (new RequestGenerator($this->moduleName, $this->modulePath, true, "{$modelName}StoreRequest", $componentConfig))->generate();
-        (new ProviderGenerator($this->moduleName, $this->modulePath, true, [$componentConfig], $componentConfig))->generate();
-        (new RouteGenerator($this->moduleName, $this->modulePath, true, $modelName, $componentConfig))->generate();
-        (new MigrationGenerator($this->moduleName, $this->modulePath, true, $modelName, [], [], $componentConfig))->generate();
-        (new SeederGenerator($this->moduleName, $this->modulePath, true, "{$modelName}Seeder", $componentConfig))->generate();
-        (new FactoryGenerator($this->moduleName, $this->modulePath, true, $modelName, $modelName, $componentConfig))->generate();
-        (new TestGenerator($this->moduleName, $this->modulePath, true, "{$modelName}Test", $componentConfig))->generate();
+        $this->run(new ModelGenerator($this->moduleName, $this->modulePath, true, $modelName, [], [], [], $componentConfig));
+        $this->run(new ControllerGenerator($this->moduleName, $this->modulePath, true, $modelName, $componentConfig));
+        $this->run(new ServiceGenerator($this->moduleName, $this->modulePath, true, $modelName, $componentConfig));
+        $this->run(new RepositoryGenerator($this->moduleName, $this->modulePath, true, $modelName, $componentConfig));
+        $this->run(new RequestGenerator($this->moduleName, $this->modulePath, true, "{$modelName}StoreRequest", $componentConfig));
+        $this->run(new ProviderGenerator($this->moduleName, $this->modulePath, true, [$componentConfig], $componentConfig));
+        $this->run(new RouteGenerator($this->moduleName, $this->modulePath, true, $modelName, $componentConfig));
+        $this->run(new MigrationGenerator($this->moduleName, $this->modulePath, true, $modelName, [], [], $componentConfig));
+        $this->run(new SeederGenerator($this->moduleName, $this->modulePath, true, "{$modelName}Seeder", $componentConfig));
+        $this->run(new FactoryGenerator($this->moduleName, $this->modulePath, true, $modelName, $modelName, $componentConfig));
+        $this->run(new TestGenerator($this->moduleName, $this->modulePath, true, "{$modelName}Test", $componentConfig));
 
         // ── Vistas Vue (axios + Inertia solo para navegación) ─────────────────
-        (new VueGenerator($this->moduleName, $this->modulePath, true, $modelName, $componentConfig))->generate();
+        $this->run(new VueGenerator($this->moduleName, $this->modulePath, true, $modelName, $componentConfig));
 
         // ── Generadores extendidos según tipo de contexto ─────────────────────
         $isCentral      = ($contextKey === 'central');
@@ -247,22 +267,22 @@ class ModuleGenerator
 
         // Jobs (Central, TenantShared, TenantName)
         if (($isCentral || $isTenantShared || $isTenantSpecific) && !empty($resolvedContext)) {
-            (new JobGenerator($resolvedContext, $this->modulePath, $this->moduleName))->generate();
+            $this->run(new JobGenerator($resolvedContext, $this->modulePath, $this->moduleName));
         }
 
         // Notifications (Central, TenantName)
         if (($isCentral || $isTenantSpecific) && !empty($resolvedContext)) {
-            (new NotificationGenerator($resolvedContext, $this->modulePath, $this->moduleName))->generate();
+            $this->run(new NotificationGenerator($resolvedContext, $this->modulePath, $this->moduleName));
         }
 
         // Console Commands (Central, TenantName)
         if (($isCentral || $isTenantSpecific) && !empty($resolvedContext)) {
-            (new ConsoleCommandGenerator($resolvedContext, $this->modulePath, $this->moduleName))->generate();
+            $this->run(new ConsoleCommandGenerator($resolvedContext, $this->modulePath, $this->moduleName));
         }
 
         // Exceptions (solo Central)
         if ($isCentral && !empty($resolvedContext)) {
-            (new ExceptionGenerator($resolvedContext, $this->modulePath, $this->moduleName))->generate();
+            $this->run(new ExceptionGenerator($resolvedContext, $this->modulePath, $this->moduleName));
         }
 
         // ── Inyectar rutas en el proyecto ─────────────────────────────────────
@@ -292,7 +312,7 @@ class ModuleGenerator
 
         $components = $this->config['components'] ?? [];
 
-        (new ProviderGenerator($this->moduleName, $this->modulePath, false, $components))->generate();
+        $this->run(new ProviderGenerator($this->moduleName, $this->modulePath, false, $components));
 
         foreach ($components as $component) {
             $modelName   = Str::studly($component['name']);
@@ -303,16 +323,16 @@ class ModuleGenerator
                 $component['entity'] = $modelName;
             }
 
-            (new ModelGenerator($this->moduleName, $this->modulePath, false, $modelName, $component['attributes'] ?? [], $component['relations'] ?? [], [], $component))->generate();
-            (new ControllerGenerator($this->moduleName, $this->modulePath, false, $modelName, $component))->generate();
-            (new ServiceGenerator($this->moduleName, $this->modulePath, false, $modelName, $component))->generate();
-            (new RepositoryGenerator($this->moduleName, $this->modulePath, false, $modelName, $component))->generate();
-            (new RequestGenerator($this->moduleName, $this->modulePath, false, $requestName, $component))->generate();
-            (new MigrationGenerator($this->moduleName, $this->modulePath, false, $modelName, $component['attributes'] ?? [], $component['indexes'] ?? [], $component))->generate();
-            (new SeederGenerator($this->moduleName, $this->modulePath, false, "{$modelName}Seeder", $component))->generate();
-            (new FactoryGenerator($this->moduleName, $this->modulePath, false, $modelName, $modelName, $component))->generate();
-            (new TestGenerator($this->moduleName, $this->modulePath, false, "{$modelName}Test", $component))->generate();
-            (new RouteGenerator($this->moduleName, $this->modulePath, false, $modelName, $component))->generate();
+            $this->run(new ModelGenerator($this->moduleName, $this->modulePath, false, $modelName, $component['attributes'] ?? [], $component['relations'] ?? [], [], $component));
+            $this->run(new ControllerGenerator($this->moduleName, $this->modulePath, false, $modelName, $component));
+            $this->run(new ServiceGenerator($this->moduleName, $this->modulePath, false, $modelName, $component));
+            $this->run(new RepositoryGenerator($this->moduleName, $this->modulePath, false, $modelName, $component));
+            $this->run(new RequestGenerator($this->moduleName, $this->modulePath, false, $requestName, $component));
+            $this->run(new MigrationGenerator($this->moduleName, $this->modulePath, false, $modelName, $component['attributes'] ?? [], $component['indexes'] ?? [], $component));
+            $this->run(new SeederGenerator($this->moduleName, $this->modulePath, false, "{$modelName}Seeder", $component));
+            $this->run(new FactoryGenerator($this->moduleName, $this->modulePath, false, $modelName, $modelName, $component));
+            $this->run(new TestGenerator($this->moduleName, $this->modulePath, false, "{$modelName}Test", $component));
+            $this->run(new RouteGenerator($this->moduleName, $this->modulePath, false, $modelName, $component));
         }
 
         if ($this->command) {
@@ -338,27 +358,27 @@ class ModuleGenerator
         }
 
         if ($flags['model'] ?? false) {
-            (new ModelGenerator($this->moduleName, $this->modulePath, true, $modelName, [], [], [], $componentConfig))->generate();
+            $this->run(new ModelGenerator($this->moduleName, $this->modulePath, true, $modelName, [], [], [], $componentConfig));
         }
 
         if ($flags['controller'] ?? false) {
-            (new ControllerGenerator($this->moduleName, $this->modulePath, true, $modelName, $componentConfig))->generate();
+            $this->run(new ControllerGenerator($this->moduleName, $this->modulePath, true, $modelName, $componentConfig));
         }
 
         if ($flags['service'] ?? false) {
-            (new ServiceGenerator($this->moduleName, $this->modulePath, true, $modelName, $componentConfig))->generate();
+            $this->run(new ServiceGenerator($this->moduleName, $this->modulePath, true, $modelName, $componentConfig));
         }
 
         if ($flags['repository'] ?? false) {
-            (new RepositoryGenerator($this->moduleName, $this->modulePath, true, $modelName, $componentConfig))->generate();
+            $this->run(new RepositoryGenerator($this->moduleName, $this->modulePath, true, $modelName, $componentConfig));
         }
 
         if ($flags['migration'] ?? false) {
-            (new MigrationGenerator($this->moduleName, $this->modulePath, true, $modelName, [], [], $componentConfig))->generate();
+            $this->run(new MigrationGenerator($this->moduleName, $this->modulePath, true, $modelName, [], [], $componentConfig));
         }
 
         if ($flags['request'] ?? false) {
-            (new RequestGenerator($this->moduleName, $this->modulePath, true, "{$modelName}StoreRequest", $componentConfig))->generate();
+            $this->run(new RequestGenerator($this->moduleName, $this->modulePath, true, "{$modelName}StoreRequest", $componentConfig));
         }
 
         // Si se generó un controller, inyectar (o actualizar) las rutas
@@ -432,26 +452,5 @@ class ModuleGenerator
         foreach (self::BASE_CONTEXT_FOLDERS as $folder) {
             File::ensureDirectoryExists("{$base}/{$folder}");
         }
-    }
-
-    /**
-     * Resuelve la ruta del archivo de configuración (mantenido por retrocompatibilidad).
-     *
-     * @param  string  $configPath
-     * @return string
-     */
-    public function resolveConfigPath(string $configPath): string
-    {
-        $moduleConfigPath = config('make-module.module_path') . "/{$this->moduleName}/config/{$configPath}";
-        if (File::exists($moduleConfigPath)) {
-            return $moduleConfigPath;
-        }
-
-        $packageConfigPath = config('make-module.config_path') . "/{$configPath}";
-        if (File::exists($packageConfigPath)) {
-            return $packageConfigPath;
-        }
-
-        return base_path("config/{$configPath}");
     }
 }

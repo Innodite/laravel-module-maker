@@ -42,7 +42,6 @@ class TestGenerator extends AbstractComponentGenerator
             $stub = $this->getStubContent('test.stub', $this->isClean, [
                 'namespace' => "Modules\\{$this->moduleName}\\Tests\\Unit",
                 'testName'  => $this->testName,
-                'module'    => $this->moduleName,
             ]);
 
             $this->putFile(
@@ -65,7 +64,6 @@ class TestGenerator extends AbstractComponentGenerator
         $featureStub = $this->getStubContent('test.stub', $this->isClean, [
             'namespace' => "{$moduleNamespace}\\Tests\\Feature\\{$contextNamespace}",
             'testName'  => $className . 'Test',
-            'module'    => $this->moduleName,
         ]);
 
         $this->putFile(
@@ -82,7 +80,6 @@ class TestGenerator extends AbstractComponentGenerator
             'moduleNamespace' => $moduleNamespace,
             'contextFolder'   => $contextNamespace,
             'className'       => $className,
-            'moduleName'      => $this->moduleName,
         ]);
 
         $this->putFile(

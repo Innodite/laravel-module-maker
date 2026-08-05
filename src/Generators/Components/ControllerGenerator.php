@@ -65,7 +65,6 @@ class ControllerGenerator extends AbstractComponentGenerator
         $stub = $this->getStubContent('controller.stub', $this->isClean, [
             'namespace'                => $namespace,
             'controllerName'           => $controllerName,
-            'modelName'                => $this->modelName,
             'module'                   => $this->moduleName,
             'serviceInterface'         => $serviceInterface,
             'serviceInstance'          => $serviceInstance,

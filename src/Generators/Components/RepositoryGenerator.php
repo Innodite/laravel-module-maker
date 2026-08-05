@@ -75,8 +75,6 @@ class RepositoryGenerator extends AbstractComponentGenerator
         $stub = $this->getStubContent('repository-interface.stub', $this->isClean, [
             'namespace'               => $namespace,
             'repositoryInterfaceName' => $interfaceName,
-            'modelName'               => $this->modelName,
-            'module'                  => $this->moduleName,
         ]);
 
         $this->putFile(
@@ -108,7 +106,6 @@ class RepositoryGenerator extends AbstractComponentGenerator
             'repositoryName'               => $repoName,
             'modelName'                    => $this->modelName,
             'modelNamespace'               => $modelFqcn,
-            'module'                       => $this->moduleName,
             'repositoryInterfaceName'      => $repoInterface,
             'repositoryInterfaceNamespace' => $repoInterfaceNs,
             'modelNameLowerCase'           => $modelInstance,

@@ -210,28 +210,6 @@ class ContextResolver
     }
 
     /**
-     * Retorna los tenants específicos. Alias de allTenants().
-     *
-     * @return array<int, array<string, mixed>>
-     */
-    public static function getSpecificTenants(): array
-    {
-        return self::allTenants();
-    }
-
-    /**
-     * Retorna el archivo de rutas para un contexto dado.
-     *
-     * @param  string  $contextKey  Clave del contexto
-     * @return string|array<int, string>
-     */
-    public static function getRouteFile(string $contextKey): string|array
-    {
-        $item = self::resolve($contextKey);
-        return $item['route_file'] ?? 'web.php';
-    }
-
-    /**
      * Carga el archivo contexts.json.
      *
      * @return array<string, mixed>

@@ -72,8 +72,6 @@ class ServiceGenerator extends AbstractComponentGenerator
         $stub = $this->getStubContent('service-interface.stub', $this->isClean, [
             'namespace'            => $namespace,
             'serviceInterfaceName' => $interfaceName,
-            'modelName'            => $this->modelName,
-            'module'               => $this->moduleName,
         ]);
 
         $this->putFile(
@@ -104,8 +102,6 @@ class ServiceGenerator extends AbstractComponentGenerator
         $stub = $this->getStubContent('service.stub', $this->isClean, [
             'namespace'                => $namespace,
             'serviceName'              => $serviceName,
-            'modelName'                => $this->modelName,
-            'module'                   => $this->moduleName,
             'serviceInterfaceName'     => $serviceInterfaceName,
             'serviceInterfaceNamespace'=> $serviceInterfaceNamespace,
             'repositoryInterfaceName'  => $repositoryInterface,
