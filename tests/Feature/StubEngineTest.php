@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use Illuminate\Support\Facades\File;
 use Innodite\LaravelModuleMaker\Generators\Components\VueGenerator;
+use Innodite\LaravelModuleMaker\Support\ModuleMode;
 use Innodite\LaravelModuleMaker\Support\StubPlaceholder;
 
 /**
@@ -100,9 +101,13 @@ it('las cuatro vistas generadas no llevan un solo placeholder dentro', function 
     $modulePath = $this->tempPath('Modules/UserManagement');
     File::ensureDirectoryExists($modulePath);
 
-    (new VueGenerator('UserManagement', $modulePath, false, 'Role'))->generate();
+    // En single-app: sin eje de contexto, sin prefijo, y la subfuncionalidad como carpeta —
+    // resources/js/Pages/Role/RoleIndex.vue, que es lo que describe el patrón.
+    $this->withMode(ModuleMode::SingleApp);
 
-    $views = glob("{$modulePath}/Resources/js/Pages/*.vue") ?: [];
+    (new VueGenerator('UserManagement', $modulePath, false, 'Role', ['entity' => 'Role']))->generate();
+
+    $views = glob("{$modulePath}/resources/js/Pages/Role/*.vue") ?: [];
 
     expect($views)->toHaveCount(
         4,
@@ -129,9 +134,13 @@ it('la vista generada pide una ruta real, no el nombre del placeholder', functio
     $modulePath = $this->tempPath('Modules/UserManagement');
     File::ensureDirectoryExists($modulePath);
 
-    (new VueGenerator('UserManagement', $modulePath, false, 'Role'))->generate();
+    // En single-app: sin eje de contexto, sin prefijo, y la subfuncionalidad como carpeta —
+    // resources/js/Pages/Role/RoleIndex.vue, que es lo que describe el patrón.
+    $this->withMode(ModuleMode::SingleApp);
 
-    $index = File::get("{$modulePath}/Resources/js/Pages/RoleIndex.vue");
+    (new VueGenerator('UserManagement', $modulePath, false, 'Role', ['entity' => 'Role']))->generate();
+
+    $index = File::get("{$modulePath}/resources/js/Pages/Role/RoleIndex.vue");
 
     expect(str_contains($index, "contextRoute('roles.index')"))->toBeTrue(
         'Aquí es donde B15 dolía de verdad: con el placeholder literal, la vista pedía la ruta '

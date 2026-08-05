@@ -9,6 +9,7 @@ use Illuminate\Support\Str;
 use Innodite\LaravelModuleMaker\Generators\Concerns\HasStubs;
 use Innodite\LaravelModuleMaker\Generators\Concerns\WritesGeneratedFiles;
 use Innodite\LaravelModuleMaker\Support\ContextResolver;
+use Innodite\LaravelModuleMaker\Support\ModuleMode;
 use Symfony\Component\Console\Output\OutputInterface;
 
 /**
@@ -30,6 +31,9 @@ abstract class AbstractComponentGenerator
     protected bool $isClean;
     protected array $componentConfig;
     protected ?OutputInterface $output = null;
+
+    /** Cache del modo: se consulta una vez por generador, no una por archivo. */
+    private ?ModuleMode $mode = null;
 
     /**
      * Cache de la configuración del contexto activo.
@@ -109,7 +113,10 @@ abstract class AbstractComponentGenerator
             return $this->resolvedContext;
         }
 
+        // La cadena vacía es «sin contexto», no «un contexto llamado ''»: es lo que entrega el
+        // comando en single-app, donde no hay eje de contexto que resolver.
         $contextKey = $this->componentConfig['context'] ?? null;
+        $contextKey = $contextKey ?: null;
         $contextId  = $this->componentConfig['context_id'] ?? null;
 
         if ($contextKey === null) {
@@ -129,26 +136,48 @@ abstract class AbstractComponentGenerator
     }
 
     /**
-    * Retorna el prefijo de clase del contexto activo.
-    * Ej: 'Central', 'Shared', 'TenantShared', 'TenantAlpha'
-     * Retorna cadena vacía si no hay contexto definido (retrocompatibilidad).
+     * El modo del proyecto. Decide la FORMA de lo generado, no el contenido.
      *
-     * @return string
+     * @throws \Innodite\LaravelModuleMaker\Exceptions\ModeNotConfiguredException
+     */
+    protected function mode(): ModuleMode
+    {
+        return $this->mode ??= ModuleMode::current();
+    }
+
+    /**
+     * Prefijo de clase del contexto activo — **si el modo lo pide**.
+     *
+     * Antes se antepondía siempre, así que una aplicación sin un solo tenant generaba
+     * `CentralRoleController`: un prefijo que no desambigua nada, porque no hay nada de lo que
+     * distinguirlo (C5 · R6). El prefijo existe para separar contextos; sin eje de contexto es
+     * ruido pegado al nombre de cada clase de cada módulo.
+     *
+     * @return string  'Central', 'TenantShared', 'TenantAlpha'… o vacío en single-app
      */
     protected function getClassPrefix(): string
     {
+        if (! $this->mode()->usesClassPrefix()) {
+            return '';
+        }
+
         return $this->getContext()['class_prefix'] ?? '';
     }
 
     /**
-    * Retorna la subcarpeta del contexto dentro de cada tipo de componente.
-    * Ej: 'Central', 'Shared', 'Tenant/Shared', 'Tenant/Alpha'
-     * Retorna cadena vacía si no hay contexto definido.
+     * Subcarpeta del contexto — **si el modo tiene eje de contexto**.
      *
-     * @return string
+     * En single-app la subfuncionalidad va directa bajo la capa: `Models/Role/`, no
+     * `Models/Central/Role/` (R5).
+     *
+     * @return string  'Central', 'Tenant/Shared', 'Tenant/Alpha'… o vacío en single-app
      */
     protected function getContextFolder(): string
     {
+        if (! $this->mode()->hasContextAxis()) {
+            return '';
+        }
+
         return $this->getContext()['folder'] ?? '';
     }
 
@@ -166,13 +195,19 @@ abstract class AbstractComponentGenerator
     }
 
     /**
-    * Retorna el fragmento de namespace del contexto.
-    * Ej: 'Central', 'Shared', 'Tenant\\Shared', 'Tenant\\Alpha'
+     * Fragmento de namespace del contexto — **si el modo tiene eje de contexto**.
      *
-     * @return string
+     * Espeja a getContextFolder(): la carpeta y el namespace no pueden discrepar, o las clases
+     * generadas no se autocargan.
+     *
+     * @return string  'Central', 'Tenant\\Shared', 'Tenant\\Alpha'… o vacío en single-app
      */
     protected function getContextNamespacePath(): string
     {
+        if (! $this->mode()->hasContextAxis()) {
+            return '';
+        }
+
         return $this->getContext()['namespace_path'] ?? '';
     }
 

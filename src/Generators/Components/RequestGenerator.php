@@ -32,8 +32,12 @@ class RequestGenerator extends AbstractComponentGenerator
         $contextKey    = $this->componentConfig['context'] ?? null;
         $contextFolder = $this->getContextFolder();
 
-        // ── Sin contexto definido: comportamiento legacy ───────────────────────
-        if ($contextKey === null || $contextFolder === '') {
+        // ── Sin contexto NI subfuncionalidad: comportamiento legacy ───────────
+        // La condición era «sin contexto», y eso convertía single-app en un caso degradado: como
+        // ahí el contexto siempre está vacío, un proyecto sin tenants caía en el camino legacy y
+        // recibía una estructura recortada. No es un fallback, es un modo de primera clase — lo
+        // que decide es si hay subfuncionalidad, que la hay siempre que se genere de verdad.
+        if ($contextFolder === '' && $this->getEntityFolder() === '') {
             $requestDir = $this->getComponentBasePath() . '/Http/Requests';
             $this->ensureDirectoryExists($requestDir);
 
@@ -67,7 +71,7 @@ class RequestGenerator extends AbstractComponentGenerator
 
         if ($isTenantShared) {
             $stub = $this->getStubContent('request.stub', $this->isClean, [
-                'namespace'   => "{$moduleNamespace}\\Http\\Requests\\{$contextNamespace}",
+                'namespace'   => $this->buildNamespace('Http\\Requests'),
                 'requestName' => $className . 'Request',
             ]);
 
@@ -81,15 +85,13 @@ class RequestGenerator extends AbstractComponentGenerator
 
         // Central / TenantName → StoreRequest + UpdateRequest
         $storeStub = $this->getStubContent('request-store.stub', $this->isClean, [
-            'moduleNamespace' => $moduleNamespace,
-            'contextFolder'   => $contextNamespace,
-            'className'       => $className,
+            'namespace' => $this->buildNamespace('Http\\Requests'),
+            'className' => $className,
         ]);
 
         $updateStub = $this->getStubContent('request-update.stub', $this->isClean, [
-            'moduleNamespace' => $moduleNamespace,
-            'contextFolder'   => $contextNamespace,
-            'className'       => $className,
+            'namespace' => $this->buildNamespace('Http\\Requests'),
+            'className' => $className,
         ]);
 
         $this->putFile(

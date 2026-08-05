@@ -113,7 +113,7 @@ it('el factory generado compila y apunta al modelo con su prefijo de contexto', 
         '--no-routes' => true,
     ]);
 
-    $factory = $this->tempPath('Modules/Permission/Database/Factories/Central/Permission/PermissionFactory.php');
+    $factory = $this->tempPath('Modules/Permission/Database/Factories/Central/Permission/CentralPermissionFactory.php');
 
     expect(File::exists($factory))->toBeTrue(
         'El factory debe generarse. Si no está, el chequeo lo rechazó: lee el error del comando.'

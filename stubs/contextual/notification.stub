@@ -1,6 +1,6 @@
 <?php
 
-namespace {{{ moduleNamespace }}}\Notifications\{{{ contextFolder }}};
+namespace {{{ namespace }}};
 
 use Illuminate\Bus\Queueable;
 use Illuminate\Notifications\Notification;

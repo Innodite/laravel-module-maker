@@ -7,6 +7,7 @@ namespace Innodite\LaravelModuleMaker\Tests;
 use Illuminate\Support\Facades\File;
 use Innodite\LaravelModuleMaker\LaravelModuleMakerServiceProvider;
 use Innodite\LaravelModuleMaker\Support\ContextResolver;
+use Innodite\LaravelModuleMaker\Support\ModuleMode;
 use Orchestra\Testbench\TestCase as Orchestra;
 
 abstract class TestCase extends Orchestra
@@ -61,6 +62,26 @@ abstract class TestCase extends Orchestra
         $app['config']->set('make-module.module_path',   $this->tempBase . '/Modules');
         $app['config']->set('make-module.config_path',   $this->tempBase . '/module-maker-config');
         $app['config']->set('make-module.contexts_path', $this->tempBase . '/module-maker-config/contexts.json');
+
+        // El modo se declara aquí porque sin modo el paquete se niega a generar, y eso es
+        // deliberado. Se fija `multitenant-per-tenant` porque es el escenario que describe el
+        // contexts.json de ejemplo —con tenant-one y tenant-two nombrados—, así que las pruebas
+        // heredadas siguen midiendo lo mismo que medían. Las que comprueban otro modo lo cambian
+        // con withMode().
+        $app['config']->set('make-module.mode', ModuleMode::MultitenantPerTenant->value);
+    }
+
+    /**
+     * Cambia el modo para la prueba en curso.
+     *
+     * La forma de todo lo generado depende del modo, así que las pruebas que comparan modos
+     * necesitan cambiarlo sin reconstruir la aplicación.
+     */
+    protected function withMode(ModuleMode $mode): static
+    {
+        config()->set('make-module.mode', $mode->value);
+
+        return $this;
     }
 
     /**

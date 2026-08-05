@@ -34,8 +34,12 @@ class TestGenerator extends AbstractComponentGenerator
         $contextKey    = $this->componentConfig['context'] ?? null;
         $contextFolder = $this->getContextFolder();
 
-        // ── Sin contexto definido: comportamiento legacy ───────────────────────
-        if ($contextKey === null || $contextFolder === '') {
+        // ── Sin contexto NI subfuncionalidad: comportamiento legacy ───────────
+        // La condición era «sin contexto», y eso convertía single-app en un caso degradado: como
+        // ahí el contexto siempre está vacío, un proyecto sin tenants caía en el camino legacy y
+        // recibía una estructura recortada. No es un fallback, es un modo de primera clase — lo
+        // que decide es si hay subfuncionalidad, que la hay siempre que se genere de verdad.
+        if ($contextFolder === '' && $this->getEntityFolder() === '') {
             $testDir = $this->getComponentBasePath() . '/Tests/Unit';
             $this->ensureDirectoryExists($testDir);
 
@@ -58,11 +62,11 @@ class TestGenerator extends AbstractComponentGenerator
         $className         = $this->getClassPrefix() . $this->moduleName;
 
         // ── 1. Feature test ────────────────────────────────────────────────────
-        $featureDir = $this->getComponentBasePath() . '/Tests/Feature/' . $contextFolderPath;
+        $featureDir = $this->buildPath('Tests/Feature');
         $this->ensureDirectoryExists($featureDir);
 
         $featureStub = $this->getStubContent('test.stub', $this->isClean, [
-            'namespace' => "{$moduleNamespace}\\Tests\\Feature\\{$contextNamespace}",
+            'namespace' => $this->buildNamespace('Tests\\Feature'),
             'testName'  => $className . 'Test',
         ]);
 
@@ -73,13 +77,12 @@ class TestGenerator extends AbstractComponentGenerator
         );
 
         // ── 2. Unit test ───────────────────────────────────────────────────────
-        $unitDir = $this->getComponentBasePath() . '/Tests/Unit/' . $contextFolderPath;
+        $unitDir = $this->buildPath('Tests/Unit');
         $this->ensureDirectoryExists($unitDir);
 
         $unitStub = $this->getStubContent('test-unit.stub', $this->isClean, [
-            'moduleNamespace' => $moduleNamespace,
-            'contextFolder'   => $contextNamespace,
-            'className'       => $className,
+            'namespace' => $this->buildNamespace('Tests\\Unit'),
+            'className' => $className,
         ]);
 
         $this->putFile(
@@ -89,16 +92,20 @@ class TestGenerator extends AbstractComponentGenerator
         );
 
         // ── 3. Support (solo Central) ──────────────────────────────────────────
-        $isCentral = ($contextKey === 'central' || ($this->getClassPrefix() === 'Central'));
-        if ($isCentral) {
-            $supportDir = $this->getComponentBasePath() . '/Tests/Support/' . $contextFolderPath;
+        // En multitenant el soporte de pruebas vive en central; en single-app no hay otro
+        // contexto que pueda tenerlo, asi que le corresponde igual.
+        $llevaSoporte = ! $this->mode()->hasContextAxis()
+            || $contextKey === 'central'
+            || $this->getClassPrefix() === 'Central';
+
+        if ($llevaSoporte) {
+            $supportDir = $this->buildPath('Tests/Support');
             $this->ensureDirectoryExists($supportDir);
 
             $supportStub = $this->getStubContent('test-support.stub', $this->isClean, [
-                'moduleNamespace' => $moduleNamespace,
-                'contextFolder'   => $contextNamespace,
-                'className'       => $className,
-                'moduleName'      => $this->moduleName,
+                'namespace'  => $this->buildNamespace('Tests\\Support'),
+                'className'  => $className,
+                'moduleName' => $this->moduleName,
             ]);
 
             $this->putFile(

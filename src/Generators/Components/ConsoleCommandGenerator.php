@@ -52,7 +52,13 @@ class ConsoleCommandGenerator
 
         $commandDescription = "Execute {$className} {$action} operation.";
 
+        // El namespace completo lo arma quien sabe si hay contexto, no la plantilla:
+        // concatenarlo en el stub deja \\ cuando el contexto esta vacio, y eso no es PHP.
+        $namespace = $moduleNamespace . '\\Console\\Commands'
+            . ($contextNamespace !== '' ? '\\' . $contextNamespace : '');
+
         $placeholders = [
+            'namespace'          => $namespace,
             'moduleNamespace'    => $moduleNamespace,
             'contextFolder'      => $contextNamespace,
             'className'          => $className,

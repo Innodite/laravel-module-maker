@@ -24,7 +24,7 @@ use Innodite\LaravelModuleMaker\Support\ContextResolver;
  *   Models/             — Subcarpetas de contexto
  *   Providers/
  *   Repositories/       — Implementaciones + Contracts/ (ambos con subcarpetas de contexto)
- *   Resources/js/Pages/ — Componentes Vue por contexto
+ *   resources/js/Pages/ — Componentes Vue por contexto
  *   Routes/             — web.php, tenant.php, api.php
  *   Services/           — Implementaciones + Contracts/ (ambos con subcarpetas de contexto)
  *   Tests/Unit/
@@ -91,8 +91,8 @@ class ModuleGenerator
         $this->createContextSubfolders('Repositories');
         $this->createContextSubfolders('Repositories/Contracts');
 
-        // ── Resources/js/Pages ───────────────────────────────────────────────
-        $this->createContextSubfolders('Resources/js/Pages');
+        // ── resources/js/Pages ───────────────────────────────────────────────
+        $this->createContextSubfolders('resources/js/Pages');
 
         // ── Routes (raíz del módulo, sin subcarpetas de contexto) ─────────────
         File::ensureDirectoryExists("{$this->modulePath}/Routes");

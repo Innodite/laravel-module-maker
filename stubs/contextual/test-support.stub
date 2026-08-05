@@ -1,6 +1,6 @@
 <?php
 
-namespace {{{ moduleNamespace }}}\Tests\Support\{{{ contextFolder }}};
+namespace {{{ namespace }}};
 
 class {{{ className }}}Support
 {

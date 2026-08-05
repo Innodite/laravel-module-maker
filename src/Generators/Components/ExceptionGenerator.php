@@ -38,7 +38,13 @@ class ExceptionGenerator
         $moduleNamespace  = 'Modules\\' . $this->moduleName;
         $className        = $contextPrefix . $this->moduleName;
 
+        // El namespace completo lo arma quien sabe si hay contexto, no la plantilla:
+        // concatenarlo en el stub deja \\ cuando el contexto esta vacio, y eso no es PHP.
+        $namespace = $moduleNamespace . '\\Exceptions'
+            . ($contextNamespace !== '' ? '\\' . $contextNamespace : '');
+
         $placeholders = [
+            'namespace'       => $namespace,
             'moduleNamespace' => $moduleNamespace,
             'contextFolder'   => $contextNamespace,
             'className'       => $className,

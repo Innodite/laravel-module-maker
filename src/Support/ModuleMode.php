@@ -101,6 +101,49 @@ enum ModuleMode: string
     }
 
     /**
+     * Does the generated model declare `protected $connection`?
+     *
+     * Three different answers, and the mode is the only thing that knows which applies:
+     *
+     *   single-app          no — there is one database and nothing to switch
+     *   central context     yes, always — the central app has its own connection
+     *   shared tenants      no — stancl switches it when it initialises the context, and the
+     *                       route guarantees the isolation. Naming one here would bind the
+     *                       model to a single tenant and break the very thing it protects
+     *   tenant of its own   yes, its own
+     *
+     * @param  string|null  $contextKey  'central', 'tenant', 'tenant_shared'… — null in single-app
+     */
+    public function declaresModelConnection(?string $contextKey = null): bool
+    {
+        if (! $this->hasContextAxis()) {
+            return false;
+        }
+
+        if ($contextKey === 'central') {
+            return true;
+        }
+
+        return $this->requiresTenantConnectionKey();
+    }
+
+    /**
+     * Is this context key legitimate in this mode?
+     *
+     * A single application has no contexts at all; a shared-tenant project has no *named*
+     * tenants. Generating for `--context=tenant` under `multitenant-shared` would produce
+     * exactly what that mode exists to avoid: one named copy per tenant of identical logic.
+     */
+    public function supportsContext(?string $contextKey): bool
+    {
+        if ($contextKey === null || $contextKey === '') {
+            return ! $this->hasContextAxis();
+        }
+
+        return in_array($contextKey, $this->requiredContextKeys(), true);
+    }
+
+    /**
      * Context keys that contexts.json must declare for this mode.
      *
      * A single application has no tenants to declare, so demanding a 'tenant' key

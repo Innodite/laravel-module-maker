@@ -16,10 +16,10 @@ use Illuminate\Support\Str;
  *   - Las vistas son "shells" que se autocargan al montarse
  *
  * Archivos generados por contexto (ejemplo central, entidad User):
- *   Resources/js/Pages/Central/CentralUserIndex.vue   → lista paginada
- *   Resources/js/Pages/Central/CentralUserCreate.vue  → formulario de creación
- *   Resources/js/Pages/Central/CentralUserEdit.vue    → formulario de edición
- *   Resources/js/Pages/Central/CentralUserShow.vue    → vista de detalle
+ *   resources/js/Pages/Central/CentralUserIndex.vue   → lista paginada
+ *   resources/js/Pages/Central/CentralUserCreate.vue  → formulario de creación
+ *   resources/js/Pages/Central/CentralUserEdit.vue    → formulario de edición
+ *   resources/js/Pages/Central/CentralUserShow.vue    → vista de detalle
  */
 class VueGenerator extends AbstractComponentGenerator
 {
@@ -97,18 +97,19 @@ class VueGenerator extends AbstractComponentGenerator
 
     /**
      * Construye la ruta de salida de los componentes Vue.
-     * Usa la carpeta del contexto activo dentro de Resources/js/Pages/.
      *
-     * Ejemplos:
-     *   central       → {module}/Resources/js/Pages/Central/
-     *   tenant_shared → {module}/Resources/js/Pages/Tenant/Shared/
-     *   TenantOne     → {module}/Resources/js/Pages/Tenant/TenantOne/
+     * Por buildPath(), como el resto de las capas: añade el contexto **si el modo lo tiene** y la
+     * carpeta de la subfuncionalidad, en vez de resolverlo aquí a mano.
+     *
+     *   single-app          → {module}/resources/js/Pages/Role/
+     *   multitenant central → {module}/resources/js/Pages/Central/Role/
+     *   tenants iguales     → {module}/resources/js/Pages/Tenant/Shared/Role/
+     *
+     * Y `resources` en minúscula (B11 · R5): en Linux la diferencia no es cosmética, porque el
+     * bundler distingue mayúsculas al resolver la ruta de la página.
      */
     private function buildPagesPath(): string
     {
-        $base   = "{$this->modulePath}/Resources/js/Pages";
-        $folder = $this->getContextFolder();
-
-        return $folder ? "{$base}/{$folder}" : $base;
+        return $this->buildPath('resources/js/Pages');
     }
 }

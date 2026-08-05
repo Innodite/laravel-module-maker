@@ -44,7 +44,13 @@ class JobGenerator
         $isTenantSpecific = str_starts_with($contextFolder, 'Tenant/') && !str_ends_with($contextFolder, '/Shared') && $contextFolder !== 'Tenant/Shared';
         $jobSuffix        = $isTenantSpecific ? 'ReportJob' : 'ExportJob';
 
+        // El namespace completo lo arma quien sabe si hay contexto, no la plantilla:
+        // concatenarlo en el stub deja \\ cuando el contexto esta vacio, y eso no es PHP.
+        $namespace = $moduleNamespace . '\\Jobs'
+            . ($contextNamespace !== '' ? '\\' . $contextNamespace : '');
+
         $placeholders = [
+            'namespace'       => $namespace,
             'moduleNamespace' => $moduleNamespace,
             'contextFolder'   => $contextNamespace,
             'className'       => $className,
