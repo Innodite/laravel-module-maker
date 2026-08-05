@@ -3,6 +3,25 @@
 return [
     /*
     |--------------------------------------------------------------------------
+    | Modo del proyecto — se elige UNA vez, al instalar
+    |--------------------------------------------------------------------------
+    |
+    | Decide la forma de todo lo que se genera: si existe el eje de contexto
+    | (Central/Tenant), si los nombres de clase llevan prefijo, si un tenant
+    | declara su propia conexión y qué middleware protege cada ruta.
+    |
+    | Ningún comando lo adivina leyendo el proyecto: adivinar produce archivos
+    | que parecen correctos y están mal en el único sitio que nadie revisa.
+    |
+    |   'single-app'              Aplicación única, sin tenancy
+    |   'multitenant-shared'      Todos los tenants comparten funcionalidad
+    |   'multitenant-per-tenant'  Cada tenant con lógica de negocio propia
+    |
+    */
+    'mode' => env('MODULE_MAKER_MODE', 'multitenant-per-tenant'),
+
+    /*
+    |--------------------------------------------------------------------------
     | Ruta raíz de todos los módulos del proyecto
     |--------------------------------------------------------------------------
     */

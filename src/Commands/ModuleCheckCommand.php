@@ -7,6 +7,7 @@ namespace Innodite\LaravelModuleMaker\Commands;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\File;
 use Innodite\LaravelModuleMaker\Services\ModuleAuditor;
+use Innodite\LaravelModuleMaker\Support\ModuleMode;
 
 /**
  * ModuleCheckCommand — Diagnóstico de integridad del entorno ModuleMaker v3.0.0
@@ -80,14 +81,20 @@ class ModuleCheckCommand extends Command
             return false;
         }
 
-        // Verificar claves de contexto requeridas
-        $requiredContexts = ['central', 'shared', 'tenant_shared', 'tenant'];
+        // Las claves exigidas las decide el MODO, no una lista fija: una aplicación única
+        // no tiene tenants que declarar, y pedírselos la obliga a inventar un contexto
+        // falso para pasar un diagnóstico que no le aplica.
+        $mode             = ModuleMode::current();
+        $requiredContexts = $mode->requiredContextKeys();
         $missingContexts  = array_diff($requiredContexts, array_keys($data['contexts']));
 
         if (!empty($missingContexts)) {
             $this->components->warn(
-                'contexts.json incompleto. Faltan contextos: ' . implode(', ', $missingContexts)
+                "contexts.json incompleto para el modo '{$mode->value}'. Faltan contextos: "
+                . implode(', ', $missingContexts)
             );
+            $this->line("     Modo actual: <comment>{$mode->label()}</comment>");
+            $this->line("     Si no es el correcto, cámbialo en <comment>config/make-module.php</comment> ('mode').");
             return false;
         }
 

@@ -317,6 +317,11 @@ class ContextResolver
      *
      * Contextos sin connection_key (shared, tenant_shared) son ignorados.
      *
+     * Cuando todos los tenants comparten funcionalidad, un tenant NO declara conexión:
+     * la conmuta el paquete de tenancy al inicializar el contexto, y el aislamiento lo
+     * garantiza la ruta. Exigírsela ahí produce un modelo atado a un solo tenant.
+     * El contexto central sí la declara siempre, en cualquier modo.
+     *
      * @param  string  $id  ID del contexto (ej: 'central', 'tenant-one')
      * @return void
      *
@@ -325,6 +330,12 @@ class ContextResolver
     public static function validateConnection(string $id): void
     {
         $context = self::find($id);
+
+        $mode = ModuleMode::current();
+
+        if ($id !== 'central' && ! $mode->requiresTenantConnectionKey()) {
+            return;
+        }
 
         // Solo contextos con tenancy_strategy 'manual' requieren conexión explícita
         if (($context['tenancy_strategy'] ?? null) !== 'manual') {
