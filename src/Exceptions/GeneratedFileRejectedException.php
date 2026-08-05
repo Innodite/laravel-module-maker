@@ -49,6 +49,17 @@ final class GeneratedFileRejectedException extends RuntimeException
         );
     }
 
+    public static function namespacePathMismatch(string $path, string $namespace, string $directory): self
+    {
+        return new self(
+            "No se escribió '" . basename($path) . "': el namespace no coincide con la carpeta.\n" .
+            "  Declara:  namespace {$namespace};\n" .
+            "  Se está escribiendo en: {$directory}\n" .
+            "PSR-4 busca la clase donde dice el namespace, así que el archivo no se autocarga y no\n" .
+            'se puede usar. Construye el namespace con buildNamespace(), el mismo que da la ruta.'
+        );
+    }
+
     public static function invalidPhp(string $path, string $error): self
     {
         return new self(

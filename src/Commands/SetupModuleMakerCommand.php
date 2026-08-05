@@ -4,6 +4,7 @@ namespace Innodite\LaravelModuleMaker\Commands;
 
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\File;
+use Innodite\LaravelModuleMaker\Support\ModuleMode;
 
 /**
  * Comando de instalación del paquete v3.0.0.
@@ -19,14 +20,21 @@ use Illuminate\Support\Facades\File;
  */
 class SetupModuleMakerCommand extends Command
 {
-    protected $signature = 'innodite:module-setup';
+    protected $signature = 'innodite:module-setup
+        {--mode= : Modo del proyecto: single-app | multitenant-shared | multitenant-per-tenant}';
 
-    protected $description = 'Configura el paquete v3.0.0: crea module-maker-config/ en el project root y publica stubs y contexts.json.';
+    protected $description = 'Configura el paquete: elige el modo del proyecto y crea module-maker-config/ en el project root.';
 
     public function handle(): void
     {
-        $this->info("Iniciando configuración de laravel-module-maker v3.0.0...");
+        $this->info("Iniciando configuración de laravel-module-maker...");
         $this->newLine();
+
+        // ── El modo, lo primero ───────────────────────────────────────────────
+        // La norma dice que el modo se ELIGE AL INSTALAR, no que se teclee después en un archivo
+        // de configuración. Y va primero porque decide la forma de todo lo demás: si se pregunta al
+        // final, lo que ya se generó nació con la estructura de otro modo.
+        $this->configureMode();
 
         // ── Carpeta de módulos ────────────────────────────────────────────────
         $modulesPath = base_path('Modules');
@@ -49,7 +57,115 @@ class SetupModuleMakerCommand extends Command
         $this->info("Configuración completa.");
         $this->line("  → Edita <comment>module-maker-config/contexts.json</comment> con los contextos de tu proyecto.");
         $this->line("  → Personaliza stubs en <comment>module-maker-config/stubs/contextual/</comment>.");
-        $this->line("  → Ejecuta: <comment>php artisan innodite:make-module NombreModulo</comment>");
+        $this->line("  → Ejecuta: <comment>php artisan innodite:make-module NombreModulo SubFuncionalidad</comment>");
+    }
+
+    // ─── El modo del proyecto ─────────────────────────────────────────────────
+
+    /**
+     * Pregunta el modo y lo deja escrito, o dice exactamente qué escribir.
+     *
+     * Los tres modos son igual de legítimos y la elección da forma a **cada archivo generado**: el
+     * eje de contexto, el prefijo de las clases, la conexión del modelo y el middleware de cada ruta.
+     * Por eso no hay valor por defecto y por eso se pregunta aquí — adivinar produce una estructura
+     * equivocada multiplicada por cada módulo del proyecto, y eso solo se descubre tarde.
+     */
+    private function configureMode(): void
+    {
+        $mode = $this->resolveMode();
+
+        if ($mode === null) {
+            $this->warn('Sin modo elegido no se genera nada, así que este paso no se puede omitir.');
+            $this->line('  Vuelve a ejecutar el comando, o pásalo directo: <comment>--mode=single-app</comment>');
+
+            return;
+        }
+
+        $this->line("  Modo elegido: <comment>{$mode->label()}</comment>");
+
+        $this->persistMode($mode);
+    }
+
+    /** @return ModuleMode|null  null si no se pudo determinar y no hay con quién hablar */
+    private function resolveMode(): ?ModuleMode
+    {
+        $opcion = trim((string) $this->option('mode'));
+
+        if ($opcion !== '') {
+            $elegido = ModuleMode::tryFrom($opcion);
+
+            if ($elegido === null) {
+                $this->error("El modo '{$opcion}' no existe. Son: "
+                    . implode(' · ', array_column(ModuleMode::cases(), 'value')));
+
+                return null;
+            }
+
+            return $elegido;
+        }
+
+        if (! $this->input->isInteractive()) {
+            return null;
+        }
+
+        $etiquetas = [];
+
+        foreach (ModuleMode::cases() as $caso) {
+            $etiquetas[$caso->value] = $caso->label();
+        }
+
+        $this->line('  ¿Qué tipo de proyecto es? Decide la forma de todo lo que se genere.');
+
+        $respuesta = $this->choice('  Modo', $etiquetas, null, null, false);
+
+        // choice() devuelve la etiqueta cuando las claves son strings; se recupera el valor.
+        return ModuleMode::tryFrom($respuesta)
+            ?? ModuleMode::tryFrom((string) array_search($respuesta, $etiquetas, true));
+    }
+
+    /**
+     * Escribe el modo en el `.env`, y si no puede lo dice — nunca anuncia un éxito que no ocurrió.
+     *
+     * Esa última parte es la lección de A15: el comando anunciaba «DatabaseSeeder modificado» aunque
+     * el reemplazo no hubiera encajado, y el usuario se quedaba creyendo que estaba configurado.
+     */
+    private function persistMode(ModuleMode $mode): void
+    {
+        $envPath = base_path('.env');
+        $linea   = 'MODULE_MAKER_MODE=' . $mode->value;
+
+        if (! File::exists($envPath)) {
+            $this->warn('  No hay .env en la raíz del proyecto, así que el modo no se ha escrito.');
+            $this->line("  Añade esta línea a tu .env:  <comment>{$linea}</comment>");
+
+            return;
+        }
+
+        $contenido = File::get($envPath);
+
+        if (preg_match('/^MODULE_MAKER_MODE=(.*)$/m', $contenido, $actual) === 1) {
+            $valorActual = trim($actual[1]);
+
+            if ($valorActual === $mode->value) {
+                $this->line('  El .env ya declaraba ese modo: no se toca nada.');
+
+                return;
+            }
+
+            if (! $this->confirm("  El .env dice '{$valorActual}'. ¿Cambiarlo a '{$mode->value}'?", false)) {
+                $this->warn('  El modo se queda como estaba.');
+
+                return;
+            }
+
+            File::put($envPath, preg_replace('/^MODULE_MAKER_MODE=.*$/m', $linea, $contenido));
+            $this->info("  ✅ .env actualizado: {$linea}");
+
+            return;
+        }
+
+        File::put($envPath, rtrim($contenido, "\n") . "\n\n{$linea}\n");
+        $this->info("  ✅ Modo escrito en .env: {$linea}");
     }
 
     /**

@@ -12,14 +12,14 @@ const errors   = ref({})
 const saving   = ref(false)
 
 async function submit() {
-    if (!can('{{{ entityPlural }}}.create')) return
+    if (!can('{{{ subFeaturePlural }}}.create')) return
 
     saving.value = true
     errors.value = {}
 
     try {
-        await axios.post(route(contextRoute('{{{ entityPlural }}}.store')), form.value)
-        router.visit(route(contextRoute('{{{ entityPlural }}}.index')))
+        await axios.post(route(contextRoute('{{{ subFeaturePlural }}}.store')), form.value)
+        router.visit(route(contextRoute('{{{ subFeaturePlural }}}.index')))
     } catch (err) {
         if (err.response?.status === 422) {
             errors.value = err.response.data.errors ?? {}
@@ -33,7 +33,7 @@ async function submit() {
 }
 
 function goBack() {
-    router.visit(route(contextRoute('{{{ entityPlural }}}.index')))
+    router.visit(route(contextRoute('{{{ subFeaturePlural }}}.index')))
 }
 </script>
 
@@ -45,7 +45,7 @@ function goBack() {
             <button @click="goBack" class="text-gray-400 hover:text-gray-600 transition">
                 ← Volver
             </button>
-            <h1 class="text-2xl font-semibold text-gray-800">Nuevo {{{ entityLabel }}}</h1>
+            <h1 class="text-2xl font-semibold text-gray-800">Nuevo {{{ subFeatureLabel }}}</h1>
         </div>
 
         <form @submit.prevent="submit" class="space-y-5">

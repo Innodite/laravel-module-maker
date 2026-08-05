@@ -13,6 +13,8 @@ use Innodite\LaravelModuleMaker\Generators\Components\JobGenerator;
 use Innodite\LaravelModuleMaker\Generators\Components\NotificationGenerator;
 use Innodite\LaravelModuleMaker\Services\RouteInjectionService;
 use Innodite\LaravelModuleMaker\Support\ContextResolver;
+use Innodite\LaravelModuleMaker\Support\ModuleMode;
+use Innodite\LaravelModuleMaker\Support\SeederNames;
 
 /**
  * Orquesta la creación de un módulo completo según la arquitectura v3.0.0.
@@ -75,6 +77,9 @@ class ModuleGenerator
             $this->createContextSubfolders("Database/{$sub}");
         }
 
+        // Los 3 maestros del módulo cuelgan de Database/Seeders/{Contexto}/Application/
+        $this->createMasterSeederFolders();
+
         // ── Http ─────────────────────────────────────────────────────────────
         foreach (['Controllers', 'Requests'] as $sub) {
             $this->createContextSubfolders("Http/{$sub}");
@@ -111,12 +116,14 @@ class ModuleGenerator
         $this->createContextSubfolders('Console/Commands');
 
         // ── Exceptions ───────────────────────────────────────────────────────
-        File::ensureDirectoryExists("{$this->modulePath}/Exceptions/Central");
+        // Se saltaban el helper y escribian /Central a mano, asi que aparecian tambien en
+        // single-app, donde ese contexto no existe.
+        $this->createContextSubfolders('Exceptions');
 
         // ── Tests ────────────────────────────────────────────────────────────
         $this->createContextSubfolders('Tests/Feature');
         $this->createContextSubfolders('Tests/Unit');
-        File::ensureDirectoryExists("{$this->modulePath}/Tests/Support/Central");
+        $this->createContextSubfolders('Tests/Support');
 
         if ($this->command) {
             $this->command->info("✅ Estructura de carpetas v3.0.0 creada para el módulo '{$this->moduleName}'.");
@@ -229,7 +236,7 @@ class ModuleGenerator
 
         $componentConfig = [
             'name'          => $modelName,
-            'entity'        => $modelName,
+            'subFeature'        => $modelName,
             'context'       => $contextKey,
             'context_id'    => $contextId,
             'functionality' => $functionality,
@@ -318,9 +325,9 @@ class ModuleGenerator
             $modelName   = Str::studly($component['name']);
             $requestName = "{$modelName}StoreRequest";
 
-            // Garantizar que 'entity' está en el config para el subfolder por entidad
-            if (!isset($component['entity'])) {
-                $component['entity'] = $modelName;
+            // Garantizar que 'subFeature' está en el config para el subfolder por entidad
+            if (!isset($component['subFeature'])) {
+                $component['subFeature'] = $modelName;
             }
 
             $this->run(new ModelGenerator($this->moduleName, $this->modulePath, false, $modelName, $component['attributes'] ?? [], $component['relations'] ?? [], [], $component));
@@ -352,9 +359,9 @@ class ModuleGenerator
     {
         $modelName = $entityName ?? $this->moduleName;
 
-        // Garantizar que 'entity' está en componentConfig para el subfolder por entidad
-        if (!isset($componentConfig['entity'])) {
-            $componentConfig['entity'] = $modelName;
+        // Garantizar que 'subFeature' está en componentConfig para el subfolder por entidad
+        if (!isset($componentConfig['subFeature'])) {
+            $componentConfig['subFeature'] = $modelName;
         }
 
         if ($flags['model'] ?? false) {
@@ -417,7 +424,7 @@ class ModuleGenerator
         }
 
         // El controlador usa la entidad (puede diferir del módulo en add-entity)
-        $entityName      = $componentConfig['entity'] ?? $this->moduleName;
+        $entityName      = $componentConfig['subFeature'] ?? $this->moduleName;
         $controllerClass = ($contextConfig['class_prefix'] ?? '') . $entityName . 'Controller';
         $nsPath          = $contextConfig['namespace_path'] ?? '';
         $controllerNs    = $nsPath
@@ -438,8 +445,11 @@ class ModuleGenerator
     // ─── Helpers privados ────────────────────────────────────────────────────
 
     /**
-     * Crea las subcarpetas de contexto base (Central, Shared, Tenant/Shared)
-     * dentro de un tipo de componente dado.
+     * Crea las subcarpetas de contexto base dentro de un tipo de componente — **si el modo las tiene**.
+     *
+     * En single-app no se crean: sembrar `Central/`, `Shared/` y `Tenant/Shared/` vacías en cada capa
+     * de un proyecto sin tenants deja doce carpetas que no significan nada, y sugieren una estructura
+     * que el modo dice que no existe. La capa se crea igual; lo que no se crea es el eje.
      *
      * @param  string  $componentType  Ruta relativa dentro del módulo (ej: 'Services', 'Http/Controllers')
      * @return void
@@ -449,8 +459,39 @@ class ModuleGenerator
         $base = "{$this->modulePath}/{$componentType}";
         File::ensureDirectoryExists($base);
 
+        if (! ModuleMode::current()->hasContextAxis()) {
+            return;
+        }
+
         foreach (self::BASE_CONTEXT_FOLDERS as $folder) {
             File::ensureDirectoryExists("{$base}/{$folder}");
+        }
+    }
+
+    /**
+     * Crea la carpeta de los tres maestros `Application` del módulo.
+     *
+     * Es el punto de entrada único del módulo en su contexto, y por eso tiene carpeta propia en vez
+     * de ser «una subfuncionalidad más»: `deploy-{contexto}` llama a estos tres, y estos hacen
+     * fan-out en orden a las seis piezas de cada subfuncionalidad. Existe **uno por contexto** — el
+     * central no arrastra al del tenant.
+     *
+     * Aquí se crea la carpeta y queda fijada la convención de nombres (ver SeederNames). El
+     * contenido —el fan-out en orden y la propagación de `destructive`— es de FEAT-003: emitir ahora
+     * tres seeders con `run()` vacío sería repetir B3, que es el hallazgo que esa fase corrige.
+     */
+    private function createMasterSeederFolders(): void
+    {
+        $base = "{$this->modulePath}/Database/Seeders";
+
+        if (! ModuleMode::current()->hasContextAxis()) {
+            File::ensureDirectoryExists("{$base}/" . SeederNames::MASTER_FOLDER);
+
+            return;
+        }
+
+        foreach (self::BASE_CONTEXT_FOLDERS as $folder) {
+            File::ensureDirectoryExists("{$base}/{$folder}/" . SeederNames::MASTER_FOLDER);
         }
     }
 }

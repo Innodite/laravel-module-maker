@@ -38,8 +38,12 @@ class SeederGenerator extends AbstractComponentGenerator
     {
         $seederFile = "{$seederDir}/{$this->seederName}.php";
 
+        // Por buildNamespace(), que es el que da también la ruta. Concatenarlo a mano dejaba el
+        // seeder en Database/Seeders/{Ctx}/{SubFunc}/ declarando Database\Seeders a secas: PSR-4
+        // buscaba la clase donde decía el namespace, no la encontraba, y el seeder no se podía
+        // ejecutar. Válido para el parser, inservible en la práctica (B17).
         $stub = $this->getStubContent(self::STUB_SEEDER, $this->isClean, [
-            'namespace' => "Modules\\{$this->moduleName}\\Database\\Seeders",
+            'namespace' => $this->buildNamespace('Database\\Seeders'),
             'seederName' => $this->seederName,
             'modelName' => $this->modelName,
             'moduleName'=>$this->moduleName,

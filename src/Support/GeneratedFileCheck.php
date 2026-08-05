@@ -40,6 +40,38 @@ final class GeneratedFileCheck
     {
         self::assertNoUnresolvedPlaceholders($path, $content);
         self::assertValidPhp($path, $content);
+        self::assertNamespaceMatchesPath($path, $content);
+    }
+
+    /**
+     * Does the declared namespace mirror the folder the file is being written to?
+     *
+     * The third question, and it exists because the first two both said yes to a broken file.
+     * A seeder was landing in `Database/Seeders/Central/Permission/` while declaring
+     * `namespace Modules\Permission\Database\Seeders` — valid PHP, no placeholders left, and
+     * unloadable: PSR-4 looks for the class where the namespace says it is, finds nothing, and
+     * the seeder cannot be run at all.
+     *
+     * That is the shape of every silent failure found in this package so far — B13, B15, the
+     * marker of B14: not wrong logic, but two halves that stopped agreeing. Path and namespace
+     * are exactly such a pair, so they get checked against each other.
+     */
+    private static function assertNamespaceMatchesPath(string $path, string $content): void
+    {
+        if (! str_ends_with(strtolower($path), '.php')) {
+            return;
+        }
+
+        if (preg_match('/^\s*namespace\s+([A-Za-z_][A-Za-z0-9_\\\\]*)\s*;/m', $content, $found) !== 1) {
+            return;   // un archivo sin namespace no tiene nada que contradecir
+        }
+
+        $expectedTail = str_replace('\\', '/', $found[1]);
+        $actualDir    = str_replace('\\', '/', dirname($path));
+
+        if (! str_ends_with($actualDir, $expectedTail)) {
+            throw GeneratedFileRejectedException::namespacePathMismatch($path, $found[1], $actualDir);
+        }
     }
 
     /**

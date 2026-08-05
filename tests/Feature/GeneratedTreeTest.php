@@ -77,6 +77,86 @@ it('en single-app el árbol no lleva contexto en ningún sitio', function () {
     );
 });
 
+it('en single-app no se siembra ni una carpeta de contexto, aunque quede vacía', function () {
+    // La prueba anterior mira archivos, y una carpeta vacía no tiene ninguno: `Central/` se estaba
+    // creando en las doce capas de un proyecto sin tenants y pasaba invisible. Una carpeta vacía no
+    // rompe nada, pero sugiere una estructura que el modo dice que no existe — y alguien la usará.
+    $this->withMode(ModuleMode::SingleApp);
+
+    Artisan::call('innodite:make-module', [
+        'name' => 'Invoice', '--no-routes' => true, '--no-interaction' => true,
+    ]);
+
+    $base = $this->tempPath('Modules/Invoice');
+
+    $sembradas = [];
+
+    foreach (['Models', 'Services', 'Repositories', 'Http/Controllers', 'Http/Requests',
+              'Database/Migrations', 'Database/Seeders', 'Database/Factories',
+              'Tests/Feature', 'Tests/Unit', 'Tests/Support', 'Exceptions',
+              'Jobs', 'Notifications', 'Console/Commands', 'resources/js/Pages'] as $capa) {
+        foreach (['Central', 'Shared', 'Tenant'] as $ctx) {
+            if (File::isDirectory("{$base}/{$capa}/{$ctx}")) {
+                $sembradas[] = "{$capa}/{$ctx}";
+            }
+        }
+    }
+
+    expect($sembradas)->toBe(
+        [],
+        "R5: en single-app el eje de contexto no existe, y estas carpetas se crearon igual:\n  - "
+        . implode("\n  - ", $sembradas)
+    );
+});
+
+it('la carpeta de los tres maestros Application existe en cada contexto', function () {
+    $this->withMode(ModuleMode::MultitenantPerTenant);
+
+    Artisan::call('innodite:make-module', [
+        'name' => 'Invoice', '--context' => 'central', '--no-routes' => true, '--no-interaction' => true,
+    ]);
+
+    $seeders = $this->tempPath('Modules/Invoice/Database/Seeders');
+
+    expect(File::isDirectory("{$seeders}/Central/Application"))->toBeTrue(
+        'Los 3 maestros del módulo son el punto de entrada único de su contexto, así que tienen '
+        . 'carpeta propia: deploy-central los llama, y ellos hacen fan-out a las 6 piezas de cada '
+        . 'subfuncionalidad. Existe uno por contexto — el central no arrastra al del tenant.'
+    );
+    expect(File::isDirectory("{$seeders}/Tenant/Shared/Application"))->toBeTrue();
+});
+
+it('en single-app los maestros van directos bajo Seeders, sin contexto', function () {
+    $this->withMode(ModuleMode::SingleApp);
+
+    Artisan::call('innodite:make-module', [
+        'name' => 'Invoice', '--no-routes' => true, '--no-interaction' => true,
+    ]);
+
+    expect(File::isDirectory($this->tempPath('Modules/Invoice/Database/Seeders/Application')))->toBeTrue(
+        'Sin eje de contexto hay un solo juego de maestros, y un solo seeder de despliegue que los llama.'
+    );
+});
+
+it('la migración lleva el sufijo _final, que dice que trae el esquema completo', function () {
+    $this->withMode(ModuleMode::SingleApp);
+
+    Artisan::call('innodite:make-module', [
+        'name' => 'Invoice', '--no-routes' => true, '--no-interaction' => true,
+    ]);
+
+    $migraciones = glob($this->tempPath('Modules/Invoice/Database/Migrations/Invoice/*.php')) ?: [];
+
+    expect($migraciones)->toHaveCount(1);
+
+    expect(basename($migraciones[0]))->toEndWith(
+        '_create_invoices_table_final.php',
+        'R22b: el sufijo distingue la migración que trae el esquema completo de las que aplican un '
+        . 'delta. Sin él, el orden de la carpeta —que es la unidad de despliegue— deja de significar '
+        . 'nada. Se generó: ' . basename($migraciones[0])
+    );
+});
+
 it('en single-app cada capa cuelga de la carpeta de su subfuncionalidad', function () {
     $this->withMode(ModuleMode::SingleApp);
 

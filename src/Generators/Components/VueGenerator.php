@@ -88,10 +88,10 @@ class VueGenerator extends AbstractComponentGenerator
     private function buildPlaceholders(): array
     {
         return [
-            'moduleName'     => $this->moduleName,
-            'entityPlural'   => Str::kebab(Str::plural(Str::snake($this->modelName))),
-            'entitySingular' => Str::kebab(Str::snake($this->modelName)),
-            'entityLabel'    => $this->modelName,
+            'moduleName'         => $this->moduleName,
+            'subFeaturePlural'   => Str::kebab(Str::plural(Str::snake($this->modelName))),
+            'subFeatureSingular' => Str::kebab(Str::snake($this->modelName)),
+            'subFeatureLabel'    => $this->modelName,
         ];
     }
 

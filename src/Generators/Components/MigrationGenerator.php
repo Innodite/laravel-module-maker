@@ -108,15 +108,27 @@ class MigrationGenerator extends AbstractComponentGenerator
         $tableSchema = $this->getMigrationSchema($this->attributes, $this->indexes);
 
         // Idempotencia: si ya existe una migración para esta tabla en este contexto, no duplicar.
-        $existingFiles = glob("{$migrationDirectoryPath}/*_create_{$tableName}_table.php") ?: [];
+        // Se buscan las dos formas del nombre —con y sin `_final`— para que un módulo generado con
+        // la v3 no reciba una segunda migración de la misma tabla al regenerarse.
+        $existingFiles = array_merge(
+            glob("{$migrationDirectoryPath}/*_create_{$tableName}_table.php") ?: [],
+            glob("{$migrationDirectoryPath}/*_create_{$tableName}_table_final.php") ?: []
+        );
+
         if (!empty($existingFiles)) {
             $this->warn("Migración para '{$tableName}' ya existe en " . basename(dirname($migrationDirectoryPath)) . "/Database/Migrations. Se omite la generación.");
             return;
         }
 
-        // Timestamp con microsegundos para evitar colisiones entre archivos del mismo contexto
+        // Timestamp con microsegundos para evitar colisiones entre archivos del mismo contexto.
+        //
+        // El sufijo `_final` no es decoración (R22b): dice que ESTE archivo lleva el esquema
+        // completo de la tabla, no un delta. Con él, la carpeta de la subfuncionalidad se lee de un
+        // golpe —cada `_final` es una tabla— y los cambios posteriores van como delta con guardia en
+        // el trait `InlineAlters`, que llega en F-5. Sin el sufijo no se distingue la migración que
+        // crea la tabla de las que la modifican, y el orden de la carpeta deja de significar nada.
         $uniqueTimestamp = Carbon::now()->format('Y_m_d_Hisu');
-        $fileName        = "{$uniqueTimestamp}_create_{$tableName}_table.php";
+        $fileName        = "{$uniqueTimestamp}_create_{$tableName}_table_final.php";
 
         // IMPORTANTE: Se pasa el tableName pero NO un className.
         // El stub usa clases anónimas (return new class extends Migration {})

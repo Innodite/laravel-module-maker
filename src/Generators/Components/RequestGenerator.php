@@ -37,7 +37,7 @@ class RequestGenerator extends AbstractComponentGenerator
         // ahí el contexto siempre está vacío, un proyecto sin tenants caía en el camino legacy y
         // recibía una estructura recortada. No es un fallback, es un modo de primera clase — lo
         // que decide es si hay subfuncionalidad, que la hay siempre que se genere de verdad.
-        if ($contextFolder === '' && $this->getEntityFolder() === '') {
+        if ($contextFolder === '' && $this->getSubFeatureFolder() === '') {
             $requestDir = $this->getComponentBasePath() . '/Http/Requests';
             $this->ensureDirectoryExists($requestDir);
 
@@ -56,12 +56,12 @@ class RequestGenerator extends AbstractComponentGenerator
 
         $requestDir      = $this->buildPath('Http/Requests');
         $moduleNamespace = "Modules\\{$this->moduleName}";
-        $entity          = $this->componentConfig['entity'] ?? $this->moduleName;
+        $entity          = $this->componentConfig['subFeature'] ?? $this->moduleName;
         $className       = $this->getClassPrefix() . $entity;
 
         // Namespace del stub: contexto + entidad (espejo de buildPath)
         $ctxNs    = str_replace('/', '\\', $contextFolder); // ej: "Central", "Tenant\\Shared"
-        $entityNs = $this->getEntityFolder();               // ej: "Role", ""
+        $entityNs = $this->getSubFeatureFolder();               // ej: "Role", ""
         $contextNamespace = $entityNs ? "{$ctxNs}\\{$entityNs}" : $ctxNs;
 
         $this->ensureDirectoryExists($requestDir);

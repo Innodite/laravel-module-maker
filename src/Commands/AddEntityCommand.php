@@ -47,7 +47,7 @@ class AddEntityCommand extends Command
     public function handle(): int
     {
         $moduleName = Str::studly($this->argument('module'));
-        $entityName = Str::studly($this->argument('entity'));
+        $entityName = Str::studly($this->argument('subFeature'));
         $modulePath = config('make-module.module_path') . "/{$moduleName}";
 
         $this->newLine();
@@ -96,7 +96,7 @@ class AddEntityCommand extends Command
         $componentConfig = [
             'context'    => $contextKey,
             'context_id' => $contextId,
-            'entity'     => $entityName,
+            'subFeature'     => $entityName,
         ];
 
         // ── Generar componentes ───────────────────────────────────────────────

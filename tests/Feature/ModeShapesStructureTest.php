@@ -24,7 +24,7 @@ it('en single-app la subfuncionalidad va directa bajo la capa, sin contexto ni p
     File::ensureDirectoryExists($modulePath);
 
     (new VueGenerator('UserManagement', $modulePath, false, 'Role', [
-        'entity'  => 'Role',
+        'subFeature' => 'Role',
         'context' => 'central',      // aunque se pase un contexto, en single-app no existe el eje
     ]))->generate();
 
@@ -50,7 +50,7 @@ it('en multitenant el contexto entra en la carpeta y en el nombre', function () 
     File::ensureDirectoryExists($modulePath);
 
     (new VueGenerator('UserManagement', $modulePath, false, 'Role', [
-        'entity'  => 'Role',
+        'subFeature' => 'Role',
         'context' => 'central',
     ]))->generate();
 
@@ -66,7 +66,7 @@ it('la carpeta de páginas va en minúscula', function () {
     $modulePath = $this->tempPath('Modules/UserManagement');
     File::ensureDirectoryExists($modulePath);
 
-    (new VueGenerator('UserManagement', $modulePath, false, 'Role', ['entity' => 'Role']))->generate();
+    (new VueGenerator('UserManagement', $modulePath, false, 'Role', ['subFeature' => 'Role']))->generate();
 
     expect(File::isDirectory("{$modulePath}/resources"))->toBeTrue(
         'B11 · R5: `resources` en minúscula. En Linux no es cosmético — el bundler distingue '

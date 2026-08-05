@@ -189,9 +189,9 @@ abstract class AbstractComponentGenerator
      *
      * @return string
      */
-    protected function getEntityFolder(): string
+    protected function getSubFeatureFolder(): string
     {
-        return $this->componentConfig['entity'] ?? '';
+        return $this->componentConfig['subFeature'] ?? '';
     }
 
     /**
@@ -223,7 +223,7 @@ abstract class AbstractComponentGenerator
     {
         $base   = "Modules\\{$this->moduleName}\\{$componentType}";
         $ctxNs  = $this->getContextNamespacePath();
-        $entity = $this->getEntityFolder();
+        $entity = $this->getSubFeatureFolder();
 
         $ns = $ctxNs ? "{$base}\\{$ctxNs}" : $base;
 
@@ -242,7 +242,7 @@ abstract class AbstractComponentGenerator
     {
         $base   = "Modules\\{$this->moduleName}\\{$componentType}\\Contracts";
         $ctxNs  = $this->getContextNamespacePath();
-        $entity = $this->getEntityFolder();
+        $entity = $this->getSubFeatureFolder();
 
         $ns = $ctxNs ? "{$base}\\{$ctxNs}" : $base;
 
@@ -261,7 +261,7 @@ abstract class AbstractComponentGenerator
     {
         $base   = $this->getComponentBasePath() . "/{$componentType}";
         $folder = $this->getContextFolder();
-        $entity = $this->getEntityFolder();
+        $entity = $this->getSubFeatureFolder();
 
         $path = $folder ? "{$base}/{$folder}" : $base;
 
@@ -280,7 +280,7 @@ abstract class AbstractComponentGenerator
     {
         $base   = $this->getComponentBasePath() . "/{$componentType}/Contracts";
         $folder = $this->getContextFolder();
-        $entity = $this->getEntityFolder();
+        $entity = $this->getSubFeatureFolder();
 
         $path = $folder ? "{$base}/{$folder}" : $base;
 

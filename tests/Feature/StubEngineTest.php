@@ -76,7 +76,7 @@ it('las claves del paquete dentro de los stubs Vue están en triple llave', func
     foreach (glob(dirname(__DIR__, 2) . '/stubs/contextual/vue-*.stub') as $stub) {
         $content = File::get($stub);
 
-        foreach (['entityLabel', 'entityPlural', 'vueComponentName'] as $key) {
+        foreach (['subFeatureLabel', 'subFeaturePlural', 'vueComponentName'] as $key) {
             expect($content)->not->toMatch(
                 '/(?<!\{)\{\{ ' . $key . ' \}\}(?!\})/',
                 basename($stub) . ": la clave '{$key}' es del paquete y sigue en doble llave, "
@@ -105,7 +105,7 @@ it('las cuatro vistas generadas no llevan un solo placeholder dentro', function 
     // resources/js/Pages/Role/RoleIndex.vue, que es lo que describe el patrón.
     $this->withMode(ModuleMode::SingleApp);
 
-    (new VueGenerator('UserManagement', $modulePath, false, 'Role', ['entity' => 'Role']))->generate();
+    (new VueGenerator('UserManagement', $modulePath, false, 'Role', ['subFeature' => 'Role']))->generate();
 
     $views = glob("{$modulePath}/resources/js/Pages/Role/*.vue") ?: [];
 
@@ -138,7 +138,7 @@ it('la vista generada pide una ruta real, no el nombre del placeholder', functio
     // resources/js/Pages/Role/RoleIndex.vue, que es lo que describe el patrón.
     $this->withMode(ModuleMode::SingleApp);
 
-    (new VueGenerator('UserManagement', $modulePath, false, 'Role', ['entity' => 'Role']))->generate();
+    (new VueGenerator('UserManagement', $modulePath, false, 'Role', ['subFeature' => 'Role']))->generate();
 
     $index = File::get("{$modulePath}/resources/js/Pages/Role/RoleIndex.vue");
 
