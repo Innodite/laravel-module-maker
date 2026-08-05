@@ -1,0 +1,11 @@
+# Finales de línea: LF en el repositorio, siempre.
+#
+# Doce archivos de `src/` estaban guardados con CRLF y el resto con LF. Mezclado no rompe PHP, pero
+# sí rompe todo lo que compara texto: un script que busca "<?php\n" salta esos doce sin decir nada
+# —pasó al añadir `declare(strict_types=1)`—, y cualquier diff los muestra enteros como cambiados
+# aunque solo se tocara una línea. En un paquete público eso se le aparece a quien envíe un PR.
+* text=auto eol=lf
+
+# Los .stub son el contenido que el paquete escribe en el proyecto de otro: si viajan con CRLF, el
+# módulo generado nace con finales de línea mezclados.
+*.stub text eol=lf

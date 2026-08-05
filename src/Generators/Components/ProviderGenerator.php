@@ -230,5 +230,4 @@ class ProviderGenerator extends AbstractComponentGenerator
 
         return [$imports, $bindings];
     }
-
 }

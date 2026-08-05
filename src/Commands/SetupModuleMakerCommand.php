@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Innodite\LaravelModuleMaker\Commands;
 
 use Illuminate\Console\Command;

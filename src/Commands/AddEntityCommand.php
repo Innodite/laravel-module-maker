@@ -72,8 +72,8 @@ class AddEntityCommand extends Command
         $contextId = $contextItem['id'] ?? '';
 
         // ── Mostrar resumen ───────────────────────────────────────────────────
-        $this->components->twoColumnDetail('Módulo',   $moduleName);
-        $this->components->twoColumnDetail('Entidad',  $entityName);
+        $this->components->twoColumnDetail('Módulo', $moduleName);
+        $this->components->twoColumnDetail('Entidad', $entityName);
         $this->components->twoColumnDetail('Contexto', "{$contextKey}" . ($contextId ? " / {$contextId}" : ''));
         $this->newLine();
 
@@ -102,7 +102,10 @@ class AddEntityCommand extends Command
         // ── Generar componentes ───────────────────────────────────────────────
         try {
             $this->components->task("Generando componentes de '{$entityName}'", function () use (
-                $moduleName, $entityName, $flags, $componentConfig
+                $moduleName,
+                $entityName,
+                $flags,
+                $componentConfig
             ) {
                 (new ModuleGenerator($moduleName, true, null, $this))
                     ->createIndividualComponents($flags, $componentConfig, $entityName);
@@ -112,7 +115,11 @@ class AddEntityCommand extends Command
             // ── Inyectar rutas si se generó controller ────────────────────────
             if (!$this->option('no-routes') && ($flags['controller'] ?? false)) {
                 $this->components->task('Inyectando rutas', function () use (
-                    $moduleName, $entityName, $contextKey, $contextId, $contextItem
+                    $moduleName,
+                    $entityName,
+                    $contextKey,
+                    $contextId,
+                    $contextItem
                 ) {
                     $controllerFqcn = $this->buildControllerFqcn($moduleName, $entityName, $contextItem);
 
@@ -130,7 +137,6 @@ class AddEntityCommand extends Command
             $this->newLine();
             $this->components->info("Entidad '{$entityName}' agregada al módulo '{$moduleName}' correctamente.");
             return self::SUCCESS;
-
         } catch (Throwable $e) {
             $this->components->error($e->getMessage());
             return self::FAILURE;

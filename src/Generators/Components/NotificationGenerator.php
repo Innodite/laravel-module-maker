@@ -21,10 +21,11 @@ class NotificationGenerator
     use WritesGeneratedFiles;
 
     public function __construct(
-        private readonly array  $context,
+        private readonly array $context,
         private readonly string $modulePath,
         private readonly string $moduleName,
-    ) {}
+    ) {
+    }
 
     /**
      * Genera el archivo de Notification en la carpeta correcta según el contexto.

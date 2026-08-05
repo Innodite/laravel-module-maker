@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Innodite\LaravelModuleMaker\Generators\Concerns;
 
 use Illuminate\Support\Facades\File;
@@ -87,12 +89,16 @@ trait HasStubs
         // 1. Project override, per context
         if ($folder) {
             $p = "{$customBase}/{$folder}/{$stubFile}";
-            if (File::exists($p)) return $p;
+            if (File::exists($p)) {
+                return $p;
+            }
         }
 
         // 2. Project override, generic
         $p = "{$customBase}/{$stubFile}";
-        if (File::exists($p)) return $p;
+        if (File::exists($p)) {
+            return $p;
+        }
 
         // 3. The package's single source of truth
         return "{$packageBase}/{$stubFile}";
@@ -107,7 +113,9 @@ trait HasStubs
      */
     private function normalizeContextFolder(?string $context): ?string
     {
-        if (!$context) return null;
+        if (!$context) {
+            return null;
+        }
 
         // Si ya es una carpeta con slash (ej: "Tenant/Shared"), extraer el nombre de carpeta de stubs
         $map = [
@@ -140,14 +148,20 @@ trait HasStubs
      * StubPlaceholder::wrap(), una sola vez. Una clave que llegue ya envuelta lanza, en vez
      * de no sustituir nada en silencio: así fue B15, y costó cuatro vistas rotas por módulo.
      *
-     * @param  string                $stub          Contenido del stub
-     * @param  array<string, string> $placeholders  Mapa clave desnuda → valor
+     * El valor se convierte a texto aquí. No es ceremonia: hay generadores que entregan números
+     * —un `0` de longitud, un contador— y hasta que este archivo declaró `strict_types` PHP los
+     * convertía por su cuenta, en silencio. Con la declaración puesta, `str_replace` rechaza el
+     * entero y **la generación entera se cae**; convertir aquí, en el único punto por el que pasan
+     * todos los placeholders, mantiene el contrato («el stub recibe texto») en un solo sitio.
+     *
+     * @param  string                       $stub          Contenido del stub
+     * @param  array<string, string|int|float|bool|null> $placeholders  Mapa clave desnuda → valor
      * @return string
      */
     protected function replacePlaceholders(string $stub, array $placeholders): string
     {
         foreach ($placeholders as $key => $value) {
-            $stub = str_replace(StubPlaceholder::wrap((string) $key), $value, $stub);
+            $stub = str_replace(StubPlaceholder::wrap((string) $key), (string) $value, $stub);
         }
 
         return $stub;

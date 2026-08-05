@@ -59,12 +59,12 @@ class TestContextConfigService
 
             // Detectar si es array asociativo (contexto único) vs array indexado (lista)
             $isAssociative = array_keys($items) !== range(0, count($items) - 1);
-            
+
             // Array asociativo → contexto único (central, shared, tenant_shared)
             if ($isAssociative) {
                 $item   = $items;
                 $folder = str_replace('\\', '/', (string) ($item['folder'] ?? ''));
-                
+
                 if ($folder === '') {
                     continue;
                 }
@@ -82,10 +82,10 @@ class TestContextConfigService
                     'seeder' => null,
                     'env' => [],
                 ];
-                
+
                 continue;
             }
-            
+
             // Array indexado → múltiples tenants
             foreach ($items as $item) {
                 if (!is_array($item)) {

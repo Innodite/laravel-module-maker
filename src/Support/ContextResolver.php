@@ -221,7 +221,7 @@ class ContextResolver
         }
 
         $path = self::resolvePath();
-        
+
         if (!File::exists($path)) {
             throw new \RuntimeException("[ContextResolver] No se encontró contexts.json en: {$path}");
         }

@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Innodite\LaravelModuleMaker;
 
 use Illuminate\Support\ServiceProvider;
@@ -27,7 +29,8 @@ class LaravelModuleMakerServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->mergeConfigFrom(
-            __DIR__.'/../config/make-module.php', 'make-module'
+            __DIR__ . '/../config/make-module.php',
+            'make-module'
         );
 
         // Alias del middleware para uso en rutas: Route::middleware('innodite.bridge')
@@ -160,7 +163,7 @@ class LaravelModuleMakerServiceProvider extends ServiceProvider
     {
         // Prioridad 1: Routes/ (v3.0.0+) — uppercase
         $routesPathV3 = "{$modulePath}/Routes";
-        
+
         // Prioridad 2: routes/ (v2.x legacy) — lowercase
         $routesPathV2 = "{$modulePath}/routes";
 
@@ -305,8 +308,7 @@ class LaravelModuleMakerServiceProvider extends ServiceProvider
             fwrite(STDERR, PHP_EOL
                 . "\033[33m[Innodite ModuleMaker]\033[0m Primera instalación detectada." . PHP_EOL
                 . "  Ejecuta el setup inicial para configurar el paquete:" . PHP_EOL
-                . "\033[36m  php artisan innodite:module-setup\033[0m" . PHP_EOL . PHP_EOL
-            );
+                . "\033[36m  php artisan innodite:module-setup\033[0m" . PHP_EOL . PHP_EOL);
         });
     }
 }

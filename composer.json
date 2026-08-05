@@ -65,8 +65,13 @@
         "test:coverage": "pest --coverage",
         "test:unit": "pest --testsuite=Unit",
         "test:feature": "pest --testsuite=Feature",
-        "lint": "phpcs --standard=PSR12 --extensions=php src/",
+        "lint": "phpcs --standard=PSR12 --extensions=php -n src/",
         "lint:fix": "phpcbf --standard=PSR12 --extensions=php src/",
-        "lint:strict": "grep -rL 'declare(strict_types=1)' src/ --include='*.php' | xargs -I{} echo 'MISSING strict_types: {}'"
+        "lint:strict": "bash -c 'faltan=$(grep -rL \"declare(strict_types=1)\" src/ --include=\"*.php\"); if [ -n \"$faltan\" ]; then echo \"Falta declare(strict_types=1) en:\"; echo \"$faltan\"; exit 1; fi; echo \"strict_types en todos los archivos de src/.\"'",
+        "ci": [
+            "@lint",
+            "@lint:strict",
+            "@test"
+        ]
     }
 }

@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Innodite\LaravelModuleMaker\Generators\Components\Factory;
 
 use Illuminate\Support\Str;
@@ -92,7 +94,7 @@ class FactoryGenerator extends AbstractComponentGenerator
         }
         $firstLine = array_shift($lines);
         $otherLines = implode("\n            ", $lines);
-        return $firstLine."            " . "\n            " . $otherLines;
+        return $firstLine . "            " . "\n            " . $otherLines;
     }
 
     protected function generateAttributeValue(array $attribute): string

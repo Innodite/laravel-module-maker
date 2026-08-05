@@ -130,5 +130,4 @@ class MigratePlanCommand extends Command
 
         return self::SUCCESS;
     }
-
 }

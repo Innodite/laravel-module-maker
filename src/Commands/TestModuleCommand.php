@@ -12,14 +12,14 @@ use Symfony\Component\Process\Exception\ProcessFailedException;
 
 /**
  * Comando para ejecutar tests de módulos con cobertura de código.
- * 
+ *
  * Características:
  * - Ejecuta tests de un módulo específico o todos los módulos
  * - Genera reportes de cobertura en múltiples formatos (HTML, Text, Clover)
  * - Permite filtrar por contexto (Central, Shared, Tenant, etc.)
  * - Escanea recursivamente todas las carpetas de tests
  * - Valida que Xdebug/PCOV estén activos para coverage
- * 
+ *
  * @package Innodite\LaravelModuleMaker\Commands
  * @version 1.0.0
  */
@@ -142,7 +142,7 @@ class TestModuleCommand extends Command
     {
         // Verificar que PHPUnit esté disponible
         $phpunitPath = base_path('vendor/bin/phpunit');
-        
+
         if (!File::exists($phpunitPath)) {
             $this->error('❌ PHPUnit no está instalado.');
             $this->info('💡 Ejecuta: composer require --dev phpunit/phpunit');
@@ -161,7 +161,7 @@ class TestModuleCommand extends Command
                 $this->info('💡 Para instalar Xdebug: https://xdebug.org/docs/install');
                 $this->info('💡 Para instalar PCOV: pecl install pcov');
                 $this->newLine();
-                
+
                 if (!$this->confirm('¿Continuar sin coverage?', true)) {
                     return false;
                 }
@@ -226,7 +226,7 @@ class TestModuleCommand extends Command
 
         foreach ($directories as $directory) {
             $moduleName = basename($directory);
-            
+
             // Verificar que tenga carpeta Tests
             if (File::isDirectory("{$directory}/Tests")) {
                 $modules[] = $moduleName;
@@ -391,7 +391,7 @@ class TestModuleCommand extends Command
 
         foreach ($allFiles as $file) {
             $relativePath = str_replace('\\', '/', $file->getRelativePathname());
-            
+
             // Solo archivos *Test.php
             if (!str_ends_with($relativePath, 'Test.php')) {
                 continue;
@@ -474,7 +474,7 @@ class TestModuleCommand extends Command
         if (File::exists($configPath)) {
             return $configPath;
         }
-        
+
         // Crear carpeta de reportes si no existe
         if (!File::isDirectory($reportPath)) {
             File::makeDirectory($reportPath, 0755, true);
@@ -485,15 +485,15 @@ class TestModuleCommand extends Command
 
         if ($this->option('coverage') && $this->coverageEnabled) {
             $reports = [];
-            
+
             if (in_array('html', $formats)) {
                 $reports[] = "        <html outputDirectory=\"{$reportPath}/html\"/>";
             }
-            
+
             if (in_array('text', $formats)) {
                 $reports[] = "        <text outputFile=\"php://stdout\" showUncoveredFiles=\"false\"/>";
             }
-            
+
             if (in_array('clover', $formats)) {
                 $reports[] = "        <clover outputFile=\"{$reportPath}/clover.xml\"/>";
             }
@@ -581,7 +581,7 @@ XML;
     protected function buildPhpunitCommand(string $module, string $phpunitXmlPath, array $testFiles): array
     {
         $phpunitBin = base_path('vendor/bin/phpunit');
-        
+
         $command = [
             PHP_BINARY,
             $phpunitBin,
@@ -669,7 +669,6 @@ XML;
                 'output' => $output,
                 'error' => $errorOutput,
             ];
-
         } catch (ProcessFailedException $exception) {
             $failureLogPath = $this->persistFailedTestOutput(
                 $module,
@@ -902,7 +901,7 @@ XML;
 
         foreach ($this->results as $result) {
             $module = (string) ($result['module'] ?? 'N/A');
-            
+
             $status = match ($result['status']) {
                 'passed' => '<fg=green>✓ PASSED</>',
                 'failed' => '<fg=red>✗ FAILED</>',
@@ -913,10 +912,12 @@ XML;
 
             $coverageData = $result['coverage'] ?? null;
             $coverage = is_array($coverageData)
-                ? sprintf('<fg=cyan>%.1f%%</> (%d/%d)', 
+                ? sprintf(
+                    '<fg=cyan>%.1f%%</> (%d/%d)',
                     (float) ($coverageData['percentage'] ?? 0),
                     (int) ($coverageData['covered'] ?? 0),
-                    (int) ($coverageData['total'] ?? 0))
+                    (int) ($coverageData['total'] ?? 0)
+                )
                 : '<fg=gray>N/A</>';
 
             $rows[] = [$module, $status, $coverage];
@@ -964,12 +965,12 @@ XML;
             $this->newLine();
             $this->info('📁 Reportes de coverage guardados en:');
             $this->info("   {$this->reportsBasePath}/");
-            
+
             $formats = $this->getCoverageFormats();
             foreach ($this->results as $result) {
                 if ($result['status'] === 'passed' || $result['status'] === 'failed') {
                     $module = $result['module'];
-                    
+
                     if (in_array('html', $formats)) {
                         $reportPath = (string) ($result['report_path'] ?? "{$this->reportsBasePath}/{$module}");
                         $htmlPath = "{$reportPath}/html/index.html";

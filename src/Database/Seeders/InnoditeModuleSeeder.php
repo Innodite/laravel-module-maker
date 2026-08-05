@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Innodite\LaravelModuleMaker\Database\Seeders;
 
 use Illuminate\Database\Seeder;
@@ -26,11 +28,11 @@ class InnoditeModuleSeeder extends Seeder
                 if (File::exists($seedersPath)) {
                     foreach (File::files($seedersPath) as $file) {
                         $fileName = $file->getFilename();
-                        
+
                         if (Str::endsWith($fileName, 'Seeder.php')) {
                             $seederClassName = str_replace('.php', '', $fileName);
                             $seederClass = "Modules\\{$moduleName}\\Database\\Seeders\\{$seederClassName}";
-                            
+
                             if (class_exists($seederClass)) {
                                 $this->call($seederClass);
                             }

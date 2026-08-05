@@ -22,10 +22,11 @@ class JobGenerator
     use WritesGeneratedFiles;
 
     public function __construct(
-        private readonly array  $context,
+        private readonly array $context,
         private readonly string $modulePath,
         private readonly string $moduleName,
-    ) {}
+    ) {
+    }
 
     /**
      * Genera el archivo del Job en la carpeta correcta según el contexto.

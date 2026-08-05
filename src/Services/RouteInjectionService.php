@@ -29,7 +29,8 @@ class RouteInjectionService
 {
     public function __construct(
         private readonly ?object $output = null
-    ) {}
+    ) {
+    }
 
     // ─── Punto de entrada ─────────────────────────────────────────────────────
 
@@ -48,7 +49,7 @@ class RouteInjectionService
         string $entityName,
         string $contextId,
         string $controllerFqcn,
-        array  $contextConfig
+        array $contextConfig
     ): void {
         // route_file puede ser string o array ['web.php', 'tenant.php']
         $routeFiles = (array) ($contextConfig['route_file'] ?? 'web.php');
@@ -94,7 +95,7 @@ class RouteInjectionService
         string $entityName,
         string $contextId,
         string $controllerFqcn,
-        array  $contextConfig
+        array $contextConfig
     ): void {
         $filePath = base_path("routes/{$routeFile}");
 
@@ -192,7 +193,7 @@ class RouteInjectionService
         string $entityName,
         string $contextId,
         string $controllerFqcn,
-        array  $middleware,
+        array $middleware,
         string $routePrefix,
         string $permissionPrefix,
         string $indent
@@ -291,7 +292,7 @@ class RouteInjectionService
      */
     private function resolveRoutePrefixes(
         string $contextKey,
-        array  $contextConfig,
+        array $contextConfig,
         string $routeFile,
         string $entityName
     ): array {

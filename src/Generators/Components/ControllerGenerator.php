@@ -68,7 +68,7 @@ class ControllerGenerator extends AbstractComponentGenerator
             'module'                   => $this->moduleName,
             'serviceInterface'         => $serviceInterface,
             'serviceInstance'          => $serviceInstance,
-            'serviceInterfaceNamespace'=> $serviceInterfaceNs,
+            'serviceInterfaceNamespace' => $serviceInterfaceNs,
             'viewName'                 => $viewName,
         ]);
 

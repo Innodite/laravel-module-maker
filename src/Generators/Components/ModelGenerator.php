@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Innodite\LaravelModuleMaker\Generators\Components;
 
 use Illuminate\Support\Str;
@@ -13,7 +15,7 @@ class ModelGenerator extends AbstractComponentGenerator
     // Constantes para nombres de directorios y archivos.
     protected const MODEL_DIRECTORY = 'Models';
     protected const MODEL_STUB_FILE = 'model.stub';
-    
+
     // Constantes para tipos de atributos y relaciones.
     protected const ATTRIBUTE_TYPE_ID = 'id';
     protected const ATTRIBUTE_TYPE_TIMESTAMPS = 'timestamps';
@@ -136,7 +138,7 @@ class ModelGenerator extends AbstractComponentGenerator
         }
         return $fillable;
     }
-    
+
     /**
      * Genera el string para la propiedad `$fillable`.
      *
@@ -188,7 +190,7 @@ class ModelGenerator extends AbstractComponentGenerator
             self::RELATION_TYPE_MORPH_TO_MANY => self::RELATION_CLASS_MORPH_TO_MANY_NAME,
             self::RELATION_TYPE_BELONGS_TO_MANY => self::RELATION_CLASS_BELONGS_TO_MANY_NAME,
         ];
-        
+
         // Extrae los nombres de los componentes del módulo para la verificación.
         $componentNames = collect($this->allComponents)
             ->pluck('name')
@@ -199,11 +201,11 @@ class ModelGenerator extends AbstractComponentGenerator
             // Recolecta los modelos relacionados.
             if (isset($relation['model']) && !empty($relation['model'])) {
                 $relatedModel = $relation['model'];
-                
+
                 // Siempre usa el namespace del módulo para los modelos, ya que la herramienta
                 // está diseñada para generarlos dentro de la estructura de módulos.
                 $relatedModelNamespace = "Modules\\{$this->moduleName}\\Models\\{$relatedModel}";
-                
+
                 $useStatements[] = "use {$relatedModelNamespace};";
             }
 
@@ -213,10 +215,10 @@ class ModelGenerator extends AbstractComponentGenerator
                 $relationClasses[] = "use " . self::RELATION_CLASS_NAMESPACE . $relationClassName . ";";
             }
         }
-        
+
         $allStatements = array_merge($useStatements, $relationClasses);
         $uniqueStatements = array_unique($allStatements);
-        
+
         // Retorna las sentencias 'use' ordenadas para una mejor legibilidad.
         sort($uniqueStatements);
 
@@ -237,18 +239,18 @@ class ModelGenerator extends AbstractComponentGenerator
     protected function getRelationsMethods(): string
     {
         $methods = [];
-        
+
         foreach ($this->relations as $relation) {
             $this->validateRelationConfig($relation);
 
             $methodName = $relation['name'];
             $relationType = $relation['type'];
-            
+
             $relatedModel = $relation['model'] ?? null;
 
             // Obtiene el nombre corto de la clase de relación
             $relationClassName = Str::studly($relationType);
-            
+
             $relationBody = '';
             switch ($relationType) {
                 case self::RELATION_TYPE_HAS_MANY:
@@ -278,7 +280,7 @@ class ModelGenerator extends AbstractComponentGenerator
                 default:
                     throw new InvalidArgumentException("Tipo de relación '{$relationType}' no reconocido para la relación '{$methodName}' en el componente '{$this->componentName}'.");
             }
-            
+
             $methodSignature = "public function {$methodName}(): " . ($relationType === self::RELATION_TYPE_MORPH_TO ? self::RELATION_CLASS_MORPH_TO_NAME : $relationClassName);
 
             $methods[] = "
@@ -290,10 +292,10 @@ class ModelGenerator extends AbstractComponentGenerator
                 {$relationBody}
             }";
         }
-        
+
         return implode("\n\n", $methods);
     }
-    
+
     /**
      * Valida la configuración de la relación.
      *
@@ -315,14 +317,14 @@ class ModelGenerator extends AbstractComponentGenerator
 
         // Validación para relaciones polimórficas que no requieren 'model'
         $polymorphicWithoutModel = [self::RELATION_TYPE_MORPH_TO];
-        
+
         // Validación de la presencia de 'model'
         if (!in_array($relationType, $polymorphicWithoutModel)) {
             if (!isset($relation['model']) || empty($relation['model'])) {
                 throw new InvalidArgumentException("La relación '{$relationName}' en el componente '{$this->componentName}' de tipo '{$relationType}' requiere un atributo 'model'. Por favor, revisa tu archivo de configuración JSON.");
             }
         }
-        
+
         // Validación específica para relaciones polimórficas que requieren 'morphName'
         $polymorphicWithMorphName = [self::RELATION_TYPE_MORPH_ONE, self::RELATION_TYPE_MORPH_MANY, self::RELATION_TYPE_MORPH_TO, self::RELATION_TYPE_MORPH_TO_MANY];
         if (in_array($relationType, $polymorphicWithMorphName)) {
@@ -416,7 +418,7 @@ class ModelGenerator extends AbstractComponentGenerator
         if (isset($relation['localKey'])) {
             $params[] = "'{$relation['localKey']}'";
         }
-        
+
         $eloquentMethod = Str::camel($relation['type']);
         return "return \$this->{$eloquentMethod}(" . implode(', ', $params) . ");";
     }
@@ -439,7 +441,7 @@ class ModelGenerator extends AbstractComponentGenerator
         if (isset($relation['localKey'])) {
             $params[] = "'{$relation['localKey']}'";
         }
-        
+
         $eloquentMethod = Str::camel($relation['type']);
         return "return \$this->{$eloquentMethod}(" . implode(', ', $params) . ");";
     }
@@ -454,7 +456,7 @@ class ModelGenerator extends AbstractComponentGenerator
     private function generateBelongsToMethodBody(array $relation, string $relatedModel): string
     {
         $params = ["{$relatedModel}::class"];
-        
+
         if (isset($relation['foreignKey'])) {
             $params[] = "'{$relation['foreignKey']}'";
         }
@@ -465,7 +467,7 @@ class ModelGenerator extends AbstractComponentGenerator
             }
             $params[] = "'{$relation['ownerKey']}'";
         }
-        
+
         $eloquentMethod = Str::camel($relation['type']);
         return "return \$this->{$eloquentMethod}(" . implode(', ', $params) . ");";
     }
@@ -480,7 +482,7 @@ class ModelGenerator extends AbstractComponentGenerator
     private function generateMorphOneMethodBody(array $relation, string $relatedModel): string
     {
         $params = ["{$relatedModel}::class", "'{$relation['morphName']}'"];
-        
+
         $eloquentMethod = Str::camel($relation['type']);
         return "return \$this->{$eloquentMethod}(" . implode(', ', $params) . ");";
     }
@@ -495,7 +497,7 @@ class ModelGenerator extends AbstractComponentGenerator
     private function generateMorphManyMethodBody(array $relation, string $relatedModel): string
     {
         $params = ["{$relatedModel}::class", "'{$relation['morphName']}'"];
-        
+
         $eloquentMethod = Str::camel($relation['type']);
         return "return \$this->{$eloquentMethod}(" . implode(', ', $params) . ");";
     }
@@ -520,7 +522,7 @@ class ModelGenerator extends AbstractComponentGenerator
         $eloquentMethod = Str::camel($relation['type']);
         return "return \$this->{$eloquentMethod}(" . implode(', ', $params) . ");";
     }
-    
+
     /**
      * Genera el cuerpo del método para la relación morphToMany.
      *
@@ -531,7 +533,7 @@ class ModelGenerator extends AbstractComponentGenerator
     private function generateMorphToManyMethodBody(array $relation, string $relatedModel): string
     {
         $params = ["{$relatedModel}::class", "'{$relation['morphName']}'"];
-        
+
         if (isset($relation['table'])) {
             $params[] = "'{$relation['table']}'";
         }

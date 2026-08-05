@@ -1,14 +1,82 @@
 name: Tests
 
+# El paquete declara soportar PHP 8.2+ y Laravel 11, 12 y 13. Hasta ahora el CI probaba UNA
+# combinación —PHP 8.3 con lo que resolviera composer—, así que las otras ocho eran una promesa sin
+# comprobar. Cada celda de esta matriz instala de verdad esa versión de Laravel y corre la suite.
+#
+# Y corre también en las ramas de trabajo, no solo en main: un fallo que aparece al abrir el PR
+# llega tarde, con el trabajo ya hecho.
+
 on:
   push:
-    branches: [main]
+    branches: [main, 'feat/**', 'fix/**']
   pull_request:
     branches: [main]
 
 jobs:
   pest:
     runs-on: ubuntu-latest
+
+    name: PHP ${{ matrix.php }} · Laravel ${{ matrix.laravel }}
+
+    strategy:
+      # Sin fail-fast: cuando algo se rompe en una versión concreta, lo que hay que saber es en
+      # cuáles pasa y en cuáles no. Cortar al primer rojo esconde justo ese dato.
+      fail-fast: false
+      matrix:
+        php: ['8.2', '8.3', '8.4']
+        laravel: ['11', '12', '13']
+        include:
+          - laravel: '11'
+            testbench: '^9.0'
+          - laravel: '12'
+            testbench: '^10.0'
+          - laravel: '13'
+            testbench: '^11.0'
+        exclude:
+          # Laravel 13 pide PHP 8.3 como mínimo.
+          - php: '8.2'
+            laravel: '13'
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup PHP ${{ matrix.php }}
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          coverage: none
+          tools: composer:v2
+
+      - name: Cache Composer dependencies
+        uses: actions/cache@v4
+        with:
+          # `vendor` queda FUERA de la caché a propósito. El paquete resuelve los stubs dando
+          # prioridad al override del proyecto sobre el suyo, y las pruebas que ejecutan
+          # `module-setup` publican esos stubs dentro del skeleton de Testbench, que vive en
+          # `vendor`. Cachearlo arrastraría esa copia de una corrida a la siguiente y la suite
+          # acabaría probando stubs viejos — que es exactamente lo que pasó en local (B19).
+          path: ~/.composer/cache/files
+          key: ${{ runner.os }}-php-${{ matrix.php }}-laravel-${{ matrix.laravel }}-${{ hashFiles('**/composer.json') }}
+          restore-keys: |
+            ${{ runner.os }}-php-${{ matrix.php }}-laravel-${{ matrix.laravel }}-
+
+      - name: Fijar la versión de Laravel de esta celda
+        run: composer require "orchestra/testbench:${{ matrix.testbench }}" --no-interaction --no-update --dev
+
+      - name: Install dependencies
+        run: composer update --prefer-dist --no-interaction --no-progress
+
+      - name: Qué versión quedó instalada
+        run: php -r "echo 'illuminate/support ' . \Composer\InstalledVersions::getPrettyVersion('illuminate/support') . PHP_EOL;"
+
+      - name: Run test suite
+        run: ./vendor/bin/pest --no-coverage
+
+  lint:
+    runs-on: ubuntu-latest
+    name: Lint · PSR-12 y strict_types
 
     steps:
       - name: Checkout
@@ -21,18 +89,14 @@ jobs:
           coverage: none
           tools: composer:v2
 
-      - name: Cache Composer dependencies
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.composer/cache/files
-            vendor
-          key: ${{ runner.os }}-php-8.3-composer-${{ hashFiles('**/composer.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-php-8.3-composer-
-
       - name: Install dependencies
         run: composer install --no-interaction --prefer-dist --no-progress
 
-      - name: Run test suite
-        run: ./vendor/bin/pest --no-coverage
+      - name: PSR-12
+        run: composer lint
+
+      # `lint:strict` existía en composer.json y el CI no lo ejecutaba nunca (A2 · A6). Y tal como
+      # estaba escrito tampoco habría servido: imprimía la lista de archivos sin `declare` y salía
+      # con código 0, así que un CI que lo llamara habría dado verde igual. Ahora falla.
+      - name: strict_types en todo src/
+        run: composer lint:strict

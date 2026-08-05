@@ -1,9 +1,10 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Innodite\LaravelModuleMaker\Generators\Components\Factory\Strategies;
 
 use Innodite\LaravelModuleMaker\Generators\Components\Factory\Contracts\AttributeValueStrategy;
- 
 
 class IntegerStrategy implements AttributeValueStrategy
 {

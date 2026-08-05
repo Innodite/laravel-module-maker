@@ -103,7 +103,7 @@ class ServiceGenerator extends AbstractComponentGenerator
             'namespace'                => $namespace,
             'serviceName'              => $serviceName,
             'serviceInterfaceName'     => $serviceInterfaceName,
-            'serviceInterfaceNamespace'=> $serviceInterfaceNamespace,
+            'serviceInterfaceNamespace' => $serviceInterfaceNamespace,
             'repositoryInterfaceName'  => $repositoryInterface,
             'repositoryInterfaceNamespace' => $repositoryInterfaceNs,
             'repositoryInstance'       => $repositoryInstance,

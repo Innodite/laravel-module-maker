@@ -114,7 +114,11 @@ class MakeModuleCommand extends Command
         try {
             // ── Paso 1: Generar estructura de archivos (Fases 1 & 2) ──────────
             $this->components->task('Creando estructura de archivos', function () use (
-                $moduleName, $contextKey, $functionality, $contextId, &$filesGenerated
+                $moduleName,
+                $contextKey,
+                $functionality,
+                $contextId,
+                &$filesGenerated
             ) {
                 (new ModuleGenerator($moduleName, true, null, $this))
                     ->createCleanModuleWithContext($contextKey, $functionality, $contextId);
@@ -126,7 +130,10 @@ class MakeModuleCommand extends Command
             // ── Paso 2: Inyectar rutas en el proyecto (Fase 3) ────────────────
             if (!$this->option('no-routes')) {
                 $this->components->task('Inyectando rutas en el proyecto', function () use (
-                    $contextKey, $moduleName, $contextId, $contextItem
+                    $contextKey,
+                    $moduleName,
+                    $contextId,
+                    $contextItem
                 ) {
                     $controllerFqcn = $this->buildControllerFqcn($moduleName, $contextItem);
 
@@ -155,7 +162,6 @@ class MakeModuleCommand extends Command
             ]);
 
             return Command::SUCCESS;
-
         } catch (Throwable $e) {
             $this->newLine();
             $this->components->error("Error: {$e->getMessage()}");
@@ -221,7 +227,9 @@ class MakeModuleCommand extends Command
 
         try {
             $this->components->task('Generando componentes', function () use (
-                $moduleName, $flags, $componentConfig
+                $moduleName,
+                $flags,
+                $componentConfig
             ) {
                 (new ModuleGenerator($moduleName, true, null, $this))
                     ->createIndividualComponents($flags, $componentConfig);
@@ -231,7 +239,10 @@ class MakeModuleCommand extends Command
             // Inyectar rutas si se generó un controller
             if (!$this->option('no-routes') && ($flags['controller'] ?? false)) {
                 $this->components->task('Inyectando rutas', function () use (
-                    $contextKey, $moduleName, $contextId, $contextItem
+                    $contextKey,
+                    $moduleName,
+                    $contextId,
+                    $contextItem
                 ) {
                     (new RouteInjectionService($this))->inject(
                         contextKey:     $contextKey,
@@ -245,7 +256,6 @@ class MakeModuleCommand extends Command
             }
 
             return Command::SUCCESS;
-
         } catch (Throwable $e) {
             $this->components->error($e->getMessage());
             return Command::FAILURE;
@@ -289,7 +299,6 @@ class MakeModuleCommand extends Command
             });
 
             return Command::SUCCESS;
-
         } catch (Throwable $e) {
             $this->components->error($e->getMessage());
             return Command::FAILURE;
@@ -404,24 +413,24 @@ class MakeModuleCommand extends Command
         // Coincidencia directa con clave de contexto
         if (isset($allContexts[$option])) {
             $item = $allContexts[$option];
-            
+
             if (!is_array($item)) {
                 throw new \InvalidArgumentException("Contexto '{$option}' tiene formato inválido.");
             }
-            
+
             // Detectar si es array asociativo (contexto único) vs array indexado (lista)
             $isAssociative = array_keys($item) !== range(0, count($item) - 1);
-            
+
             // Array asociativo → contexto único (central, shared, tenant_shared)
             if ($isAssociative) {
                 return [$option, $item];
             }
-            
+
             // Array indexado → múltiples variantes (ej. tenant)
             if (count($item) === 1) {
                 return [$option, $item[0]];
             }
-            
+
             // Múltiples variantes → preguntar cuál
             return $this->askVariant($option, $item);
         }
@@ -512,7 +521,7 @@ class MakeModuleCommand extends Command
 
     /**
      * Carga todos los contextos desde contexts.json.
-     * 
+     *
      * ARQUITECTURA HÍBRIDA:
      *   - central, shared, tenant_shared → objetos únicos (acceso directo)
      *   - tenant → array de objetos (múltiples instancias)

@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Innodite\LaravelModuleMaker\Generators\Components;
 
 use Illuminate\Support\Str;
@@ -19,7 +21,7 @@ class SeederGenerator extends AbstractComponentGenerator
     public function __construct(string $moduleName, string $modulePath, bool $isClean, string $seederName, array $componentConfig = [])
     {
         parent::__construct($moduleName, $modulePath, $isClean, $componentConfig);
-        
+
         $this->seederName = Str::studly($seederName);
         $this->modelName = $componentConfig['name'] ?? Str::studly(str_replace('Seeder', '', $this->seederName));
         $this->moduleName = Str::studly($moduleName);
@@ -46,7 +48,7 @@ class SeederGenerator extends AbstractComponentGenerator
             'namespace' => $this->buildNamespace('Database\\Seeders'),
             'seederName' => $this->seederName,
             'modelName' => $this->modelName,
-            'moduleName'=>$this->moduleName,
+            'moduleName' => $this->moduleName,
             'factoryCount' => self::DEFAULT_FACTORY_COUNT,
         ]);
 
