@@ -5,16 +5,15 @@ namespace Innodite\LaravelModuleMaker\Generators\Concerns;
 use Illuminate\Support\Facades\File;
 
 /**
- * Trait HasStubs — v3.1.0
+ * Trait HasStubs
  *
- * Resuelve stubs en orden de prioridad (de más específico a más genérico):
- *   1. {config_path}/stubs/contextual/{ContextFolder}/{stub}  — custom del proyecto, por contexto
- *   2. {config_path}/stubs/contextual/{stub}                  — custom del proyecto, genérico
- *   3. package/stubs/contextual/{ContextFolder}/{stub}         — paquete, por contexto
- *   4. package/stubs/contextual/{stub}                         — paquete, genérico (fallback)
+ * Resolves stubs from most specific to most generic:
+ *   1. {config_path}/stubs/contextual/{ContextFolder}/{stub}  — project override, per context
+ *   2. {config_path}/stubs/contextual/{stub}                  — project override, generic
+ *   3. package/stubs/contextual/{stub}                        — the package, single source of truth
  *
- * El ContextFolder se pasa como $contextFolder (ej: "Central", "Tenant/Shared").
- * $isClean y $context se mantienen por compatibilidad de firma.
+ * ContextFolder is passed as $contextFolder (e.g. "Central", "Tenant/Shared").
+ * $isClean and $context are kept for signature compatibility.
  */
 trait HasStubs
 {
@@ -57,14 +56,19 @@ trait HasStubs
      * Resuelve la ruta completa del archivo stub con resolución por carpeta de contexto.
      *
      * Orden de prioridad:
-     *   1. custom/{ContextFolder}/{stub}  — proyecto, específico por contexto
-     *   2. custom/{stub}                  — proyecto, genérico
-     *   3. package/{ContextFolder}/{stub} — paquete, específico por contexto
-     *   4. package/{stub}                 — paquete, genérico (fallback final)
+     *   1. custom/{ContextFolder}/{stub}  — project override, per context
+     *   2. custom/{stub}                  — project override, generic
+     *   3. package/{stub}                 — the package's single source of truth
      *
-     * @param  string       $stubFile       Nombre del archivo stub
-     * @param  bool         $isClean        Mantenido por compatibilidad
-     * @param  string|null  $contextFolder  Carpeta del contexto (ej: "Central", "Tenant/Shared")
+     * The package no longer ships per-context copies. It used to carry four of them
+     * (Central, Shared, TenantShared, TenantName), byte-for-byte identical to the base
+     * stub, and they took precedence over it: fixing a base stub without touching its
+     * four copies changed nothing, because the stale copy won. The context override
+     * still exists — but only where it can legitimately differ, in the project.
+     *
+     * @param  string       $stubFile       Stub file name
+     * @param  bool         $isClean        Kept for signature compatibility
+     * @param  string|null  $contextFolder  Context folder (e.g. "Central", "Tenant/Shared")
      * @return string
      */
     protected function getStubPath(string $stubFile, bool $isClean, ?string $contextFolder = null): string
@@ -74,21 +78,17 @@ trait HasStubs
 
         $folder = $this->normalizeContextFolder($contextFolder);
 
+        // 1. Project override, per context
         if ($folder) {
-            // 1. Custom del proyecto, específico por contexto
             $p = "{$customBase}/{$folder}/{$stubFile}";
-            if (File::exists($p)) return $p;
-
-            // 2. Paquete, específico por contexto
-            $p = "{$packageBase}/{$folder}/{$stubFile}";
             if (File::exists($p)) return $p;
         }
 
-        // 3. Custom del proyecto, genérico
+        // 2. Project override, generic
         $p = "{$customBase}/{$stubFile}";
         if (File::exists($p)) return $p;
 
-        // 4. Paquete, genérico (fallback final)
+        // 3. The package's single source of truth
         return "{$packageBase}/{$stubFile}";
     }
 
