@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Innodite\LaravelModuleMaker\Support;
 
+use Innodite\LaravelModuleMaker\Exceptions\ModeNotConfiguredException;
+
 /**
  * ModuleMode — what kind of application the package is generating for.
  *
@@ -27,15 +29,30 @@ enum ModuleMode: string
     case MultitenantPerTenant = 'multitenant-per-tenant';
 
     /**
-     * The configured mode, or the multi-tenant-per-tenant default the package was born with.
+     * The configured mode.
+     *
+     * Deliberately has no fallback. Every other missing setting can be guessed at;
+     * this one cannot, because the three modes are equally legitimate and the choice
+     * shapes every generated file. A generator that quietly picks one produces a
+     * module that looks right and is wrong where nobody looks — multiplied by every
+     * module of every project. Refusing to run costs one message; guessing costs a
+     * refactor.
+     *
+     * @throws ModeNotConfiguredException When the mode is absent or unknown
      */
     public static function current(): self
     {
         $configured = config('make-module.mode');
 
-        return is_string($configured)
-            ? (self::tryFrom($configured) ?? self::MultitenantPerTenant)
-            : self::MultitenantPerTenant;
+        if (! is_string($configured) || $configured === '') {
+            throw ModeNotConfiguredException::missing();
+        }
+
+        return self::tryFrom($configured)
+            ?? throw ModeNotConfiguredException::invalid(
+                $configured,
+                array_column(self::cases(), 'value')
+            );
     }
 
     /**

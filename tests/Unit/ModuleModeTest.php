@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use Innodite\LaravelModuleMaker\Exceptions\ModeNotConfiguredException;
 use Innodite\LaravelModuleMaker\Support\ModuleMode;
 
 /**
@@ -103,12 +104,40 @@ it('lee el modo de la configuración', function () {
     );
 });
 
-it('un modo desconocido no rompe la generación: cae al modo con el que nació el paquete', function () {
+it('sin modo elegido se niega a generar, y el error dice cómo elegirlo', function () {
+    config()->set('make-module.mode', null);
+
+    $message = null;
+
+    try {
+        ModuleMode::current();
+    } catch (ModeNotConfiguredException $e) {
+        $message = $e->getMessage();
+    }
+
+    expect($message)->not->toBeNull(
+        'Sin modo elegido, generar debe fallar. Un valor por defecto silencioso produce una '
+        . 'estructura equivocada multiplicada por cada módulo de cada proyecto.'
+    );
+
+    // R30: el mensaje trae la instrucción, no solo el diagnóstico.
+    expect($message)->toContain('innodite:module-setup');
+    expect($message)->toContain('single-app');
+    expect($message)->toContain('multitenant-shared');
+    expect($message)->toContain('multitenant-per-tenant');
+});
+
+it('un modo desconocido falla nombrando el valor mal escrito', function () {
     config()->set('make-module.mode', 'lo-que-sea');
 
-    expect(ModuleMode::current())->toBe(
-        ModuleMode::MultitenantPerTenant,
-        'Un valor inválido en configuración no debe reventar un comando de generación. '
-        . 'Revisa el tryFrom() de ModuleMode::current().'
-    );
+    $message = null;
+
+    try {
+        ModuleMode::current();
+    } catch (ModeNotConfiguredException $e) {
+        $message = $e->getMessage();
+    }
+
+    expect($message)->not->toBeNull('Un modo inválido no puede resolverse inventando otro.');
+    expect($message)->toContain("El modo 'lo-que-sea' no existe");
 });

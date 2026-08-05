@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Innodite\LaravelModuleMaker\Support;
 
 use Illuminate\Support\Facades\File;
-use Innodite\LaravelModuleMaker\Exceptions\ConnectionNotConfiguredException;
 use Innodite\LaravelModuleMaker\Exceptions\ContextNotFoundException;
 
 /**
@@ -233,38 +232,6 @@ class ContextResolver
     }
 
     /**
-     * Valida que todas las conexiones definidas en contexts.json
-     * existen en config/database.php.
-     *
-     * @return array<string, string>  Array asociativo [context_id => error_message]
-     */
-    public static function validateConnections(): array
-    {
-        $errors = [];
-        $allContexts = self::allItems();
-        $connections = array_keys(config('database.connections', []));
-
-        foreach ($allContexts as $context) {
-            $id = $context['id'] ?? null;
-            $connectionKey = $context['connection_key'] ?? null;
-
-            if ($connectionKey === null || $connectionKey === '') {
-                continue;
-            }
-
-            if (!in_array($connectionKey, $connections, true)) {
-                $errors[$id] = sprintf(
-                    "El contexto '%s' define connection_key='%s' pero no existe en config/database.php",
-                    $id,
-                    $connectionKey
-                );
-            }
-        }
-
-        return $errors;
-    }
-
-    /**
      * Carga el archivo contexts.json.
      *
      * @return array<string, mixed>
@@ -310,49 +277,6 @@ class ContextResolver
         }
 
         return __DIR__ . '/../../stubs/contexts.json';
-    }
-
-    /**
-     * Valida que la connection_key de un contexto exista en config/database.php.
-     *
-     * Contextos sin connection_key (shared, tenant_shared) son ignorados.
-     *
-     * Cuando todos los tenants comparten funcionalidad, un tenant NO declara conexión:
-     * la conmuta el paquete de tenancy al inicializar el contexto, y el aislamiento lo
-     * garantiza la ruta. Exigírsela ahí produce un modelo atado a un solo tenant.
-     * El contexto central sí la declara siempre, en cualquier modo.
-     *
-     * @param  string  $id  ID del contexto (ej: 'central', 'tenant-one')
-     * @return void
-     *
-     * @throws ConnectionNotConfiguredException Si la conexión no está registrada
-     */
-    public static function validateConnection(string $id): void
-    {
-        $context = self::find($id);
-
-        $mode = ModuleMode::current();
-
-        if ($id !== 'central' && ! $mode->requiresTenantConnectionKey()) {
-            return;
-        }
-
-        // Solo contextos con tenancy_strategy 'manual' requieren conexión explícita
-        if (($context['tenancy_strategy'] ?? null) !== 'manual') {
-            return;
-        }
-
-        $connectionKey = $context['connection_key'] ?? null;
-
-        if ($connectionKey === null || $connectionKey === '') {
-            return;
-        }
-
-        $connection = config("database.connections.{$connectionKey}");
-
-        if (!is_array($connection)) {
-            throw ConnectionNotConfiguredException::forContext($id, $connectionKey);
-        }
     }
 
     /**
