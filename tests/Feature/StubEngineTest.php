@@ -8,7 +8,7 @@ use Innodite\LaravelModuleMaker\Support\ModuleMode;
 use Innodite\LaravelModuleMaker\Support\StubPlaceholder;
 
 /**
- * Estas pruebas vigilan el motor de plantillas por los dos lados: que los 27 stubs del
+ * Estas pruebas vigilan el motor de plantillas por los dos lados: que todos los stubs del
  * paquete hablen el delimitador nuevo, y que lo que sale de un generador real no lleve
  * placeholders dentro.
  *
@@ -25,14 +25,14 @@ function packageStubs(): array
     return glob(dirname(__DIR__, 2) . '/stubs/contextual/*.stub') ?: [];
 }
 
-it('encuentra los 28 stubs del paquete', function () {
-    // La cuenta sube cuando el paquete aprende a generar una pieza nueva —el 28.º es
-    // `migrations-list.stub`, de la fase 2— y esa subida se hace **a propósito, aquí**. Lo que esta
-    // prueba vigila es lo otro: que no reaparezcan las copias por contexto que A4 borró, donde la
-    // copia le ganaba por prioridad al original corregido.
+it('encuentra los 29 stubs del paquete', function () {
+    // La cuenta sube cuando el paquete aprende a generar una pieza nueva —los dos últimos son
+    // `migrations-list.stub` e `inline-alters.stub`, de la fase 2— y esa subida se hace **a
+    // propósito, aquí**. Lo que esta prueba vigila es lo otro: que no reaparezcan las copias por
+    // contexto que A4 borró, donde la copia le ganaba por prioridad al original corregido.
     expect(packageStubs())->toHaveCount(
-        28,
-        'El paquete lleva 28 stubs, una sola copia de cada uno. Si aparecen más sin haber añadido '
+        29,
+        'El paquete lleva 29 stubs, una sola copia de cada uno. Si aparecen más sin haber añadido '
         . 'una pieza, alguien devolvió las copias por contexto; si aparecen menos, falta un stub.'
     );
 });

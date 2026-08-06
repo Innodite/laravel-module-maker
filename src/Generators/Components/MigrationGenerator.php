@@ -206,6 +206,44 @@ class MigrationGenerator extends AbstractComponentGenerator
             $stub,
             "Lista de migraciones creada: {$traitName}.php"
         );
+
+        $this->writeInlineAltersTrait($seederDir, $subFeature);
+    }
+
+    /**
+     * Escribe el trait `InlineAlters` — el segundo registro de R22b.
+     *
+     * La norma pide **una sola `_final` por tabla** con el esquema completo, para que una
+     * instalación nueva levante la tabla como está hoy sin replicar su historial. Pero un proyecto
+     * que ya desplegó esa tabla no puede recibir un `create` otra vez: necesita el **delta**. De ahí
+     * el doble registro — el mismo cambio escrito en los dos sitios.
+     *
+     * Nace **vacío**, y eso es lo correcto: un módulo recién generado no tiene cambios posteriores,
+     * su esquema entero está en la `_final`. Lo que sí lleva es la estructura y el patrón con
+     * guardia documentado dentro, para que el primer delta se escriba bien. Emitir deltas inventados
+     * sería B3 otra vez: una pieza que aparenta contenido y no hace nada.
+     *
+     * No se reescribe si ya existe: dentro vive código que escribió el desarrollador.
+     */
+    protected function writeInlineAltersTrait(string $seederDir, string $subFeature): void
+    {
+        $traitName = $this->prefixClass("{$this->moduleName}{$subFeature}") . 'InlineAlters';
+        $destino   = "{$seederDir}/{$traitName}.php";
+
+        if (File::exists($destino)) {
+            return;
+        }
+
+        $tableName = $this->tableName ?: Str::snake(Str::plural($this->migrationName));
+
+        $stub = $this->getStubContent('inline-alters.stub', $this->isClean, [
+            'namespace'  => $this->buildNamespace('Database\\Seeders'),
+            'traitName'  => $traitName,
+            'subFeature' => $subFeature,
+            'tableName'  => $tableName,
+        ]);
+
+        $this->putFile($destino, $stub, "Deltas de esquema creados: {$traitName}.php");
     }
 
     /**
