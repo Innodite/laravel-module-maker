@@ -64,3 +64,37 @@ it('los maestros viven en su propia carpeta dentro del contexto', function () {
         . 'subfuncionalidad. No son «una subfuncionalidad más».'
     );
 });
+
+it('la carpeta declarada resuelve también al maestro que la despliega', function () {
+    // Un escalón por encima de classFromPath(): el seeder de despliegue del proyecto tampoco nombra a
+    // sus hijos. La subfuncionalidad de la ruta se descarta porque el maestro es del MÓDULO, no de
+    // ella — y eso es justo lo que permite deduplicar dos rutas del mismo módulo sin razonar sobre
+    // módulos.
+    expect(SeederNames::masterFromPath('UserManagement/Central/Role', 'Stage'))->toBe(
+        'Modules\UserManagement\Database\Seeders\Central\Application\CentralUserManagementApplicationStageSeeder'
+    );
+
+    expect(SeederNames::masterFromPath('Invoice/Tenant/Shared/Invoice', 'Permissions'))->toBe(
+        'Modules\Invoice\Database\Seeders\Tenant\Shared\Application\TenantSharedInvoiceApplicationPermissionsSeeder'
+    );
+
+    // Sin eje de contexto: dos segmentos, y el nombre sin prefijo.
+    expect(SeederNames::masterFromPath('Invoice/Invoice', 'Production'))->toBe(
+        'Modules\Invoice\Database\Seeders\Application\InvoiceApplicationProductionSeeder'
+    );
+});
+
+it('dos subfuncionalidades del mismo módulo y contexto dan el mismo maestro', function () {
+    expect(SeederNames::masterFromPath('Invoice/Central/Invoice', 'Stage'))
+        ->toBe(SeederNames::masterFromPath('Invoice/Central/Payment', 'Stage'));
+});
+
+it('el seeder de despliegue del proyecto se llama igual lo pida quien lo pida', function () {
+    // Su nombre lo necesitan el instalador que lo escribe, el comando que lo invoca y el
+    // `DatabaseSeeder` que lo engancha. Tres cálculos del mismo nombre son tres sitios donde el día
+    // que cambie solo cambiarán dos.
+    expect(SeederNames::projectDeploySeeder())->toBe('InnoditeDeploySeeder')
+        ->and(SeederNames::projectDeploySeeder('central'))->toBe('InnoditeCentralDeploySeeder')
+        ->and(SeederNames::projectDeploySeeder('tenant'))->toBe('InnoditeTenantDeploySeeder')
+        ->and(SeederNames::projectDeploySeeder('tenant_shared'))->toBe('InnoditeTenantSharedDeploySeeder');
+});

@@ -25,17 +25,18 @@ function packageStubs(): array
     return glob(dirname(__DIR__, 2) . '/stubs/contextual/*.stub') ?: [];
 }
 
-it('encuentra los 32 stubs del paquete', function () {
+it('encuentra los 33 stubs del paquete', function () {
     // La cuenta sube cuando el paquete aprende a generar una pieza nueva —las últimas son las tres
-    // ejecutables de la subfuncionalidad, el trait de datos canónicos y los dos maestros de módulo,
-    // todas de la fase 3— y esa subida se hace **a propósito, aquí**. Y baja cuando una pieza deja de generarse: en esta misma
+    // ejecutables de la subfuncionalidad, el trait de datos canónicos, los dos maestros de módulo y
+    // el seeder de despliegue del proyecto, todas de la fase 3— y esa subida se hace **a propósito,
+    // aquí**. Y baja cuando una pieza deja de generarse: en esta misma
     // fase salieron `route-api.stub` y `route-web.stub` —el camino de single-app, que escribía rutas
     // sin un solo permiso— porque ese modo pasó a usar el mismo bloque que los contextos.
     // Lo que esta prueba vigila es lo otro: que no reaparezcan las copias por
     // contexto que A4 borró, donde la copia le ganaba por prioridad al original corregido.
     expect(packageStubs())->toHaveCount(
-        32,
-        'El paquete lleva 32 stubs, una sola copia de cada uno. Si aparecen más sin haber añadido '
+        33,
+        'El paquete lleva 33 stubs, una sola copia de cada uno. Si aparecen más sin haber añadido '
         . 'una pieza, alguien devolvió las copias por contexto; si aparecen menos, falta un stub.'
     );
 });

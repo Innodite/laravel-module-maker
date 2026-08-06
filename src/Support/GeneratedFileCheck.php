@@ -55,6 +55,14 @@ final class GeneratedFileCheck
      * That is the shape of every silent failure found in this package so far — B13, B15, the
      * marker of B14: not wrong logic, but two halves that stopped agreeing. Path and namespace
      * are exactly such a pair, so they get checked against each other.
+     *
+     * **Case is not part of the comparison, and that is deliberate.** A Laravel project's own
+     * seeders live in `database/seeders/` and declare `namespace Database\Seeders` — the
+     * framework's classmap convention, not PSR-4. Comparing case-sensitively would reject a file
+     * that is not only correct but written exactly as Laravel writes its own. What this question
+     * exists to catch survives the relaxation untouched: B17 declared
+     * `Modules\Permission\Database\Seeders` while landing in `Database/Seeders/Central/Permission`
+     * — a different path, not the same one in another case.
      */
     private static function assertNamespaceMatchesPath(string $path, string $content): void
     {
@@ -66,11 +74,15 @@ final class GeneratedFileCheck
             return;   // un archivo sin namespace no tiene nada que contradecir
         }
 
-        $expectedTail = str_replace('\\', '/', $found[1]);
-        $actualDir    = str_replace('\\', '/', dirname($path));
+        $expectedTail = strtolower(str_replace('\\', '/', $found[1]));
+        $actualDir    = strtolower(str_replace('\\', '/', dirname($path)));
 
         if (! str_ends_with($actualDir, $expectedTail)) {
-            throw GeneratedFileRejectedException::namespacePathMismatch($path, $found[1], $actualDir);
+            throw GeneratedFileRejectedException::namespacePathMismatch(
+                $path,
+                $found[1],
+                str_replace('\\', '/', dirname($path))
+            );
         }
     }
 

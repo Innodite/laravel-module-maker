@@ -6,6 +6,7 @@ namespace Innodite\LaravelModuleMaker\Commands;
 
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\File;
+use Innodite\LaravelModuleMaker\Generators\Components\ProjectDeploySeederGenerator;
 use Innodite\LaravelModuleMaker\Support\ModuleMode;
 
 /**
@@ -36,7 +37,7 @@ class SetupModuleMakerCommand extends Command
         // La norma dice que el modo se ELIGE AL INSTALAR, no que se teclee después en un archivo
         // de configuración. Y va primero porque decide la forma de todo lo demás: si se pregunta al
         // final, lo que ya se generó nació con la estructura de otro modo.
-        $this->configureMode();
+        $mode = $this->configureMode();
 
         // ── Carpeta de módulos ────────────────────────────────────────────────
         // Las rutas salen de la configuración, no de base_path(): son las MISMAS que leen los
@@ -56,8 +57,14 @@ class SetupModuleMakerCommand extends Command
         // ── contexts.json ─────────────────────────────────────────────────────
         $this->publishContextsJson($configPath);
 
+        // ── Seeders de despliegue del proyecto ────────────────────────────────
+        // Son del proyecto y no de un módulo —uno, o dos en multitenant—, así que se escriben al
+        // instalar: existen antes que el primer módulo, y `make-module` solo añade la entrada de
+        // cada subfuncionalidad al orden que estos leen.
+        $desplegadores = $this->publishDeploySeeders($mode);
+
         // ── DatabaseSeeder ────────────────────────────────────────────────────
-        $this->modifyDatabaseSeeder();
+        $this->modifyDatabaseSeeder($desplegadores);
 
         $this->newLine();
         $this->info("Configuración completa.");
@@ -76,7 +83,7 @@ class SetupModuleMakerCommand extends Command
      * Por eso no hay valor por defecto y por eso se pregunta aquí — adivinar produce una estructura
      * equivocada multiplicada por cada módulo del proyecto, y eso solo se descubre tarde.
      */
-    private function configureMode(): void
+    private function configureMode(): ?ModuleMode
     {
         $mode = $this->resolveMode();
 
@@ -84,12 +91,14 @@ class SetupModuleMakerCommand extends Command
             $this->warn('Sin modo elegido no se genera nada, así que este paso no se puede omitir.');
             $this->line('  Vuelve a ejecutar el comando, o pásalo directo: <comment>--mode=single-app</comment>');
 
-            return;
+            return null;
         }
 
         $this->line("  Modo elegido: <comment>{$mode->label()}</comment>");
 
         $this->persistMode($mode);
+
+        return $mode;
     }
 
     /** @return ModuleMode|null  null si no se pudo determinar y no hay con quién hablar */
@@ -240,47 +249,96 @@ class SetupModuleMakerCommand extends Command
     }
 
     /**
-     * Modifica el DatabaseSeeder.php del proyecto para incluir los seeders de módulos.
+     * Escribe los seeders de despliegue del proyecto y devuelve sus nombres de clase.
      *
-     * @return void
+     * Sin modo elegido no se escribe ninguno: la forma del despliegue depende del modo —uno en una
+     * aplicación única, dos en multitenant—, y escribir el que no era deja al proyecto con un archivo
+     * que no se sobreescribe nunca.
+     *
+     * **El modo llega por parámetro, no se relee de la configuración.** Acaba de escribirse en el
+     * `.env`, y el `.env` se lee al arrancar: preguntarle a `ModuleMode::current()` en esta misma
+     * ejecución devolvería el valor anterior —o ninguno, en una instalación nueva—, y el instalador
+     * escribiría el despliegue de otro modo justo el día que se elige.
+     *
+     * @return array<int, string>
      */
-    protected function modifyDatabaseSeeder(): void
+    protected function publishDeploySeeders(?ModuleMode $mode): array
     {
+        if ($mode === null) {
+            $this->warn('   Sin modo elegido no se escriben los seeders de despliegue.');
+            $this->line('   Elige el modo y vuelve a ejecutar este comando.');
+
+            return [];
+        }
+
+        return (new ProjectDeploySeederGenerator($mode, $this))->generate();
+    }
+
+    /**
+     * Engancha los seeders de despliegue al `DatabaseSeeder.php` del proyecto.
+     *
+     * No hace falta importarlos: viven en `database/seeders/`, el mismo namespace que el propio
+     * `DatabaseSeeder`.
+     *
+     * **En multitenant se engancha solo el central**, y eso es a propósito. `db:seed` corre contra
+     * una base de datos; el despliegue de un tenant se ejecuta **una vez por tenant**, dentro del
+     * contexto de cada uno, y eso lo orquesta el paquete de tenancy del proyecto, no un `call()` en
+     * un archivo. Enganchar aquí el de tenant lo lanzaría contra la base central.
+     *
+     * @param  array<int, string>  $desplegadores
+     */
+    protected function modifyDatabaseSeeder(array $desplegadores): void
+    {
+        if ($desplegadores === []) {
+            return;
+        }
+
+        $principal = $desplegadores[0];
+        $callLine  = "        \$this->call({$principal}::class);";
+
         $seederPath = database_path('seeders/DatabaseSeeder.php');
 
-        if (!File::exists($seederPath)) {
-            $this->warn("   DatabaseSeeder.php no encontrado. Asegúrate de que el proyecto está inicializado.");
+        if (! File::exists($seederPath)) {
+            $this->warn('   No hay database/seeders/DatabaseSeeder.php, así que no se enganchó nada.');
+            $this->line("   Añade esta línea dentro de su run():  <comment>{$callLine}</comment>");
+
             return;
         }
 
         $seederContent = File::get($seederPath);
-        $callLine      = "        \$this->call(InnoditeModuleSeeder::class);";
-        $useStatement  = "use Innodite\\LaravelModuleMaker\\Database\\Seeders\\InnoditeModuleSeeder;";
 
-        if (str_contains($seederContent, $useStatement) && str_contains($seederContent, $callLine)) {
-            $this->warn("   DatabaseSeeder.php ya está configurado. No se realizaron cambios.");
+        if (str_contains($seederContent, "{$principal}::class")) {
+            $this->warn('   DatabaseSeeder.php ya llama al despliegue. No se realizaron cambios.');
+
             return;
         }
 
-        if (!str_contains($seederContent, $useStatement)) {
-            $seederContent = str_replace(
-                "use Illuminate\\Database\\Seeder;",
-                "use Illuminate\\Database\\Seeder;\n{$useStatement}",
-                $seederContent
-            );
+        if (str_contains($seederContent, 'InnoditeModuleSeeder')) {
+            // El enganche de la v3: recorría Modules/*/Database/Seeders/ por orden alfabético del
+            // sistema de archivos. En la v4 los seeders viven un par de carpetas más adentro y el
+            // orden lo declara el desarrollador, así que ahí ya no encontraba nada.
+            $this->warn('   DatabaseSeeder.php llama a InnoditeModuleSeeder, que ya no existe.');
+            $this->line('   Quita esa línea y su import; el despliegue lo hace ahora '
+                . "<comment>{$principal}</comment>.");
         }
 
-        if (!str_contains($seederContent, $callLine)) {
-            $comment       = "        // Generado por LaravelModuleMaker — ejecuta seeders de todos los módulos";
-            $seederContent = str_replace(
-                "public function run(): void\n    {\n",
-                "public function run(): void\n    {\n{$comment}\n{$callLine}\n",
-                $seederContent
-            );
+        $comment  = '        // Despliegue del proyecto: esquema, datos y permisos, en el orden'
+            . ' declarado en config/make-module.php';
+        $anclaje  = "public function run(): void\n    {\n";
+        $reemplazo = "{$anclaje}{$comment}\n{$callLine}\n";
+
+        if (! str_contains($seederContent, $anclaje)) {
+            // A15: nunca se anuncia un éxito que no ocurrió. El run() del proyecto puede estar escrito
+            // de otra forma —sin tipo de retorno, con atributos encima—, y ahí el reemplazo no encaja.
+            $this->warn('   No reconocí el run() de DatabaseSeeder.php, así que no se tocó.');
+            $this->line("   Añade esta línea dentro de su run():  <comment>{$callLine}</comment>");
+
+            return;
         }
 
-        File::put($seederPath, $seederContent);
-        $this->info("✅ DatabaseSeeder.php modificado para incluir los seeders de módulos.");
+        File::put($seederPath, str_replace($anclaje, $reemplazo, $seederContent));
+
+        $this->info("✅ DatabaseSeeder.php llama ahora a {$principal}.");
     }
 
     /**

@@ -145,6 +145,77 @@ final class SeederNames
     }
 
     /**
+     * El **maestro** que corresponde a una ruta de despliegue — un escalón por encima de `classFromPath()`.
+     *
+     * `'UserManagement/Central/Role'` + `'Stage'` →
+     * `Modules\UserManagement\Database\Seeders\Central\Application\CentralUserManagementApplicationStageSeeder`
+     *
+     * Existe por la misma razón que su hermana, un nivel más arriba: el seeder de despliegue del
+     * proyecto **tampoco nombra a sus hijos**. Deriva cada maestro de la carpeta declarada más su
+     * propia pieza, así que un despliegue de producción no puede invocar el maestro de stage — el que
+     * reconstruye desde cero. Y como la carpeta es la misma que declara el orden, no hay un segundo
+     * listado de módulos que pueda quedarse atrás cuando aparezca el siguiente.
+     *
+     * La subfuncionalidad de la ruta se **descarta** a propósito: un maestro es del módulo y del
+     * contexto, no de una subfuncionalidad. Dos rutas del mismo módulo y contexto resuelven al mismo
+     * maestro, que es exactamente lo que permite deduplicarlas sin razonar sobre módulos.
+     *
+     * @param  string  $path   'Modulo/Contexto/SubFuncionalidad' — el contexto puede faltar (single-app)
+     * @param  string  $piece  Una de RUNNABLE
+     *
+     * @throws InvalidArgumentException Si la ruta no tiene al menos módulo y subfuncionalidad.
+     */
+    public static function masterFromPath(string $path, string $piece): string
+    {
+        $segmentos = array_values(array_filter(
+            explode('/', str_replace('\\', '/', trim($path))),
+            static fn (string $segmento): bool => $segmento !== ''
+        ));
+
+        if (count($segmentos) < 2) {
+            throw new InvalidArgumentException(
+                "'{$path}' no nombra una subfuncionalidad.\n"
+                . "Se espera 'Modulo/Contexto/SubFuncionalidad' —o 'Modulo/SubFuncionalidad' donde no "
+                . 'hay eje de contexto—, que es de donde sale el módulo y el contexto de su maestro.'
+            );
+        }
+
+        $module = array_shift($segmentos);
+        array_pop($segmentos);      // la subfuncionalidad: el maestro es del módulo, no de ella
+        $contexto = $segmentos;
+
+        $namespace = 'Modules\\' . $module . '\\Database\\Seeders'
+            . ($contexto === [] ? '' : '\\' . implode('\\', $contexto))
+            . '\\' . self::MASTER_FOLDER;
+
+        return $namespace . '\\' . self::masterFor(implode('', $contexto), $module, $piece);
+    }
+
+    /**
+     * El seeder de despliegue **del proyecto** que cubre un despliegue.
+     *
+     * `null` → `InnoditeDeploySeeder` · `'central'` → `InnoditeCentralDeploySeeder`
+     *
+     * Es del proyecto y no de un módulo: lo escribe el instalador, vive en `database/seeders/` y es
+     * quien lee el orden de despliegue **de punta a punta** —cada maestro lee solo lo suyo—. Su
+     * nombre está aquí, y no repartido entre el instalador, el comando y las pruebas, por lo de
+     * siempre: tres sitios calculando el mismo nombre son tres sitios donde el día que cambie solo
+     * cambiarán dos.
+     *
+     * @param  string|null  $deployKey  'central', 'tenant'… o `null` donde no hay eje de contexto
+     */
+    public static function projectDeploySeeder(?string $deployKey = null): string
+    {
+        if ($deployKey === null || trim($deployKey) === '') {
+            return 'InnoditeDeploySeeder';
+        }
+
+        $studly = str_replace(' ', '', ucwords(str_replace(['-', '_'], ' ', trim($deployKey))));
+
+        return "Innodite{$studly}DeploySeeder";
+    }
+
+    /**
      * Los 3 maestros del módulo en un contexto.
      *
      * @return array<int, string>

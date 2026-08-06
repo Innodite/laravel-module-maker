@@ -27,6 +27,7 @@ abstract class TestCase extends Orchestra
         File::ensureDirectoryExists("{$this->tempBase}/Modules");
         File::ensureDirectoryExists("{$this->tempBase}/module-maker-config");
         File::ensureDirectoryExists("{$this->tempBase}/routes");
+        File::ensureDirectoryExists("{$this->tempBase}/database/seeders");
 
         // Publicar contexts.json de ejemplo al directorio temporal
         $contextSource = dirname(__DIR__) . '/stubs/contexts.json';
@@ -74,6 +75,14 @@ abstract class TestCase extends Orchestra
         // en el repositorio. Apuntando al temporal, el nivel 2 nunca existe salvo que una prueba lo
         // cree a propósito, y cada prueba nace con el árbol vacío.
         $app['config']->set('make-module.stubs.path',    $this->tempBase . '/module-maker-config/stubs');
+
+        // Y la carpeta `database/` también al temporal, por la misma razón y con una consecuencia
+        // peor: desde la fase 3 el instalador escribe ahí los seeders de despliegue del proyecto y
+        // engancha el `DatabaseSeeder`. Sin esto, cada corrida de la suite modificaría el skeleton de
+        // Testbench dentro de `vendor/` — un archivo que sobrevive a la prueba, no aparece en el
+        // repositorio y, como el generador no sobreescribe, dejaría a las corridas siguientes
+        // midiendo el archivo de la primera.
+        $app->useDatabasePath($this->tempBase . '/database');
 
         // El modo se declara aquí porque sin modo el paquete se niega a generar, y eso es
         // deliberado. Se fija `multitenant-per-tenant` porque es el escenario que describe el

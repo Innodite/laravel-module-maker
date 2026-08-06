@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\Route;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Innodite\LaravelModuleMaker\Commands\AddEntityCommand;
 use Innodite\LaravelModuleMaker\Commands\CheckEnvCommand;
+use Innodite\LaravelModuleMaker\Commands\DeployCommand;
 use Innodite\LaravelModuleMaker\Commands\MakeModuleCommand;
 use Innodite\LaravelModuleMaker\Commands\MigrateOneCommand;
 use Innodite\LaravelModuleMaker\Commands\MigratePlanCommand;
@@ -22,7 +23,6 @@ use Innodite\LaravelModuleMaker\Commands\TestModuleCommand;
 use Innodite\LaravelModuleMaker\Commands\TestSyncCommand;
 use Innodite\LaravelModuleMaker\Middleware\InnoditeContextBridge;
 use Illuminate\Support\Str;
-use Innodite\LaravelModuleMaker\Database\Seeders\InnoditeModuleSeeder;
 
 class LaravelModuleMakerServiceProvider extends ServiceProvider
 {
@@ -36,24 +36,11 @@ class LaravelModuleMakerServiceProvider extends ServiceProvider
         // Alias del middleware para uso en rutas: Route::middleware('innodite.bridge')
         $this->app['router']->aliasMiddleware('innodite.bridge', InnoditeContextBridge::class);
 
-        $this->app->singleton('innodite.module_seeder', function ($app) {
-            $modulesPath      = base_path('Modules');
-            $allModuleSeeders = [];
-
-            if (File::exists($modulesPath)) {
-                foreach (File::directories($modulesPath) as $modulePath) {
-                    $moduleName   = Str::studly(basename($modulePath));
-                    $seederClass  = "Modules\\{$moduleName}\\Database\\Seeders\\{$moduleName}DatabaseSeeder";
-                    if (class_exists($seederClass)) {
-                        $allModuleSeeders[] = $seederClass;
-                    }
-                }
-            }
-
-            $seeder = new InnoditeModuleSeeder();
-            $seeder->setModuleSeeders($allModuleSeeders);
-            return $seeder;
-        });
+        // Aquí vivía el singleton `innodite.module_seeder` (B27). Construía un InnoditeModuleSeeder
+        // y le llamaba a setModuleSeeders() — un método que esa clase nunca tuvo—, así que resolverlo
+        // era un fatal. No lo resolvía nadie: por eso llevaba desde la v3 sin dar un solo síntoma.
+        // Su trabajo lo hace ahora el seeder de despliegue del proyecto, que además lee el orden
+        // declarado en vez de recorrer el disco por orden alfabético.
     }
 
     public function boot(): void
@@ -66,6 +53,7 @@ class LaravelModuleMakerServiceProvider extends ServiceProvider
                 MigratePlanCommand::class,
                 MigrationSyncCommand::class,
                 SeedOneCommand::class,
+                DeployCommand::class,
                 ModuleCheckCommand::class,
                 SetupModuleMakerCommand::class,
                 PublishFrontendCommand::class,
