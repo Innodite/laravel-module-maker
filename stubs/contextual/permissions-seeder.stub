@@ -1,0 +1,190 @@
+<?php
+
+declare(strict_types=1);
+
+namespace {{{ namespace }}};
+
+use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
+use Innodite\LaravelModuleMaker\Traits\ReportsSeederErrors;
+
+/**
+ * Permisos de {{{ subFeature }}} — los de ruta y los de vista, en un solo sitio.
+ *
+ * **Los emite el paquete a partir de las rutas y de la interfaz que él mismo genera**, así que los
+ * dos conjuntos no pueden separarse: el `->middleware()` de cada ruta y el `can()` de cada botón
+ * salen del mismo cálculo que esta lista. Cuando se separaron, la pantalla generada cargaba perfecta
+ * y sin un solo botón, para todo el mundo, sin error ni registro en ningún log.
+ *
+ * **Las dos protecciones son independientes (R20).** El permiso de ruta protege el servicio; el de
+ * vista, el elemento visual. Ocultar el botón no protege el endpoint, y proteger el endpoint no
+ * limpia la pantalla: por eso se crean los dos y nunca son el mismo.
+ *
+ * **No destructivo por defecto (R24).** La firma es `run(bool $destructive = false)`: sin pedirlo,
+ * nada se borra —`updateOrInsert` sobre lo que ya está— y **las asignaciones a roles hechas a mano
+ * sobreviven**, que es lo que de verdad se pierde cuando un seeder de permisos borra y recrea. Lo
+ * pide el Stage cuando se lanza con `SEEDER_DESTRUCTIVE=true`; el de producción lo fuerza a `false`.
+ *
+ * **Aquí no se asigna ningún rol.** El rol de webmaster recoge **todos** los permisos de forma
+ * dinámica, de modo que un módulo nuevo queda cubierto sin tocar nada; y los demás roles los define
+ * el proyecto, no el generador (R25).
+ *
+ * Se escribe contra las tablas y no contra las clases del paquete de permisos: así el seeder
+ * funciona igual con Spatie instalado que con una implementación propia, siempre que las tablas
+ * sigan la misma convención.
+ */
+class {{{ seederName }}} extends Seeder
+{
+    use ReportsSeederErrors;
+
+    /** La conexión donde viven los permisos. `null` es la de por defecto. */
+    protected ?string $connection = {{{ connection }}};
+
+    /** El guard de estos permisos; el `web` de la sesión, que es donde viven las rutas generadas. */
+    protected string $guard = 'web';
+
+    /** El grupo con el que la interfaz de permisos agrupa esta subfuncionalidad. */
+    protected string $moduleLabel = '{{{ moduleLabel }}}';
+
+    public function run(bool $destructive = false): void
+    {
+        $this->say("\n🔐 {{{ seederName }}} — " . ($destructive ? 'recreando' : 'actualizando') . " permisos\n");
+
+        if (! Schema::connection($this->connection)->hasTable('permissions')) {
+            $this->say(
+                '   ⚠️  No existe la tabla `permissions`: instala el paquete de permisos y ejecuta '
+                . 'sus migraciones antes de sembrar. Se omite este paso.',
+                'warn'
+            );
+
+            return;
+        }
+
+        if ($destructive) {
+            $this->safe('deleteOwnPermissions', fn () => $this->deleteOwnPermissions());
+        }
+
+        $this->safe('upsertPermissions', fn () => $this->upsertPermissions());
+        $this->safe('forgetCachedPermissions', fn () => $this->forgetCachedPermissions());
+
+        $this->reportErrors();
+
+        $this->say('   ✅ ' . count($this->permissions()) . " permisos de {{{ subFeature }}} al día.\n");
+    }
+
+    /**
+     * Todos los permisos de esta subfuncionalidad: uno por ruta y uno por acción de la interfaz.
+     *
+     * **Ninguno se comparte con otro (R16)**, ni siquiera los de la pantalla y su listado, porque
+     * cada `description` tiene que poder decir qué cosa concreta habilita: es lo único que ve quien
+     * asigna permisos a un rol, y un permiso que sirve para dos cosas ya no se puede explicar.
+     *
+     * @return array<int, array{name: string, description: string, module: string}>
+     */
+    public function permissions(): array
+    {
+        return [{{{ permissions }}}];
+    }
+
+    /**
+     * Borra **solo los suyos**, uno por uno y por nombre exacto.
+     *
+     * Ni un `like` por prefijo: `invoice_` también alcanza a `invoice_lines_index`, que es de otra
+     * subfuncionalidad y de otro seeder. Borrar por la lista propia no puede pasarse de largo.
+     */
+    protected function deleteOwnPermissions(): void
+    {
+        $nombres = array_column($this->permissions(), 'name');
+        $db      = DB::connection($this->connection);
+
+        $ids = $db->table('permissions')
+            ->whereIn('name', $nombres)
+            ->where('guard_name', $this->guard)
+            ->pluck('id');
+
+        if ($ids->isEmpty()) {
+            return;
+        }
+
+        if (Schema::connection($this->connection)->hasTable('role_has_permissions')) {
+            $db->table('role_has_permissions')->whereIn('permission_id', $ids)->delete();
+        }
+
+        $db->table('permissions')->whereIn('id', $ids)->delete();
+
+        $this->say('   🗑️  ' . $ids->count() . ' permisos borrados (modo destructivo).');
+    }
+
+    /**
+     * Inserta los que faltan y actualiza los que ya están — sin tocar nada más.
+     *
+     * `description` y `module_id` se escriben **si la tabla los tiene**: son de la convención de la
+     * casa, no del paquete de permisos, y un proyecto que no los lleve debe poder sembrar igual.
+     */
+    protected function upsertPermissions(): void
+    {
+        $schema     = Schema::connection($this->connection);
+        $tieneDesc  = $schema->hasColumn('permissions', 'description');
+        $tieneModId = $schema->hasColumn('permissions', 'module_id');
+        $moduleId   = $tieneModId ? $this->resolveModuleId() : null;
+        $ahora      = now();
+
+        foreach ($this->permissions() as $permiso) {
+            $valores = ['updated_at' => $ahora];
+
+            if ($tieneDesc) {
+                $valores['description'] = $permiso['description'];
+            }
+
+            if ($tieneModId && $moduleId !== null) {
+                $valores['module_id'] = $moduleId;
+            }
+
+            DB::connection($this->connection)->table('permissions')->updateOrInsert(
+                ['name' => $permiso['name'], 'guard_name' => $this->guard],
+                $valores + ['created_at' => $ahora],
+            );
+        }
+    }
+
+    /**
+     * El grupo bajo el que la interfaz muestra estos permisos, creado si aún no existe.
+     *
+     * Es lo que convierte una lista plana de doscientas claves en un bloque por funcionalidad con
+     * una pestaña por subfuncionalidad (R21).
+     */
+    protected function resolveModuleId(): ?int
+    {
+        if (! Schema::connection($this->connection)->hasTable('modules')) {
+            return null;
+        }
+
+        $db = DB::connection($this->connection);
+
+        $db->table('modules')->updateOrInsert(
+            ['name' => $this->moduleLabel],
+            ['updated_at' => now(), 'created_at' => now()],
+        );
+
+        $id = $db->table('modules')->where('name', $this->moduleLabel)->value('id');
+
+        return $id === null ? null : (int) $id;
+    }
+
+    /**
+     * Vacía la caché de permisos, si el paquete que la mantiene está instalado.
+     *
+     * Sin esto los permisos existen en la base de datos y la aplicación sigue respondiendo con los
+     * de antes hasta que la caché expire: el síntoma es un 403 a alguien que sí tiene el permiso, y
+     * es de los que se persiguen durante horas.
+     */
+    protected function forgetCachedPermissions(): void
+    {
+        $registrar = 'Spatie\\Permission\\PermissionRegistrar';
+
+        if (class_exists($registrar)) {
+            app($registrar)->forgetCachedPermissions();
+        }
+    }
+}

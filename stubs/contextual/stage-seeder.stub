@@ -1,0 +1,143 @@
+<?php
+
+declare(strict_types=1);
+
+namespace {{{ namespace }}};
+
+use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
+use Innodite\LaravelModuleMaker\Traits\ReportsSeederErrors;
+use Innodite\LaravelModuleMaker\Traits\ResolvesSeederDestructiveMode;
+use RuntimeException;
+
+/**
+ * Stage de {{{ subFeature }}} — el seeder de desarrollo y QA.
+ *
+ * **Un comando levanta la subfuncionalidad entera**: crea el esquema, aplica los cambios
+ * posteriores, valida que las tablas están, siembra los datos canónicos y crea los permisos. Nadie
+ * ejecuta `migrate` a mano — el vehículo del despliegue es el seeder (R22).
+ *
+ *     php artisan db:seed --class="{{{ seederName }}}"
+ *
+ * **Por defecto NO borra nada.** Sin `SEEDER_DESTRUCTIVE` se comporta igual que el de producción:
+ * migra, aplica los deltas y hace upsert. La reconstrucción desde cero se pide a propósito:
+ *
+ *     SEEDER_DESTRUCTIVE=true php artisan db:seed --class="{{{ seederName }}}"
+ *
+ * **Idempotente en los dos modos**: correrlo N veces deja el mismo estado. Lo consiguen las guardias
+ * de las migraciones y los deltas, y el upsert de los datos; no un `try/catch` que oculte los fallos.
+ *
+ * **El orden de los pasos es el que se lee abajo, y ese sí se toca aquí.** Añadir un paso propio es
+ * añadir una línea `safe('nombre', …)` en su sitio: si revienta, se anota y la ejecución sigue, así
+ * que al terminar se ve la lista completa de lo que hay que arreglar y no solo el primer fallo.
+ */
+class {{{ seederName }}} extends Seeder
+{
+    use {{{ migrationsListTrait }}};
+    use {{{ inlineAltersTrait }}};
+    use {{{ dataTrait }}};
+    use ReportsSeederErrors;
+    use ResolvesSeederDestructiveMode;
+
+    /**
+     * La conexión sobre la que opera esta subfuncionalidad.
+     *
+     * `null` significa la conexión por defecto de la aplicación, que es lo correcto donde no hay
+     * nada que conmutar. En el contexto de un inquilino la conmuta el propio paquete de tenancy al
+     * inicializarlo, y nombrarla aquí ataría el seeder a un solo inquilino.
+     */
+    protected ?string $connection = {{{ connection }}};
+
+    /**
+     * Las tablas de esta subfuncionalidad, **de dependiente a padre**.
+     *
+     * Ese orden es el del truncado: una tabla con clave foránea se vacía antes que aquella a la que
+     * apunta. Se usan además para comprobar, después de migrar, que el esquema quedó en pie.
+     *
+     * ⛔ Aquí no van tablas de **configuración productiva** —las que llena el usuario: metas, días
+     * laborables, branding— ni históricos de auditoría. Esas no se recargan: para ellas solo existe
+     * el upsert, nunca el reset.
+     *
+     * @var array<int, string>
+     */
+    protected array $tables = [{{{ tables }}}];
+
+    public function run(): void
+    {
+        $modo = $this->isDestructive() ? 'DESTRUCTIVO — se recargan los datos' : 'no destructivo';
+
+        $this->say("\n🚀 {{{ seederName }}} — modo stage ({$modo})\n");
+
+        // El esquema primero: las dos mitades de R22b, la creación y los deltas con guardia.
+        $this->safe('runMigrations', fn () => $this->runMigrations());
+        $this->safe('runInlineAlters', fn () => $this->runInlineAlters());
+        $this->safe('validateTables', fn () => $this->validateTables());
+
+        if ($this->isDestructive()) {
+            // Se pidió a propósito: vaciar y recargar. Solo estas tablas, solo aquí.
+            $this->safe('truncateTables', fn () => $this->truncateTables());
+            $this->safe('seedCanonicalData', fn () => $this->seedCanonicalData());
+        } else {
+            // El camino de siempre: merge sin destruir, idéntico al de producción.
+            $this->safe('upsertCanonicalData', fn () => $this->upsertCanonicalData());
+        }
+
+        // Los permisos heredan el modo: si no se pidió borrar, tampoco se borran allí.
+        $this->safe('seedPermissions', fn () => $this->callWith(
+            {{{ permissionsSeeder }}}::class,
+            ['destructive' => $this->isDestructive()],
+        ));
+
+        $this->reportErrors();
+
+        $this->say("\n✅ {{{ seederName }}} completado.\n");
+    }
+
+    /**
+     * Después de migrar, las tablas tienen que estar.
+     *
+     * Sin esta comprobación, una migración que no llegó a ejecutarse se descubre más tarde y en otro
+     * sitio: en el `insert` que no encuentra la tabla, o peor, en la pantalla vacía de un usuario.
+     */
+    protected function validateTables(): void
+    {
+        $schema   = Schema::connection($this->connection);
+        $ausentes = array_values(array_filter(
+            $this->tables,
+            static fn (string $tabla): bool => ! $schema->hasTable($tabla),
+        ));
+
+        if ($ausentes !== []) {
+            throw new RuntimeException(
+                'Faltan tablas de {{{ subFeature }}} después de migrar: ' . implode(', ', $ausentes)
+                . '. Revisa la lista de migraciones de esta subfuncionalidad.'
+            );
+        }
+    }
+
+    /**
+     * Vacía las tablas de esta subfuncionalidad — **solo** en modo destructivo.
+     *
+     * Se desactivan las claves foráneas durante el vaciado porque el orden correcto no siempre
+     * existe: dos tablas que se apuntan entre sí no tienen ninguno.
+     */
+    protected function truncateTables(): void
+    {
+        $conexion = DB::connection($this->connection);
+
+        $conexion->statement('SET FOREIGN_KEY_CHECKS=0');
+
+        foreach ($this->tables as $tabla) {
+            if (! Schema::connection($this->connection)->hasTable($tabla)) {
+                continue;
+            }
+
+            $conexion->table($tabla)->truncate();
+
+            $this->say("   🗑️  {$tabla}: vaciada (modo destructivo).");
+        }
+
+        $conexion->statement('SET FOREIGN_KEY_CHECKS=1');
+    }
+}
