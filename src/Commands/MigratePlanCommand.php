@@ -37,7 +37,21 @@ class MigratePlanCommand extends Command
             return self::FAILURE;
         }
 
-        $migrations = $plan['migrations'];
+        // Las migraciones salen de los traits `MigrationsList` (P2): el orden vive en código, dentro
+        // del módulo, no en un JSON que se queda atrás cuando alguien copia el módulo a otro
+        // proyecto. El manifiesto solo se usa ya para la lista de **seeders**, que es lo que decide
+        // la fase 3 con los comandos de despliegue; ahí desaparece del todo.
+        $migrations = $resolver->migrationsFromTraits();
+
+        if ($migrations === [] && $plan['migrations'] !== []) {
+            $this->components->warn(
+                'No se encontró ningún trait MigrationsList, así que se usa la lista del manifiesto. '
+                . 'Esa lista está obsoleta: regenera los módulos para que su orden viaje con ellos.'
+            );
+
+            $migrations = $plan['migrations'];
+        }
+
         $seeders = $plan['seeders'];
 
         try {
