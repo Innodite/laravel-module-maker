@@ -6,6 +6,8 @@ namespace Innodite\LaravelModuleMaker\Generators\Components;
 
 use Illuminate\Support\Str;
 use Innodite\LaravelModuleMaker\Support\ContextResolver;
+use Innodite\LaravelModuleMaker\Support\ModuleMode;
+use Innodite\LaravelModuleMaker\Support\RoutePermissions;
 
 /**
  * Genera el archivo de rutas del módulo respetando la convención de contextos.
@@ -109,9 +111,9 @@ class RouteGenerator extends AbstractComponentGenerator
         $functionality    = $this->getFunctionality();
         $controllerClass  = $this->buildControllerClass();
         $controllerFqcn   = $this->buildControllerNamespace() . '\\' . $controllerClass;
-        $permPrefix       = $context['permission_prefix'];
-        $permMiddleware   = $context['permission_middleware'];
-        $permKey          = Str::snake(str_replace('-', '_', $functionality));
+        $permPrefix       = $this->resolvePermissionPrefix($context, 'central');
+        $permMiddleware   = $this->resolvePermissionMiddleware($context, 'central');
+        $permKey          = RoutePermissions::key($functionality);
 
         $block = $this->buildRouteBlock(
             routePrefix:    $context['route_prefix'] . '-' . $functionality,
@@ -162,9 +164,9 @@ class RouteGenerator extends AbstractComponentGenerator
         $functionality   = $this->getFunctionality();
         $controllerClass = $this->buildControllerClass();
         $controllerFqcn  = $this->buildControllerNamespace() . '\\' . $controllerClass;
-        $permPrefix      = $context['permission_prefix'] ?? '';
-        $permMiddleware  = $context['permission_middleware'] ?? '';
-        $permKey         = Str::snake(str_replace('-', '_', $functionality));
+        $permPrefix      = $this->resolvePermissionPrefix($context, $this->componentConfig['context'] ?? null);
+        $permMiddleware  = $this->resolvePermissionMiddleware($context, $this->componentConfig['context'] ?? null);
+        $permKey         = RoutePermissions::key($functionality);
         $middleware      = $context['route_middleware'] ?? [];
 
         // ── Prefijos diferenciados por archivo ────────────────────────────────
@@ -262,9 +264,9 @@ class RouteGenerator extends AbstractComponentGenerator
         $functionality   = $this->getFunctionality();
         $controllerClass = $this->buildControllerClass();
         $controllerFqcn  = $this->buildControllerNamespace() . '\\' . $controllerClass;
-        $permPrefix      = $context['permission_prefix'];
-        $permMiddleware  = $context['permission_middleware'];
-        $permKey         = Str::snake(str_replace('-', '_', $functionality));
+        $permPrefix      = $this->resolvePermissionPrefix($context, $this->componentConfig['context'] ?? null, $context['id'] ?? null);
+        $permMiddleware  = $this->resolvePermissionMiddleware($context, $this->componentConfig['context'] ?? null);
+        $permKey         = RoutePermissions::key($functionality);
         $middleware      = $this->buildMiddlewareArray($context['route_middleware'] ?? []);
         $label           = $context['id'] ?? $context['label'] ?? $classPrefix;
         $separator       = str_repeat('─', 74);
@@ -316,6 +318,45 @@ class RouteGenerator extends AbstractComponentGenerator
         $this->resolveContextCache(null);
     }
 
+    // ─── De dónde salen el prefijo y el middleware del permiso ───────────────
+
+    /**
+     * El prefijo del permiso: lo dice **el modo**, y el contexto solo puede afinarlo.
+     *
+     * Antes se leía únicamente de `contexts.json`. Cuando ese archivo no declaraba
+     * `permission_prefix` —que es lo normal en un proyecto recién instalado— el prefijo llegaba
+     * **vacío** y las rutas salían exigiendo `invoices_index` en vez de `central_invoices_index`:
+     * un permiso que el seeder no crea, para una pantalla que entonces no abre nadie.
+     *
+     * `ModuleMode::permissionPrefix()` existe desde la fase 1 **con su prueba**, respondiendo
+     * exactamente esta pregunta, y aquí no la llamaba nadie. Es el mismo patrón que dejó al modelo sin
+     * `$connection` hasta la fase 2.
+     */
+    private function resolvePermissionPrefix(array $context, ?string $contextKey, ?string $tenantId = null): string
+    {
+        $delContexto = $context['permission_prefix'] ?? '';
+
+        return $delContexto !== ''
+            ? $delContexto
+            : ModuleMode::current()->permissionPrefix($contextKey, $tenantId);
+    }
+
+    /**
+     * El middleware que protege la ruta, con la misma regla: manda el modo.
+     *
+     * Un middleware vacío no dejaba la ruta desprotegida de forma visible: producía
+     * `->middleware(':invoices_index')`, con los dos puntos sueltos y un nombre de middleware vacío.
+     * Eso no es «sin permiso», es una ruta que revienta al resolverse — y solo en ejecución.
+     */
+    private function resolvePermissionMiddleware(array $context, ?string $contextKey): string
+    {
+        $delContexto = $context['permission_middleware'] ?? '';
+
+        return $delContexto !== ''
+            ? $delContexto
+            : ModuleMode::current()->permissionMiddleware($contextKey);
+    }
+
     // ─── Helpers de construcción de rutas ────────────────────────────────────
 
     /**
@@ -342,39 +383,30 @@ class RouteGenerator extends AbstractComponentGenerator
         $i  = $indent;
         $i2 = $indent . '    ';
 
+        // Las rutas y su permiso salen de RoutePermissions, que es también de donde los lee el
+        // PermissionsSeeder. Escribirlas aquí a mano las convertiría en la mitad de un par que puede
+        // dejar de coincidir: la ruta exigiría un permiso que el seeder no crea, y la pantalla daría
+        // 403 para todo el mundo.
+        $rutas = [];
+
+        foreach (RoutePermissions::routes($permPrefix, $permKey) as $ruta) {
+            $metodo = strtolower($ruta['verb']);
+
+            $rutas[] = <<<PHP
+            {$i2}// {$ruta['comment']}
+            {$i2}Route::{$metodo}('{$ruta['uri']}', [{$controllerClass}::class, '{$ruta['action']}'])
+            {$i2}    ->name('{$ruta['route']}')
+            {$i2}    ->middleware('{$permMiddleware}:{$ruta['permission']}');
+            PHP;
+        }
+
+        $bloque = implode("\n\n", $rutas);
+
         return <<<PHP
         {$i}Route::prefix('{$routePrefix}')
         {$i}    ->name('{$routeName}')
         {$i}    ->group(function () {
-        {$i2}// Vista principal
-        {$i2}Route::get('/', [{$controllerClass}::class, 'index'])
-        {$i2}    ->name('index')
-        {$i2}    ->middleware('{$permMiddleware}:{$permPrefix}_{$permKey}_index');
-
-        {$i2}// Endpoint JSON listado
-        {$i2}Route::get('/list', [{$controllerClass}::class, 'list'])
-        {$i2}    ->name('list')
-        {$i2}    ->middleware('{$permMiddleware}:{$permPrefix}_{$permKey}_index');
-
-        {$i2}// Crear
-        {$i2}Route::post('/', [{$controllerClass}::class, 'store'])
-        {$i2}    ->name('store')
-        {$i2}    ->middleware('{$permMiddleware}:{$permPrefix}_{$permKey}_store');
-
-        {$i2}// Ver uno
-        {$i2}Route::get('/{id}', [{$controllerClass}::class, 'show'])
-        {$i2}    ->name('show')
-        {$i2}    ->middleware('{$permMiddleware}:{$permPrefix}_{$permKey}_show');
-
-        {$i2}// Actualizar
-        {$i2}Route::put('/{id}', [{$controllerClass}::class, 'update'])
-        {$i2}    ->name('update')
-        {$i2}    ->middleware('{$permMiddleware}:{$permPrefix}_{$permKey}_update');
-
-        {$i2}// Eliminar
-        {$i2}Route::delete('/{id}', [{$controllerClass}::class, 'destroy'])
-        {$i2}    ->name('destroy')
-        {$i2}    ->middleware('{$permMiddleware}:{$permPrefix}_{$permKey}_delete');
+        {$bloque}
         {$i}});
         PHP;
     }
