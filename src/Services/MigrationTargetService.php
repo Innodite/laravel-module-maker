@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\File;
 use Illuminate\Support\Str;
 use Innodite\LaravelModuleMaker\Exceptions\ConnectionNotConfiguredException;
 use Innodite\LaravelModuleMaker\Support\ContextResolver;
+use Innodite\LaravelModuleMaker\Support\ModuleMode;
 use Throwable;
 
 class MigrationTargetService
@@ -71,6 +72,20 @@ class MigrationTargetService
             );
         }
 
+        // El modo decide ANTES que el contexto — es la corrección de R7 que dejó anotada la fase 1.
+        //
+        // En `multitenant-shared` los tenants comparten funcionalidad y **ninguno declara conexión**:
+        // la conmuta la tenancy al identificar al inquilino, y nombrarla en el contexto ataría el
+        // módulo a uno solo. Exigirle `connection_key` y `tenancy_strategy='manual'` sin mirar el
+        // modo dejaba a ese modo entero **sin poder migrar**: la funcionalidad existía y no había
+        // forma de desplegarla.
+        //
+        // Con la conexión ya conmutada, la ejecución va sobre la activa, que es lo que ese modo
+        // necesita. La app central no entra por aquí: esa sí declara la suya siempre.
+        if (! ModuleMode::current()->requiresTenantConnectionKey() && $this->isTenantContext($context)) {
+            return (string) config('database.default');
+        }
+
         $tenancyStrategy = $context['tenancy_strategy'] ?? null;
         if ($tenancyStrategy !== 'manual') {
             throw new \InvalidArgumentException(
@@ -92,6 +107,26 @@ class MigrationTargetService
         }
 
         return $connectionKey;
+    }
+
+    /**
+     * ¿Este contexto es de tenant?
+     *
+     * Se mira la forma del contexto, no una lista de nombres: `contexts.json` lo declara con
+     * `is_tenant`, y si no está, la carpeta lo dice (`Tenant/Shared`, `Tenant/Acme`). Una lista de
+     * nombres conocidos envejecería en cuanto alguien llame a su contexto de otra manera.
+     *
+     * @param  array<string, mixed>  $context
+     */
+    private function isTenantContext(array $context): bool
+    {
+        if (array_key_exists('is_tenant', $context)) {
+            return (bool) $context['is_tenant'];
+        }
+
+        $folder = (string) ($context['folder'] ?? '');
+
+        return $folder === 'Tenant' || str_starts_with($folder, 'Tenant/');
     }
 
     public function resolveDatabaseName(string $connectionName): string
