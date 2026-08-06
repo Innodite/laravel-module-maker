@@ -37,11 +37,14 @@ it('un módulo generado tiene las seis piezas, con los nombres de la convención
 it('ninguna de más: el seeder plano de antes ya no se escribe', function () {
     // Era el `{Modelo}Seeder.php` con un `//` dentro. Existía, el árbol lo mostraba, y no desplegaba
     // nada — y encima quedaba fuera del grupo de seis, así que nadie lo llamaba.
+    //
+    // Se mira **la carpeta de la subfuncionalidad**: los tres maestros del módulo son legítimos y
+    // viven aparte, en `Application/`, porque no pertenecen a ninguna subfuncionalidad.
     $modulo = $this->generateModule('Invoice', ModuleMode::SingleApp);
 
     $seeders = array_values(array_filter(
         $modulo->tree(),
-        static fn (string $ruta): bool => str_contains($ruta, 'Database/Seeders/')
+        static fn (string $ruta): bool => str_starts_with($ruta, 'Database/Seeders/Invoice/')
     ));
 
     $sobrantes = array_values(array_diff(
@@ -62,12 +65,7 @@ it('las seis se instancian de verdad, no solo parsean', function () {
 
     $piezas = piezasEsperadas('', 'Invoice', 'Invoice');
 
-    // Los traits primero: una clase que usa un trait sin cargar no se puede declarar.
-    usort($piezas, static fn (string $a, string $b): int => (int) str_ends_with($a, 'Seeder') <=> (int) str_ends_with($b, 'Seeder'));
-
-    foreach ($piezas as $pieza) {
-        require_once $modulo->path("Database/Seeders/Invoice/{$pieza}.php");
-    }
+    cargarPiezas($modulo, 'Database/Seeders/Invoice', $piezas);
 
     foreach ($piezas as $pieza) {
         $fqcn = "Modules\\Invoice\\Database\\Seeders\\Invoice\\{$pieza}";

@@ -223,6 +223,7 @@ class ModuleGenerator
         $this->run(new RouteGenerator($this->moduleName, $this->modulePath, true, $modelName, $componentConfig));
         $this->run(new MigrationGenerator($this->moduleName, $this->modulePath, true, $modelName, [], [], $componentConfig));
         $this->run(new SubFeatureSeederGenerator($this->moduleName, $this->modulePath, true, $componentConfig));
+        $this->run(new ModuleMasterSeederGenerator($this->moduleName, $this->modulePath, true, $componentConfig));
         $this->run(new FactoryGenerator($this->moduleName, $this->modulePath, true, $modelName, $modelName, $componentConfig));
         $this->run(new TestGenerator($this->moduleName, $this->modulePath, true, "{$modelName}Test", $componentConfig));
 
@@ -308,6 +309,7 @@ class ModuleGenerator
             $this->run(new RequestGenerator($this->moduleName, $this->modulePath, false, $requestName, $component));
             $this->run(new MigrationGenerator($this->moduleName, $this->modulePath, false, $modelName, $component['attributes'] ?? [], $component['indexes'] ?? [], $component));
             $this->run(new SubFeatureSeederGenerator($this->moduleName, $this->modulePath, false, $component));
+            $this->run(new ModuleMasterSeederGenerator($this->moduleName, $this->modulePath, false, $component));
             $this->run(new FactoryGenerator($this->moduleName, $this->modulePath, false, $modelName, $modelName, $component));
             $this->run(new TestGenerator($this->moduleName, $this->modulePath, false, "{$modelName}Test", $component));
             $this->run(new RouteGenerator($this->moduleName, $this->modulePath, false, $modelName, $component));
@@ -360,6 +362,7 @@ class ModuleGenerator
             // fase acaba de cerrar en el otro extremo. Una entidad con persistencia nace con su
             // despliegue entero, venga de `make-module` o de `add-entity`.
             $this->run(new SubFeatureSeederGenerator($this->moduleName, $this->modulePath, true, $componentConfig));
+            $this->run(new ModuleMasterSeederGenerator($this->moduleName, $this->modulePath, true, $componentConfig));
         }
 
         if ($flags['request'] ?? false) {

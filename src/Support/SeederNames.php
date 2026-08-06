@@ -85,6 +85,66 @@ final class SeederNames
     }
 
     /**
+     * La clase de una pieza a partir de **la carpeta** de su subfuncionalidad (P4).
+     *
+     * `'UserManagement/Central/Role'` + `'Stage'` →
+     * `Modules\UserManagement\Database\Seeders\Central\Role\CentralUserManagementRoleStageSeeder`
+     *
+     * **Por qué la carpeta y no el nombre de clase.** El desarrollador declara el orden de despliegue
+     * escribiendo rutas, no FQCNs de 90 caracteres: se escribe mucho menos y, sobre todo, **renombrar
+     * una clase no rompe la lista**. Y el maestro que hace fan-out no nombra nunca a sus hijos —
+     * los deriva de la carpeta y de **su propia pieza**, que es lo que hace imposible que el maestro
+     * de producción invoque un seeder de stage.
+     *
+     * El prefijo de clase sale de los segmentos de contexto de la propia ruta —`Central` →
+     * `Central`, `Tenant/Shared` → `TenantShared`—, que es la misma regla con la que se escribieron
+     * los archivos: la carpeta y el prefijo espejan desde la fase 1.
+     *
+     * @param  string  $path   'Modulo/Contexto/SubFuncionalidad' — el contexto puede faltar (single-app)
+     * @param  string  $piece  Una de RUNNABLE o de TRAITS
+     *
+     * @throws InvalidArgumentException Si la ruta no tiene al menos módulo y subfuncionalidad.
+     */
+    public static function classFromPath(string $path, string $piece): string
+    {
+        $segmentos = array_values(array_filter(
+            explode('/', str_replace('\\', '/', trim($path))),
+            static fn (string $segmento): bool => $segmento !== ''
+        ));
+
+        if (count($segmentos) < 2) {
+            throw new InvalidArgumentException(
+                "'{$path}' no nombra una subfuncionalidad.\n"
+                . "Se espera 'Modulo/Contexto/SubFuncionalidad' —o 'Modulo/SubFuncionalidad' donde no "
+                . 'hay eje de contexto—, que es la carpeta donde viven sus seis piezas.'
+            );
+        }
+
+        $module     = array_shift($segmentos);
+        $subFeature = array_pop($segmentos);
+        $contexto   = $segmentos;   // lo que quede en medio; vacío en single-app
+
+        $namespace = 'Modules\\' . $module . '\\Database\\Seeders'
+            . ($contexto === [] ? '' : '\\' . implode('\\', $contexto))
+            . '\\' . $subFeature;
+
+        return $namespace . '\\' . self::piece(implode('', $contexto), $module, $subFeature, $piece);
+    }
+
+    /**
+     * El módulo al que pertenece una ruta de despliegue — el primer segmento.
+     *
+     * Lo usa el maestro para quedarse **solo con las subfuncionalidades suyas** dentro de una lista
+     * que es del proyecto entero.
+     */
+    public static function moduleOfPath(string $path): string
+    {
+        $segmentos = explode('/', str_replace('\\', '/', trim($path, "/ \t\n\r\0\x0B")));
+
+        return $segmentos[0] ?? '';
+    }
+
+    /**
      * Los 3 maestros del módulo en un contexto.
      *
      * @return array<int, string>

@@ -1,0 +1,56 @@
+<?php
+
+declare(strict_types=1);
+
+namespace {{{ namespace }}};
+
+use Illuminate\Database\Seeder;
+use Innodite\LaravelModuleMaker\Traits\DeploysSubFeatures;
+use Innodite\LaravelModuleMaker\Traits\ReportsSeederErrors;
+
+/**
+ * {{{ pieceLabel }}} del módulo {{{ moduleName }}} — llama a sus subfuncionalidades, en orden.
+ *
+ *     php artisan db:seed --class="{{{ seederName }}}"
+ *
+ * **No tiene esquema ni datos propios.** Todo lo que hace es recorrer las subfuncionalidades del
+ * módulo y desplegarlas una a una. El esquema, los deltas, los datos y los permisos son de cada
+ * subfuncionalidad; aquí solo se decide **el orden** y se recoge lo que falle.
+ *
+ * **El orden lo declaras tú**, en `deploy` dentro de `config/make-module.php`, y se lee de arriba
+ * abajo. El paquete no lo adivina: una tabla con clave foránea no puede sembrarse antes que aquella
+ * a la que apunta, y eso lo sabe el negocio.
+ *
+ * **La cadena no se cruza.** Este maestro no nombra a ninguno de sus hijos: los deriva de la carpeta
+ * declarada más su propia pieza —{{{ piece }}}—, así que solo puede invocar seeders de
+ * {{{ piece }}}. No es una comprobación que se pueda olvidar: es que lo otro no se puede escribir.
+ *
+ * **Un hijo que falla no detiene a los demás.** Cada uno va dentro de su propio `safe()`, y al cerrar
+ * se listan todos los fallos con su `archivo:línea`. Un despliegue de diez subfuncionalidades se
+ * arregla en una pasada y no en diez.
+ */
+class {{{ seederName }}} extends Seeder
+{
+    use DeploysSubFeatures;
+    use ReportsSeederErrors;
+
+    /** El módulo cuyas subfuncionalidades despliega. */
+    protected string $module = '{{{ moduleName }}}';
+
+    /** El contexto por el que se filtra el orden de despliegue; `null` donde no hay eje de contexto. */
+    protected ?string $context = {{{ context }}};
+
+    /** La pieza que invoca en cada subfuncionalidad. Es lo que impide cruzar la cadena. */
+    protected string $piece = '{{{ piece }}}';
+
+    public function run(): void
+    {
+        $this->say("\n📦 {{{ seederName }}} — desplegando {{{ moduleName }}}\n");
+
+        $this->runSubFeatures();
+
+        $this->reportErrors();
+
+        $this->say("\n✅ {{{ moduleName }}} desplegado ({{{ piece }}}).\n");
+    }
+}

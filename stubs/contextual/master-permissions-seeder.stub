@@ -1,0 +1,69 @@
+<?php
+
+declare(strict_types=1);
+
+namespace {{{ namespace }}};
+
+use Illuminate\Database\Seeder;
+use Innodite\LaravelModuleMaker\Traits\DeploysSubFeatures;
+use Innodite\LaravelModuleMaker\Traits\ReportsSeederErrors;
+use Innodite\LaravelModuleMaker\Traits\ResolvesSeederDestructiveMode;
+
+/**
+ * Permisos del módulo {{{ moduleName }}} — los de todas sus subfuncionalidades, en orden.
+ *
+ *     php artisan db:seed --class="{{{ seederName }}}"
+ *
+ * **Es el único maestro que propaga algo hacia abajo.** Los seeders de stage y de producción
+ * resuelven su propio modo —el de stage preguntando al entorno, el de producción no preguntando—,
+ * pero el de permisos recibe el suyo por parámetro: `run(bool $destructive = false)`. Este maestro es
+ * quien se lo pasa, y por defecto **no borra nada**.
+ *
+ * Se le puede pedir la recreación completa como a cualquier seeder de stage:
+ *
+ *     SEEDER_DESTRUCTIVE=true php artisan db:seed --class="{{{ seederName }}}"
+ *
+ * Sin esa señal, los permisos se actualizan sin tocar las asignaciones a roles hechas a mano — que
+ * es lo que de verdad se pierde cuando un seeder de permisos borra y recrea (R24).
+ *
+ * **La cadena no se cruza:** este maestro deriva cada clase de la carpeta más su propia pieza, así
+ * que solo puede invocar seeders de permisos.
+ */
+class {{{ seederName }}} extends Seeder
+{
+    use DeploysSubFeatures;
+    use ReportsSeederErrors;
+    use ResolvesSeederDestructiveMode;
+
+    /** El módulo cuyas subfuncionalidades despliega. */
+    protected string $module = '{{{ moduleName }}}';
+
+    /** El contexto por el que se filtra el orden de despliegue; `null` donde no hay eje de contexto. */
+    protected ?string $context = {{{ context }}};
+
+    /** La pieza que invoca en cada subfuncionalidad. Es lo que impide cruzar la cadena. */
+    protected string $piece = '{{{ piece }}}';
+
+    public function run(): void
+    {
+        $modo = $this->isDestructive() ? 'recreando' : 'actualizando';
+
+        $this->say("\n🔐 {{{ seederName }}} — {$modo} los permisos de {{{ moduleName }}}\n");
+
+        $this->runSubFeatures();
+
+        $this->reportErrors();
+
+        $this->say("\n✅ Permisos de {{{ moduleName }}} al día.\n");
+    }
+
+    /**
+     * El modo con el que se llama a cada hijo — la única propagación de la cadena.
+     *
+     * @return array<string, mixed>
+     */
+    protected function childParameters(): array
+    {
+        return ['destructive' => $this->isDestructive()];
+    }
+}
