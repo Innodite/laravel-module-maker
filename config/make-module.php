@@ -54,4 +54,46 @@ return [
     'stubs' => [
         'path' => base_path('module-maker-config/stubs'),
     ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Orden de despliegue — lo declaras tú, y se lee de arriba abajo
+    |--------------------------------------------------------------------------
+    |
+    | Cada línea es la CARPETA de una subfuncionalidad, no un nombre de clase:
+    |
+    |     'UserManagement/Central/Role'     donde hay eje de contexto
+    |     'Invoice/Invoice'                 donde no lo hay
+    |
+    | Por carpeta y no por FQCN para que renombrar una clase no rompa esta lista
+    | —y para escribir mucho menos—. De ahí salen las tres piezas ejecutables de
+    | cada subfuncionalidad: quien llama añade Stage, Production o Permissions
+    | según lo que esté desplegando.
+    |
+    | EL ORDEN IMPORTA y el paquete no puede adivinarlo: una tabla con clave
+    | foránea no puede sembrarse antes que aquella a la que apunta, y eso lo sabe
+    | el negocio. `make-module` añade cada subfuncionalidad nueva AL FINAL;
+    | moverla a su sitio es tuyo.
+    |
+    | Los marcadores son donde se añaden las entradas nuevas. Si los borras, el
+    | comando te dice qué línea escribir a mano en vez de fallar.
+    |
+    | Con contextos se agrupa por contexto, y el maestro de cada uno lee el suyo:
+    |
+    |     'deploy' => [
+    |         'central' => [
+    |             'UserManagement/Central/Role',
+    |             // {{DEPLOY_CENTRAL_END}}
+    |         ],
+    |         'tenant' => [
+    |             'Invoice/Tenant/Shared/Invoice',
+    |             // {{DEPLOY_TENANT_END}}
+    |         ],
+    |         // {{DEPLOY_END}}
+    |     ],
+    |
+    */
+    'deploy' => [
+        // {{DEPLOY_END}}
+    ],
 ];

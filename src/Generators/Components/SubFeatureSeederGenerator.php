@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Innodite\LaravelModuleMaker\Generators\Components;
 
 use Illuminate\Support\Facades\File;
+use Innodite\LaravelModuleMaker\Services\DeployOrderInjectionService;
 use Innodite\LaravelModuleMaker\Support\SeederNames;
 use Innodite\LaravelModuleMaker\Support\SubFeaturePermissions;
 
@@ -77,6 +78,31 @@ class SubFeatureSeederGenerator extends AbstractComponentGenerator
         );
 
         $this->writeDataTrait($seederDir, $comunes['dataTrait'], $comunes['namespace'], $subFeature);
+
+        $this->registerInDeployOrder($subFeature);
+    }
+
+    /**
+     * Declara la subfuncionalidad en el orden de despliegue del proyecto (P4).
+     *
+     * **Generar declara.** El desfase entre lo generado y lo desplegado no rompe ningún archivo: deja
+     * la aplicación a medio levantar, con una pantalla que no abre nadie porque su seeder de permisos
+     * nunca se ejecutó. Y es el desfase más fácil de producir, porque generar y declarar son dos
+     * actos separados por días.
+     *
+     * Se añade **al final**: el paquete sabe que la subfuncionalidad existe, pero no si va antes o
+     * después de otra — eso depende de qué tabla apunta a cuál, y lo sabe el negocio.
+     */
+    protected function registerInDeployOrder(string $subFeature): void
+    {
+        $carpeta = $this->getContextFolder();
+        $ruta    = $this->moduleName . '/' . ($carpeta ? "{$carpeta}/" : '') . $subFeature;
+
+        $contexto = $this->mode()->hasContextAxis()
+            ? (($this->componentConfig['context'] ?? '') ?: null)
+            : null;
+
+        (new DeployOrderInjectionService($this))->register($ruta, $contexto);
     }
 
     /**

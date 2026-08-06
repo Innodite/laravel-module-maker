@@ -102,11 +102,39 @@ trait DeploysSubFeatures
             $rutas = array_merge(...array_values(array_filter($rutas, 'is_array')));
         }
 
-        return array_values(array_filter(
+        $mias = array_values(array_filter(
             $rutas,
             fn (mixed $ruta): bool => is_string($ruta)
                 && SeederNames::moduleOfPath($ruta) === $this->module
         ));
+
+        return $this->sinRepetidas($mias);
+    }
+
+    /**
+     * Quita las entradas repetidas conservando **la primera**, y lo dice.
+     *
+     * Desplegar dos veces la misma subfuncionalidad no rompe nada —los seeders son idempotentes—,
+     * pero tarda el doble y, sobre todo, **es la señal de que alguien la declaró dos veces**: la
+     * segunda copia está en el sitio equivocado del orden, y ese sí es un problema real el día que
+     * importe. Se conserva la primera porque es la que fija la posición en la que se pensó.
+     *
+     * @param  array<int, string>  $rutas
+     * @return array<int, string>
+     */
+    protected function sinRepetidas(array $rutas): array
+    {
+        $unicas = array_values(array_unique($rutas));
+
+        foreach (array_diff_assoc($rutas, $unicas) as $repetida) {
+            $this->say(
+                "   ⚠️  '{$repetida}' está declarada más de una vez en el orden de despliegue. Se "
+                . 'despliega una sola vez, en su primera posición.',
+                'warn'
+            );
+        }
+
+        return $unicas;
     }
 
     /**
