@@ -332,209 +332,85 @@ Publica en `resources/js/Composables/`:
 
 ---
 
-### `innodite:migrate-plan` — Orquestador de Migraciones por Manifiesto
+### `innodite:migrate-plan` — Aplica el esquema del contexto
 
-Ejecuta migraciones en el orden exacto definido en un manifiesto JSON. Es ideal cuando hay dependencias entre módulos y contextos.
-Antes de ejecutar, valida la conexión objetivo y verifica que la base de datos exista para evitar procesos parciales o lanzados contra una BD incorrecta.
+Ejecuta las migraciones del proyecto **en el orden que declaran los traits `MigrationsList`** de cada
+subfuncionalidad. Antes de ejecutar valida la conexión del contexto y comprueba que la base de datos
+exista, para no lanzar un despliegue parcial ni contra la base equivocada.
 
 ```bash
-# Usar manifiesto por defecto (module-maker-config/migrations/central_order.json)
-php artisan innodite:migrate-plan
+# Todas las migraciones del contexto central
+php artisan innodite:migrate-plan --context=central
 
-# Usar manifiesto específico
-php artisan innodite:migrate-plan --manifest=tenant_innodite_order.json
-
-# Simular sin tocar BD
-php artisan innodite:migrate-plan --manifest=tenant_innodite_order.json --dry-run
-
-# Ejecutar también seeders después de migraciones
-php artisan innodite:migrate-plan --manifest=tenant_innodite_order.json --seed
+# Ver el plan sin aplicar nada
+php artisan innodite:migrate-plan --context=tenant_shared --dry-run
 ```
 
-**Formato de coordenadas soportado:**
+| Opción | Descripción |
+|---|---|
+| `--context=` | **Obligatoria.** Contra qué contexto se ejecuta: `central`, `shared`, `tenant_shared` o el id de un tenant |
+| `--dry-run` | Muestra el plan y no aplica nada |
 
-- Migraciones: `Modulo:Contexto/Archivo.php`
-- Seeders: `Modulo:Contexto/ClaseSeeder`
-
-**Ejemplo real de manifiesto (`module-maker-config/migrations/tenant_innodite_order.json`):**
-
-```json
-{
-    "migrations": [
-        "User:Shared/2026_01_01_000001_create_users_table.php",
-        "Roles:Tenant/Shared/2026_02_01_000001_create_tenant_roles_table.php",
-        "Custom:Tenant/INNODITE/2026_03_01_000001_innodite_extra_table.php"
-    ],
-    "seeders": [
-        "User:Shared/SharedUserSeeder",
-        "Roles:Tenant/Shared/TenantSharedRoleSeeder",
-        "Custom:Tenant/INNODITE/TenantINNODITECustomSeeder"
-    ]
-}
-```
-
-**Cómo resuelve rutas internas:**
-
-- `User:Shared/2026_...php` → `Modules/User/Database/Migrations/Shared/2026_...php`
-- `Roles:Tenant/Shared/TenantSharedRoleSeeder` → `Modules\Roles\Database\Seeders\Tenant\Shared\TenantSharedRoleSeeder`
-
-**Qué valida el comando:**
-
-- Que el manifiesto exista y sea JSON válido
-- Que `migrations` y `seeders` sean arrays
-- Que cada coordenada de migración apunte a un archivo real
-- Que el formato de coordenada sea correcto
-
-**Mensajes de error claros:**
-
-Si una coordenada no existe, el comando responde con la ruta esperada para corregirla rápidamente.
-Si la base de datos objetivo no existe, corta el proceso antes de ejecutar migraciones o seeders.
+> **El orden vive en el módulo, no en un JSON.** Cada subfuncionalidad declara sus migraciones en su
+> trait `MigrationsList`, así que el orden viaja con el módulo cuando se copia a otro proyecto. El
+> contexto se dice en voz alta con `--context`, y de él salen **a la vez** las migraciones que se
+> seleccionan y la conexión contra la que se aplican.
 
 ---
 
-### `innodite:migrate-one` — Ejecutar una Migración Específica
+### `innodite:migrate-one` — Ejecutar una migración específica
 
-Permite ejecutar una coordenada de migración puntual sin correr el manifiesto completo. Está pensado para casos quirúrgicos donde necesitas lanzar una sola migración y mantener sincronizado el manifiesto correspondiente.
+Ejecuta una sola migración, nombrada por su coordenada `Modulo:Contexto/archivo.php`. La base de
+datos sale de la propia coordenada, que ya lleva encima su carpeta de contexto.
 
 ```bash
-# Ejecutar una migración específica
-php artisan innodite:migrate-one "Products:Tenant/Alpha/2026_01_01_000001_create_products_table.php"
+php artisan innodite:migrate-one "Invoice:Central/2026_08_01_120000_crea_facturas.php"
 
-# Forzar un manifiesto concreto
-php artisan innodite:migrate-one "Forms:Shared/2026_01_01_000001_create_forms_table.php" --manifest=central_order.json
+# Sin confirmación interactiva
+php artisan innodite:migrate-one "Invoice:Central/2026_08_01_120000_crea_facturas.php" --yes
 
-# Simular sin escribir ni ejecutar
-php artisan innodite:migrate-one "Forms:Shared/2026_01_01_000001_create_forms_table.php" --dry-run
-
-# Omitir confirmaciones interactivas
-php artisan innodite:migrate-one "Products:Tenant/Alpha/2026_01_01_000001_create_products_table.php" --yes
+# Ver qué haría
+php artisan innodite:migrate-one "Invoice:Central/2026_08_01_120000_crea_facturas.php" --dry-run
 ```
 
-**Qué hace internamente:**
-
-1. Resuelve la ruta exacta del archivo de migración desde la coordenada.
-2. Detecta automáticamente el manifiesto objetivo según el contexto.
-3. Si la coordenada aplica a múltiples manifiestos, muestra los destinos y pide confirmación.
-4. Muestra antes de ejecutar:
-    - Tipo: migración
-    - Coordenada
-    - Conexión
-    - Base de datos
-    - Manifiesto destino
-    - Ruta real del archivo
-5. Si la coordenada no está registrada en el manifiesto, la agrega primero.
-6. Ejecuta solo la migración indicada.
-
-**Reglas de resolución:**
-
-- `Central` => `central_order.json`
-- `Shared` => puede aplicar a `central_order.json` y a los manifiestos tenant
-- `Tenant/Shared` => aplica a todos los manifiestos tenant
-- `Tenant/X` => aplica al manifiesto `tenant_x_order.json` correspondiente
-
-**Importante:**
-
-- Requiere confirmación interactiva antes de ejecutar, salvo que uses `--yes`.
-- En `--dry-run` no modifica el manifiesto ni ejecuta nada.
-- Si la base de datos objetivo no existe, falla antes de iniciar el proceso.
+| Opción | Descripción |
+|---|---|
+| `--context=` | Fuerza el contexto de ejecución en vez de derivarlo de la coordenada |
+| `--yes` | Omite la confirmación |
+| `--dry-run` | Muestra lo que haría sin ejecutar |
 
 ---
 
-### `innodite:seed-one` — Ejecutar un Seeder Específico
+### `innodite:deploy` — Levanta el proyecto entero
 
-Permite ejecutar un seeder puntual sin correr el manifiesto completo. Está pensado para casos quirúrgicos donde necesitas lanzar un solo seeder y mantener sincronizado el manifiesto correspondiente.
+Esquema, datos y permisos, en el orden declarado en `deploy` (`config/make-module.php`), más el
+webmaster al cerrar. Es el comando que sustituye a `innodite:seed-one` y a `innodite:migration-sync`.
 
 ```bash
-# Ejecutar un seeder específico
-php artisan innodite:seed-one "UserManagement:Tenant/Shared/TenantSharedPermissionSeeder"
+# Aplicación única
+php artisan innodite:deploy production
 
-# Forzar un manifiesto concreto
-php artisan innodite:seed-one "Forms:Shared/SharedFormsSeeder" --manifest=central_order.json
-
-# Simular sin escribir ni ejecutar
-php artisan innodite:seed-one "Forms:Shared/SharedFormsSeeder" --dry-run
-
-# Omitir confirmaciones interactivas
-php artisan innodite:seed-one "UserManagement:Tenant/Shared/TenantSharedPermissionSeeder" --yes
+# Multitenant: dos despliegues, contra dos bases de datos
+php artisan innodite:deploy production --context=central
+php artisan innodite:deploy stage --context=tenant
 ```
 
-**Qué hace internamente:**
+| Argumento / opción | Descripción |
+|---|---|
+| `entorno` | **Obligatorio.** `stage` o `production`. Nada por defecto: `stage` puede reconstruir desde cero |
+| `--context=` | Obligatorio en multitenant: `central` o `tenant` |
+| `--force` | No pedir confirmación aunque `SEEDER_DESTRUCTIVE` esté activo |
 
-1. Resuelve el FQCN (clase completa) del seeder desde la coordenada.
-2. Detecta automáticamente el manifiesto objetivo según el contexto.
-3. Si la coordenada aplica a múltiples manifiestos, muestra los destinos y pide confirmación.
-4. Muestra antes de ejecutar:
-    - Tipo: seeder
-    - Coordenada
-    - Conexión
-    - Base de datos
-    - Manifiesto destino
-    - Clase real que va a ejecutar
-5. Si la coordenada no está registrada en el manifiesto, la agrega primero.
-6. Ejecuta solo el seeder indicado.
+El seeder que invoca lo escribe el instalador en `database/seeders/`, y es donde se lee y se amplía
+la secuencia de pasos del despliegue.
 
-**Reglas de resolución:**
-
-- `Central` => `central_order.json`
-- `Shared` => puede aplicar a `central_order.json` y a los manifiestos tenant
-- `Tenant/Shared` => aplica a todos los manifiestos tenant
-- `Tenant/X` => aplica al manifiesto `tenant_x_order.json` correspondiente
-
-**Importante:**
-
-- Requiere confirmación interactiva antes de ejecutar, salvo que uses `--yes`.
-- En `--dry-run` no modifica el manifiesto ni ejecuta nada.
-- Si la base de datos objetivo no existe, falla antes de iniciar el proceso.
+> **Retirados en la v4:** `innodite:seed-one` y `innodite:migration-sync`. Los dos existían para
+> mantener los manifiestos `*.order.json`, que ya no lee nadie: el orden de las migraciones lo
+> declaran los traits `MigrationsList` y el de los seeders el array `deploy`. Si tu proyecto todavía
+> tiene esa carpeta, los comandos de migración te lo dirán al ejecutarse; puedes borrarla.
 
 ---
 
-### `innodite:migration-sync` — Sincronización Automática de Manifiestos
-
-Escanea los módulos y agrega al manifiesto las migraciones y seeders que aún no están registradas.
-
-```bash
-# Sincronizar automaticamente por contextos (central + tenants detectados)
-php artisan innodite:migration-sync
-
-# Sincronizar un manifiesto concreto
-php artisan innodite:migration-sync --manifest=tenant_innodite_order.json
-
-# Sincronizacion automatica sin prompt de confirmacion
-php artisan innodite:migration-sync --yes
-
-# Ver faltantes sin escribir cambios
-php artisan innodite:migration-sync --manifest=tenant_innodite_order.json --dry-run
-```
-
-**Comportamiento de sync:**
-
-1. Si no envías `--manifest`, lee `module-maker-config/contexts.json` y propone:
-    - `central_order.json`
-    - `tenant_{permission_prefix}_order.json` por cada tenant configurado.
-2. Pide confirmación en consola antes de generar/sincronizar múltiples manifiestos (omite prompt con `--yes`).
-3. Crea `module-maker-config/migrations/` si no existe.
-4. Crea cada manifiesto faltante (estructura vacía).
-5. Escanea:
-     - `Modules/*/Database/Migrations/**`
-     - `Modules/*/Database/Seeders/**`
-6. Convierte hallazgos a coordenadas.
-7. Filtra por alcance de manifiesto:
-    - `central_order.json` => contextos `Central` y `Shared`.
-    - `tenant_*.json` => `Shared` + `Tenant/Shared` + contexto `Tenant/{X}` del tenant objetivo.
-8. Hace append solo de faltantes (sin duplicar).
-
-**Importante:**
-
-- Solo sincroniza archivos en subcarpetas de contexto (`Shared`, `Central`, `Tenant/...`).
-- Esto mantiene consistencia con el modelo contextual del paquete.
-
-**Cuándo usarlo en la práctica:**
-
-- Después de generar nuevos módulos/entidades y querer actualizar manifiestos automáticamente.
-- Antes de un deploy, para verificar que no quedaron migraciones fuera del plan.
-- En CI/CD para detectar drift entre código y manifiesto.
-
----
 
 ### `innodite:test-module` — Ejecutar Tests con Coverage
 
@@ -1439,10 +1315,9 @@ Con `innodite:add-entity User Role --context=central`, se añade dentro de `Modu
 | `innodite:module-check` | Diagnóstico de configuración, permisos y conflictos |
 | `innodite:check-env` | Verifica integración frontend-backend (bridge Inertia) |
 | `innodite:publish-frontend` | Publica composables Vue 3 (`useModuleContext`, `usePermissions`) |
-| `innodite:migrate-plan` | Ejecuta migraciones/seeders por manifiesto y orden explícito |
+| `innodite:migrate-plan --context=` | Aplica las migraciones del contexto, en el orden de sus traits `MigrationsList` |
 | `innodite:migrate-one` | Ejecuta una migración puntual por coordenada |
-| `innodite:seed-one` | Ejecuta un seeder puntual por coordenada |
-| `innodite:migration-sync` | Escanea módulos y sincroniza faltantes en manifiestos |
+| `innodite:deploy {stage\|production}` | Levanta el proyecto: esquema, datos, permisos y webmaster |
 | `innodite:test-module` | Ejecuta tests de módulos con contexto y coverage (HTML, Text, Clover) |
 | `innodite:test-sync` | Sincroniza `Modules/{Modulo}/Tests/test-config.json` desde `contexts.json` |
 | `vendor:publish --tag=module-maker-config` | Publica `make-module.php` |

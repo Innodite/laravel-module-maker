@@ -4,29 +4,57 @@ declare(strict_types=1);
 
 use Illuminate\Support\Facades\File;
 
-it('detecta el manifiesto central para una migracion individual y muestra lo que hara en dry-run', function () {
-    $manifestDir = $this->tempPath('module-maker-config/migrations');
-    File::ensureDirectoryExists($manifestDir);
-    File::put("{$manifestDir}/central.order.json", json_encode([
-        'migrations' => [],
-        'seeders' => [],
-    ], JSON_PRETTY_PRINT));
+/**
+ * Una migración suelta, contra la base de datos de **su** contexto.
+ *
+ * La coordenada ya lleva encima la carpeta —`Probe:Central/…`—, así que la conexión sale de ahí. El
+ * manifiesto añadía un dato de más que decía lo mismo, y cuando los dos discrepaban ganaba el
+ * nombre del archivo JSON: se ejecutaba contra otra base sin un aviso.
+ */
 
-    $migrationPath = $this->tempPath('Modules/Probe/Database/Migrations/Central/2026_01_01_000001_create_probe_table.php');
-    File::ensureDirectoryExists(dirname($migrationPath));
-    File::put($migrationPath, "<?php\n");
+/** Deja el archivo de una migración donde la coordenada dice que está. */
+function migracionEn(string $relativa): void
+{
+    $ruta = test()->tempPath($relativa);
+
+    File::ensureDirectoryExists(dirname($ruta));
+    File::put($ruta, "<?php\n");
+}
+
+it('deriva el contexto y la conexión de la propia coordenada', function () {
+    migracionEn('Modules/Probe/Database/Migrations/Central/2026_01_01_000001_crea_cosas.php');
 
     $this->artisan('innodite:migrate-one', [
-        'coordinate' => 'Probe:Central/2026_01_01_000001_create_probe_table.php',
-        '--yes' => true,
-        '--dry-run' => true,
+        'coordinate' => 'Probe:Central/2026_01_01_000001_crea_cosas.php',
+        '--yes'      => true,
+        '--dry-run'  => true,
     ])
-        ->expectsOutputToContain('Destino: central.order.json')
-        ->expectsOutputToContain('se agregara al manifiesto antes de ejecutar')
-        ->expectsOutputToContain('[DRY-RUN] Se agregaria la coordenada al manifiesto.')
-        ->expectsOutputToContain('[DRY-RUN] Se ejecutaria la migracion especificada.')
+        ->expectsOutputToContain('Contexto:      central')
+        ->expectsOutputToContain('Conexión:      central')
+        ->expectsOutputToContain('Dry-run completado')
         ->assertSuccessful();
+});
 
-    $plan = json_decode(File::get("{$manifestDir}/central.order.json"), true);
-    expect($plan['migrations'])->toBe([]);
+it('una coordenada que no apunta a ningún archivo se rechaza diciendo dónde se buscó', function () {
+    $this->artisan('innodite:migrate-one', [
+        'coordinate' => 'Probe:Central/no_existe.php',
+        '--yes'      => true,
+        '--dry-run'  => true,
+    ])
+        ->expectsOutputToContain('Coordenada inválida')
+        ->assertFailed();
+});
+
+it('el contexto se puede forzar, y entonces manda sobre el de la coordenada', function () {
+    // Para el caso legítimo de una migración compartida que hay que aplicar en otra base.
+    migracionEn('Modules/Probe/Database/Migrations/Central/2026_01_01_000001_crea_cosas.php');
+
+    $this->artisan('innodite:migrate-one', [
+        'coordinate' => 'Probe:Central/2026_01_01_000001_crea_cosas.php',
+        '--context'  => 'tenant-one',
+        '--yes'      => true,
+        '--dry-run'  => true,
+    ])
+        ->expectsOutputToContain('Conexión:      tenant_one')
+        ->assertSuccessful();
 });

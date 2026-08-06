@@ -14,8 +14,6 @@ use Innodite\LaravelModuleMaker\Commands\DeployCommand;
 use Innodite\LaravelModuleMaker\Commands\MakeModuleCommand;
 use Innodite\LaravelModuleMaker\Commands\MigrateOneCommand;
 use Innodite\LaravelModuleMaker\Commands\MigratePlanCommand;
-use Innodite\LaravelModuleMaker\Commands\MigrationSyncCommand;
-use Innodite\LaravelModuleMaker\Commands\SeedOneCommand;
 use Innodite\LaravelModuleMaker\Commands\ModuleCheckCommand;
 use Innodite\LaravelModuleMaker\Commands\PublishFrontendCommand;
 use Innodite\LaravelModuleMaker\Commands\SetupModuleMakerCommand;
@@ -51,8 +49,6 @@ class LaravelModuleMakerServiceProvider extends ServiceProvider
                 AddEntityCommand::class,
                 MigrateOneCommand::class,
                 MigratePlanCommand::class,
-                MigrationSyncCommand::class,
-                SeedOneCommand::class,
                 DeployCommand::class,
                 ModuleCheckCommand::class,
                 SetupModuleMakerCommand::class,

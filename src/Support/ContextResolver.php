@@ -143,6 +143,38 @@ class ContextResolver
     }
 
     /**
+     * Retorna un contexto por su CARPETA — 'Central', 'Tenant/Shared', 'Tenant/Acme'.
+     *
+     * Existe porque la carpeta es el dato que llevan encima las cosas del proyecto: una coordenada
+     * de migración (`Invoice:Central/2026_…php`) nombra la carpeta, no el id. Buscar por id obligaba
+     * a derivarlo del nombre de un archivo, que fue exactamente de donde salía el contexto cuando lo
+     * decidía el manifiesto JSON.
+     *
+     * La comparación ignora mayúsculas y barras sobrantes: la carpeta se escribe `Tenant/Shared` en
+     * `contexts.json` y llega `tenant/shared` desde una coordenada normalizada.
+     *
+     * @return array<string, mixed>|null
+     */
+    public static function findByFolder(string $folder): ?array
+    {
+        $buscada = strtolower(trim(str_replace('\\', '/', $folder), '/'));
+
+        if ($buscada === '') {
+            return null;
+        }
+
+        foreach (self::allItems() as $item) {
+            $suya = strtolower(trim(str_replace('\\', '/', (string) ($item['folder'] ?? '')), '/'));
+
+            if ($suya !== '' && $suya === $buscada) {
+                return $item;
+            }
+        }
+
+        return null;
+    }
+
+    /**
      * Retorna un tenant por su ID. Alias de resolveById('tenant', $id).
      *
      * @param  string  $id  ID del tenant

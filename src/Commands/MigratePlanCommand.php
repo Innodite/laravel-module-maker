@@ -7,140 +7,133 @@ namespace Innodite\LaravelModuleMaker\Commands;
 use Illuminate\Console\Command;
 use Innodite\LaravelModuleMaker\Services\MigrationPlanResolver;
 use Innodite\LaravelModuleMaker\Services\MigrationTargetService;
+use Innodite\LaravelModuleMaker\Support\LegacyManifests;
 use Throwable;
 
+/**
+ * Aplica el esquema del proyecto: las migraciones de los traits, en el orden que ellos declaran.
+ *
+ * **El orden ya no lo declara un JSON.** Lo declara cada subfuncionalidad en su trait
+ * `MigrationsList`, así que viaja con el módulo cuando alguien lo copia a otro proyecto — que es
+ * justo lo que el manifiesto no hacía, y por eso se desincronizaba en silencio.
+ *
+ *     php artisan innodite:migrate-plan --context=central
+ *     php artisan innodite:migrate-plan --context=central --dry-run
+ *
+ * **Solo el esquema.** Los datos y los permisos son del despliegue —`innodite:deploy`—, que además
+ * llama a estas mismas migraciones desde cada seeder. Este comando existe para el caso en que se
+ * quiera levantar la estructura sin sembrar nada: un servidor nuevo, o una revisión previa.
+ */
 class MigratePlanCommand extends Command
 {
     protected $signature = 'innodite:migrate-plan
-        {--manifest= : Manifiesto JSON (ej: central.order.json) en module-maker-config/migrations}
-        {--dry-run : Muestra el plan sin ejecutar migraciones ni seeders}
-        {--seed : Ejecuta seeders después de migraciones}';
+        {--context= : Contexto contra el que ejecutar: central | shared | tenant_shared | id del tenant}
+        {--dry-run : Muestra el plan sin ejecutar nada}';
 
-    protected $description = 'Ejecuta migraciones modulares desde un manifiesto en orden explícito.';
+    protected $description = 'Aplica las migraciones del proyecto en el orden que declaran sus traits MigrationsList.';
 
     public function handle(): int
     {
         $resolver = new MigrationPlanResolver();
-        $targetService = new MigrationTargetService();
-        $dryRun = (bool) $this->option('dry-run');
-        $runSeeders = (bool) $this->option('seed');
+        $targets  = new MigrationTargetService();
+        $dryRun   = (bool) $this->option('dry-run');
+        $contexto = trim((string) $this->option('context'));
 
         $this->newLine();
         $this->line('  <fg=blue;options=bold>Innodite ModuleMaker — Migrate Plan</>');
         $this->newLine();
 
-        try {
-            $manifestPath = $resolver->resolveManifestPath($this->option('manifest'));
-            $plan = $resolver->loadPlan($manifestPath);
-        } catch (Throwable $e) {
-            $this->components->error($e->getMessage());
-            return self::FAILURE;
-        }
+        LegacyManifests::notice($this);
 
-        // Las migraciones salen de los traits `MigrationsList` (P2): el orden vive en código, dentro
-        // del módulo, no en un JSON que se queda atrás cuando alguien copia el módulo a otro
-        // proyecto. El manifiesto solo se usa ya para la lista de **seeders**, que es lo que decide
-        // la fase 3 con los comandos de despliegue; ahí desaparece del todo.
-        $migrations = $resolver->migrationsFromTraits();
-
-        if ($migrations === [] && $plan['migrations'] !== []) {
-            $this->components->warn(
-                'No se encontró ningún trait MigrationsList, así que se usa la lista del manifiesto. '
-                . 'Esa lista está obsoleta: regenera los módulos para que su orden viaje con ellos.'
+        if ($contexto === '') {
+            $this->components->error(
+                "Falta --context: dice contra qué base de datos se ejecuta.\n"
+                . '  Ejemplos: --context=central · --context=tenant_shared · --context=acme'
             );
 
-            $migrations = $plan['migrations'];
-        }
-
-        $seeders = $plan['seeders'];
-
-        try {
-            $connectionName = $targetService->resolveExecutionConnection($manifestPath, $dryRun);
-        } catch (\Throwable $e) {
-            $this->components->error($e->getMessage());
             return self::FAILURE;
         }
 
-        if (empty($migrations) && (!$runSeeders || empty($seeders))) {
-            $this->components->warn("El manifiesto '{$manifestPath}' no contiene tareas para ejecutar.");
+        // El filtro de carpeta y la conexión salen del MISMO contexto resuelto: 'central' selecciona
+        // las migraciones de Central/ y la conexión del contexto central. Derivarlos por separado es
+        // lo que permitiría migrar las de un contexto contra la base de datos de otro.
+        try {
+            $carpeta = $targets->folderOf($contexto);
+        } catch (Throwable $e) {
+            $this->components->error($e->getMessage());
+
+            return self::FAILURE;
+        }
+
+        $migraciones = $resolver->migrationsFromTraits($carpeta);
+
+        if ($migraciones === []) {
+            $this->components->warn(
+                "No hay ninguna migración declarada para '{$contexto}'.\n"
+                . '  Cada subfuncionalidad declara las suyas en su trait MigrationsList; si acabas de '
+                . 'generarla, comprueba que el contexto es el que le corresponde.'
+            );
+
             return self::SUCCESS;
         }
 
-        $this->components->info("Manifiesto: {$manifestPath}");
-        $this->line('  Conexion:   ' . $connectionName);
-        $this->line('  Migraciones: ' . count($migrations));
-        $this->line('  Seeders:     ' . ($runSeeders ? count($seeders) : 0));
-        $this->newLine();
+        try {
+            $conexion = $targets->resolveExecutionConnection($contexto, $dryRun);
+        } catch (Throwable $e) {
+            $this->components->error($e->getMessage());
 
-        // ── Migraciones ─────────────────────────────────────────────────────
-        foreach ($migrations as $index => $coordinate) {
-            try {
-                $resolved = $resolver->resolveMigrationCoordinate($coordinate);
-            } catch (Throwable $e) {
-                $this->components->error($e->getMessage());
-                return self::FAILURE;
-            }
-
-            $step = ($index + 1) . '/' . count($migrations);
-
-            if ($dryRun) {
-                $this->line("  [DRY-RUN] Migración {$step}: {$coordinate}");
-                $this->line("           → {$resolved['path']}");
-                continue;
-            }
-
-            $this->components->task("Migración {$step}: {$coordinate}", function () use ($resolved, $connectionName) {
-                $exitCode = $this->call('migrate', [
-                    '--path' => $resolved['path'],
-                    '--database' => $connectionName,
-                    '--realpath' => true,
-                    '--force' => true,
-                ]);
-
-                return $exitCode === self::SUCCESS;
-            });
+            return self::FAILURE;
         }
 
-        // ── Seeders ─────────────────────────────────────────────────────────
-        if ($runSeeders && !empty($seeders)) {
-            $this->newLine();
+        $this->components->info('Contexto: ' . $contexto);
+        $this->line('  Conexión:      ' . $conexion);
+        $this->line('  Base de datos: ' . ($targets->resolveDatabaseName($conexion) ?: '[sin definir]'));
+        $this->line('  Migraciones:   ' . count($migraciones));
+        $this->newLine();
 
-            foreach ($seeders as $index => $coordinate) {
-                try {
-                    $resolved = $resolver->resolveSeederCoordinate($coordinate);
-                } catch (Throwable $e) {
-                    $this->components->error($e->getMessage());
-                    return self::FAILURE;
-                }
-
-                $step = ($index + 1) . '/' . count($seeders);
-                $fqcn = $resolved['fqcn'];
-
-                if ($dryRun) {
-                    $this->line("  [DRY-RUN] Seeder {$step}: {$coordinate}");
-                    $this->line("           → {$fqcn}");
-                    continue;
-                }
-
-                $this->components->task("Seeder {$step}: {$coordinate}", function () use ($fqcn, $connectionName) {
-                    $exitCode = $this->call('db:seed', [
-                        '--class' => $fqcn,
-                        '--database' => $connectionName,
-                        '--force' => true,
-                    ]);
-
-                    return $exitCode === self::SUCCESS;
-                });
-            }
+        foreach ($migraciones as $i => $migracion) {
+            $this->line('  ' . ($i + 1) . '. ' . $migracion);
         }
 
         $this->newLine();
 
         if ($dryRun) {
-            $this->components->info('Dry-run completado. No se aplicaron cambios a la base de datos.');
-        } else {
-            $this->components->info('Migrate-plan completado correctamente.');
+            $this->components->info('Dry-run completado. No se aplicó ninguna migración.');
+
+            return self::SUCCESS;
         }
+
+        $error = $targets->validateDatabaseExists($conexion);
+
+        if ($error !== null) {
+            $this->components->error($error);
+
+            return self::FAILURE;
+        }
+
+        return $this->aplicar($migraciones, $conexion);
+    }
+
+    /**
+     * @param  array<int, string>  $migraciones
+     */
+    private function aplicar(array $migraciones, string $conexion): int
+    {
+        foreach ($migraciones as $migracion) {
+            $codigo = $this->call('migrate', [
+                '--path'     => $migracion,
+                '--database' => $conexion,
+                '--force'    => true,
+            ]);
+
+            if ($codigo !== self::SUCCESS) {
+                $this->components->error("Falló la migración: {$migracion}");
+
+                return self::FAILURE;
+            }
+        }
+
+        $this->components->info('Migraciones aplicadas.');
 
         return self::SUCCESS;
     }

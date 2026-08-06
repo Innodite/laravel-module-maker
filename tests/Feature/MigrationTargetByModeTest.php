@@ -18,12 +18,12 @@ use Innodite\LaravelModuleMaker\Support\ModuleMode;
  */
 
 it('en tenants iguales no se exige connection_key: migra sobre la conexión activa', function () {
-    // `tenant-shared` es el contexto que fallaba: en el contexts.json de ejemplo NO declara
+    // `Tenant/Shared` es el contexto que fallaba: en el contexts.json de ejemplo NO declara
     // `connection_key` ni `tenancy_strategy`, porque en ese modo no le corresponde declararlos.
     $this->withMode(ModuleMode::MultitenantShared);
 
     $conexion = (new MigrationTargetService())->resolveExecutionConnection(
-        'tenant-shared.order.json',
+        'Tenant/Shared',
         dryRun: true
     );
 
@@ -40,7 +40,7 @@ it('el mismo contexto, en el modo de lógica propia, sí exige la conexión', fu
     // la conexión es parte de su identidad y no declararla es un error de configuración de verdad.
     $this->withMode(ModuleMode::MultitenantPerTenant);
 
-    expect(fn () => (new MigrationTargetService())->resolveExecutionConnection('tenant-shared.order.json', true))
+    expect(fn () => (new MigrationTargetService())->resolveExecutionConnection('Tenant/Shared', true))
         ->toThrow(InvalidArgumentException::class);
 });
 
@@ -49,7 +49,7 @@ it('la app central pasa por la validación de siempre', function () {
     // siempre (R7): si aquí se relajara, el despliegue central acabaría en la base equivocada.
     $this->withMode(ModuleMode::MultitenantShared);
 
-    $conexion = (new MigrationTargetService())->resolveExecutionConnection('central.order.json', true);
+    $conexion = (new MigrationTargetService())->resolveExecutionConnection('central', true);
 
     expect($conexion)->toBe('central');
 });
