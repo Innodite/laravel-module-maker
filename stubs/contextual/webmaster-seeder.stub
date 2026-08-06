@@ -1,0 +1,279 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Database\Seeders;
+
+use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Str;
+use Innodite\LaravelModuleMaker\Traits\ReportsSeederErrors;
+
+/**
+ * El webmaster: el rol que lo puede todo, **sin una lista que mantener**.
+ *
+ *     php artisan db:seed --class="WebmasterSeeder"
+ *
+ * Lo ejecuta el despliegue del proyecto justo **después** de los permisos, que es cuando ya existen
+ * los que va a recoger.
+ *
+ * **Recoge todos los permisos del guard, en el momento de correr.** Nunca una lista escrita: un
+ * módulo generado hoy queda cubierto esta misma noche, sin que nadie se acuerde de añadir nada. Una
+ * lista literal funcionaría el primer día y a partir del segundo dejaría al webmaster sin los
+ * permisos de lo último que se construyó — y eso no se ve, porque el síntoma es un 403 a la única
+ * persona que se supone que puede entrar a todo.
+ *
+ * **Corre en la base de datos donde se le invoque**, y por eso no sabe nada de contextos: en un
+ * proyecto multitenant, el despliegue central le da los permisos centrales y el de cada tenant los
+ * suyos, porque en cada base están los que hay.
+ *
+ * **No destructivo, y con la contraseña fuera del archivo.** Si el usuario ya existe **no se le toca
+ * la contraseña** —volver a desplegar no puede echar a nadie de su propia aplicación— y si hay que
+ * crearlo, la contraseña sale de `WEBMASTER_PASSWORD`, vía `config/make-module.php`. Sin
+ * esa variable se genera una aleatoria y se imprime **una sola vez**: una contraseña por defecto
+ * escrita aquí quedaría publicada en el repositorio del proyecto y sería la misma en todas las
+ * instalaciones.
+ *
+ * Se escribe contra las tablas y no contra las clases del paquete de permisos, igual que los seeders
+ * de permisos de cada subfuncionalidad.
+ */
+class WebmasterSeeder extends Seeder
+{
+    use ReportsSeederErrors;
+
+    /** La conexión donde se siembra. `null` es la de por defecto: la base contra la que se despliega. */
+    protected ?string $connection = null;
+
+    /** El guard de los permisos que recoge; el `web` de la sesión, donde viven las rutas generadas. */
+    protected string $guard = 'web';
+
+    public function run(): void
+    {
+        $this->say("\n👑 WebmasterSeeder — el rol que lo puede todo\n");
+
+        if (! $this->hasPermissionTables()) {
+            return;
+        }
+
+        $rolId = null;
+
+        $this->safe('ensureRole', function () use (&$rolId): void {
+            $rolId = $this->ensureRole();
+        });
+
+        if ($rolId !== null) {
+            $this->safe('syncAllPermissions', fn () => $this->syncAllPermissions($rolId));
+            $this->safe('ensureUser', fn () => $this->ensureUser($rolId));
+        }
+
+        $this->safe('forgetCachedPermissions', fn () => $this->forgetCachedPermissions());
+
+        $this->reportErrors();
+
+        $this->say("   ✅ Webmaster al día.\n");
+    }
+
+    /**
+     * Quién es el webmaster — lo dice la configuración, no el entorno leído desde aquí.
+     *
+     * La diferencia importa en producción y en ningún otro sitio: un proyecto con `config:cache`
+     * **no carga el `.env`**, así que un `env()` escrito aquí devolvería el valor por defecto y el
+     * seeder crearía otro usuario, con otra contraseña, sin un solo error. Leído de la
+     * configuración, el valor queda horneado cuando se construye la caché.
+     */
+    protected function setting(string $clave, string $porDefecto = ''): string
+    {
+        return (string) (config("make-module.webmaster.{$clave}") ?? $porDefecto);
+    }
+
+    protected function roleName(): string
+    {
+        return $this->setting('role', 'webmaster') ?: 'webmaster';
+    }
+
+    protected function userEmail(): string
+    {
+        return $this->setting('email', 'webmaster@innodite.local') ?: 'webmaster@innodite.local';
+    }
+
+    protected function userName(): string
+    {
+        return $this->setting('name', 'Webmaster') ?: 'Webmaster';
+    }
+
+    /**
+     * Sin las tablas de permisos no hay nada que hacer, y decirlo es mejor que reventar.
+     *
+     * El proyecto puede estar desplegándose antes de instalar el paquete de permisos, y ese no es un
+     * error del despliegue: es un paso que todavía no toca.
+     */
+    protected function hasPermissionTables(): bool
+    {
+        $schema = Schema::connection($this->connection);
+
+        foreach (['permissions', 'roles', 'role_has_permissions'] as $tabla) {
+            if (! $schema->hasTable($tabla)) {
+                $this->say(
+                    "   ⚠️  No existe la tabla `{$tabla}`: instala el paquete de permisos y ejecuta "
+                    . 'sus migraciones antes de sembrar. Se omite este paso.',
+                    'warn'
+                );
+
+                return false;
+            }
+        }
+
+        return true;
+    }
+
+    /** El rol, creado si no está. Si ya está, se respeta tal cual. */
+    protected function ensureRole(): int
+    {
+        $db = DB::connection($this->connection);
+
+        $db->table('roles')->updateOrInsert(
+            ['name' => $this->roleName(), 'guard_name' => $this->guard],
+            ['updated_at' => now(), 'created_at' => now()],
+        );
+
+        return (int) $db->table('roles')
+            ->where('name', $this->roleName())
+            ->where('guard_name', $this->guard)
+            ->value('id');
+    }
+
+    /**
+     * **Todos** los permisos del guard al rol — leídos ahora, no escritos antes.
+     *
+     * Es la línea entera de esta tarea: `permissions` es la fuente, y lo que haya ahí cuando esto
+     * corra es lo que el webmaster tendrá. Los que ya estaban asignados no se tocan; los que se
+     * borraron se van solos con su fila.
+     */
+    protected function syncAllPermissions(int $rolId): void
+    {
+        $db = DB::connection($this->connection);
+
+        $todos = $db->table('permissions')->where('guard_name', $this->guard)->pluck('id');
+
+        if ($todos->isEmpty()) {
+            $this->say(
+                '   ⚠️  No hay ningún permiso en la base de datos todavía. El webmaster se queda sin '
+                . 'ninguno: comprueba que los seeders de permisos corrieron antes que este.',
+                'warn'
+            );
+
+            return;
+        }
+
+        $yaTiene = $db->table('role_has_permissions')
+            ->where('role_id', $rolId)
+            ->pluck('permission_id')
+            ->all();
+
+        $faltan = $todos->reject(fn (int $id): bool => in_array($id, $yaTiene, true))->values();
+
+        if ($faltan->isNotEmpty()) {
+            $db->table('role_has_permissions')->insert(
+                $faltan->map(fn (int $id): array => ['role_id' => $rolId, 'permission_id' => $id])->all()
+            );
+        }
+
+        $this->say("   → {$todos->count()} permisos en el rol '{$this->roleName()}' (+{$faltan->count()} nuevos).");
+    }
+
+    /**
+     * El usuario del webmaster, y su rol asignado.
+     *
+     * Si ya existe **no se le toca nada**: ni el nombre ni, sobre todo, la contraseña. Un despliegue
+     * que reescribe la contraseña del administrador lo deja fuera de su propia aplicación, y eso
+     * ocurriría en cada despliegue de producción.
+     */
+    protected function ensureUser(int $rolId): void
+    {
+        $schema = Schema::connection($this->connection);
+
+        if (! $schema->hasTable('users') || ! $schema->hasTable('model_has_roles')) {
+            $this->say(
+                '   ⚠️  Sin tabla `users` o `model_has_roles` no se puede crear el usuario. El rol '
+                . 'queda creado y con sus permisos; asígnalo a mano.',
+                'warn'
+            );
+
+            return;
+        }
+
+        $db      = DB::connection($this->connection);
+        $usuario = $db->table('users')->where('email', $this->userEmail())->first();
+
+        if ($usuario === null) {
+            $usuario = $this->createUser($db, $schema);
+        }
+
+        $db->table('model_has_roles')->updateOrInsert([
+            'role_id'    => $rolId,
+            'model_type' => $this->userModel(),
+            'model_id'   => $usuario->id,
+        ], []);
+    }
+
+    /** Crea el usuario, y solo entonces decide la contraseña. */
+    protected function createUser(object $db, object $schema): object
+    {
+        $password  = $this->setting('password');
+        $generada  = $password === '';
+        $password  = $generada ? Str::random(24) : $password;
+
+        $valores = [
+            'email'      => $this->userEmail(),
+            'password'   => Hash::make($password),
+            'created_at' => now(),
+            'updated_at' => now(),
+        ];
+
+        if ($schema->hasColumn('users', 'name')) {
+            $valores['name'] = $this->userName();
+        }
+
+        if ($schema->hasColumn('users', 'email_verified_at')) {
+            $valores['email_verified_at'] = now();
+        }
+
+        $db->table('users')->insert($valores);
+
+        if ($generada) {
+            // La única vez que esta contraseña se puede leer. No se guarda en ningún sitio: dejarla
+            // escrita en el archivo la publicaría en el repositorio del proyecto, y sería la misma en
+            // todas las instalaciones.
+            $this->say("   🔑 Usuario '{$this->userEmail()}' creado con contraseña: {$password}", 'warn');
+            $this->say('      Anótala y cámbiala: no se vuelve a mostrar. Para fijarla tú, '
+                . 'declara WEBMASTER_PASSWORD en el .env antes de desplegar.', 'warn');
+        } else {
+            $this->say("   → Usuario '{$this->userEmail()}' creado con la contraseña del .env.");
+        }
+
+        return (object) ['id' => $db->table('users')->where('email', $this->userEmail())->value('id')];
+    }
+
+    /** El modelo con el que el paquete de permisos identifica al usuario. Lo dice el proyecto. */
+    protected function userModel(): string
+    {
+        return (string) config('auth.providers.users.model', 'App\\Models\\User');
+    }
+
+    /**
+     * Vacía la caché de permisos, si el paquete que la mantiene está instalado.
+     *
+     * Sin esto los permisos existen en la base de datos y la aplicación sigue respondiendo con los de
+     * antes: el síntoma es un 403 a quien sí tiene el permiso, y se persigue durante horas.
+     */
+    protected function forgetCachedPermissions(): void
+    {
+        $registrar = 'Spatie\\Permission\\PermissionRegistrar';
+
+        if (class_exists($registrar)) {
+            app($registrar)->forgetCachedPermissions();
+        }
+    }
+}

@@ -25,7 +25,7 @@ function packageStubs(): array
     return glob(dirname(__DIR__, 2) . '/stubs/contextual/*.stub') ?: [];
 }
 
-it('encuentra los 33 stubs del paquete', function () {
+it('encuentra los 34 stubs del paquete', function () {
     // La cuenta sube cuando el paquete aprende a generar una pieza nueva —las últimas son las tres
     // ejecutables de la subfuncionalidad, el trait de datos canónicos, los dos maestros de módulo y
     // el seeder de despliegue del proyecto, todas de la fase 3— y esa subida se hace **a propósito,
@@ -35,8 +35,8 @@ it('encuentra los 33 stubs del paquete', function () {
     // Lo que esta prueba vigila es lo otro: que no reaparezcan las copias por
     // contexto que A4 borró, donde la copia le ganaba por prioridad al original corregido.
     expect(packageStubs())->toHaveCount(
-        33,
-        'El paquete lleva 33 stubs, una sola copia de cada uno. Si aparecen más sin haber añadido '
+        34,
+        'El paquete lleva 34 stubs, una sola copia de cada uno. Si aparecen más sin haber añadido '
         . 'una pieza, alguien devolvió las copias por contexto; si aparecen menos, falta un stub.'
     );
 });

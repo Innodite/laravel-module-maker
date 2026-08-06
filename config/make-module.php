@@ -96,4 +96,31 @@ return [
     'deploy' => [
         // {{DEPLOY_END}}
     ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | El webmaster — el rol que lo puede todo
+    |--------------------------------------------------------------------------
+    |
+    | Su seeder recoge TODOS los permisos que existan en la base donde corra,
+    | así que un módulo generado mañana queda cubierto sin tocar ninguna lista.
+    | Lo único que no puede adivinar es quién es esa persona.
+    |
+    | Se declara aquí, y no se lee del entorno dentro del seeder, porque un
+    | proyecto en producción cachea la configuración (`config:cache`) y entonces
+    | el `.env` ya no se carga: un `env()` fuera de config/ devolvería el valor
+    | por defecto y el webmaster se crearía con OTRO correo y OTRA contraseña,
+    | sin un solo error. Leído desde aquí, el valor queda horneado en la caché.
+    |
+    | `password` sin declarar NO es un problema: al crear el usuario se genera
+    | una aleatoria y se imprime una sola vez. Lo que no puede haber es una
+    | contraseña por defecto escrita en el código, igual en cada instalación.
+    |
+    */
+    'webmaster' => [
+        'role'     => env('WEBMASTER_ROLE', 'webmaster'),
+        'name'     => env('WEBMASTER_NAME', 'Webmaster'),
+        'email'    => env('WEBMASTER_EMAIL', 'webmaster@innodite.local'),
+        'password' => env('WEBMASTER_PASSWORD'),
+    ],
 ];

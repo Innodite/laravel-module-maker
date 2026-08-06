@@ -23,11 +23,21 @@ declare(strict_types=1);
 /**
  * Lee los mapas de placeholders que cada generador pasa a getStubContent().
  *
+ * **Una llamada sin mapa es legítima**, y leerla mal costó un falso positivo: un stub cuyo contenido
+ * es fijo se pide con `getStubContent('x.stub', false)` y ya está. El lector anterior buscaba el
+ * siguiente `[` **fuera de la llamada**, así que le atribuía a ese stub el array de otra que venía
+ * más abajo en el mismo archivo, y acusaba de sobrantes tres claves que sí se usaban donde tocaba.
+ *
+ * Por eso el mapa se busca **dentro** de la llamada: solo si el `[` aparece antes del `;` que la
+ * cierra, y recortado por balance de corchetes en vez de por el primer `]`, que se quedaría a medias
+ * en cuanto un valor lleve un índice dentro.
+ *
  * @return array<int, array{generador: string, stub: string, claves: array<int, string>}>
  */
 function mapasDePlaceholders(): array
 {
-    $mapas = [];
+    $mapas    = [];
+    $archivos = [];
 
     foreach (glob(dirname(__DIR__, 2) . '/src/Generators/Components/**/*.php') ?: [] as $file) {
         $archivos[] = $file;
@@ -36,28 +46,51 @@ function mapasDePlaceholders(): array
         $archivos[] = $file;
     }
 
-    foreach (array_unique($archivos ?? []) as $file) {
+    foreach (array_unique($archivos) as $file) {
         $src = file_get_contents($file);
 
         preg_match_all(
-            "/getStubContent\(\s*'?([\w.-]+\.stub)'?[^\[]*\[(.*?)\]\s*[,)]/s",
+            "/getStubContent\(\s*'([\w.-]+\.stub)'/",
             $src,
             $llamadas,
-            PREG_SET_ORDER
+            PREG_OFFSET_CAPTURE
         );
 
-        foreach ($llamadas as $llamada) {
-            preg_match_all("/'(\w+)'\s*=>/", $llamada[2], $claves);
+        foreach ($llamadas[1] as [$stub, $offset]) {
+            preg_match_all("/'(\w+)'\s*=>/", mapaDeLaLlamada($src, (int) $offset), $claves);
 
             $mapas[] = [
                 'generador' => basename($file),
-                'stub'      => $llamada[1],
+                'stub'      => $stub,
                 'claves'    => $claves[1],
             ];
         }
     }
 
     return $mapas;
+}
+
+/** El array de placeholders de **esta** llamada, o cadena vacía si no lleva ninguno. */
+function mapaDeLaLlamada(string $src, int $offset): string
+{
+    $corchete = strpos($src, '[', $offset);
+    $cierre   = strpos($src, ';', $offset);
+
+    if ($corchete === false || ($cierre !== false && $corchete > $cierre)) {
+        return '';   // la llamada terminó antes de abrir ningún array
+    }
+
+    $profundidad = 0;
+
+    for ($i = $corchete; $i < strlen($src); $i++) {
+        $profundidad += (int) ($src[$i] === '[') - (int) ($src[$i] === ']');
+
+        if ($profundidad === 0) {
+            return substr($src, $corchete + 1, $i - $corchete - 1);
+        }
+    }
+
+    return '';
 }
 
 it('encuentra los mapas de placeholders de los generadores', function () {

@@ -11,7 +11,7 @@ use Innodite\LaravelModuleMaker\Support\ModuleMode;
 use Innodite\LaravelModuleMaker\Support\SeederNames;
 
 /**
- * Escribe los seeders de despliegue **del proyecto**, en `database/seeders/`.
+ * Escribe los seeders **del proyecto**, en `database/seeders/`: los despliegues y el webmaster.
  *
  * **Los escribe el instalador y no `make-module`, y esa es la decisión de fondo.** Son del proyecto:
  * hay uno —o dos— por proyecto, no uno por módulo, y existen antes que el primer módulo. `make-module`
@@ -19,14 +19,19 @@ use Innodite\LaravelModuleMaker\Support\SeederNames;
  * módulo los ataría al primero que se creara, y reescribirlos al crear el segundo se llevaría por
  * delante lo que el desarrollador hubiera añadido dentro.
  *
- * **Cuántos, lo dice el modo.** En una aplicación única, **uno**: no hay dos contextos que separar ni
- * dos bases de datos que llenar. En multitenant, **dos**, porque son dos despliegues distintos contra
- * dos bases distintas — y el de un tenant se ejecuta una vez por tenant.
+ * **Cuántos despliegues, lo dice el modo.** En una aplicación única, **uno**: no hay dos contextos que
+ * separar ni dos bases de datos que llenar. En multitenant, **dos**, porque son dos despliegues
+ * distintos contra dos bases distintas — y el de un tenant se ejecuta una vez por tenant.
  *
- * **No sobreescribe.** Su `run()` es la secuencia de pasos que el desarrollador lee y amplía; volver
- * a instalar no puede llevarse un paso añadido a mano.
+ * **El webmaster, en cambio, es siempre uno**, y no porque se decida aquí: no sabe nada de contextos,
+ * recoge los permisos que haya **en la base donde se le invoque**. En multitenant el despliegue
+ * central le da los centrales y el de cada tenant los suyos, con el mismo archivo.
+ *
+ * **No sobreescribe.** El `run()` de un despliegue es la secuencia de pasos que el desarrollador lee y
+ * amplía, y el del webmaster puede acabar creando también los roles de la casa; volver a instalar no
+ * puede llevarse nada de eso.
  */
-class ProjectDeploySeederGenerator
+class ProjectSeederGenerator
 {
     use HasStubs;
     use WritesGeneratedFiles;
@@ -79,7 +84,32 @@ class ProjectDeploySeederGenerator
             );
         }
 
+        $this->writeWebmaster($destino);
+
         return $escritos;
+    }
+
+    /**
+     * El webmaster: uno, y el mismo para todos los contextos.
+     *
+     * Lo llama el despliegue justo después de los permisos, así que no se engancha al
+     * `DatabaseSeeder` — enganchar los dos lo ejecutaría dos veces por despliegue.
+     */
+    private function writeWebmaster(string $destino): void
+    {
+        $archivo = "{$destino}/WebmasterSeeder.php";
+
+        if (File::exists($archivo)) {
+            $this->warn('   WebmasterSeeder ya existe. No se sobreescribió.');
+
+            return;
+        }
+
+        $this->putFile(
+            $archivo,
+            $this->getStubContent('webmaster-seeder.stub', false),
+            "Seeder 'WebmasterSeeder' creado en database/seeders/."
+        );
     }
 
     /**

@@ -6,7 +6,7 @@ namespace Innodite\LaravelModuleMaker\Commands;
 
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\File;
-use Innodite\LaravelModuleMaker\Generators\Components\ProjectDeploySeederGenerator;
+use Innodite\LaravelModuleMaker\Generators\Components\ProjectSeederGenerator;
 use Innodite\LaravelModuleMaker\Support\ModuleMode;
 
 /**
@@ -271,7 +271,7 @@ class SetupModuleMakerCommand extends Command
             return [];
         }
 
-        return (new ProjectDeploySeederGenerator($mode, $this))->generate();
+        return (new ProjectSeederGenerator($mode, $this))->generate();
     }
 
     /**

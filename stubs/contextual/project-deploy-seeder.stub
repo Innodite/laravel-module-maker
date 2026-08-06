@@ -23,10 +23,11 @@ use Innodite\LaravelModuleMaker\Traits\ReportsSeederErrors;
  * maestro de módulo lee solo lo suyo: sin este seeder, levantar el proyecto es acordarse de llamarlos
  * uno a uno y en el orden correcto — que es justo lo que la lista viene a evitar.
  *
- * **Qué hace, en dos pasos.** Primero el esquema y los datos —`Stage` o `Production`, según lo que se
- * le pida—, y después los permisos, que van siempre y en los dos casos. Son dos recorridos de la
- * misma lista porque son dos piezas distintas de cada subfuncionalidad, y porque los permisos tienen
- * que existir aunque el despliegue de datos falle a medias.
+ * **Qué hace, en tres pasos.** Primero el esquema y los datos —`Stage` o `Production`, según lo que se
+ * le pida—, después los permisos, que van siempre y en los dos casos, y por último el webmaster. Los
+ * dos primeros son dos recorridos de la misma lista porque son dos piezas distintas de cada
+ * subfuncionalidad, y porque los permisos tienen que existir aunque el despliegue de datos falle a
+ * medias. El webmaster va el último **porque recoge los permisos que los anteriores acaban de crear**.
  *
  * **No nombra a ningún maestro.** Los deriva de las carpetas declaradas más la pieza que se le pide,
  * así que un despliegue de producción **no puede** invocar el maestro de stage — el que reconstruye
@@ -64,10 +65,13 @@ class {{{ seederName }}} extends Seeder
         $this->say("\n🔐 Permisos\n");
         $this->runMasters('Permissions');
 
-        // 3. Lo que está generado y nadie despliega.
+        // 3. El webmaster, DESPUÉS de los permisos: recoge todos los que acaban de crearse.
+        $this->safe(WebmasterSeeder::class, fn () => $this->call(WebmasterSeeder::class));
+
+        // 4. Lo que está generado y nadie despliega.
         $this->reportCoverage();
 
-        // 4. Y solo entonces se falla, con todo lo que falló delante.
+        // 5. Y solo entonces se falla, con todo lo que falló delante.
         $this->reportErrors();
 
         $this->say("\n✅ Proyecto desplegado ({$piece}).\n");

@@ -75,3 +75,38 @@ function cargarPiezas(object $modulo, string $carpeta, array $piezas): void
         require_once $modulo->path("{$carpeta}/{$pieza}.php");
     }
 }
+
+/**
+ * Carga un seeder del PROYECTO —los que escribe el instalador en `database/seeders/`—, si no lo
+ * cargó ya otra prueba.
+ *
+ * Cada prueba genera en un directorio temporal distinto, pero la clase se llama igual: `require_once`
+ * no lo ve —son rutas distintas— y declararla dos veces es un fatal. Es lo mismo que documenta
+ * `cargarPiezas()` para las piezas de un módulo.
+ */
+function cargarSeederDelProyecto(string $clase): void
+{
+    if (class_exists("Database\\Seeders\\{$clase}", false)) {
+        return;
+    }
+
+    require_once database_path("seeders/{$clase}.php");
+}
+
+/**
+ * Salta la prueba si esta máquina no puede abrir la base de datos de las pruebas.
+ *
+ * El `phpunit.xml` del paquete declara sqlite en memoria desde siempre, pero hasta esta tarea ninguna
+ * prueba abría una conexión, así que una máquina sin `pdo_sqlite` pasaba la suite entera sin enterarse.
+ * Se salta **diciéndolo**, que es lo contrario de no escribir la prueba: en cuanto la extensión esté,
+ * corre sola.
+ */
+function requiereBaseDeDatos(): void
+{
+    if (! extension_loaded('pdo_sqlite')) {
+        test()->markTestSkipped(
+            'Falta la extensión pdo_sqlite, que es la base de datos de las pruebas (phpunit.xml). '
+            . 'Instálala con: sudo apt install php8.3-sqlite3'
+        );
+    }
+}

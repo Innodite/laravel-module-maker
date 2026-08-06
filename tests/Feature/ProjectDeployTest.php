@@ -79,22 +79,6 @@ function despliegueDePrueba(array $contexts = []): object
     };
 }
 
-/**
- * Carga el despliegue generado, si no lo cargó ya otra prueba.
- *
- * Cada prueba genera en un directorio temporal distinto, pero la clase se llama igual: `require_once`
- * no lo ve —son rutas distintas— y declararla dos veces es un fatal. Es lo mismo que documenta
- * `cargarPiezas()` para las piezas de un módulo.
- */
-function cargarDespliegue(string $clase): void
-{
-    if (class_exists("Database\\Seeders\\{$clase}", false)) {
-        return;
-    }
-
-    require_once database_path("seeders/{$clase}.php");
-}
-
 /** Deja un `DatabaseSeeder.php` como el que trae un proyecto Laravel recién creado. */
 function databaseSeederDelProyecto(): string
 {
@@ -167,7 +151,7 @@ it('el despliegue generado carga y se instancia', function () {
     // instanciar. Es la lección de B21, aplicada al archivo que levanta el proyecto entero.
     Artisan::call('innodite:module-setup', ['--mode' => 'single-app', '--no-interaction' => true]);
 
-    cargarDespliegue('InnoditeDeploySeeder');
+    cargarSeederDelProyecto('InnoditeDeploySeeder');
 
     expect(new Database\Seeders\InnoditeDeploySeeder())->toBeInstanceOf(Seeder::class);
 });
@@ -408,14 +392,29 @@ it('el comando arranca de verdad el seeder del proyecto', function () {
 
     Artisan::call('innodite:module-setup', ['--mode' => 'single-app', '--no-interaction' => true]);
 
-    cargarDespliegue('InnoditeDeploySeeder');
+    cargarSeederDelProyecto('InnoditeDeploySeeder');
 
     config()->set('make-module.deploy', []);
 
-    $salida = Artisan::call('innodite:deploy', ['entorno' => 'stage', '--no-interaction' => true]);
+    Artisan::call('innodite:deploy', ['entorno' => 'stage', '--no-interaction' => true]);
 
-    expect($salida)->toBe(0);
     expect(Artisan::output())->toContain('desplegando el proyecto (Stage)');
+});
+
+it('con el orden vacío, el despliegue termina en verde', function () {
+    // No desplegar nada no es un error: es un proyecto recién instalado. Necesita base de datos
+    // porque el paso del webmaster la abre para ver si las tablas de permisos ya existen.
+    requiereBaseDeDatos();
+
+    $this->withMode(ModuleMode::SingleApp);
+
+    Artisan::call('innodite:module-setup', ['--mode' => 'single-app', '--no-interaction' => true]);
+
+    cargarSeederDelProyecto('InnoditeDeploySeeder');
+
+    config()->set('make-module.deploy', []);
+
+    expect(Artisan::call('innodite:deploy', ['entorno' => 'stage', '--no-interaction' => true]))->toBe(0);
 });
 
 it('sin el seeder de despliegue dice quién lo escribe', function () {
