@@ -319,43 +319,11 @@ class RouteGenerator extends AbstractComponentGenerator
     }
 
     // ─── De dónde salen el prefijo y el middleware del permiso ───────────────
-
-    /**
-     * El prefijo del permiso: lo dice **el modo**, y el contexto solo puede afinarlo.
-     *
-     * Antes se leía únicamente de `contexts.json`. Cuando ese archivo no declaraba
-     * `permission_prefix` —que es lo normal en un proyecto recién instalado— el prefijo llegaba
-     * **vacío** y las rutas salían exigiendo `invoices_index` en vez de `central_invoices_index`:
-     * un permiso que el seeder no crea, para una pantalla que entonces no abre nadie.
-     *
-     * `ModuleMode::permissionPrefix()` existe desde la fase 1 **con su prueba**, respondiendo
-     * exactamente esta pregunta, y aquí no la llamaba nadie. Es el mismo patrón que dejó al modelo sin
-     * `$connection` hasta la fase 2.
-     */
-    private function resolvePermissionPrefix(array $context, ?string $contextKey, ?string $tenantId = null): string
-    {
-        $delContexto = $context['permission_prefix'] ?? '';
-
-        return $delContexto !== ''
-            ? $delContexto
-            : ModuleMode::current()->permissionPrefix($contextKey, $tenantId);
-    }
-
-    /**
-     * El middleware que protege la ruta, con la misma regla: manda el modo.
-     *
-     * Un middleware vacío no dejaba la ruta desprotegida de forma visible: producía
-     * `->middleware(':invoices_index')`, con los dos puntos sueltos y un nombre de middleware vacío.
-     * Eso no es «sin permiso», es una ruta que revienta al resolverse — y solo en ejecución.
-     */
-    private function resolvePermissionMiddleware(array $context, ?string $contextKey): string
-    {
-        $delContexto = $context['permission_middleware'] ?? '';
-
-        return $delContexto !== ''
-            ? $delContexto
-            : ModuleMode::current()->permissionMiddleware($contextKey);
-    }
+    //
+    // Los dos resolvedores **subieron al generador base** en la fase 3: los necesita también el
+    // generador de seeders, que es quien crea los permisos que estas rutas exigen. Tenerlos aquí,
+    // privados, era garantizar que el día que uno cambiara el otro seguiría emitiendo el nombre
+    // viejo — los dos lados de la misma pareja calculando por separado.
 
     // ─── Helpers de construcción de rutas ────────────────────────────────────
 

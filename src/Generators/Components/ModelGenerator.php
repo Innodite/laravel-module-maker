@@ -177,26 +177,20 @@ class ModelGenerator extends AbstractComponentGenerator
     /**
      * La conexión del modelo — **si el modo dice que este contexto la declara** (R7).
      *
-     * Las tres respuestas del patrón, que el enum ya sabía dar desde la fase 1 con su prueba:
+     * La respuesta la da `connectionKey()` en el generador base, que es también de donde la toman
+     * los tres seeders ejecutables de esta subfuncionalidad: el modelo que lee de una base y su
+     * seeder que siembra en otra es lo que pasa cuando cada uno la calcula por su cuenta.
      *
-     *   single-app          no declara: hay una sola base de datos, no hay nada que conmutar
-     *   central             declara siempre `'central'`
-     *   tenant compartido   **no** declara — la conmuta stancl al inicializar el contexto, y
-     *                       nombrarla aquí ataría el modelo a un solo inquilino
-     *   tenant con lógica propia   declara la suya
-     *
-     * Devuelve cadena vacía cuando no toca, para que el modelo generado no lleve una línea muerta.
+     * Aquí solo se decide la **forma**: cadena vacía cuando no toca, para que el modelo generado no
+     * lleve una línea muerta.
      */
     protected function getConnectionProperty(): string
     {
-        $contextKey = $this->componentConfig['context'] ?? null;
-        $contextKey = $contextKey ?: null;
+        $connection = $this->connectionKey();
 
-        if (! $this->mode()->declaresModelConnection($contextKey)) {
+        if ($connection === null) {
             return '';
         }
-
-        $connection = $this->getContext()['connection_key'] ?? $contextKey;
 
         return "protected \$connection = '{$connection}';\n\n    ";
     }

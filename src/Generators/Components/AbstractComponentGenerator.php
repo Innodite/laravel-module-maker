@@ -358,6 +358,111 @@ abstract class AbstractComponentGenerator
             ?? Str::kebab(Str::plural(Str::snake($this->moduleName)));
     }
 
+    // ─── Lo que más de un generador necesita saber, decidido UNA vez ──────────
+
+    /**
+     * El prefijo del permiso: lo dice **el modo**, y el contexto solo puede afinarlo.
+     *
+     * Vive aquí y no en el generador de rutas porque lo necesitan **los dos lados de la misma
+     * pareja**: el que escribe el `->middleware()` de cada ruta y el que escribe el seeder que crea
+     * esos permisos. Calculado por separado, el día que uno cambie el otro seguirá emitiendo el
+     * nombre viejo — y el síntoma será un 403 a quien sí tiene el permiso, o una pantalla que no
+     * abre nadie.
+     *
+     * Antes se leía únicamente de `contexts.json`. Cuando ese archivo no declaraba
+     * `permission_prefix` —lo normal en un proyecto recién instalado— el prefijo llegaba **vacío** y
+     * las rutas exigían `invoices_index` en vez de `central_invoices_index`: un permiso que el
+     * seeder no crea. `ModuleMode::permissionPrefix()` responde exactamente esta pregunta desde la
+     * fase 1, con su prueba.
+     *
+     * @param  array<string, mixed>  $context  Contexto ya resuelto (vacío en single-app)
+     */
+    protected function resolvePermissionPrefix(array $context, ?string $contextKey, ?string $tenantId = null): string
+    {
+        $delContexto = $context['permission_prefix'] ?? '';
+
+        return $delContexto !== ''
+            ? $delContexto
+            : $this->mode()->permissionPrefix($contextKey, $tenantId);
+    }
+
+    /**
+     * El middleware que protege la ruta, con la misma regla: manda el modo.
+     *
+     * Un middleware vacío no deja la ruta desprotegida de forma visible: produce
+     * `->middleware(':invoices_index')`, con los dos puntos sueltos y el nombre vacío. Eso no es
+     * «sin permiso», es una ruta que revienta al resolverse — y solo en ejecución.
+     *
+     * @param  array<string, mixed>  $context  Contexto ya resuelto (vacío en single-app)
+     */
+    protected function resolvePermissionMiddleware(array $context, ?string $contextKey): string
+    {
+        $delContexto = $context['permission_middleware'] ?? '';
+
+        return $delContexto !== ''
+            ? $delContexto
+            : $this->mode()->permissionMiddleware($contextKey);
+    }
+
+    /**
+     * El prefijo del permiso de **esta** subfuncionalidad, con sus tres datos ya puestos.
+     *
+     * La forma corta de la pregunta anterior, para quien no está resolviendo contextos a mano.
+     */
+    protected function permissionPrefix(): string
+    {
+        $context = $this->getContext();
+
+        return $this->resolvePermissionPrefix(
+            $context,
+            ($this->componentConfig['context'] ?? '') ?: null,
+            $context['id'] ?? null,
+        );
+    }
+
+    /**
+     * La conexión de base de datos que declara esta subfuncionalidad, o `null` si no declara ninguna.
+     *
+     * Las tres respuestas del patrón, que el enum sabe dar desde la fase 1:
+     *
+     *   single-app          no declara: hay una sola base de datos, nada que conmutar
+     *   central             declara siempre `'central'`
+     *   tenant compartido   **no** declara — la conmuta el paquete de tenancy al inicializar el
+     *                       contexto, y nombrarla aquí ataría el módulo a un solo inquilino
+     *   tenant con lógica propia   declara la suya
+     *
+     * La necesitan el modelo (como propiedad `$connection`) y los tres seeders ejecutables (para
+     * `Schema::connection()`). Dos cálculos de esto es un modelo leyendo de una base y su seeder
+     * sembrando en otra.
+     */
+    protected function connectionKey(): ?string
+    {
+        $contextKey = ($this->componentConfig['context'] ?? '') ?: null;
+
+        if (! $this->mode()->declaresModelConnection($contextKey)) {
+            return null;
+        }
+
+        return $this->getContext()['connection_key'] ?? $contextKey;
+    }
+
+    /**
+     * El nombre de la tabla de esta subfuncionalidad.
+     *
+     * Lo usan la migración que la crea y los seeders que la validan y la vacían. Si divergen, el
+     * seeder valida una tabla que no existe mientras la real queda sin comprobar.
+     */
+    protected function tableName(?string $entidad = null): string
+    {
+        $declarada = $this->componentConfig['table'] ?? null;
+
+        if (is_string($declarada) && $declarada !== '') {
+            return $declarada;
+        }
+
+        return Str::snake(Str::plural($entidad ?: ($this->getSubFeatureFolder() ?: $this->moduleName)));
+    }
+
     // ─── Helpers de filesystem ────────────────────────────────────────────────
 
     /**

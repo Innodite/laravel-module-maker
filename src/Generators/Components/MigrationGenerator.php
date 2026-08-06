@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Innodite\LaravelModuleMaker\Generators\Components;
 
 use Illuminate\Support\Str;
+use Innodite\LaravelModuleMaker\Support\SeederNames;
 use Illuminate\Support\Facades\File;
 use Innodite\LaravelModuleMaker\Generators\Concerns\HasStubs;
 use InvalidArgumentException;
@@ -25,7 +26,6 @@ class MigrationGenerator extends AbstractComponentGenerator
     protected string $migrationName;
     protected array $attributes;
     protected array $indexes;
-    protected ?string $tableName = null; // Nueva propiedad para el nombre de la tabla
 
     /**
      * Define los atributos y modificadores válidos para cada tipo de dato.
@@ -91,7 +91,6 @@ class MigrationGenerator extends AbstractComponentGenerator
         $this->migrationName = Str::studly($migrationName);
         $this->attributes = $attributes;
         $this->indexes = $indexes;
-        $this->tableName = $componentConfig['table'] ?? null;
     }
 
     /**
@@ -106,7 +105,7 @@ class MigrationGenerator extends AbstractComponentGenerator
         $migrationDirectoryPath = $this->buildPath('Database/Migrations');
         $this->ensureDirectoryExists($migrationDirectoryPath);
 
-        $tableName   = $this->tableName ?: Str::snake(Str::plural($this->migrationName));
+        $tableName   = $this->tableName($this->migrationName);
         $tableSchema = $this->getMigrationSchema($this->attributes, $this->indexes);
 
         // Idempotencia: si ya existe una migración para esta tabla en este contexto, no duplicar.
@@ -174,7 +173,7 @@ class MigrationGenerator extends AbstractComponentGenerator
             return;   // sin subfuncionalidad no hay grupo de seis piezas al que pertenecer
         }
 
-        $traitName = $this->prefixClass("{$this->moduleName}{$subFeature}") . 'MigrationsList';
+        $traitName = SeederNames::piece($this->getClassPrefix(), $this->moduleName, $subFeature, 'MigrationsList');
         $seederDir = $this->buildPath('Database/Seeders');
 
         $this->ensureDirectoryExists($seederDir);
@@ -227,14 +226,14 @@ class MigrationGenerator extends AbstractComponentGenerator
      */
     protected function writeInlineAltersTrait(string $seederDir, string $subFeature): void
     {
-        $traitName = $this->prefixClass("{$this->moduleName}{$subFeature}") . 'InlineAlters';
+        $traitName = SeederNames::piece($this->getClassPrefix(), $this->moduleName, $subFeature, 'InlineAlters');
         $destino   = "{$seederDir}/{$traitName}.php";
 
         if (File::exists($destino)) {
             return;
         }
 
-        $tableName = $this->tableName ?: Str::snake(Str::plural($this->migrationName));
+        $tableName = $this->tableName($this->migrationName);
 
         $stub = $this->getStubContent('inline-alters.stub', $this->isClean, [
             'namespace'  => $this->buildNamespace('Database\\Seeders'),

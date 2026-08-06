@@ -190,35 +190,6 @@ class ModuleGenerator
     }
 
     /**
-     * Crea un módulo limpio sin contexto (fallback cuando no hay contexts.json).
-     *
-     * @return void
-     */
-    public function createCleanModule(): void
-    {
-        $this->createFolders();
-        $this->createDocs();
-
-        $modelName = $this->moduleName;
-
-        $this->run(new ModelGenerator($this->moduleName, $this->modulePath, true, $modelName));
-        $this->run(new ControllerGenerator($this->moduleName, $this->modulePath, true, $modelName));
-        $this->run(new ServiceGenerator($this->moduleName, $this->modulePath, true, $modelName));
-        $this->run(new RepositoryGenerator($this->moduleName, $this->modulePath, true, $modelName));
-        $this->run(new RequestGenerator($this->moduleName, $this->modulePath, true, "{$modelName}StoreRequest"));
-        $this->run(new ProviderGenerator($this->moduleName, $this->modulePath, true));
-        $this->run(new RouteGenerator($this->moduleName, $this->modulePath, true, $modelName));
-        $this->run(new MigrationGenerator($this->moduleName, $this->modulePath, true, $modelName));
-        $this->run(new SeederGenerator($this->moduleName, $this->modulePath, true, "{$modelName}Seeder"));
-        $this->run(new FactoryGenerator($this->moduleName, $this->modulePath, true, $modelName, $modelName));
-        $this->run(new TestGenerator($this->moduleName, $this->modulePath, true, "{$modelName}Test"));
-
-        if ($this->command) {
-            $this->command->info("✅ Módulo '{$this->moduleName}' creado (estructura básica sin contexto).");
-        }
-    }
-
-    /**
      * Crea un módulo limpio con contexto explícito.
      * Aplica prefijos de clase y subcarpetas según el contexto seleccionado.
      *
@@ -251,7 +222,7 @@ class ModuleGenerator
         $this->run(new ProviderGenerator($this->moduleName, $this->modulePath, true, [$componentConfig], $componentConfig));
         $this->run(new RouteGenerator($this->moduleName, $this->modulePath, true, $modelName, $componentConfig));
         $this->run(new MigrationGenerator($this->moduleName, $this->modulePath, true, $modelName, [], [], $componentConfig));
-        $this->run(new SeederGenerator($this->moduleName, $this->modulePath, true, "{$modelName}Seeder", $componentConfig));
+        $this->run(new SubFeatureSeederGenerator($this->moduleName, $this->modulePath, true, $componentConfig));
         $this->run(new FactoryGenerator($this->moduleName, $this->modulePath, true, $modelName, $modelName, $componentConfig));
         $this->run(new TestGenerator($this->moduleName, $this->modulePath, true, "{$modelName}Test", $componentConfig));
 
@@ -336,7 +307,7 @@ class ModuleGenerator
             $this->run(new RepositoryGenerator($this->moduleName, $this->modulePath, false, $modelName, $component));
             $this->run(new RequestGenerator($this->moduleName, $this->modulePath, false, $requestName, $component));
             $this->run(new MigrationGenerator($this->moduleName, $this->modulePath, false, $modelName, $component['attributes'] ?? [], $component['indexes'] ?? [], $component));
-            $this->run(new SeederGenerator($this->moduleName, $this->modulePath, false, "{$modelName}Seeder", $component));
+            $this->run(new SubFeatureSeederGenerator($this->moduleName, $this->modulePath, false, $component));
             $this->run(new FactoryGenerator($this->moduleName, $this->modulePath, false, $modelName, $modelName, $component));
             $this->run(new TestGenerator($this->moduleName, $this->modulePath, false, "{$modelName}Test", $component));
             $this->run(new RouteGenerator($this->moduleName, $this->modulePath, false, $modelName, $component));
@@ -382,6 +353,13 @@ class ModuleGenerator
 
         if ($flags['migration'] ?? false) {
             $this->run(new MigrationGenerator($this->moduleName, $this->modulePath, true, $modelName, [], [], $componentConfig));
+
+            // Las seis piezas van juntas o no van. El generador de migraciones deja escritas dos
+            // —`MigrationsList` e `InlineAlters`—, y sin las otras cuatro quedan dos traits que no
+            // llama nadie: métodos escritos y sin invocador, que es exactamente el defecto que esta
+            // fase acaba de cerrar en el otro extremo. Una entidad con persistencia nace con su
+            // despliegue entero, venga de `make-module` o de `add-entity`.
+            $this->run(new SubFeatureSeederGenerator($this->moduleName, $this->modulePath, true, $componentConfig));
         }
 
         if ($flags['request'] ?? false) {

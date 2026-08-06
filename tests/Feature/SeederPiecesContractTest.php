@@ -64,29 +64,6 @@ function permisosComoArrayPhp(): string
     return implode('', $lineas) . "\n    ";
 }
 
-/**
- * El archivo sin sus comentarios — lo que de verdad se ejecuta.
- *
- * La distinción importa justo en la prueba de abajo: el seeder de producción **explica** en su
- * docblock por qué no lleva el modo destructivo, y esa explicación es lo más útil que tiene el
- * archivo generado. Prohibir la operación es prohibirla en el código; prohibir nombrarla sería
- * obligar a que el archivo calle lo que más falta hace entender.
- */
-function soloCodigo(string $php): string
-{
-    $codigo = '';
-
-    foreach (token_get_all($php) as $token) {
-        if (is_array($token) && in_array($token[0], [T_COMMENT, T_DOC_COMMENT], true)) {
-            continue;
-        }
-
-        $codigo .= is_array($token) ? $token[1] : $token;
-    }
-
-    return $codigo;
-}
-
 /** Escribe el archivo resuelto donde su namespace dice que vive, y lo pasa por el chequeo de salida. */
 function pasaElChequeoDeSalida(string $contenido, string $clase, string $tempBase): void
 {

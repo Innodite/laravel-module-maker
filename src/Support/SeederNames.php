@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Innodite\LaravelModuleMaker\Support;
 
+use InvalidArgumentException;
+
 /**
  * SeederNames — cómo se llaman las piezas de seeder, decidido en un solo sitio.
  *
@@ -46,12 +48,40 @@ final class SeederNames
      */
     public static function subFeaturePieces(string $prefix, string $module, string $subFeature): array
     {
+        return array_map(
+            fn (string $piece): string => self::piece($prefix, $module, $subFeature, $piece),
+            [...self::RUNNABLE, ...self::TRAITS]
+        );
+    }
+
+    /**
+     * El nombre de **una** pieza — el sufijo `Seeder` lo pone quien sabe cuáles lo llevan.
+     *
+     * Existe porque cada generador escribe las suyas y ninguno debería recordar que los tres
+     * ejecutables terminan en `Seeder` y los tres traits no: quien lo recuerde por su cuenta acabará
+     * escribiendo un archivo `…Data.php` que declara `…DataSeeder`, y PSR-4 no lo encontrará.
+     *
+     * @param  string  $piece  Una de RUNNABLE o de TRAITS
+     *
+     * @throws InvalidArgumentException Si el nombre de pieza no es de los seis.
+     */
+    public static function piece(string $prefix, string $module, string $subFeature, string $piece): string
+    {
         $base = $prefix . $module . $subFeature;
 
-        return [
-            ...array_map(fn (string $piece): string => "{$base}{$piece}Seeder", self::RUNNABLE),
-            ...array_map(fn (string $trait): string => "{$base}{$trait}", self::TRAITS),
-        ];
+        if (in_array($piece, self::RUNNABLE, true)) {
+            return "{$base}{$piece}Seeder";
+        }
+
+        if (in_array($piece, self::TRAITS, true)) {
+            return "{$base}{$piece}";
+        }
+
+        throw new InvalidArgumentException(
+            "'{$piece}' no es una de las seis piezas de una subfuncionalidad.\n"
+            . 'Ejecutables: ' . implode(', ', self::RUNNABLE) . "\n"
+            . 'Traits: ' . implode(', ', self::TRAITS)
+        );
     }
 
     /**
