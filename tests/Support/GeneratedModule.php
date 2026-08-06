@@ -156,6 +156,29 @@ final class GeneratedModule
         return $rutas;
     }
 
+    /**
+     * @return array<int, string> Rutas ABSOLUTAS de las migraciones generadas, ordenadas.
+     *
+     * Absolutas y no relativas a propósito: quien las pide es para `include`-arlas y ejecutarlas —
+     * que es la única forma de comprobar que el esquema generado es válido de verdad y no solo que
+     * el archivo parsea.
+     */
+    public function migrations(): array
+    {
+        $rutas = array_map(
+            fn (string $rel): string => $this->path($rel),
+            array_values(array_filter(
+                $this->tree(),
+                static fn (string $ruta): bool => str_contains($ruta, 'Database/Migrations/')
+                    && str_ends_with($ruta, '.php'),
+            )),
+        );
+
+        sort($rutas);
+
+        return $rutas;
+    }
+
     /** @return array<int, string> Rutas relativas de los archivos PHP. */
     public function phpFiles(): array
     {

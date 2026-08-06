@@ -174,15 +174,25 @@ class MigrationGenerator extends AbstractComponentGenerator
     {
         $schemaLines = [];
 
-        $hasId = false;
+        // La clave primaria es ULID (R10). El autoincremental es enumerable: con un `id` en la URL
+        // se recorre la tabla entera probando números, y en un multitenant eso cruza inquilinos.
+        //
+        // Y la pone **el generador, no el stub**. Hasta ahora la escribían los dos —el stub traía
+        // `$table->id();` fijo y esta línea inyectaba otro— y la migración salía con la columna
+        // DUPLICADA: `duplicate column name: id` en cuanto alguien la ejecutaba. Ninguna migración
+        // generada por el paquete se podía correr. Misma forma que B13, B15 y B18: dos mitades que
+        // asumen cada una que la otra no lo hace. Ahora el stub solo interpola `{{{ columns }}}`.
+        $declaraPropiaClave = false;
+
         foreach ($attributes as $attribute) {
-            if (isset($attribute['type']) && in_array($attribute['type'], ['increments', 'bigIncrements', 'id'])) {
-                $hasId = true;
+            if (isset($attribute['type']) && in_array($attribute['type'], ['increments', 'bigIncrements', 'id', 'ulid', 'uuid'], true)) {
+                $declaraPropiaClave = true;
                 break;
             }
         }
-        if (!$hasId) {
-            $schemaLines[] = "\$table->id();";
+
+        if (! $declaraPropiaClave) {
+            $schemaLines[] = "\$table->ulid('id')->primary();";
         }
 
         foreach ($attributes as $attribute) {
@@ -193,6 +203,23 @@ class MigrationGenerator extends AbstractComponentGenerator
             $this->validateAttribute($attribute);
 
             $schemaLines[] = $this->getSchemaLineForAttribute($attribute) . ";";
+        }
+
+        // Borrado lógico en toda tabla generada (R69 · R70): eliminar y restaurar tienen que estar
+        // siempre, y un `delete` que borra de verdad no se puede deshacer cuando el usuario se
+        // equivoca. El modelo recibe `SoftDeletes` en la misma pasada — si una mitad lo lleva y la
+        // otra no, la columna existe y nadie la usa, o el modelo filtra por una columna que no está.
+        $declaraBorradoLogico = false;
+
+        foreach ($attributes as $attribute) {
+            if (($attribute['name'] ?? null) === 'deleted_at' || ($attribute['type'] ?? null) === 'softDeletes') {
+                $declaraBorradoLogico = true;
+                break;
+            }
+        }
+
+        if (! $declaraBorradoLogico) {
+            $schemaLines[] = "\$table->softDeletes();";
         }
 
         $hasTimestamps = false;
@@ -450,10 +477,16 @@ class MigrationGenerator extends AbstractComponentGenerator
         return $this->addModifiersToDefinition($definition, $attribute);
     }
 
+    /**
+     * Clave foránea — `foreignUlid`, para que apunte a la clave que las tablas llevan de verdad.
+     *
+     * Si la PK es ULID (R10) y la FK sigue siendo `foreignId` —un entero—, la restricción no se
+     * puede crear: los tipos no casan. Es el mismo par que la clave primaria, un escalón más abajo.
+     */
     protected function foreignIdColumn(array $attribute): string
     {
         $name = $attribute['name'];
-        $definition = "\$table->foreignId('{$name}')";
+        $definition = "\$table->foreignUlid('{$name}')";
 
         if (isset($attribute['on']) && isset($attribute['constrained']) && $attribute['constrained']) {
             $definition .= "->constrained('{$attribute['on']}')";
