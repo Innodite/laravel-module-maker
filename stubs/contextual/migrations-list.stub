@@ -1,0 +1,50 @@
+<?php
+
+declare(strict_types=1);
+
+namespace {{{ namespace }}};
+
+use Illuminate\Support\Facades\Artisan;
+
+/**
+ * Migraciones de {{{ subFeature }}}, en el orden en que se ejecutan.
+ *
+ * Esta lista la genera el paquete a partir de la carpeta de migraciones, cada vez que se genera una.
+ * Es código y viaja con el módulo: si alguien copia el módulo a otro proyecto, la lista va dentro.
+ *
+ * **Quién la usa:** los seeders Stage y Production de esta subfuncionalidad, que llaman a
+ * `runMigrations()` antes de sembrar. Nadie ejecuta `migrate` a mano — el vehículo del despliegue es
+ * el seeder.
+ *
+ * Si añades una migración a mano, añádela también aquí **en su posición**: el orden de esta lista es
+ * el orden del despliegue, y una tabla con clave foránea no puede crearse antes que aquella a la que
+ * apunta.
+ */
+trait {{{ traitName }}}
+{
+    /**
+     * Rutas relativas a la raíz del proyecto, en orden de ejecución.
+     *
+     * @return array<int, string>
+     */
+    public function getMigrationsList(): array
+    {
+        return [{{{ migrations }}}];
+    }
+
+    /**
+     * Ejecuta las migraciones de esta subfuncionalidad, una a una y con `--path`.
+     *
+     * Con `--path` y no `migrate` a secas: así se despliega **solo** esta subfuncionalidad, sin
+     * arrastrar migraciones pendientes de otros módulos que quizá no toca tocar todavía.
+     */
+    public function runMigrations(): void
+    {
+        foreach ($this->getMigrationsList() as $migration) {
+            Artisan::call('migrate', [
+                '--path'  => $migration,
+                '--force' => true,
+            ]);
+        }
+    }
+}

@@ -119,6 +119,13 @@ class MigrationGenerator extends AbstractComponentGenerator
 
         if (!empty($existingFiles)) {
             $this->warn("Migración para '{$tableName}' ya existe en " . basename(dirname($migrationDirectoryPath)) . "/Database/Migrations. Se omite la generación.");
+
+            // Aunque no se escriba migración nueva, el trait se reescribe: la lista se deriva de la
+            // carpeta, así que tiene que reflejar lo que hay AHORA. Si se saltara este paso, un
+            // módulo con una migración añadida a mano quedaría con una lista que no la nombra — dos
+            // mitades separándose otra vez, y esta vez en el despliegue.
+            $this->writeMigrationsListTrait($migrationDirectoryPath);
+
             return;
         }
 
@@ -143,6 +150,62 @@ class MigrationGenerator extends AbstractComponentGenerator
         $contextFolder = $this->getContextFolder();
         $contextLabel  = $contextFolder ? "Database/Migrations/{$contextFolder}" : 'Database/Migrations';
         $this->putFile("{$migrationDirectoryPath}/{$fileName}", $stubContent, "Migración '{$tableName}' creada en Modules/{$this->moduleName}/{$contextLabel}");
+
+        $this->writeMigrationsListTrait($migrationDirectoryPath);
+    }
+
+    /**
+     * Escribe el trait `MigrationsList` de la subfuncionalidad — la lista ordenada, en código.
+     *
+     * Sustituye al manifiesto JSON (P2), y el motivo no es estético: un JSON es un segundo sitio que
+     * describe lo que ya dice la carpeta, no viaja con el módulo cuando alguien lo copia a otro
+     * proyecto, y **se desincroniza en silencio**. El trait es código, viaja con el módulo, y aquí
+     * se **deriva de la carpeta** en cada generación, así que no puede quedar desfasado.
+     *
+     * Vive con las otras cinco piezas de seeder —en `Database/Seeders/{Ctx}/{SubFunc}/`, no en
+     * `Migrations/`— porque es una de las seis (norma §6, `SeederNames`). Y es el seeder quien
+     * ejecuta las migraciones (**R22**): nadie corre `migrate` a mano.
+     */
+    protected function writeMigrationsListTrait(string $migrationDirectoryPath): void
+    {
+        $subFeature = $this->getSubFeatureFolder();
+
+        if ($subFeature === '') {
+            return;   // sin subfuncionalidad no hay grupo de seis piezas al que pertenecer
+        }
+
+        $traitName = $this->prefixClass("{$this->moduleName}{$subFeature}") . 'MigrationsList';
+        $seederDir = $this->buildPath('Database/Seeders');
+
+        $this->ensureDirectoryExists($seederDir);
+
+        $archivos = glob("{$migrationDirectoryPath}/*.php") ?: [];
+        sort($archivos);   // el orden del despliegue es el de los nombres: el timestamp manda
+
+        $moduleRoot = dirname($this->getComponentBasePath());
+        $rutas      = array_map(
+            static fn (string $ruta): string => "            '" . str_replace(
+                '\\',
+                '/',
+                'Modules/' . ltrim(substr($ruta, strlen($moduleRoot)), '/\\')
+            ) . "',",
+            $archivos
+        );
+
+        $lista = $rutas === [] ? '' : "\n" . implode("\n", $rutas) . "\n        ";
+
+        $stub = $this->getStubContent('migrations-list.stub', $this->isClean, [
+            'namespace'   => $this->buildNamespace('Database\\Seeders'),
+            'traitName'   => $traitName,
+            'subFeature'  => $subFeature,
+            'migrations'  => $lista,
+        ]);
+
+        $this->putFile(
+            "{$seederDir}/{$traitName}.php",
+            $stub,
+            "Lista de migraciones creada: {$traitName}.php"
+        );
     }
 
     /**
