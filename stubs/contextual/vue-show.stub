@@ -30,7 +30,7 @@ async function fetchItem() {
 }
 
 async function destroy() {
-    if (!can('{{{ subFeaturePlural }}}.delete')) return
+    if (!can('{{{ permViewDestroy }}}')) return
     if (!confirm('¿Estás seguro de eliminar este registro?')) return
     try {
         await axios.delete(
@@ -43,7 +43,7 @@ async function destroy() {
 }
 
 function goToEdit() {
-    router.visit(route(contextRoute('{{{ subFeaturePlural }}}.edit'), { id: props.id }))
+    router.visit(route(contextRoute('{{{ permViewUpdate }}}'), { id: props.id }))
 }
 
 function goBack() {
@@ -66,14 +66,14 @@ onMounted(() => fetchItem())
             </div>
             <div class="flex gap-2">
                 <button
-                    v-if="can('{{{ subFeaturePlural }}}.edit')"
+                    v-if="can('{{{ permViewUpdate }}}')"
                     @click="goToEdit"
                     class="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition"
                 >
                     Editar
                 </button>
                 <button
-                    v-if="can('{{{ subFeaturePlural }}}.delete')"
+                    v-if="can('{{{ permViewDestroy }}}')"
                     @click="destroy"
                     class="px-4 py-2 bg-red-500 text-white text-sm font-medium rounded-lg hover:bg-red-600 transition"
                 >

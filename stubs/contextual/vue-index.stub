@@ -44,11 +44,11 @@ async function destroy(id) {
 }
 
 function goToCreate() {
-    router.visit(route(contextRoute('{{{ subFeaturePlural }}}.create')))
+    router.visit(route(contextRoute('{{{ permViewStore }}}')))
 }
 
 function goToEdit(id) {
-    router.visit(route(contextRoute('{{{ subFeaturePlural }}}.edit'), { id }))
+    router.visit(route(contextRoute('{{{ permViewUpdate }}}'), { id }))
 }
 
 function goToShow(id) {
@@ -65,7 +65,7 @@ onMounted(() => fetchItems())
         <div class="flex items-center justify-between mb-6">
             <h1 class="text-2xl font-semibold text-gray-800">{{{ subFeatureLabel }}}</h1>
             <button
-                v-if="can('{{{ subFeaturePlural }}}.create')"
+                v-if="can('{{{ permViewStore }}}')"
                 @click="goToCreate"
                 class="inline-flex items-center px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition"
             >
@@ -109,22 +109,26 @@ onMounted(() => fetchItems())
                             <td class="px-4 py-3 text-gray-500">
                                 {{ (meta.current_page - 1) * 15 + index + 1 }}
                             </td>
-                            <td
-                                class="px-4 py-3 text-blue-600 cursor-pointer hover:underline"
-                                @click="goToShow(item.id)"
-                            >
-                                {{ item.id }}
+                            <td class="px-4 py-3">
+                                <span
+                                    v-if="can('{{{ permViewShow }}}')"
+                                    class="text-blue-600 cursor-pointer hover:underline"
+                                    @click="goToShow(item.id)"
+                                >
+                                    {{ item.id }}
+                                </span>
+                                <span v-else class="text-gray-500">{{ item.id }}</span>
                             </td>
                             <td class="px-4 py-3 text-right space-x-3">
                                 <button
-                                    v-if="can('{{{ subFeaturePlural }}}.edit')"
+                                    v-if="can('{{{ permViewUpdate }}}')"
                                     @click="goToEdit(item.id)"
                                     class="text-blue-600 hover:underline text-xs"
                                 >
                                     Editar
                                 </button>
                                 <button
-                                    v-if="can('{{{ subFeaturePlural }}}.delete')"
+                                    v-if="can('{{{ permViewDestroy }}}')"
                                     @click="destroy(item.id)"
                                     class="text-red-500 hover:underline text-xs"
                                 >

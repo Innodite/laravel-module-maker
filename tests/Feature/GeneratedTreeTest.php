@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use Illuminate\Support\Facades\File;
 use Innodite\LaravelModuleMaker\Support\ModuleMode;
+use Innodite\LaravelModuleMaker\Support\SubFeaturePermissions;
 
 /**
  * El árbol que queda en el disco, comparado con el que fija el patrón.
@@ -137,14 +138,38 @@ it('el provider registra clases que existen, con la carpeta de la subfuncionalid
 it('las rutas apuntan al controlador que se generó, no a uno que no existe', function () {
     $modulo = $this->generateModule('Invoice', ModuleMode::SingleApp);
 
-    foreach (['Routes/web.php', 'Routes/api.php'] as $archivo) {
-        $contenido = $modulo->contents($archivo);
+    $contenido = $modulo->contents('Routes/web.php');
 
-        expect(str_contains($contenido, 'use Modules\Invoice\Http\Controllers\Invoice\InvoiceController;'))
-            ->toBeTrue(
-                "{$archivo}: el import se armaba dentro del stub, sin la carpeta de la subfuncionalidad. "
-                . "Cinco rutas apuntando a una clase inexistente son cinco errores 500 en el módulo recién "
-                . "generado. El archivo dice:\n" . $contenido
-            );
+    expect(str_contains($contenido, 'use Modules\Invoice\Http\Controllers\Invoice\InvoiceController;'))
+        ->toBeTrue(
+            "El import se armaba dentro del stub, sin la carpeta de la subfuncionalidad. Rutas "
+            . "apuntando a una clase inexistente son errores 500 en el módulo recién generado. "
+            . "El archivo dice:\n" . $contenido
+        );
+});
+
+it('en single-app no se genera Routes/api.php: todo se declara en web', function () {
+    // `api.php` solo tiene sentido cuando se expone un servicio a un cliente externo, y eso trae su
+    // propia autenticación por token. Mientras tanto era un segundo archivo de rutas duplicando
+    // store/show/update/destroy con otro prefijo — y, como el web de entonces, sin un solo permiso.
+    $modulo = $this->generateModule('Invoice', ModuleMode::SingleApp);
+
+    expect($modulo->has('Routes/api.php'))->toBeFalse(
+        'Todo se declara en web.php. Un api.php generado por defecto es superficie sin dueño.'
+    );
+    expect($modulo->has('Routes/web.php'))->toBeTrue();
+});
+
+it('en single-app cada ruta lleva su permiso', function () {
+    // B23: este camino escribía desde dos stubs propios que no ponían ni un `->middleware()`. En el
+    // modo que más se usa, el módulo generado nacía entero sin protección.
+    $modulo    = $this->generateModule('Invoice', ModuleMode::SingleApp);
+    $contenido = $modulo->contents('Routes/web.php');
+
+    foreach (SubFeaturePermissions::routes('', 'invoices') as $ruta) {
+        expect(str_contains($contenido, "permission:{$ruta['permission']}"))->toBeTrue(
+            "La ruta '{$ruta['route']}' no exige el permiso '{$ruta['permission']}'. "
+            . "El archivo dice:\n" . $contenido
+        );
     }
 });

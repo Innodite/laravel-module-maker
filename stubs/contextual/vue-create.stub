@@ -12,7 +12,7 @@ const errors   = ref({})
 const saving   = ref(false)
 
 async function submit() {
-    if (!can('{{{ subFeaturePlural }}}.create')) return
+    if (!can('{{{ permViewStore }}}')) return
 
     saving.value = true
     errors.value = {}

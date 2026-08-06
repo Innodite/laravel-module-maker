@@ -32,7 +32,7 @@ async function fetchItem() {
 }
 
 async function submit() {
-    if (!can('{{{ subFeaturePlural }}}.edit')) return
+    if (!can('{{{ permViewUpdate }}}')) return
 
     saving.value = true
     errors.value = {}

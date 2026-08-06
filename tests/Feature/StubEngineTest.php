@@ -28,11 +28,14 @@ function packageStubs(): array
 it('encuentra los 29 stubs del paquete', function () {
     // La cuenta sube cuando el paquete aprende a generar una pieza nueva —los dos últimos son
     // `migrations-list.stub` e `inline-alters.stub`, de la fase 2— y esa subida se hace **a
-    // propósito, aquí**. Lo que esta prueba vigila es lo otro: que no reaparezcan las copias por
+    // propósito, aquí**. Y baja cuando una pieza deja de generarse: en la fase 3 salieron
+    // `route-api.stub` y `route-web.stub` —el camino de single-app, que escribía rutas sin un solo
+    // permiso— porque ese modo pasó a usar el mismo bloque que los contextos.
+    // Lo que esta prueba vigila es lo otro: que no reaparezcan las copias por
     // contexto que A4 borró, donde la copia le ganaba por prioridad al original corregido.
     expect(packageStubs())->toHaveCount(
-        29,
-        'El paquete lleva 29 stubs, una sola copia de cada uno. Si aparecen más sin haber añadido '
+        27,
+        'El paquete lleva 27 stubs, una sola copia de cada uno. Si aparecen más sin haber añadido '
         . 'una pieza, alguien devolvió las copias por contexto; si aparecen menos, falta un stub.'
     );
 });

@@ -6,6 +6,8 @@ namespace Innodite\LaravelModuleMaker\Generators\Components;
 
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Str;
+use Innodite\LaravelModuleMaker\Support\ModuleMode;
+use Innodite\LaravelModuleMaker\Support\SubFeaturePermissions;
 
 /**
  * Genera los 4 componentes Vue para un módulo contextualizado.
@@ -92,6 +94,41 @@ class VueGenerator extends AbstractComponentGenerator
             'subFeaturePlural'   => Str::kebab(Str::plural(Str::snake($this->modelName))),
             'subFeatureSingular' => Str::kebab(Str::snake($this->modelName)),
             'subFeatureLabel'    => $this->modelName,
+            ...$this->buildViewPermissions(),
+        ];
+    }
+
+    /**
+     * Los permisos que deciden si cada elemento de la vista se muestra (R20).
+     *
+     * Salen de `SubFeaturePermissions`, que es de donde los toma también el `PermissionsSeeder` que
+     * los crea. Antes los stubs los escribían por su cuenta como `{subFeaturePlural}.create` —con
+     * punto, verbo `create` y el plural del modelo—, mientras las rutas exigían `{funcionalidad}_store`
+     * y el seeder no creaba ni unos ni otros.
+     *
+     * El resultado no era un error visible: `can()` devolvía `false` siempre, así que la pantalla
+     * cargaba perfecta y **sin un solo botón**, para todo el mundo — incluido el webmaster, que recoge
+     * los permisos que existen, y esos no existían.
+     *
+     * @return array<string, string>
+     */
+    private function buildViewPermissions(): array
+    {
+        $context    = $this->getContext();
+        $contextKey = $this->componentConfig['context'] ?? null;
+
+        $permPrefix = $context['permission_prefix'] ?? '';
+        if ($permPrefix === '') {
+            $permPrefix = ModuleMode::current()->permissionPrefix($contextKey, $context['id'] ?? null);
+        }
+
+        $elementos = SubFeaturePermissions::viewElements($permPrefix, $this->getFunctionality());
+
+        return [
+            'permViewStore'   => $elementos['boton-crear'],
+            'permViewShow'    => $elementos['enlace-ver'],
+            'permViewUpdate'  => $elementos['boton-editar'],
+            'permViewDestroy' => $elementos['boton-eliminar'],
         ];
     }
 

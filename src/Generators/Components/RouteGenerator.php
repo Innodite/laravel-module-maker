@@ -7,7 +7,7 @@ namespace Innodite\LaravelModuleMaker\Generators\Components;
 use Illuminate\Support\Str;
 use Innodite\LaravelModuleMaker\Support\ContextResolver;
 use Innodite\LaravelModuleMaker\Support\ModuleMode;
-use Innodite\LaravelModuleMaker\Support\RoutePermissions;
+use Innodite\LaravelModuleMaker\Support\SubFeaturePermissions;
 
 /**
  * Genera el archivo de rutas del módulo respetando la convención de contextos.
@@ -113,7 +113,7 @@ class RouteGenerator extends AbstractComponentGenerator
         $controllerFqcn   = $this->buildControllerNamespace() . '\\' . $controllerClass;
         $permPrefix       = $this->resolvePermissionPrefix($context, 'central');
         $permMiddleware   = $this->resolvePermissionMiddleware($context, 'central');
-        $permKey          = RoutePermissions::key($functionality);
+        $permKey          = SubFeaturePermissions::key($functionality);
 
         $block = $this->buildRouteBlock(
             routePrefix:    $context['route_prefix'] . '-' . $functionality,
@@ -166,7 +166,7 @@ class RouteGenerator extends AbstractComponentGenerator
         $controllerFqcn  = $this->buildControllerNamespace() . '\\' . $controllerClass;
         $permPrefix      = $this->resolvePermissionPrefix($context, $this->componentConfig['context'] ?? null);
         $permMiddleware  = $this->resolvePermissionMiddleware($context, $this->componentConfig['context'] ?? null);
-        $permKey         = RoutePermissions::key($functionality);
+        $permKey         = SubFeaturePermissions::key($functionality);
         $middleware      = $context['route_middleware'] ?? [];
 
         // ── Prefijos diferenciados por archivo ────────────────────────────────
@@ -266,7 +266,7 @@ class RouteGenerator extends AbstractComponentGenerator
         $controllerFqcn  = $this->buildControllerNamespace() . '\\' . $controllerClass;
         $permPrefix      = $this->resolvePermissionPrefix($context, $this->componentConfig['context'] ?? null, $context['id'] ?? null);
         $permMiddleware  = $this->resolvePermissionMiddleware($context, $this->componentConfig['context'] ?? null);
-        $permKey         = RoutePermissions::key($functionality);
+        $permKey         = SubFeaturePermissions::key($functionality);
         $middleware      = $this->buildMiddlewareArray($context['route_middleware'] ?? []);
         $label           = $context['id'] ?? $context['label'] ?? $classPrefix;
         $separator       = str_repeat('─', 74);
@@ -389,7 +389,7 @@ class RouteGenerator extends AbstractComponentGenerator
         // 403 para todo el mundo.
         $rutas = [];
 
-        foreach (RoutePermissions::routes($permPrefix, $permKey) as $ruta) {
+        foreach (SubFeaturePermissions::routes($permPrefix, $permKey) as $ruta) {
             $metodo = strtolower($ruta['verb']);
 
             $rutas[] = <<<PHP
@@ -525,20 +525,38 @@ class RouteGenerator extends AbstractComponentGenerator
         $routesDir = $this->getComponentBasePath() . '/Routes';
         $this->ensureDirectoryExists($routesDir);
 
-        $controllerName = $this->prefixClass("{$this->modelName}Controller");
-        $controllerFqcn = $this->buildNamespace('Http\\Controllers') . '\\' . $controllerName;
+        $functionality   = $this->getFunctionality();
+        $controllerClass = $this->prefixClass("{$this->modelName}Controller");
+        $controllerFqcn  = $this->buildNamespace('Http\\Controllers') . '\\' . $controllerClass;
 
-        foreach (['api.php' => 'route-api.stub', 'web.php' => 'route-web.stub'] as $archivo => $stub) {
-            $this->putFile(
-                "{$routesDir}/{$archivo}",
-                $this->getStubContent($stub, $this->isClean, [
-                    'controllerFqcn' => $controllerFqcn,
-                    'snakeModule'    => Str::snake($this->moduleName),
-                    'controllerName' => $controllerName,
-                ]),
-                "Rutas creadas: Modules/{$this->moduleName}/Routes/{$archivo}"
-            );
-        }
+        // El mismo bloque que usan los contextos: las 6 rutas, cada una con su permiso. Antes este
+        // camino escribía desde dos stubs propios que no ponían ni un solo `->middleware()`.
+        $block = $this->buildRouteBlock(
+            routePrefix:     $functionality,
+            routeName:       $functionality . '.',
+            controllerClass: $controllerClass,
+            permMiddleware:  $this->resolvePermissionMiddleware([], null),
+            permPrefix:      $this->resolvePermissionPrefix([], null),
+            permKey:         SubFeaturePermissions::key($functionality),
+            indent:          ''
+        );
+
+        $content = <<<PHP
+        <?php
+
+        declare(strict_types=1);
+
+        use Illuminate\Support\Facades\Route;
+        use {$controllerFqcn};
+
+        {$block}
+        PHP;
+
+        $this->putFile(
+            "{$routesDir}/web.php",
+            $content,
+            "Rutas creadas: Modules/{$this->moduleName}/Routes/web.php"
+        );
     }
 
     /**
