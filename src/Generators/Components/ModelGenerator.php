@@ -97,12 +97,17 @@ class ModelGenerator extends AbstractComponentGenerator
         $relationsMethods = $this->getRelationsMethods();
 
         $stubContent = $this->getStubContent(self::MODEL_STUB_FILE, $this->isClean, [
-            'namespace'     => $this->getNamespace(),
-            'modelName'     => $className,
-            'table'         => $this->getTableProperty(),
-            'fillable'      => $this->getFillableProperty(),
-            'useStatements' => $useStatements,
-            'relations'     => $relationsMethods,
+            'namespace'  => $this->getNamespace(),
+            'modelName'  => $className,
+            'connection' => $this->getConnectionProperty(),
+            'table'      => $this->getTableProperty(),
+            'fillable'   => $this->getFillableProperty(),
+            // Los `use` de otras clases son IMPORTS y van FUERA de la clase. El stub los ponía
+            // dentro del cuerpo, donde PHP los lee como uso de traits: en cuanto el módulo declara
+            // una relación, el modelo generado muere con «Trait not found». Sintaxis válida —el
+            // chequeo de salida lo daba por bueno— y roto al ejecutar.
+            'imports'    => $useStatements,
+            'relations'  => $relationsMethods,
         ]);
 
         $this->putFile("{$modelDirectoryPath}/{$className}.php", $stubContent, "Modelo '{$className}' creado en Modules/{$this->moduleName}/Models");
@@ -167,6 +172,33 @@ class ModelGenerator extends AbstractComponentGenerator
     {
         $table = $this->tableName ?? \Illuminate\Support\Str::snake(\Illuminate\Support\Str::plural($this->modelName));
         return "protected \$table = '{$table}';\n";
+    }
+
+    /**
+     * La conexión del modelo — **si el modo dice que este contexto la declara** (R7).
+     *
+     * Las tres respuestas del patrón, que el enum ya sabía dar desde la fase 1 con su prueba:
+     *
+     *   single-app          no declara: hay una sola base de datos, no hay nada que conmutar
+     *   central             declara siempre `'central'`
+     *   tenant compartido   **no** declara — la conmuta stancl al inicializar el contexto, y
+     *                       nombrarla aquí ataría el modelo a un solo inquilino
+     *   tenant con lógica propia   declara la suya
+     *
+     * Devuelve cadena vacía cuando no toca, para que el modelo generado no lleve una línea muerta.
+     */
+    protected function getConnectionProperty(): string
+    {
+        $contextKey = $this->componentConfig['context'] ?? null;
+        $contextKey = $contextKey ?: null;
+
+        if (! $this->mode()->declaresModelConnection($contextKey)) {
+            return '';
+        }
+
+        $connection = $this->getContext()['connection_key'] ?? $contextKey;
+
+        return "protected \$connection = '{$connection}';\n\n    ";
     }
 
      /**

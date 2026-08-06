@@ -4,19 +4,22 @@ declare(strict_types=1);
 
 namespace {{{ namespace }}};
 
-use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Concerns\HasUlids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
-
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\SoftDeletes;
+{{{ imports }}}
 class {{{ modelName }}} extends Model
 {
     use HasFactory;
+    use HasUlids;
+    use SoftDeletes;
 
-    /** @var string Nombre de tabla normalizado (WORKPLAN v3: obligatorio) */
+    {{{ connection }}}
+    /** @var string Nombre de tabla explícito: el plural que adivina Eloquent no siempre acierta. */
     {{{ table }}}
 
     {{{ fillable }}}
-
-    {{{ useStatements }}}
 
     {{{ relations }}}
 }
