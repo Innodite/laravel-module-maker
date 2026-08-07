@@ -74,7 +74,7 @@ it('en single-app cada capa cuelga de la carpeta de su subfuncionalidad', functi
         'Http/Requests/Invoice/InvoiceStoreRequest.php',
         'Database/Factories/Invoice/InvoiceFactory.php',
         'resources/js/Pages/Invoice/InvoiceIndex.vue',
-        'Tests/Feature/Invoice/InvoiceTest.php',
+        'Tests/Feature/Invoice/InvoiceScaffoldTest.php',
     ], 'R5 · R36: la subfuncionalidad es carpeta en TODAS las capas, tests y vistas incluidos.');
 });
 
@@ -86,7 +86,7 @@ it('en multitenant el contexto aparece en la carpeta y en el nombre de cada capa
         'Repositories/Central/Invoice/CentralInvoiceRepository.php',
         'Database/Factories/Central/Invoice/CentralInvoiceFactory.php',
         'resources/js/Pages/Central/Invoice/CentralInvoiceIndex.vue',
-        'Tests/Feature/Central/Invoice/CentralInvoiceTest.php',
+        'Tests/Feature/Central/Invoice/CentralInvoiceScaffoldTest.php',
     ], 'En multitenant sí hay contextos que separar, así que entran en la carpeta Y en el nombre.');
 });
 

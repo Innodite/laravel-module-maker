@@ -569,9 +569,13 @@ Modules/User/
 ├── Database/Migrations/Central/User/XXXX_create_users_table.php
 ├── Database/Seeders/Central/User/CentralUserSeeder.php
 ├── Database/Factories/Central/User/CentralUserFactory.php
-├── Tests/Feature/Central/CentralUserTest.php
-├── Tests/Unit/Central/CentralUserServiceTest.php
-├── Tests/Support/Central/CentralUserSupport.php
+├── Tests/Feature/Central/User/CentralUserContract.php
+├── Tests/Feature/Central/User/CentralUserTestCase.php
+├── Tests/Feature/Central/User/CentralUserScaffoldTest.php
+├── Tests/Feature/Central/User/CentralUserSchemaTest.php
+├── Tests/Feature/Central/User/CentralUserPermissionsTest.php
+├── Tests/Feature/Central/User/CentralUserDeploymentTest.php
+├── Tests/Feature/Central/User/CentralUserHttpTest.php
 ├── Resources/js/Pages/Central/CentralUserIndex.vue
 ├── Resources/js/Pages/Central/CentralUserCreate.vue
 ├── Resources/js/Pages/Central/CentralUserEdit.vue
@@ -602,8 +606,13 @@ Modules/User/
 ├── Database/Migrations/Shared/User/XXXX_create_users_table.php
 ├── Database/Seeders/Shared/User/SharedUserSeeder.php
 ├── Database/Factories/Shared/User/SharedUserFactory.php
-├── Tests/Feature/Shared/SharedUserTest.php
-├── Tests/Unit/Shared/SharedUserServiceTest.php
+├── Tests/Feature/Shared/User/SharedUserContract.php
+├── Tests/Feature/Shared/User/SharedUserTestCase.php
+├── Tests/Feature/Shared/User/SharedUserScaffoldTest.php
+├── Tests/Feature/Shared/User/SharedUserSchemaTest.php
+├── Tests/Feature/Shared/User/SharedUserPermissionsTest.php
+├── Tests/Feature/Shared/User/SharedUserDeploymentTest.php
+├── Tests/Feature/Shared/User/SharedUserHttpTest.php
 ├── Resources/js/Pages/Shared/SharedUserIndex.vue
 ├── Resources/js/Pages/Shared/SharedUserCreate.vue
 ├── Resources/js/Pages/Shared/SharedUserEdit.vue
@@ -626,8 +635,13 @@ Modules/User/
 ├── Database/Migrations/Tenant/Shared/User/XXXX_create_users_table.php
 ├── Database/Seeders/Tenant/Shared/User/TenantSharedUserSeeder.php
 ├── Database/Factories/Tenant/Shared/User/TenantSharedUserFactory.php
-├── Tests/Feature/Tenant/Shared/TenantSharedUserTest.php
-├── Tests/Unit/Tenant/Shared/TenantSharedUserServiceTest.php
+├── Tests/Feature/Tenant/Shared/User/TenantSharedUserContract.php
+├── Tests/Feature/Tenant/Shared/User/TenantSharedUserTestCase.php
+├── Tests/Feature/Tenant/Shared/User/TenantSharedUserScaffoldTest.php
+├── Tests/Feature/Tenant/Shared/User/TenantSharedUserSchemaTest.php
+├── Tests/Feature/Tenant/Shared/User/TenantSharedUserPermissionsTest.php
+├── Tests/Feature/Tenant/Shared/User/TenantSharedUserDeploymentTest.php
+├── Tests/Feature/Tenant/Shared/User/TenantSharedUserHttpTest.php
 ├── Resources/js/Pages/Tenant/Shared/TenantSharedUserIndex.vue
 ├── Resources/js/Pages/Tenant/Shared/TenantSharedUserCreate.vue
 ├── Resources/js/Pages/Tenant/Shared/TenantSharedUserEdit.vue
@@ -652,8 +666,13 @@ Modules/User/
 ├── Database/Migrations/Tenant/INNODITE/User/XXXX_create_users_table.php
 ├── Database/Seeders/Tenant/INNODITE/User/TenantINNODITEUserSeeder.php
 ├── Database/Factories/Tenant/INNODITE/User/TenantINNODITEUserFactory.php
-├── Tests/Feature/Tenant/INNODITE/TenantINNODITEUserTest.php
-├── Tests/Unit/Tenant/INNODITE/TenantINNODITEUserServiceTest.php
+├── Tests/Feature/Tenant/INNODITE/User/TenantINNODITEUserContract.php
+├── Tests/Feature/Tenant/INNODITE/User/TenantINNODITEUserTestCase.php
+├── Tests/Feature/Tenant/INNODITE/User/TenantINNODITEUserScaffoldTest.php
+├── Tests/Feature/Tenant/INNODITE/User/TenantINNODITEUserSchemaTest.php
+├── Tests/Feature/Tenant/INNODITE/User/TenantINNODITEUserPermissionsTest.php
+├── Tests/Feature/Tenant/INNODITE/User/TenantINNODITEUserDeploymentTest.php
+├── Tests/Feature/Tenant/INNODITE/User/TenantINNODITEUserHttpTest.php
 ├── Resources/js/Pages/Tenant/INNODITE/TenantINNODITEUserIndex.vue
 ├── Resources/js/Pages/Tenant/INNODITE/TenantINNODITEUserCreate.vue
 ├── Resources/js/Pages/Tenant/INNODITE/TenantINNODITEUserEdit.vue
@@ -1199,15 +1218,16 @@ Modules/
     │           └── User/
     │               └── CentralUserFactory.php
     ├── Tests/
-    │   ├── Feature/
-    │   │   └── Central/
-    │   │       └── CentralUserTest.php
-    │   ├── Unit/
-    │   │   └── Central/
-    │   │       └── CentralUserServiceTest.php
-    │   └── Support/
+    │   └── Feature/
     │       └── Central/
-    │           └── CentralUserSupport.php
+    │           └── User/
+    │               ├── CentralUserContract.php
+    │               ├── CentralUserTestCase.php
+    │               ├── CentralUserScaffoldTest.php
+    │               ├── CentralUserSchemaTest.php
+    │               ├── CentralUserPermissionsTest.php
+    │               ├── CentralUserDeploymentTest.php
+    │               └── CentralUserHttpTest.php
     ├── Resources/
     │   └── js/
     │       └── Pages/
@@ -1359,10 +1379,14 @@ composer test:feature   # solo integración
 composer test:coverage  # con cobertura HTML en /coverage
 ```
 
-Los tests generados por `make-module` se ubican en:
-- `Modules/{Name}/Tests/Feature/{Context}/` — tests de integración HTTP
-- `Modules/{Name}/Tests/Unit/{Context}/` — tests unitarios del servicio
-- `Modules/{Name}/Tests/Support/{Context}/` — helpers y factories de test
+Los tests generados se ubican todos en `Modules/{Name}/Tests/Feature/{Context}/{SubFuncionalidad}/`,
+como un **grupo por subfuncionalidad**: un manifiesto (`{SubFunc}Contract.php`), su base
+(`{SubFunc}TestCase.php`) y las piezas de los nueve temas —`ScaffoldTest`, `SchemaTest`,
+`PermissionsTest`, `DeploymentTest` y `HttpTest`—. La del tema 6 la ejecuta Vitest y vive con el
+JavaScript, en `resources/js/__tests__/{Context}/{SubFuncionalidad}/`.
+
+Los emiten por igual `make-module` y `add-entity`: una subfuncionalidad nace con su grupo entero
+venga por donde venga.
 
 ---
 

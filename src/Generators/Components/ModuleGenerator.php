@@ -121,9 +121,13 @@ class ModuleGenerator
         $this->createContextSubfolders('Exceptions');
 
         // ── Tests ────────────────────────────────────────────────────────────
+        //
+        // `Tests/Support` ya no se siembra: el soporte del grupo es su `{SubFunc}TestCase`, que vive
+        // con las piezas que lo usan. Una carpeta vacía en el árbol no rompe nada, y por eso es peor
+        // que un error: sugiere un sitio donde poner cosas que el contrato no contempla, y alguien
+        // acaba poniéndolas.
         $this->createContextSubfolders('Tests/Feature');
         $this->createContextSubfolders('Tests/Unit');
-        $this->createContextSubfolders('Tests/Support');
 
         if ($this->command) {
             $this->command->info("✅ Estructura de carpetas v3.0.0 creada para el módulo '{$this->moduleName}'.");
@@ -225,7 +229,7 @@ class ModuleGenerator
         $this->run(new SubFeatureSeederGenerator($this->moduleName, $this->modulePath, true, $componentConfig));
         $this->run(new ModuleMasterSeederGenerator($this->moduleName, $this->modulePath, true, $componentConfig));
         $this->run(new FactoryGenerator($this->moduleName, $this->modulePath, true, $modelName, $modelName, $componentConfig));
-        $this->run(new TestGenerator($this->moduleName, $this->modulePath, true, "{$modelName}Test", $componentConfig));
+        $this->run(new TestGenerator($this->moduleName, $this->modulePath, true, $componentConfig));
 
         // ── Vistas Vue (axios + Inertia solo para navegación) ─────────────────
         $this->run(new VueGenerator($this->moduleName, $this->modulePath, true, $modelName, $componentConfig));
@@ -311,7 +315,7 @@ class ModuleGenerator
             $this->run(new SubFeatureSeederGenerator($this->moduleName, $this->modulePath, false, $component));
             $this->run(new ModuleMasterSeederGenerator($this->moduleName, $this->modulePath, false, $component));
             $this->run(new FactoryGenerator($this->moduleName, $this->modulePath, false, $modelName, $modelName, $component));
-            $this->run(new TestGenerator($this->moduleName, $this->modulePath, false, "{$modelName}Test", $component));
+            $this->run(new TestGenerator($this->moduleName, $this->modulePath, false, $component));
             $this->run(new RouteGenerator($this->moduleName, $this->modulePath, false, $modelName, $component));
         }
 
@@ -367,6 +371,21 @@ class ModuleGenerator
 
         if ($flags['request'] ?? false) {
             $this->run(new RequestGenerator($this->moduleName, $this->modulePath, true, "{$modelName}StoreRequest", $componentConfig));
+        }
+
+        // ── El grupo de pruebas de la subfuncionalidad ────────────────────────
+        //
+        // Solo cuando la entidad nace **entera**. Con flags parciales —`-M` a secas, por ejemplo—
+        // lo generado no es una subfuncionalidad todavía: es una pieza suelta, y su grupo de
+        // pruebas nacería rojo señalando lo que el usuario aún no pidió. Una suite que arranca en
+        // rojo por diseño es una suite que el equipo aprende a ignorar.
+        //
+        // Y cuando sí nace entera, va: es el mismo grupo que emite `make-module`, porque las dos
+        // puertas por las que aparece una subfuncionalidad tienen que dejar lo mismo detrás. Si una
+        // emite menos, el módulo termina con subfuncionalidades de primera y de segunda clase — y
+        // lo que falta no da error, simplemente no está.
+        if (! in_array(false, $flags, true)) {
+            $this->run(new TestGenerator($this->moduleName, $this->modulePath, true, $componentConfig));
         }
 
         // Si se generó un controller, inyectar (o actualizar) las rutas

@@ -47,7 +47,7 @@ class AddEntityCommand extends Command
     public function handle(): int
     {
         $moduleName = Str::studly($this->argument('module'));
-        $entityName = Str::studly($this->argument('subFeature'));
+        $entityName = Str::studly($this->argument('entity'));
         $modulePath = config('make-module.module_path') . "/{$moduleName}";
 
         $this->newLine();
@@ -96,7 +96,13 @@ class AddEntityCommand extends Command
         $componentConfig = [
             'context'    => $contextKey,
             'context_id' => $contextId,
-            'subFeature'     => $entityName,
+            'subFeature' => $entityName,
+            // La funcionalidad sale de la ENTIDAD, no del módulo. `make-module` las deriva del
+            // mismo sitio porque ahí coinciden —el módulo *es* su primera subfuncionalidad—, pero
+            // al agregar la segunda dejan de coincidir: sin esta línea, `Payment` heredaría las
+            // rutas y los permisos de `Invoice`, y dos subfuncionalidades distintas abrirían con
+            // la misma llave.
+            'functionality' => Str::kebab(Str::plural(Str::snake($entityName))),
         ];
 
         // ── Generar componentes ───────────────────────────────────────────────

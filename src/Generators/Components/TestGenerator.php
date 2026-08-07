@@ -20,30 +20,42 @@ class TestGenerator extends AbstractComponentGenerator
      */
     private const COLUMNAS_DEL_PATRON = ['id', 'created_at', 'updated_at', 'deleted_at'];
 
-    protected string $testName;
-
-    public function __construct(string $moduleName, string $modulePath, bool $isClean, string $testName, array $componentConfig = [])
+    /**
+     * El nombre de la clase de prueba **ya no se recibe**: se compone.
+     *
+     * Los tres llamadores pasaban `"{$modelName}Test"` y el generador lo guardaba en `$testName`,
+     * pero desde que emite el grupo entero cada pieza se llama por su sufijo —`ScaffoldTest`,
+     * `SchemaTest`…— derivado del prefijo de contexto y la subfuncionalidad. El parámetro quedó sin
+     * un solo lector, que es la forma en que un argumento pasa a mentir sobre lo que decide.
+     */
+    public function __construct(string $moduleName, string $modulePath, bool $isClean, array $componentConfig = [])
     {
         parent::__construct($moduleName, $modulePath, $isClean, $componentConfig);
-        $this->testName = Str::studly($testName);
     }
 
     /**
-     * Genera los archivos de test según el contexto:
+     * Emite **el grupo de pruebas de la subfuncionalidad**, y nada más.
      *
-     * - Tests/Feature/{contextFolder}/{className}Test.php  (siempre, con contexto)
-     * - Tests/Unit/{contextFolder}/{className}ServiceTest.php  (siempre, con contexto)
-     * - Tests/Support/{contextFolder}/{className}Support.php  (solo Central)
+     * Son las seis piezas del contrato más su manifiesto, todas en
+     * `Tests/Feature/{contexto}/{SubFunc}/`, salvo la del tema 6 —que la ejecuta Vitest y vive con
+     * el JavaScript—. El orden es el de la cascada: el manifiesto primero, porque es lo que las
+     * demás leen; después la base, donde vive la derivación; y luego los temas.
      *
-     * Sin contexto (fallback): genera un único test en Tests/Unit.
+     * **Lo que este método emitía antes y ya no.** Hasta la fase 4 escribía además un
+     * `{Clase}Test.php` de feature, un `{Clase}ServiceTest.php` de unidad y un `{Clase}Support.php`,
+     * los tres desde stubs que devolvían `assertTrue(true)` — B4. Ninguno está en los 9 temas: el
+     * Support lo sustituye la base del grupo, que además deriva en vez de repetir, y un `ServiceTest`
+     * por clase no está en el contrato y volvía a inflar la suite sin afirmar nada.
+     *
+     * Tenía también una rama «sin contexto ni subfuncionalidad» que nunca se ejecutaba: las tres
+     * puertas del generador —`createCleanModuleWithContext`, `createDynamicModule` y
+     * `createIndividualComponents`— garantizan `subFeature` antes de llamar aquí. Era el caso de la
+     * regla 7 del workspace: código que aparentaba cubrir un escenario que no existía.
      *
      * @return void
      */
     public function generate(): void
     {
-        $contextKey    = $this->componentConfig['context'] ?? null;
-        $contextFolder = $this->getContextFolder();
-
         // El manifiesto del grupo de pruebas. Va antes que nada porque es lo que las piezas leen:
         // sin él, cada una tendría que volver a declarar las tablas, las acciones y el andamiaje —
         // que es exactamente la duplicación que R76 prohíbe.
@@ -60,87 +72,6 @@ class TestGenerator extends AbstractComponentGenerator
         $this->writeDeploymentTest();
         $this->writeHttpTest();
         $this->writeVueTest();
-
-        // ── Sin contexto NI subfuncionalidad: comportamiento legacy ───────────
-        // La condición era «sin contexto», y eso convertía single-app en un caso degradado: como
-        // ahí el contexto siempre está vacío, un proyecto sin tenants caía en el camino legacy y
-        // recibía una estructura recortada. No es un fallback, es un modo de primera clase — lo
-        // que decide es si hay subfuncionalidad, que la hay siempre que se genere de verdad.
-        if ($contextFolder === '' && $this->getSubFeatureFolder() === '') {
-            $testDir = $this->getComponentBasePath() . '/Tests/Unit';
-            $this->ensureDirectoryExists($testDir);
-
-            $stub = $this->getStubContent('test.stub', $this->isClean, [
-                'namespace' => "Modules\\{$this->moduleName}\\Tests\\Unit",
-                'testName'  => $this->testName,
-            ]);
-
-            $this->putFile(
-                "{$testDir}/{$this->testName}.php",
-                $stub,
-                "Test {$this->testName}.php creado en Modules/{$this->moduleName}/Tests/Unit"
-            );
-            return;
-        }
-
-        $contextFolderPath = $contextFolder;
-        $contextNamespace  = str_replace('/', '\\', $contextFolderPath);
-        $moduleNamespace   = "Modules\\{$this->moduleName}";
-        $className         = $this->getClassPrefix() . $this->moduleName;
-
-        // ── 1. Feature test ────────────────────────────────────────────────────
-        $featureDir = $this->buildPath('Tests/Feature');
-        $this->ensureDirectoryExists($featureDir);
-
-        $featureStub = $this->getStubContent('test.stub', $this->isClean, [
-            'namespace' => $this->buildNamespace('Tests\\Feature'),
-            'testName'  => $className . 'Test',
-        ]);
-
-        $this->putFile(
-            "{$featureDir}/{$className}Test.php",
-            $featureStub,
-            "Feature test {$className}Test.php creado en Modules/{$this->moduleName}/Tests/Feature/{$contextFolderPath}"
-        );
-
-        // ── 2. Unit test ───────────────────────────────────────────────────────
-        $unitDir = $this->buildPath('Tests/Unit');
-        $this->ensureDirectoryExists($unitDir);
-
-        $unitStub = $this->getStubContent('test-unit.stub', $this->isClean, [
-            'namespace' => $this->buildNamespace('Tests\\Unit'),
-            'className' => $className,
-        ]);
-
-        $this->putFile(
-            "{$unitDir}/{$className}ServiceTest.php",
-            $unitStub,
-            "Unit test {$className}ServiceTest.php creado en Modules/{$this->moduleName}/Tests/Unit/{$contextFolderPath}"
-        );
-
-        // ── 3. Support (solo Central) ──────────────────────────────────────────
-        // En multitenant el soporte de pruebas vive en central; en single-app no hay otro
-        // contexto que pueda tenerlo, asi que le corresponde igual.
-        $llevaSoporte = ! $this->mode()->hasContextAxis()
-            || $contextKey === 'central'
-            || $this->getClassPrefix() === 'Central';
-
-        if ($llevaSoporte) {
-            $supportDir = $this->buildPath('Tests/Support');
-            $this->ensureDirectoryExists($supportDir);
-
-            $supportStub = $this->getStubContent('test-support.stub', $this->isClean, [
-                'namespace'  => $this->buildNamespace('Tests\\Support'),
-                'className'  => $className,
-                'moduleName' => $this->moduleName,
-            ]);
-
-            $this->putFile(
-                "{$supportDir}/{$className}Support.php",
-                $supportStub,
-                "Support test {$className}Support.php creado en Modules/{$this->moduleName}/Tests/Support/{$contextFolderPath}"
-            );
-        }
     }
 
     // ─── El manifiesto del grupo de pruebas (R76) ─────────────────────────────
