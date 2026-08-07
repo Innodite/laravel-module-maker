@@ -412,9 +412,21 @@ it('con el orden vacío, el despliegue termina en verde', function () {
 
     cargarSeederDelProyecto('InnoditeDeploySeeder');
 
+    // Y el del webmaster, que es **el otro paso** del despliegue: el instalador escribe los dos, y el
+    // seeder de despliegue instancia el segundo por su FQCN. Cargar solo el primero dejaba el
+    // despliegue terminando en 1 con «Target class does not exist» — el fallo que esta prueba
+    // llevaba escondiendo desde F3, porque sin `pdo_sqlite` se saltaba entera.
+    cargarSeederDelProyecto('WebmasterSeeder');
+
     config()->set('make-module.deploy', []);
 
-    expect(Artisan::call('innodite:deploy', ['entorno' => 'stage', '--no-interaction' => true]))->toBe(0);
+    expect(Artisan::call('innodite:deploy', ['entorno' => 'stage', '--no-interaction' => true]))->toBe(
+        0,
+        'FALLA: desplegar un proyecto sin nada declarado termina en error. · FIX: no desplegar nada '
+        . 'no es un fallo, es un proyecto recién instalado; el despliegue debe avisar y salir en '
+        . 'verde. Lee la salida: si dice «Target class does not exist», falta cargar una de las dos '
+        . "piezas que escribe el instalador.\n\n" . Artisan::output()
+    );
 });
 
 it('sin el seeder de despliegue dice quién lo escribe', function () {

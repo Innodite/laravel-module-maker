@@ -58,3 +58,53 @@ it('el contexto se puede forzar, y entonces manda sobre el de la coordenada', fu
         ->expectsOutputToContain('Conexión:      tenant_one')
         ->assertSuccessful();
 });
+
+it('aplica de verdad la migración, y no solo dice que la aplicaría', function () {
+    // Las tres pruebas de arriba usan `--dry-run`: comprueban que el comando *decide* bien, nunca
+    // que *ejecuta* bien. Y ahí vivía el defecto — la coordenada se resolvía contra `module_path` y
+    // la ruta se le entregaba a `migrate` relativa a `base_path()`, dos raíces que solo coinciden
+    // mientras nadie mueva la carpeta de módulos. El síntoma es el peor de todos: `migrate` no se
+    // queja de que falte el archivo, simplemente no aplica nada y devuelve éxito.
+    requiereBaseDeDatos();
+
+    $baseDatos = $this->tempPath('database/test-central.sqlite');
+    File::ensureDirectoryExists(dirname($baseDatos));
+    touch($baseDatos);
+
+    config()->set('database.connections.central', [
+        'driver'   => 'sqlite',
+        'database' => $baseDatos,
+        'prefix'   => '',
+    ]);
+
+    $ruta = $this->tempPath('Modules/Probe/Database/Migrations/Central/2026_01_01_000001_crea_cosas.php');
+    File::ensureDirectoryExists(dirname($ruta));
+    File::put($ruta, <<<'MIGRACION'
+        <?php
+
+        use Illuminate\Database\Migrations\Migration;
+        use Illuminate\Database\Schema\Blueprint;
+        use Illuminate\Support\Facades\Schema;
+
+        return new class extends Migration {
+            public function up(): void
+            {
+                Schema::create('cosas', function (Blueprint $tabla): void {
+                    $tabla->id();
+                    $tabla->string('nombre');
+                });
+            }
+        };
+        MIGRACION);
+
+    $this->artisan('innodite:migrate-one', [
+        'coordinate' => 'Probe:Central/2026_01_01_000001_crea_cosas.php',
+        '--yes'      => true,
+    ])->assertSuccessful();
+
+    expect(Schema::connection('central')->hasTable('cosas'))->toBeTrue(
+        'FALLA: el comando terminó en éxito y la tabla no existe. · FIX: la ruta que recibe '
+        . '`migrate --path` tiene que resolverse contra la misma raíz con la que se localizó la '
+        . 'coordenada (`module_path`), y pasarse con `--realpath`.'
+    );
+});

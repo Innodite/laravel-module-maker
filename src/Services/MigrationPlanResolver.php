@@ -73,6 +73,32 @@ class MigrationPlanResolver
     }
 
     /**
+     * La ruta declarada por un trait, resuelta contra **la misma raíz de la que salió**.
+     *
+     * Los traits declaran `Modules/Factura/Database/Migrations/…`, relativo a la raíz del proyecto, y
+     * quien los encuentra es `migrationsFromTraits()` recorriendo `make-module.module_path`. Pero
+     * `migrate --path`, sin `--realpath`, resuelve lo que reciba contra `base_path()`.
+     *
+     * **Son dos raíces distintas, y solo coinciden por defecto.** `module_path` es configurable —vale
+     * `base_path('Modules')` de serie, pero nada obliga a dejarlo ahí—, así que en cuanto alguien lo
+     * mueve, el comando encuentra los traits en un sitio y busca sus migraciones en otro. El síntoma
+     * es el peor posible: `migrate` no falla por «archivo no encontrado», simplemente no aplica nada
+     * y devuelve éxito.
+     *
+     * Es el mismo defecto que persiguen B13 y B17: dos mitades correctas por separado que dejaron de
+     * apuntar al mismo sitio. Aquí se cierra devolviendo una ruta absoluta, que quien la ejecute pasa
+     * con `--realpath`.
+     */
+    public function absolutePathOf(string $declared): string
+    {
+        // El padre de la carpeta de módulos: los traits declaran `Modules/…` **incluyendo** ese
+        // primer segmento, así que la raíz contra la que se resuelven es la que lo contiene.
+        $raiz = dirname(rtrim((string) config('make-module.module_path'), '/\\'));
+
+        return $raiz . '/' . ltrim($declared, '/');
+    }
+
+    /**
      * @return array{module: string, contextPath: string, file: string, path: string}
      */
     public function resolveMigrationCoordinate(string $coordinate): array

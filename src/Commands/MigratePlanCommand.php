@@ -111,17 +111,21 @@ class MigratePlanCommand extends Command
             return self::FAILURE;
         }
 
-        return $this->aplicar($migraciones, $conexion);
+        return $this->aplicar($migraciones, $conexion, $resolver);
     }
 
     /**
      * @param  array<int, string>  $migraciones
      */
-    private function aplicar(array $migraciones, string $conexion): int
+    private function aplicar(array $migraciones, string $conexion, MigrationPlanResolver $resolver): int
     {
         foreach ($migraciones as $migracion) {
+            // Absoluta y con `--realpath`, no relativa: el trait se encontró recorriendo
+            // `module_path` y `migrate --path` resolvería contra `base_path()`, que son dos raíces
+            // distintas en cuanto alguien mueve la carpeta de módulos. Ver `absolutePathOf()`.
             $codigo = $this->call('migrate', [
-                '--path'     => $migracion,
+                '--path'     => $resolver->absolutePathOf($migracion),
+                '--realpath' => true,
                 '--database' => $conexion,
                 '--force'    => true,
             ]);

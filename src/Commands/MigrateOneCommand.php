@@ -96,7 +96,12 @@ class MigrateOneCommand extends Command
         }
 
         $codigo = $this->call('migrate', [
-            '--path'     => $this->rutaRelativa($resuelta['path']),
+            // La coordenada ya se resolvió a ruta absoluta contra `module_path`, así que se pasa tal
+            // cual con `--realpath`. Antes se convertía a relativa a `base_path()` —la raíz de la
+            // que `migrate` parte por defecto—, y las dos solo coinciden mientras nadie mueva la
+            // carpeta de módulos. Ver `MigrationPlanResolver::absolutePathOf()`.
+            '--path'     => $resuelta['path'],
+            '--realpath' => true,
             '--database' => $conexion,
             '--force'    => true,
         ]);
@@ -123,13 +128,5 @@ class MigrateOneCommand extends Command
         }
 
         return (bool) $this->confirm("Se ejecutará la migración sobre '{$conexion}'. ¿Continuar?", false);
-    }
-
-    /** `migrate --path` espera la ruta relativa a la raíz del proyecto. */
-    private function rutaRelativa(string $absoluta): string
-    {
-        $raiz = rtrim(base_path(), '/\\') . '/';
-
-        return str_starts_with($absoluta, $raiz) ? substr($absoluta, strlen($raiz)) : $absoluta;
     }
 }
