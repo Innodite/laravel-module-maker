@@ -9,7 +9,7 @@ use Innodite\LaravelModuleMaker\Tests\Support\GeneratedModule;
  * Las piezas del contrato, con contenido de verdad — el fin de `assertTrue(true)`.
  *
  * **Lo que se vigila aquí es el techo tanto como el contenido.** El contrato fija 2 pruebas para el
- * tema 0, 2 para los temas 1-2 y 3 para los temas 3-5, y ese número **no crece**: una tabla nueva,
+ * tema 0, 2 para los temas 1-2, 3 para los temas 3-5 y 4 para el tema 8, y ese número **no crece**: una tabla nueva,
  * una columna nueva o una ruta nueva entran en el recorrido de una prueba que ya existe. Si alguien añade un método de test
  * al stub, esta suite lo dice — porque el día que cada campo sume una prueba, la suite del proyecto
  * empieza a frenar al equipo que debía proteger.
@@ -38,7 +38,8 @@ it('el módulo generado trae las piezas del contrato, con su techo de pruebas', 
         "{$carpeta}/{$prefijo}ScaffoldTest.php",
         "{$carpeta}/{$prefijo}SchemaTest.php",
         "{$carpeta}/{$prefijo}PermissionsTest.php",
-    ], 'R32: el grupo de la subfuncionalidad son 6 piezas fijas; estas son las de los temas 0, 1-2 y 3-5.');
+        "{$carpeta}/{$prefijo}DeploymentTest.php",
+    ], 'R32: el grupo de la subfuncionalidad son 6 piezas fijas; estas son las de los temas 0, 1-2, 3-5 y 8.');
 
     expect(metodosDePrueba($modulo->contents("{$carpeta}/{$prefijo}ScaffoldTest.php")))->toBe(
         2,
@@ -50,6 +51,12 @@ it('el módulo generado trae las piezas del contrato, con su techo de pruebas', 
         2,
         'FALLA: los temas 1-2 no tienen exactamente 2 pruebas. · FIX: una recorre las tablas y otra '
         . 'las columnas; una tabla nueva no suma una prueba, entra en el recorrido (R33).'
+    );
+
+    expect(metodosDePrueba($modulo->contents("{$carpeta}/{$prefijo}DeploymentTest.php")))->toBe(
+        4,
+        'FALLA: el tema 8 no tiene exactamente 4 pruebas. · FIX: levanta, es idempotente, no '
+        . 'destruye, y producción levanta. Son las cuatro garantías del despliegue (R33).'
     );
 
     expect(metodosDePrueba($modulo->contents("{$carpeta}/{$prefijo}PermissionsTest.php")))->toBe(
@@ -67,7 +74,7 @@ it('ninguna pieza generada es un placebo', function () {
     // B4 en una línea: lo que el paquete emitía era `assertTrue(true)` — verde sin probar nada.
     $modulo = $this->generateModule('Invoice', ModuleMode::SingleApp);
 
-    foreach (['InvoiceScaffoldTest', 'InvoiceSchemaTest', 'InvoicePermissionsTest'] as $pieza) {
+    foreach (['InvoiceScaffoldTest', 'InvoiceSchemaTest', 'InvoicePermissionsTest', 'InvoiceDeploymentTest'] as $pieza) {
         $contenido = $modulo->contents("Tests/Feature/Invoice/{$pieza}.php");
 
         expect(str_contains($contenido, 'assertTrue(true)'))->toBeFalse(
@@ -140,7 +147,7 @@ it('las piezas cuelgan de la base del grupo, no del TestCase del proyecto', func
     // volvería a resolver por su cuenta lo que la base ya resuelve para todas.
     $modulo = $this->generateModule('Invoice', $modo, $contexto);
 
-    foreach (['ScaffoldTest', 'SchemaTest', 'PermissionsTest'] as $pieza) {
+    foreach (['ScaffoldTest', 'SchemaTest', 'PermissionsTest', 'DeploymentTest'] as $pieza) {
         $contenido = $modulo->contents("{$carpeta}/{$prefijo}{$pieza}.php");
 
         expect(str_contains($contenido, "extends {$prefijo}TestCase"))->toBeTrue(

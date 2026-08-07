@@ -57,6 +57,7 @@ class TestGenerator extends AbstractComponentGenerator
         $this->writeScaffoldTest();
         $this->writeSchemaTest();
         $this->writePermissionsTest();
+        $this->writeDeploymentTest();
 
         // ── Sin contexto NI subfuncionalidad: comportamiento legacy ───────────
         // La condición era «sin contexto», y eso convertía single-app en un caso degradado: como
@@ -210,6 +211,14 @@ class TestGenerator extends AbstractComponentGenerator
     }
 
     /**
+     * Tema 8 — el despliegue, ejecutado: levanta, es idempotente, no destruye, y en producción también.
+     */
+    protected function writeDeploymentTest(): void
+    {
+        $this->escribirPiezaDelGrupo('test-deployment.stub', 'DeploymentTest', 'Prueba del despliegue');
+    }
+
+    /**
      * El molde común de las piezas del grupo: mismo sitio, mismo nombre compuesto, misma regla de
      * no sobreescribir.
      *
@@ -256,6 +265,7 @@ class TestGenerator extends AbstractComponentGenerator
             'scaffoldName'    => $prefijo . $subFeature . 'ScaffoldTest',
             'schemaName'      => $prefijo . $subFeature . 'SchemaTest',
             'permissionsName' => $prefijo . $subFeature . 'PermissionsTest',
+            'deploymentName'  => $prefijo . $subFeature . 'DeploymentTest',
         ];
 
         $this->putFile(

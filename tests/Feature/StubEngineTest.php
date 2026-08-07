@@ -25,9 +25,9 @@ function packageStubs(): array
     return glob(dirname(__DIR__, 2) . '/stubs/contextual/*.stub') ?: [];
 }
 
-it('encuentra los 39 stubs del paquete', function () {
+it('encuentra los 40 stubs del paquete', function () {
     // La cuenta sube cuando el paquete aprende a generar una pieza nueva —las últimas son las
-    // cuatro del grupo de pruebas: el manifiesto, su base y las piezas de los temas 0, 1-2 y 3-5, de la
+    // cuatro del grupo de pruebas: el manifiesto, su base y las piezas de los temas 0, 1-2, 3-5 y 8, de la
     // fase 4; antes fueron las tres
     // ejecutables de la subfuncionalidad, el trait de datos canónicos, los dos maestros de módulo y
     // el seeder de despliegue del proyecto, todas de la fase 3— y esa subida se hace **a propósito,
@@ -41,8 +41,8 @@ it('encuentra los 39 stubs del paquete', function () {
     // atrás —decía «los 29» mientras exigía 27—, y un título que miente sobre lo que la prueba
     // exige se lee y se cree.
     expect(packageStubs())->toHaveCount(
-        39,
-        'El paquete lleva 39 stubs, una sola copia de cada uno. Si aparecen más sin haber añadido '
+        40,
+        'El paquete lleva 40 stubs, una sola copia de cada uno. Si aparecen más sin haber añadido '
         . 'una pieza, alguien devolvió las copias por contexto; si aparecen menos, falta un stub.'
     );
 });
