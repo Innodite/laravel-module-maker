@@ -39,7 +39,8 @@ it('el módulo generado trae las piezas del contrato, con su techo de pruebas', 
         "{$carpeta}/{$prefijo}SchemaTest.php",
         "{$carpeta}/{$prefijo}PermissionsTest.php",
         "{$carpeta}/{$prefijo}DeploymentTest.php",
-    ], 'R32: el grupo de la subfuncionalidad son 6 piezas fijas; estas son las de los temas 0, 1-2, 3-5 y 8.');
+        "{$carpeta}/{$prefijo}HttpTest.php",
+    ], 'R32: el grupo de la subfuncionalidad son 6 piezas fijas; estas son las de los temas 0, 1-2, 3-5, 8 y 7.');
 
     expect(metodosDePrueba($modulo->contents("{$carpeta}/{$prefijo}ScaffoldTest.php")))->toBe(
         2,
@@ -74,10 +75,13 @@ it('ninguna pieza generada es un placebo', function () {
     // B4 en una línea: lo que el paquete emitía era `assertTrue(true)` — verde sin probar nada.
     $modulo = $this->generateModule('Invoice', ModuleMode::SingleApp);
 
-    foreach (['InvoiceScaffoldTest', 'InvoiceSchemaTest', 'InvoicePermissionsTest', 'InvoiceDeploymentTest'] as $pieza) {
+    foreach (['InvoiceScaffoldTest', 'InvoiceSchemaTest', 'InvoicePermissionsTest', 'InvoiceDeploymentTest', 'InvoiceHttpTest'] as $pieza) {
         $contenido = $modulo->contents("Tests/Feature/Invoice/{$pieza}.php");
 
-        expect(str_contains($contenido, 'assertTrue(true)'))->toBeFalse(
+        // Sobre el código sin comentarios: el docblock del tema 7 explica por qué un assertTrue(true)
+        // sería cobertura fingida, y nombrarlo no es escribirlo. Es la tercera vez en esta fase que
+        // aparece la misma confusión — se prohíbe la operación, nunca la palabra.
+        expect(str_contains(soloCodigo($contenido), 'assertTrue(true)'))->toBeFalse(
             "FALLA: {$pieza} contiene assertTrue(true). · FIX: una prueba que pasa siempre es peor "
             . 'que ninguna, porque parece cobertura.'
         );
@@ -147,7 +151,7 @@ it('las piezas cuelgan de la base del grupo, no del TestCase del proyecto', func
     // volvería a resolver por su cuenta lo que la base ya resuelve para todas.
     $modulo = $this->generateModule('Invoice', $modo, $contexto);
 
-    foreach (['ScaffoldTest', 'SchemaTest', 'PermissionsTest', 'DeploymentTest'] as $pieza) {
+    foreach (['ScaffoldTest', 'SchemaTest', 'PermissionsTest', 'DeploymentTest', 'HttpTest'] as $pieza) {
         $contenido = $modulo->contents("{$carpeta}/{$prefijo}{$pieza}.php");
 
         expect(str_contains($contenido, "extends {$prefijo}TestCase"))->toBeTrue(
@@ -159,6 +163,49 @@ it('las piezas cuelgan de la base del grupo, no del TestCase del proyecto', func
     'single-app'  => [ModuleMode::SingleApp, null, 'Tests/Feature/Invoice', 'Invoice'],
     'multitenant' => [ModuleMode::MultitenantPerTenant, 'central', 'Tests/Feature/Central/Invoice', 'CentralInvoice'],
 ]);
+
+it('el tema 7 no tiene techo, pero sí borde', function () {
+    // El único sin número fijo — ahí entra lo que el negocio exija. Lo que no puede hacer es repetir
+    // el 403 del tema 5: esa duplicación es la que llevó a un proyecto de la casa a 62 métodos
+    // redundantes, y a que la suite dejara de correrse.
+    $modulo = $this->generateModule('Invoice', ModuleMode::SingleApp);
+
+    $http = soloCodigo($modulo->contents('Tests/Feature/Invoice/InvoiceHttpTest.php'));
+
+    expect(metodosDePrueba($http))->toBeGreaterThan(
+        3,
+        'FALLA: el tema 7 trae menos comportamientos de los que el borde exige. · FIX: listado, '
+        . 'entrada inválida, alta y lectura, identificador ajeno y borrado lógico (R34).'
+    );
+
+    expect(str_contains($http, '403'))->toBeFalse(
+        'FALLA: el tema 7 comprueba un 403. · FIX: eso ya está probado en el tema 5; repetirlo es la '
+        . 'duplicación que infla la suite hasta que deja de correrse (R34).'
+    );
+
+    // Y lo que el paquete no puede saber se salta DICIÉNDOLO, en vez de fingir que pasa.
+    expect(str_contains($http, 'markTestSkipped'))->toBeTrue(
+        'FALLA: las pruebas que dependen del negocio no dicen que están pendientes. · FIX: un skip '
+        . 'que explica el paso siguiente es una tarea visible; un assertTrue(true) es cobertura fingida.'
+    );
+});
+
+it('el aislamiento entre tenants solo se genera donde puede fallar', function () {
+    // En una aplicación sin tenants no hay otro inquilino del que aislarse: esa prueba no podría
+    // fallar nunca, y una prueba que no puede fallar es ruido que se acaba ignorando.
+    $single = $this->generateModule('Invoice', ModuleMode::SingleApp);
+    $multi  = $this->generateModule('Billing', ModuleMode::MultitenantPerTenant, 'central');
+
+    expect(str_contains($single->contents('Tests/Feature/Invoice/InvoiceHttpTest.php'), 'otro_contexto'))->toBeFalse(
+        'FALLA: single-app genera la prueba de aislamiento entre contextos. · FIX: la decide el '
+        . 'modo; sin eje de contexto no hay de quién aislarse.'
+    );
+
+    expect(str_contains($multi->contents('Tests/Feature/Central/Billing/CentralBillingHttpTest.php'), 'otro_contexto'))->toBeTrue(
+        'FALLA: multitenant NO genera la prueba de aislamiento. · FIX: sin ella el multitenant no '
+        . 'está probado — todo puede estar en verde y un usuario leer los datos de otro inquilino.'
+    );
+});
 
 it('el módulo entero sigue coherente con las piezas dentro', function (ModuleMode $modo, ?string $contexto) {
     $this->generateModule('Invoice', $modo, $contexto)->assertCoherent();

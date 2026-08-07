@@ -59,6 +59,53 @@ abstract class {{{ baseName }}} extends TestCase
     }
 
     /**
+     * La ruta de una acción concreta —`index`, `list`, `store`…—, o `null` si no existe.
+     *
+     * Por el nombre y no por la URI, igual que el filtro del grupo: el nombre es exacto y no cambia
+     * con el prefijo del contexto.
+     */
+    protected function rutaDe(string $accion): ?Route
+    {
+        foreach ($this->rutasDelContrato() as $ruta) {
+            if ($ruta->getName() === {{{ contractName }}}::ROUTE_PREFIX . $accion) {
+                return $ruta;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Llama a una acción de la subfuncionalidad **como quien tiene su permiso**, y devuelve la respuesta.
+     *
+     * El permiso sale de la propia ruta: así esta llamada no repite el tema 5 ni depende de una
+     * lista. Lo que se mide aquí es el comportamiento, no la puerta.
+     *
+     * @param  array<string, mixed>  $datos
+     */
+    protected function llamarAccion(string $accion, array $parametros = [], array $datos = []): object
+    {
+        $ruta = $this->rutaDe($accion);
+
+        $this->assertNotNull(
+            $ruta,
+            "FALLA: la subfuncionalidad no declara la acción '{$accion}'. · FIX: comprueba que su "
+            . 'ruta existe y que su nombre empieza por el prefijo del manifiesto.'
+        );
+
+        $uri = $ruta->uri();
+
+        foreach ($parametros as $clave => $valor) {
+            $uri = str_replace('{' . $clave . '}', (string) $valor, $uri);
+        }
+
+        $uri = '/' . ltrim(preg_replace('/\{[^}]+\}/', '1', $uri) ?? '', '/');
+
+        return $this->actingAs($this->usuarioCon([$this->permisoDe($ruta)]))
+            ->call($ruta->methods()[0], $uri, $datos);
+    }
+
+    /**
      * El permiso que exige una ruta, leído de su propio middleware. Cadena vacía si no exige ninguno.
      *
      * Reconoce cualquier alias que termine en `permission` —`permission:`, `central-permission:`,

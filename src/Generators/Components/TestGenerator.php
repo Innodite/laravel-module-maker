@@ -58,6 +58,7 @@ class TestGenerator extends AbstractComponentGenerator
         $this->writeSchemaTest();
         $this->writePermissionsTest();
         $this->writeDeploymentTest();
+        $this->writeHttpTest();
 
         // ── Sin contexto NI subfuncionalidad: comportamiento legacy ───────────
         // La condición era «sin contexto», y eso convertía single-app en un caso degradado: como
@@ -219,6 +220,55 @@ class TestGenerator extends AbstractComponentGenerator
     }
 
     /**
+     * Tema 7 — el comportamiento por HTTP: el único sin techo, y con el borde de R34.
+     *
+     * La prueba de aislamiento entre tenants **solo se escribe en multitenant**, y no por ahorrar
+     * líneas: en una aplicación sin tenants no hay otro inquilino del que aislarse, así que esa
+     * prueba no podría fallar nunca — y una prueba que no puede fallar es ruido que se acaba
+     * ignorando. Lo decide el modo, como todo lo demás.
+     */
+    protected function writeHttpTest(): void
+    {
+        $this->escribirPiezaDelGrupo('test-http.stub', 'HttpTest', 'Prueba de comportamiento', [
+            'pruebaDeAislamiento' => $this->mode()->hasContextAxis() ? $this->pruebaDeAislamiento() : '',
+        ]);
+    }
+
+    /**
+     * La prueba de aislamiento entre tenants, obligatoria en multitenant.
+     *
+     * Sin ella el multitenant **no está probado**: todo lo demás puede estar en verde y aun así un
+     * usuario de un inquilino leer los registros de otro cambiando un identificador en la URL.
+     */
+    protected function pruebaDeAislamiento(): string
+    {
+        return <<<'PHP'
+
+    /**
+     * Qué prueba: que un registro de otro contexto no se devuelve por esta ruta.
+     * Resultado esperado: la respuesta no trae el identificador ajeno.
+     * Por qué existe: **sin esta prueba el multitenant no está probado.** Todo lo demás puede estar
+     *   en verde y un usuario seguir leyendo los datos de otro inquilino cambiando el id de la URL,
+     *   que es la peor forma de fallar: silenciosa, y con datos de un tercero.
+     */
+    public function test_no_se_devuelve_un_registro_de_otro_contexto(): void
+    {
+        $ajeno = (string) Str::ulid();
+
+        $respuesta = $this->llamarAccion('show', ['id' => $ajeno]);
+
+        $this->assertStringNotContainsString(
+            $ajeno,
+            (string) $respuesta->getContent(),
+            'FALLA: la respuesta devuelve un identificador que no pertenece a este contexto. · FIX: '
+            . 'comprueba que el repository consulta la conexión del contexto y filtra por su tenant; '
+            . 'una consulta sin ese filtro cruza inquilinos sin dar un solo error.'
+        );
+    }
+PHP;
+    }
+
+    /**
      * El molde común de las piezas del grupo: mismo sitio, mismo nombre compuesto, misma regla de
      * no sobreescribir.
      *
@@ -266,6 +316,7 @@ class TestGenerator extends AbstractComponentGenerator
             'schemaName'      => $prefijo . $subFeature . 'SchemaTest',
             'permissionsName' => $prefijo . $subFeature . 'PermissionsTest',
             'deploymentName'  => $prefijo . $subFeature . 'DeploymentTest',
+            'httpName'        => $prefijo . $subFeature . 'HttpTest',
         ];
 
         $this->putFile(
