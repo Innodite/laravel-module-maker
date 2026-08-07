@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\File;
 use Illuminate\Support\Str;
 use Innodite\LaravelModuleMaker\Services\PhpunitRunner;
 use Innodite\LaravelModuleMaker\Support\ContextResolver;
+use Innodite\LaravelModuleMaker\Support\LegacyManifests;
 use Innodite\LaravelModuleMaker\Support\TestNames;
 use Throwable;
 
@@ -54,6 +55,12 @@ class TestCommand extends Command
         $this->newLine();
         $this->line("  <fg=blue;options=bold>Innodite ModuleMaker — Contrato de {$modulo}/{$subFuncion}</>");
         $this->newLine();
+
+        // El último manifiesto JSON del paquete se retiró en esta fase. Un proyecto que actualice lo
+        // sigue teniendo en disco, con sus contextos dentro y con toda la pinta de seguir mandando.
+        // Se avisa aquí, que es donde tocaba usarlo — y **solo se avisa**: hacer fallar las pruebas
+        // por un archivo que ya no lee nadie sería al revés de lo que hace falta.
+        LegacyManifests::noticeTestConfig($this);
 
         $contexto = $this->resolverContexto();
 

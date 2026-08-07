@@ -162,3 +162,41 @@ it('un módulo sin grupo lo dice, en vez de dar el contrato por cumplido', funct
     $this->artisan('innodite:test', ['module' => 'Ledger', 'subfeature' => 'NoExiste'])
         ->assertFailed();
 });
+
+it('avisa del test-config.json que quede, sin hacer fallar nada', function () {
+    // El último manifiesto JSON del paquete se retiró en esta fase. Un proyecto que actualiza lo
+    // sigue teniendo en disco, con sus contextos dentro y con toda la pinta de seguir mandando —
+    // que es la peor forma de quedarse obsoleto: un archivo que parece la fuente de la verdad.
+    //
+    // **Aviso, no error** (D3): el proyecto funciona sin él, y hacer fallar las pruebas por un
+    // archivo que ya no lee nadie sería al revés de lo que hace falta.
+    [$modulo] = moduloConGrupo();
+
+    File::put(base_path("Modules/{$modulo}/Tests/test-config.json"), '{"contexts":{}}');
+
+    $this->app->instance(PhpunitRunner::class, ejecutorFalso());
+
+    $this->artisan('innodite:test', ['module' => $modulo, 'subfeature' => $modulo])
+        ->expectsOutputToContain('test-config.json')
+        ->assertSuccessful();
+});
+
+it('los comandos del manifiesto de tests ya no existen', function () {
+    // `innodite:test-sync` generaba el JSON y `innodite:test-module` lo leía. Se retiran los dos con
+    // el archivo: dejar registrado un comando que trabaja sobre algo que ya no existe es prometer
+    // un camino que no lleva a ninguna parte.
+    $registrados = array_keys(Illuminate\Support\Facades\Artisan::all());
+
+    expect($registrados)->not->toContain(
+        'innodite:test-sync',
+        'FALLA: sigue registrado el comando que generaba el manifiesto de tests.'
+    );
+
+    expect($registrados)->not->toContain(
+        'innodite:test-module',
+        'FALLA: sigue registrado el comando que leía el manifiesto de tests. · FIX: lo sustituye '
+        . 'innodite:test, que ejecuta el contrato de una subfuncionalidad en cascada.'
+    );
+
+    expect($registrados)->toContain('innodite:test');
+});

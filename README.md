@@ -412,140 +412,57 @@ la secuencia de pasos del despliegue.
 ---
 
 
-### `innodite:test-module` — Ejecutar Tests con Coverage
+### `innodite:test` — Ejecutar el contrato de una subfuncionalidad
 
 ```bash
-# 1) Sincronizar configuración por contexto (crea Tests/test-config.json)
-php artisan innodite:test-sync User
+# El contrato completo de una subfuncionalidad
+php artisan innodite:test Invoice Payment
 
-# 2) Ejecutar tests de un módulo (modo default sin contexto)
-php artisan innodite:test-module User
+# En multitenant, diciendo en qué contexto vive
+php artisan innodite:test Invoice Payment --context=central
 
-# 3) Ejecutar un contexto específico definido en test-config.json
-php artisan innodite:test-module User --context=central
+# Acotando dentro de una pieza
+php artisan innodite:test Invoice Payment --filter=test_no_se_ve_sin_permiso
 
-# 4) Ejecutar todos los contextos habilitados del módulo
-php artisan innodite:test-module User --all-contexts
-
-# 5) Coverage por módulo/contexto
-php artisan innodite:test-module User --context=central --coverage --format=html --format=clover
+# Sin corte temprano, para ver el grupo entero de una pasada
+php artisan innodite:test Invoice Payment --continuar
 ```
 
-**Características:**
+**Se ejecuta por subfuncionalidad, no por módulo**, porque el contrato es de ella: son sus nueve
+temas, su manifiesto y sus seis piezas. Un módulo con cuatro subfuncionalidades no tiene un
+contrato, tiene cuatro — y ejecutarlos juntos mezcla el resultado de cosas que se despliegan y
+fallan por separado.
 
-- ✅ Ejecuta PHPUnit en uno o todos los módulos
-- ✅ Usa configuración contextual en `Modules/{Modulo}/Tests/test-config.json`
-- ✅ Permite correr un contexto (`--context`) o todos los contextos habilitados (`--all-contexts`)
-- ✅ Escanea recursivamente toda la carpeta `Tests/` sin asumir estructura fija
-- ✅ Crea/usa archivo de configuración PHPUnit editable en `Modules/{Modulo}/Tests/phpunit-{contexto}.xml`
-- ✅ Puede ejecutar un `seeder` previo por contexto antes de PHPUnit
-- ✅ Genera reportes de coverage en múltiples formatos:
-    - **HTML** → `docs/test-reports/{Module}/{contexto}/html/index.html` (navegable)
-  - **Text** → Salida en consola con porcentajes
-    - **Clover XML** → `docs/test-reports/{Module}/{contexto}/clover.xml` (CI/CD)
-- ✅ Valida que Xdebug o PCOV estén activos para coverage
-- ✅ Muestra tabla resumen con resultados y porcentaje de cobertura
-- ✅ Soporta flag `--filter` de PHPUnit para tests específicos
-- ✅ Detección automática de módulos sin tests (warning + continuar)
-
-### `innodite:test-sync` — Sincronizar `Tests/test-config.json`
-
-Genera o actualiza el archivo `test-config.json` dentro de la carpeta `Tests/` de cada módulo, leyendo los contextos desde `module-maker-config/contexts.json`.
-
-Para testing, el sync solo genera contextos válidos de ejecución:
-
-- `central`
-- tenants específicos (`tenant_alpha`, `tenant_beta`, etc.)
-
-No genera `shared` ni `tenant_shared`, porque esos contextos no representan una base de datos de prueba autónoma.
-
-```bash
-# Sincronizar un módulo
-php artisan innodite:test-sync User
-
-# Sincronizar todos los módulos
-php artisan innodite:test-sync --all
-```
-
-**Reglas del sync:**
-
-- ✅ Crea `Modules/{Modulo}/Tests/test-config.json` si no existe
-- ✅ Agrega contextos faltantes sin duplicar
-- ✅ Conserva overrides manuales de `db_connection`, `db_database`, `seeder`, `enabled` y `env`
-- ✅ No asume ninguna base de datos por defecto: tú defines `db_connection` y `db_database`
-
-Ejemplo de `Modules/User/Tests/test-config.json`:
-
-```json
-{
-    "_readme": "Configuración de tests por contexto. Generado por innodite:test-sync.",
-    "contexts": {
-        "central": {
-            "db_connection": "mysql",
-            "db_database": "innodite_test",
-            "enabled": true,
-            "seeder": null,
-            "env": {}
-        },
-        "tenant_alpha": {
-            "db_connection": "tenant",
-            "db_database": "tenant_alpha_test",
-            "enabled": true,
-            "seeder": "Modules\\UserManagement\\Database\\Seeders\\Tenant\\TenantAlphaSeeder",
-            "env": {
-                "CACHE_DRIVER": "array"
-            }
-        }
-    }
-}
-```
-
-**Requisitos para Coverage:**
-
-```bash
-# Opción 1: Xdebug (desarrollo)
-pecl install xdebug
-# Añadir a php.ini: zend_extension=xdebug.so
-
-# Opción 2: PCOV (más rápido, CI/CD)
-pecl install pcov
-# Añadir a php.ini: extension=pcov.so
-```
-
-**Ejemplo de Salida:**
+**En cascada, y con corte temprano:**
 
 ```
-🧪 Innodite Module Maker - Test Runner
+Scaffold  →  Schema     →  Permissions  →  Deployment  →  Http
+tema 0       temas 1-2     temas 3-5       tema 8         tema 7
 
-✅ PHPUnit encontrado
-✅ Xdebug activo - Coverage disponible
-
-📦 Módulos a testear: User, Product, Invoice
-
-🔍 Ejecutando tests del módulo: User
-  📄 Archivos de test encontrados: 12
-  ✓ Tests passed (15 tests, 45 assertions)
-  
-═══════════════════════════════════════════════════════
-📊 RESUMEN DE EJECUCIÓN
-═══════════════════════════════════════════════════════
-
-┌─────────┬─────────┬──────────┐
-│ Módulo  │ Estado  │ Coverage │
-├─────────┼─────────┼──────────┤
-│ User    │ ✓ PASSED│ 87.5%    │
-│ Product │ ✓ PASSED│ 92.3%    │
-│ Invoice │ ✗ FAILED│ 65.2%    │
-└─────────┴─────────┴──────────┘
-
-Total: 3 | Passed: 2 | Failed: 1 | Skipped: 0
-
-📁 Reportes de coverage guardados en:
-   docs/test-reports/
-   • User: docs/test-reports/User/html/index.html
-   • Product: docs/test-reports/Product/html/index.html
+tema 6 (la vista) lo ejecuta Vitest, aparte
 ```
 
+El orden es de dependencia: cada pieza da por supuesto lo que comprobó la anterior. Si el andamiaje
+no está, el esquema falla por lo mismo; si el esquema no está, los permisos fallan por lo mismo; y el
+comportamiento por HTTP falla de treinta formas distintas por la misma causa única.
+
+Treinta fallos rojos de un solo problema no informan treinta veces mejor: informan **peor**, porque
+hay que leerlos todos para descubrir que eran el mismo. Por eso al primer fallo se para, y dice qué
+falló, qué cubría y **qué queda sin ejecutar**.
+
+**Antes de lanzar nada comprueba que el grupo esté entero.** Faltar el manifiesto no es «una prueba
+menos»: sin él ninguna de las otras puede derivar rutas ni permisos, y lo que saldría serían fallos
+que describen el síntoma y esconden la causa.
+
+**El tema 6 se nombra siempre**, también cuando todo pasa. Un contrato «en verde» que se saltó un
+tema sin decirlo es la peor clase de silencio.
+
+> **Viene de `innodite:test-module`, que ya no existe.** El comando anterior trabajaba por módulo y
+> contexto leyendo `Modules/{Modulo}/Tests/test-config.json`. Ese archivo era el último manifiesto
+> JSON del paquete y se retiró junto con `innodite:test-sync`, que lo generaba: el contexto lo dice
+> ahora el comando (`--context`) y la forma del módulo la dice el modo. Un proyecto que aún tenga
+> esos archivos recibe un **aviso** al ejecutar `innodite:test` — no un error: el proyecto funciona
+> sin ellos, y puedes borrarlos cuando hayas comprobado que no te falta nada de ellos.
 ---
 
 ## 📁 Archivos generados por contexto
@@ -1338,8 +1255,7 @@ Con `innodite:add-entity User Role --context=central`, se añade dentro de `Modu
 | `innodite:migrate-plan --context=` | Aplica las migraciones del contexto, en el orden de sus traits `MigrationsList` |
 | `innodite:migrate-one` | Ejecuta una migración puntual por coordenada |
 | `innodite:deploy {stage\|production}` | Levanta el proyecto: esquema, datos, permisos y webmaster |
-| `innodite:test-module` | Ejecuta tests de módulos con contexto y coverage (HTML, Text, Clover) |
-| `innodite:test-sync` | Sincroniza `Modules/{Modulo}/Tests/test-config.json` desde `contexts.json` |
+| `innodite:test` | Ejecuta el contrato de una subfuncionalidad, en cascada y con corte temprano |
 | `vendor:publish --tag=module-maker-config` | Publica `make-module.php` |
 | `vendor:publish --tag=module-maker-stubs` | Publica stubs contextuales personalizables |
 | `vendor:publish --tag=module-maker-contexts` | Publica `contexts.json` de ejemplo |
