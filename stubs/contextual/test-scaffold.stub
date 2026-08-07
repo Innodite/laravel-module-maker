@@ -1,0 +1,111 @@
+<?php
+
+declare(strict_types=1);
+
+namespace {{{ namespace }}};
+
+use ReflectionClass;
+
+/**
+ * Tema 0 — el andamiaje de {{{ subFeature }}}: que la subfuncionalidad **puede levantarse**.
+ *
+ * **Dos pruebas, y la segunda es la que importa.** Comprobar que los archivos existen es lo que hacía
+ * la generación anterior de este paquete, y es justo lo que dejó pasar sus cinco defectos críticos:
+ * los archivos estaban todos. Lo que fallaba era el contenido — el import a una clase que nadie
+ * escribió, el seeder que no invocaba sus migraciones, el service leyendo Eloquent por su cuenta.
+ *
+ * Por eso la segunda prueba **abre las piezas y las lee**. Es R77: el andamiaje no se prueba por
+ * existencia, se evalúa por contenido.
+ *
+ * Ninguna de las dos enumera nada: las dos recorren el manifiesto.
+ */
+final class {{{ scaffoldName }}} extends {{{ baseName }}}
+{
+    /**
+     * Qué prueba: que existen todas las piezas declaradas en el manifiesto.
+     * Resultado esperado: ninguna pieza ausente.
+     * Por qué existe: sin una de ellas, el despliegue no levanta la subfuncionalidad — y el error
+     *   aparece en el servidor, no aquí.
+     */
+    public function test_todas_las_piezas_de_la_subfuncionalidad_existen(): void
+    {
+        foreach ({{{ contractName }}}::SCAFFOLD as $pieza => $referencia) {
+            $existe = str_contains($referencia, '/')
+                ? (glob(base_path($referencia)) ?: []) !== []
+                : class_exists($referencia) || trait_exists($referencia);
+
+            $this->assertTrue(
+                $existe,
+                "FALLA: falta la pieza '{$pieza}' ({$referencia}). · FIX: genérala con "
+                . 'innodite:make-module, o créala siguiendo el patrón — si es seeder, las seis piezas '
+                . 'de la subfuncionalidad; si es capa, FormRequest → Controller → Service → Repository.'
+            );
+        }
+    }
+
+    /**
+     * Qué prueba: que el contenido de esas piezas cumple la norma, no solo que están.
+     * Resultado esperado: cada comprobación estructural en verde.
+     * Por qué existe: una pieza presente pero mal escrita despliega mal, y por existir ya nadie
+     *   vuelve a mirarla.
+     */
+    public function test_el_contenido_de_las_piezas_cumple_la_norma(): void
+    {
+        // 1. El seeder de stage invoca sus migraciones: es el vehículo del despliegue, y sin esa
+        //    llamada la tabla no llega a existir aunque el seeder termine en verde.
+        $stage = $this->codigoDe({{{ contractName }}}::SCAFFOLD['stage_seeder']);
+
+        $this->assertStringContainsString(
+            'runMigrations',
+            $stage,
+            'FALLA: el seeder de stage no invoca runMigrations(). · FIX: agrégale la llamada; nadie '
+            . 'ejecuta `migrate` a mano, y sin ella el despliegue siembra sobre una tabla que no existe.'
+        );
+
+        // 2. Solo el Repository toca Eloquent. Un service que consulta el modelo se salta la capa
+        //    que existe para poder cambiar el origen de los datos sin tocar el negocio.
+        $service = $this->codigoDe({{{ contractName }}}::SCAFFOLD['service']);
+
+        $this->assertStringNotContainsString(
+            'use Illuminate\\Database\\Eloquent',
+            $service,
+            'FALLA: el Service importa Eloquent. · FIX: mueve el acceso a datos al Repository — es la '
+            . 'regla de capas, y es la que permite cambiar el origen de los datos sin tocar el negocio.'
+        );
+
+        // 3. Cada ruta de la subfuncionalidad exige un permiso. Sin esto, la pantalla queda abierta
+        //    a cualquiera que sepa la URL, y el tema 5 no tendría nada que comprobar.
+        foreach ($this->rutasDelContrato() as $ruta) {
+            $this->assertNotSame(
+                '',
+                $this->permisoDe($ruta),
+                "FALLA: la ruta '{$ruta->uri()}' no exige ningún permiso. · FIX: agrégale su "
+                . 'middleware de permiso individual; uno por ruta, sin compartirlo con otra.'
+            );
+        }
+    }
+
+    /** El código de una pieza, sin sus comentarios: lo que de verdad se ejecuta. */
+    private function codigoDe(string $clase): string
+    {
+        $archivo = (new ReflectionClass($clase))->getFileName();
+
+        $this->assertIsString(
+            $archivo,
+            "FALLA: no se puede leer el archivo de {$clase}. · FIX: comprueba que la clase se "
+            . 'autocarga — namespace y carpeta tienen que espejarse.'
+        );
+
+        $codigo = '';
+
+        foreach (token_get_all((string) file_get_contents($archivo)) as $token) {
+            if (is_array($token) && in_array($token[0], [T_COMMENT, T_DOC_COMMENT], true)) {
+                continue;
+            }
+
+            $codigo .= is_array($token) ? $token[1] : $token;
+        }
+
+        return $codigo;
+    }
+}

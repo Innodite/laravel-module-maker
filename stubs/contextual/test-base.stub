@@ -81,6 +81,24 @@ abstract class {{{ baseName }}} extends TestCase
         return '';
     }
 
+    // ── Levantar la subfuncionalidad ──────────────────────────────────────────────────────────
+
+    /**
+     * Deja la subfuncionalidad levantada: esquema, deltas, datos canónicos y permisos.
+     *
+     * **Ejecuta el mismo seeder que corre en el servidor** (R75), y esa es toda la idea: si el
+     * despliegue no levanta, las pruebas que vengan detrás fallan aquí y no treinta pasos más
+     * adelante, con un síntoma que no se parece a la causa.
+     *
+     * ⛔ No se usa `RefreshDatabase` para esto: recorre `database/migrations`, y las migraciones de
+     * un módulo **no viven ahí** — las declara su trait `MigrationsList` y las aplica este seeder.
+     */
+    protected function levantarSubfuncionalidad(): void
+    {
+        $this->seed({{{ contractName }}}::SCAFFOLD['stage_seeder']);
+        $this->seed({{{ contractName }}}::PERMISSION_SEEDER);
+    }
+
     // ── Los permisos canónicos ────────────────────────────────────────────────────────────────
 
     /**

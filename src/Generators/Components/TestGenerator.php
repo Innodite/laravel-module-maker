@@ -52,6 +52,11 @@ class TestGenerator extends AbstractComponentGenerator
         // Y la base que lee ese manifiesto: donde vive la derivación de rutas, permisos y usuarios.
         $this->writeBase();
 
+        // Las piezas del contrato, en el orden de la cascada: primero el andamiaje, después el
+        // esquema. Si el andamiaje falla, lo demás falla por lo mismo y no informa de nada nuevo.
+        $this->writeScaffoldTest();
+        $this->writeSchemaTest();
+
         // ── Sin contexto NI subfuncionalidad: comportamiento legacy ───────────
         // La condición era «sin contexto», y eso convertía single-app en un caso degradado: como
         // ahí el contexto siempre está vacío, un proyecto sin tenants caía en el camino legacy y
@@ -148,44 +153,21 @@ class TestGenerator extends AbstractComponentGenerator
      */
     protected function writeContract(): void
     {
-        $subFeature = $this->getSubFeatureFolder();
-
-        if ($subFeature === '') {
-            return;
-        }
-
-        $dir = $this->buildPath('Tests/Feature');
-
-        $this->ensureDirectoryExists($dir);
-
-        $contractName = $this->getClassPrefix() . $subFeature . 'Contract';
-        $destino      = "{$dir}/{$contractName}.php";
-
-        if (File::exists($destino)) {
-            $this->warn("Contrato '{$contractName}' ya existe. Se omite para no pisar lo que declare dentro.");
-
-            return;
-        }
-
-        $stub = $this->getStubContent('test-contract.stub', $this->isClean, [
-            'namespace'        => $this->buildNamespace('Tests\\Feature'),
-            'contractName'     => $contractName,
-            'subFeature'       => $subFeature,
+        $this->escribirPiezaDelGrupo('test-contract.stub', 'Contract', 'Contrato de pruebas', [
             'connection'       => $this->connectionLiteral(),
             'tables'           => $this->tablesLiteral(),
             'routePrefix'      => $this->routeNamePrefix(),
             'routeUri'         => $this->getFunctionality(),
             'permissionSeeder' => '\\' . $this->buildNamespace('Database\\Seeders') . '\\'
-                . SeederNames::piece($this->getClassPrefix(), $this->moduleName, $subFeature, 'Permissions'),
+                . SeederNames::piece(
+                    $this->getClassPrefix(),
+                    $this->moduleName,
+                    $this->getSubFeatureFolder(),
+                    'Permissions'
+                ),
             'viewActions'      => $this->viewActionsLiteral(),
-            'scaffold'         => $this->scaffoldLiteral($subFeature),
+            'scaffold'         => $this->scaffoldLiteral($this->getSubFeatureFolder()),
         ]);
-
-        $this->putFile(
-            $destino,
-            $stub,
-            "Contrato de pruebas '{$contractName}' creado en Modules/{$this->moduleName}/Tests/Feature."
-        );
     }
 
     /**
@@ -197,9 +179,49 @@ class TestGenerator extends AbstractComponentGenerator
      */
     protected function writeBase(): void
     {
+        $this->escribirPiezaDelGrupo('test-base.stub', 'TestCase', 'Base de pruebas', [
+            'routePrefix' => $this->routeNamePrefix(),
+        ]);
+    }
+
+    /**
+     * Tema 0 — el andamiaje: las piezas existen **y su contenido cumple** (R77).
+     */
+    protected function writeScaffoldTest(): void
+    {
+        $this->escribirPiezaDelGrupo('test-scaffold.stub', 'ScaffoldTest', 'Prueba del andamiaje');
+    }
+
+    /**
+     * Temas 1 y 2 — el esquema: las tablas y las columnas del contrato, recorridas.
+     */
+    protected function writeSchemaTest(): void
+    {
+        $this->escribirPiezaDelGrupo('test-schema.stub', 'SchemaTest', 'Prueba del esquema');
+    }
+
+    /**
+     * El molde común de las piezas del grupo: mismo sitio, mismo nombre compuesto, misma regla de
+     * no sobreescribir.
+     *
+     * Se escribe una vez y no seis porque las seis piezas comparten exactamente esas cuatro
+     * decisiones, y son justo las que no pueden divergir: si una pieza cayera en otra carpeta o se
+     * llamara de otra forma, el grupo dejaría de ser un grupo — y el comando que lo ejecuta en
+     * cascada no la encontraría.
+     *
+     * **Ninguna se sobreescribe.** Dentro de un test vive lo que el desarrollador añadió: el caso de
+     * negocio, la regla propia, el escenario que costó una tarde reproducir. Regenerar el módulo no
+     * puede llevárselo por delante.
+     *
+     * @param  array<string, string>  $extra  Placeholders propios de la pieza
+     */
+    protected function escribirPiezaDelGrupo(string $stub, string $sufijo, string $etiqueta, array $extra = []): void
+    {
         $subFeature = $this->getSubFeatureFolder();
 
         if ($subFeature === '') {
+            // Sin subfuncionalidad no hay grupo al que pertenecer: mismo criterio que aplican el
+            // generador de migraciones con sus dos traits y el de seeders con sus cuatro piezas.
             return;
         }
 
@@ -207,27 +229,29 @@ class TestGenerator extends AbstractComponentGenerator
 
         $this->ensureDirectoryExists($dir);
 
-        $baseName = $this->getClassPrefix() . $subFeature . 'TestCase';
-        $destino  = "{$dir}/{$baseName}.php";
+        $prefijo = $this->getClassPrefix();
+        $nombre  = $prefijo . $subFeature . $sufijo;
+        $destino = "{$dir}/{$nombre}.php";
 
         if (File::exists($destino)) {
-            $this->warn("Base de pruebas '{$baseName}' ya existe. Se omite para no pisar lo que tenga dentro.");
+            $this->warn("{$etiqueta} '{$nombre}' ya existe. Se omite para no pisar lo que tenga dentro.");
 
             return;
         }
 
-        $stub = $this->getStubContent('test-base.stub', $this->isClean, [
+        $comunes = [
             'namespace'    => $this->buildNamespace('Tests\\Feature'),
-            'baseName'     => $baseName,
-            'contractName' => $this->getClassPrefix() . $subFeature . 'Contract',
             'subFeature'   => $subFeature,
-            'routePrefix'  => $this->routeNamePrefix(),
-        ]);
+            'contractName' => $prefijo . $subFeature . 'Contract',
+            'baseName'     => $prefijo . $subFeature . 'TestCase',
+            'scaffoldName' => $prefijo . $subFeature . 'ScaffoldTest',
+            'schemaName'   => $prefijo . $subFeature . 'SchemaTest',
+        ];
 
         $this->putFile(
             $destino,
-            $stub,
-            "Base de pruebas '{$baseName}' creada en Modules/{$this->moduleName}/Tests/Feature."
+            $this->getStubContent($stub, $this->isClean, $extra + $comunes),
+            "{$etiqueta} '{$nombre}' creada en Modules/{$this->moduleName}/Tests/Feature."
         );
     }
 
