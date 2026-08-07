@@ -59,6 +59,7 @@ class TestGenerator extends AbstractComponentGenerator
         $this->writePermissionsTest();
         $this->writeDeploymentTest();
         $this->writeHttpTest();
+        $this->writeVueTest();
 
         // ── Sin contexto NI subfuncionalidad: comportamiento legacy ───────────
         // La condición era «sin contexto», y eso convertía single-app en un caso degradado: como
@@ -232,6 +233,105 @@ class TestGenerator extends AbstractComponentGenerator
         $this->escribirPiezaDelGrupo('test-http.stub', 'HttpTest', 'Prueba de comportamiento', [
             'pruebaDeAislamiento' => $this->mode()->hasContextAxis() ? $this->pruebaDeAislamiento() : '',
         ]);
+    }
+
+    /**
+     * Tema 6 — la vista: una acción sin permiso no se dibuja.
+     *
+     * Son **dos** archivos y viven fuera de `Tests/`, en `resources/js/__tests__/`, porque los
+     * ejecuta Vitest y no PHPUnit: el manifiesto del lado JS —que el de PHP no se puede leer desde
+     * JavaScript— y la prueba del componente de listado, que es donde están las cuatro acciones.
+     */
+    protected function writeVueTest(): void
+    {
+        $subFeature = $this->getSubFeatureFolder();
+
+        if ($subFeature === '') {
+            return;
+        }
+
+        $dir = $this->rutaDePruebasJs();
+
+        $this->ensureDirectoryExists($dir);
+
+        $componente    = $this->getClassPrefix() . $subFeature . 'Index';
+        $contractJs    = $this->getClassPrefix() . $subFeature . 'Contract';
+
+        $piezas = [
+            "{$contractJs}.js" => ['test-contract-js.stub', [
+                'viewActionsJs' => $this->viewActionsJsLiteral(),
+                'vueComponent'  => $componente,
+                'subFeature'    => $subFeature,
+            ]],
+            "{$componente}.test.js" => ['test-vue.stub', [
+                'contractJsName'   => $contractJs,
+                'vueComponent'     => $componente,
+                'rutaAlComponente' => $this->rutaRelativaAlComponente($componente),
+                'subFeature'       => $subFeature,
+            ]],
+        ];
+
+        foreach ($piezas as $archivo => [$stub, $placeholders]) {
+            $destino = "{$dir}/{$archivo}";
+
+            if (File::exists($destino)) {
+                $this->warn("Prueba de vista '{$archivo}' ya existe. Se omite para no pisar lo que tenga dentro.");
+
+                continue;
+            }
+
+            $this->putFile(
+                $destino,
+                $this->getStubContent($stub, $this->isClean, $placeholders),
+                "Prueba de vista '{$archivo}' creada en Modules/{$this->moduleName}/resources/js/__tests__."
+            );
+        }
+    }
+
+    /** `resources/js/__tests__/{Ctx}/{SubFunc}` — el espejo de la carpeta de la vista. */
+    protected function rutaDePruebasJs(): string
+    {
+        $contexto = $this->getContextFolder();
+
+        return $this->getComponentBasePath() . '/resources/js/__tests__'
+            . ($contexto ? "/{$contexto}" : '')
+            . '/' . $this->getSubFeatureFolder();
+    }
+
+    /**
+     * De la carpeta de la prueba a la del componente, en saltos hacia arriba.
+     *
+     * Se cuenta, no se escribe a mano: en multitenant el contexto puede tener dos segmentos
+     * —`Tenant/Shared`— y un `../..` fijo dejaría el import apuntando al vacío. Un import roto en
+     * JavaScript no lo ve ningún chequeo de PHP.
+     */
+    protected function rutaRelativaAlComponente(string $componente): string
+    {
+        $contexto  = $this->getContextFolder();
+        $segmentos = 1 + ($contexto === '' ? 0 : count(explode('/', $contexto))) + 1;
+
+        return str_repeat('../', $segmentos) . 'Pages'
+            . ($contexto ? "/{$contexto}" : '')
+            . '/' . $this->getSubFeatureFolder()
+            . "/{$componente}.vue";
+    }
+
+    /**
+     * `accion: { permiso, ancla }` como objeto JavaScript, derivado del mismo sitio que el de PHP.
+     */
+    protected function viewActionsJsLiteral(): string
+    {
+        $prefijo       = $this->permissionPrefix();
+        $funcionalidad = $this->getFunctionality();
+
+        $lineas = array_map(
+            static fn (array $accion): string => "\n    {$accion['action']}: { permiso: '"
+                . SubFeaturePermissions::permissionName($prefijo, $funcionalidad, $accion['permission'])
+                . "', ancla: '{$accion['element']}' },",
+            SubFeaturePermissions::VIEW_ACTIONS,
+        );
+
+        return '{' . implode('', $lineas) . "\n}";
     }
 
     /**

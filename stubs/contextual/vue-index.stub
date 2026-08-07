@@ -66,6 +66,7 @@ onMounted(() => fetchItems())
             <h1 class="text-2xl font-semibold text-gray-800">{{{ subFeatureLabel }}}</h1>
             <button
                 v-if="can('{{{ permViewStore }}}')"
+                data-test="boton-crear"
                 @click="goToCreate"
                 class="inline-flex items-center px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition"
             >
@@ -112,6 +113,7 @@ onMounted(() => fetchItems())
                             <td class="px-4 py-3">
                                 <span
                                     v-if="can('{{{ permViewShow }}}')"
+                                    data-test="enlace-ver"
                                     class="text-blue-600 cursor-pointer hover:underline"
                                     @click="goToShow(item.id)"
                                 >
@@ -122,6 +124,7 @@ onMounted(() => fetchItems())
                             <td class="px-4 py-3 text-right space-x-3">
                                 <button
                                     v-if="can('{{{ permViewUpdate }}}')"
+                                    data-test="boton-editar"
                                     @click="goToEdit(item.id)"
                                     class="text-blue-600 hover:underline text-xs"
                                 >
@@ -129,6 +132,7 @@ onMounted(() => fetchItems())
                                 </button>
                                 <button
                                     v-if="can('{{{ permViewDestroy }}}')"
+                                    data-test="boton-eliminar"
                                     @click="destroy(item.id)"
                                     class="text-red-500 hover:underline text-xs"
                                 >

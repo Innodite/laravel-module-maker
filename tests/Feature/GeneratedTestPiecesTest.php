@@ -207,6 +207,77 @@ it('el aislamiento entre tenants solo se genera donde puede fallar', function ()
     );
 });
 
+it('la vista tiene su prueba de permisos, con su manifiesto propio', function (ModuleMode $modo, ?string $contexto, string $carpeta, string $componente) {
+    // Tema 6. El manifiesto de PHP no se puede leer desde Vitest, así que el lado JS tiene el suyo —
+    // uno, generado de la misma derivación—. La alternativa era que cada prueba de cada vista
+    // repitiera la lista de acciones.
+    $modulo = $this->generateModule('Invoice', $modo, $contexto);
+
+    $modulo->assertTreeHas([
+        "{$carpeta}/{$componente}Contract.js",
+        "{$carpeta}/{$componente}Index.test.js",
+    ], 'R32: el tema 6 vive en resources/js/__tests__, junto a su manifiesto del lado de la vista.');
+
+    $prueba = $modulo->contents("{$carpeta}/{$componente}Index.test.js");
+
+    expect(str_contains($prueba, 'VIEW_ACTIONS'))->toBeTrue(
+        'FALLA: la prueba de la vista no recorre el manifiesto. · FIX: recorrerlo es lo que hace que '
+        . 'una acción nueva quede cubierta sin tocar el test (R76).'
+    );
+
+    expect(str_contains($prueba, 'data-test'))->toBeTrue(
+        'FALLA: la prueba busca los elementos por su texto. · FIX: usa el ancla data-test; cambiar '
+        . '«Editar» por «Modificar» es un cambio de copy y no puede romper una prueba de permisos.'
+    );
+})->with([
+    'single-app'  => [ModuleMode::SingleApp, null, 'resources/js/__tests__/Invoice', 'Invoice'],
+    'multitenant' => [ModuleMode::MultitenantPerTenant, 'central', 'resources/js/__tests__/Central/Invoice', 'CentralInvoice'],
+]);
+
+it('el import de la prueba de vista apunta al componente que existe', function (ModuleMode $modo, ?string $contexto, string $carpeta, string $componente, string $vista) {
+    // El cruce que ningún chequeo de PHP puede hacer: un import roto en JavaScript no lo ve `php -l`,
+    // y en multitenant el contexto puede tener dos segmentos —Tenant/Shared—, así que un `../..`
+    // fijo dejaría el import apuntando al vacío.
+    $modulo = $this->generateModule('Invoice', $modo, $contexto);
+
+    preg_match("/from '([^']+\.vue)'/", $modulo->contents("{$carpeta}/{$componente}Index.test.js"), $encontrado);
+
+    expect($encontrado)->not->toBeEmpty('La prueba de la vista tiene que importar el componente.');
+
+    $resuelto = realpath($modulo->path($carpeta) . '/' . $encontrado[1]);
+
+    expect($resuelto)->toBe(
+        realpath($modulo->path($vista)),
+        "FALLA: el import '{$encontrado[1]}' no resuelve al componente generado. · FIX: los saltos "
+        . 'hacia arriba se cuentan desde la carpeta de la prueba; en multitenant el contexto puede '
+        . "tener dos segmentos.\n\nLo generado fue:\n  - " . implode("\n  - ", $modulo->tree())
+    );
+})->with([
+    'single-app'  => [ModuleMode::SingleApp, null, 'resources/js/__tests__/Invoice', 'Invoice', 'resources/js/Pages/Invoice/InvoiceIndex.vue'],
+    'multitenant' => [ModuleMode::MultitenantPerTenant, 'central', 'resources/js/__tests__/Central/Invoice', 'CentralInvoice', 'resources/js/Pages/Central/Invoice/CentralInvoiceIndex.vue'],
+]);
+
+it('la vista lleva el ancla que la prueba busca', function () {
+    // Las dos mitades del par: el `data-test` que emite la vista y el que la prueba consulta. Si
+    // divergen, la prueba dice que el botón no se ve —y pasa la mitad que no debía pasar.
+    $modulo = $this->generateModule('Invoice', ModuleMode::SingleApp);
+
+    $vista     = $modulo->contents('resources/js/Pages/Invoice/InvoiceIndex.vue');
+    $manifiesto = $modulo->contents('resources/js/__tests__/Invoice/InvoiceContract.js');
+
+    preg_match_all("/ancla: '([^']+)'/", $manifiesto, $anclas);
+
+    expect($anclas[1])->toHaveCount(4, 'Las cuatro acciones de la vista, ni una menos.');
+
+    foreach ($anclas[1] as $ancla) {
+        expect(str_contains($vista, "data-test=\"{$ancla}\""))->toBeTrue(
+            "FALLA: la vista no lleva el ancla '{$ancla}' que su prueba busca. · FIX: el atributo "
+            . 'data-test va junto al v-if del permiso; sin él la prueba del tema 6 no encuentra nada '
+            . 'y pasa por la razón equivocada.'
+        );
+    }
+});
+
 it('el módulo entero sigue coherente con las piezas dentro', function (ModuleMode $modo, ?string $contexto) {
     $this->generateModule('Invoice', $modo, $contexto)->assertCoherent();
 })->with([

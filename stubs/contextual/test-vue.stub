@@ -1,0 +1,88 @@
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { mount } from '@vue/test-utils';
+
+import { VIEW_ACTIONS } from './{{{ contractJsName }}}';
+import {{{ vueComponent }}} from '{{{ rutaAlComponente }}}';
+
+/**
+ * Tema 6 — la vista de {{{ subFeature }}}: **una acción que el usuario no puede usar no se dibuja**.
+ *
+ * Es el espejo de lo que el tema 5 prueba en el servidor. Allí el endpoint responde 403; aquí el
+ * botón directamente no aparece. Hacen falta los dos: ocultar el botón no protege el endpoint —
+ * quien sepa la URL entra igual—, y proteger el endpoint no limpia la pantalla — el usuario pulsa y
+ * recibe un error por algo que nunca debió ofrecérsele.
+ *
+ * **Recorre el manifiesto, no enumera.** Una acción nueva se declara ahí y esta prueba la cubre sin
+ * tocarse, igual que sus hermanas de PHP (R76).
+ *
+ * **Busca por `data-test`, no por el texto del botón.** Cambiar «Editar» por «Modificar» es un
+ * cambio de copy: no puede romper una prueba de permisos.
+ */
+
+/** Los permisos que el componente ve; el composable del proyecto se sustituye por este doble. */
+let permisosConcedidos = [];
+
+vi.mock('@/Composables/usePermissions', () => ({
+    usePermissions: () => ({
+        can: (permiso) => permisosConcedidos.includes(permiso),
+    }),
+}));
+
+vi.mock('@/Composables/useModuleContext', () => ({
+    useModuleContext: () => ({
+        contextRoute: (nombre) => `/${nombre}`,
+        moduleContext: '',
+    }),
+}));
+
+vi.mock('@inertiajs/vue3', () => ({
+    router: { visit: vi.fn(), get: vi.fn(), delete: vi.fn() },
+}));
+
+/** Monta el listado con exactamente los permisos indicados. */
+function montarCon(permisos) {
+    permisosConcedidos = permisos;
+
+    return mount({{{ vueComponent }}}, {
+        attachTo: document.body,
+        global: {
+            stubs: { Link: true, Head: true },
+        },
+    });
+}
+
+beforeEach(() => {
+    permisosConcedidos = [];
+    document.body.innerHTML = '';
+});
+
+describe('{{{ vueComponent }}} — las acciones exigen su permiso', () => {
+    it.each(Object.entries(VIEW_ACTIONS))(
+        'la acción %s no se ve sin su permiso',
+        (accion, { permiso, ancla }) => {
+            const wrapper = montarCon([]);
+
+            expect(
+                wrapper.find(`[data-test="${ancla}"]`).exists(),
+                `FALLA: la acción "${accion}" es visible sin el permiso "${permiso}". · FIX: `
+                + `envuélvela en v-if="can('${permiso}')" y comprueba que el permiso llega a la vista.`,
+            ).toBe(false);
+        },
+    );
+
+    it.each(Object.entries(VIEW_ACTIONS))(
+        'la acción %s se ve cuando su permiso está concedido',
+        (accion, { permiso, ancla }) => {
+            // El otro sentido, y no sobra: un `v-if` con el permiso mal escrito oculta el botón a
+            // todo el mundo, incluido quien sí puede usarlo. La pantalla carga bien y simplemente no
+            // tiene botones — un fallo que nadie reporta como error.
+            const wrapper = montarCon([permiso]);
+
+            expect(
+                wrapper.find(`[data-test="${ancla}"]`).exists(),
+                `FALLA: la acción "${accion}" no aparece ni con el permiso "${permiso}". · FIX: `
+                + 'compara el permiso del v-if con el que emite el seeder; suele ser un typo.',
+            ).toBe(true);
+        },
+    );
+});
