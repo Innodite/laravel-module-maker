@@ -56,6 +56,7 @@ class TestGenerator extends AbstractComponentGenerator
         // esquema. Si el andamiaje falla, lo demás falla por lo mismo y no informa de nada nuevo.
         $this->writeScaffoldTest();
         $this->writeSchemaTest();
+        $this->writePermissionsTest();
 
         // ── Sin contexto NI subfuncionalidad: comportamiento legacy ───────────
         // La condición era «sin contexto», y eso convertía single-app en un caso degradado: como
@@ -201,6 +202,14 @@ class TestGenerator extends AbstractComponentGenerator
     }
 
     /**
+     * Temas 3, 4 y 5 — los permisos: únicos por ruta, existentes en la base, y aplicados.
+     */
+    protected function writePermissionsTest(): void
+    {
+        $this->escribirPiezaDelGrupo('test-permissions.stub', 'PermissionsTest', 'Prueba de permisos');
+    }
+
+    /**
      * El molde común de las piezas del grupo: mismo sitio, mismo nombre compuesto, misma regla de
      * no sobreescribir.
      *
@@ -240,12 +249,13 @@ class TestGenerator extends AbstractComponentGenerator
         }
 
         $comunes = [
-            'namespace'    => $this->buildNamespace('Tests\\Feature'),
-            'subFeature'   => $subFeature,
-            'contractName' => $prefijo . $subFeature . 'Contract',
-            'baseName'     => $prefijo . $subFeature . 'TestCase',
-            'scaffoldName' => $prefijo . $subFeature . 'ScaffoldTest',
-            'schemaName'   => $prefijo . $subFeature . 'SchemaTest',
+            'namespace'       => $this->buildNamespace('Tests\\Feature'),
+            'subFeature'      => $subFeature,
+            'contractName'    => $prefijo . $subFeature . 'Contract',
+            'baseName'        => $prefijo . $subFeature . 'TestCase',
+            'scaffoldName'    => $prefijo . $subFeature . 'ScaffoldTest',
+            'schemaName'      => $prefijo . $subFeature . 'SchemaTest',
+            'permissionsName' => $prefijo . $subFeature . 'PermissionsTest',
         ];
 
         $this->putFile(

@@ -1,0 +1,136 @@
+<?php
+
+declare(strict_types=1);
+
+namespace {{{ namespace }}};
+
+use Illuminate\Support\Facades\DB;
+
+/**
+ * Temas 3, 4 y 5 — los permisos de {{{ subFeature }}}: que existen, que son únicos y que se aplican.
+ *
+ * **Tres pruebas, y las tres recorren.** Antes de este contrato, esto eran ocho métodos más tres por
+ * cada acción: cada ruta nueva sumaba pruebas hasta que la suite tardaba más de lo que el equipo
+ * estaba dispuesto a esperar, y entonces dejaba de correrse. Aquí una ruta nueva **no suma nada**:
+ * entra en el recorrido de las que ya existen.
+ *
+ * Y ninguna enumera. Las rutas salen del router, los permisos del seeder que los crea — las dos
+ * fuentes que ya existen (R76).
+ *
+ * **Dónde está el borde con el tema 7.** Aquí se mide **la puerta**: que sin el permiso no se entra y
+ * que con él no rebota. Lo que hay al otro lado —el JSON correcto, el 422, el propietario— es el
+ * `{{{ subFeature }}}HttpTest`, y repetirlo aquí es la duplicación que infla las suites (R34).
+ */
+final class {{{ permissionsName }}} extends {{{ baseName }}}
+{
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->levantarSubfuncionalidad();
+    }
+
+    /**
+     * Qué prueba (tema 3): que cada ruta exige un permiso, y que no lo comparte con otra.
+     * Resultado esperado: tantos permisos distintos como rutas.
+     * Por qué existe: un permiso compartido deja de ser explicable —su `description` ya no puede
+     *   decir qué cosa concreta habilita—, y quien lo asigna a un rol termina dando de más.
+     */
+    public function test_cada_ruta_tiene_su_permiso_unico(): void
+    {
+        $vistos = [];
+
+        foreach ($this->rutasDelContrato() as $ruta) {
+            $permiso = $this->permisoDe($ruta);
+
+            $this->assertNotSame(
+                '',
+                $permiso,
+                "FALLA: la ruta '{$ruta->uri()}' no exige ningún permiso. · FIX: agrégale su "
+                . 'middleware de permiso; sin él, la pantalla queda abierta a quien sepa la URL.'
+            );
+
+            $this->assertNotContains(
+                $permiso,
+                $vistos,
+                "FALLA: el permiso '{$permiso}' lo exigen dos rutas distintas. · FIX: cada ruta lleva "
+                . 'el suyo, ni siquiera la pantalla y su listado lo comparten: protegen cosas distintas.'
+            );
+
+            $vistos[] = $permiso;
+        }
+    }
+
+    /**
+     * Qué prueba (tema 4): que los permisos canónicos están en la base, con lo que los hace útiles.
+     * Resultado esperado: cada uno presente, con `description` y colgando de su módulo.
+     * Por qué existe: un permiso sin `description` es una clave indescifrable en la pantalla donde se
+     *   asignan permisos a un rol — que es el único sitio donde alguien los lee.
+     */
+    public function test_los_permisos_existen_y_cuelgan_de_su_modulo(): void
+    {
+        $tabla = DB::connection({{{ contractName }}}::CONNECTION)->table('permissions');
+
+        foreach ($this->nombresDePermisos() as $nombre) {
+            $permiso = (clone $tabla)->where('name', $nombre)->first();
+
+            $this->assertNotNull(
+                $permiso,
+                "FALLA: el permiso '{$nombre}' no está en la base de datos. · FIX: vuelve a ejecutar "
+                . 'el seeder de permisos de la subfuncionalidad; el despliegue lo corre siempre.'
+            );
+
+            $this->assertNotEmpty(
+                $permiso->description ?? '',
+                "FALLA: '{$nombre}' no tiene description. · FIX: escríbela en el seeder, en español y "
+                . 'diciendo qué permite, dónde está y qué bloquea.'
+            );
+
+            $this->assertNotNull(
+                $permiso->module_id ?? null,
+                "FALLA: '{$nombre}' no cuelga de ningún módulo. · FIX: el seeder crea la fila del "
+                . 'módulo y la referencia; sin ella el permiso no se agrupa en la interfaz.'
+            );
+        }
+    }
+
+    /**
+     * Qué prueba (tema 5): que el permiso se aplica de verdad en los dos sentidos.
+     * Resultado esperado: sin el permiso, 403; con el permiso, cualquier cosa menos 403.
+     * Por qué existe: un middleware declarado y no aplicado —o con el nombre del permiso mal escrito—
+     *   deja la puerta abierta, o cerrada para quien sí puede pasar. Las dos fallan en silencio.
+     *
+     * **Por qué no se exige un 200 con permiso.** Lo que este tema mide es la puerta. Exigir 200 en
+     * todas las rutas obligaría a fabricar el registro que pide `{id}` y el cuerpo válido que pide un
+     * POST — datos del negocio que el paquete no conoce— y convertiría un fallo de contenido en un
+     * fallo de permisos, que es el diagnóstico equivocado. El contenido es el tema 7.
+     */
+    public function test_el_permiso_se_exige_y_deja_pasar(): void
+    {
+        foreach ($this->rutasDelContrato() as $ruta) {
+            $permiso = $this->permisoDe($ruta);
+            $metodo  = $ruta->methods()[0];
+            $uri     = '/' . ltrim(preg_replace('/\{[^}]+\}/', '1', $ruta->uri()) ?? '', '/');
+
+            $sinPermiso = $this->actingAs($this->usuarioSinPermisos())->call($metodo, $uri);
+
+            $this->assertSame(
+                403,
+                $sinPermiso->getStatusCode(),
+                "FALLA: '{$metodo} {$uri}' respondió {$sinPermiso->getStatusCode()} a un usuario sin "
+                . "el permiso '{$permiso}'. · FIX: comprueba que el middleware está aplicado a la "
+                . 'ruta y no solo declarado en el grupo.'
+            );
+
+            $conPermiso = $this->actingAs($this->usuarioCon([$permiso]))->call($metodo, $uri);
+
+            $this->assertNotSame(
+                403,
+                $conPermiso->getStatusCode(),
+                "FALLA: '{$metodo} {$uri}' niega el acceso a quien SÍ tiene '{$permiso}'. · FIX: casi "
+                . 'siempre es un typo entre el nombre del permiso en la ruta y en el seeder; '
+                . 'compáralos letra a letra.'
+            );
+        }
+    }
+}
