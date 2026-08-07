@@ -1,0 +1,183 @@
+<?php
+
+declare(strict_types=1);
+
+namespace {{{ namespace }}};
+
+use Illuminate\Routing\Route;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Route as Router;
+use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Str;
+use Tests\TestCase;
+
+/**
+ * La base del grupo de pruebas de {{{ subFeature }}}: aquí vive **la derivación**, y solo aquí.
+ *
+ * **Qué problema resuelve.** Las cinco piezas del grupo necesitan las mismas cuatro respuestas: qué
+ * rutas son de esta subfuncionalidad, qué permiso exige cada una, cuáles son los permisos canónicos
+ * y cómo se fabrica un usuario que tenga —o no tenga— uno concreto. Si cada pieza las respondiera por
+ * su cuenta serían cuatro cálculos repetidos cinco veces, y el día que el paquete cambie el formato
+ * del middleware habría que corregirlos en veinte sitios. Aquí se responden **una vez**.
+ *
+ * **Ninguna respuesta se escribe a mano (R76).** Las rutas salen del router, el permiso sale del
+ * middleware que la propia ruta declara, y los permisos canónicos salen del `PermissionsSeeder` — que
+ * es quien los crea. Una lista literal en un test es una segunda verdad que el día que alguien añada
+ * una acción solo se actualiza una vez.
+ *
+ * **Se escribe contra las tablas, no contra las clases del paquete de permisos.** Igual que los
+ * seeders generados, y por lo mismo: el proyecto puede tener otra versión, u otro paquete, y esto
+ * tiene que seguir funcionando.
+ */
+abstract class {{{ baseName }}} extends TestCase
+{
+    /** El guard de las rutas generadas: el `web` de la sesión. */
+    protected string $guard = 'web';
+
+    // ── Las rutas y su permiso ────────────────────────────────────────────────────────────────
+
+    /**
+     * Las rutas de esta subfuncionalidad, tomadas del router.
+     *
+     * Se filtran por el **nombre** —`{{{ routePrefix }}}`— y no por la URI: en multitenant la URI
+     * lleva el contexto pegado, y el punto final del nombre hace el filtro exacto, sin alcanzar a
+     * otra subfuncionalidad que empiece igual.
+     *
+     * @return array<int, Route>
+     */
+    protected function rutasDelContrato(): array
+    {
+        $rutas = [];
+
+        foreach (Router::getRoutes() as $ruta) {
+            if (str_starts_with((string) $ruta->getName(), {{{ contractName }}}::ROUTE_PREFIX)) {
+                $rutas[] = $ruta;
+            }
+        }
+
+        return $rutas;
+    }
+
+    /**
+     * El permiso que exige una ruta, leído de su propio middleware. Cadena vacía si no exige ninguno.
+     *
+     * Reconoce cualquier alias que termine en `permission` —`permission:`, `central-permission:`,
+     * `tenant-permission:`— porque el alias lo decide el proyecto y el paquete solo lo escribe.
+     */
+    protected function permisoDe(Route $ruta): string
+    {
+        foreach ($ruta->gatherMiddleware() as $middleware) {
+            if (! is_string($middleware) || ! str_contains($middleware, ':')) {
+                continue;
+            }
+
+            [$alias, $parametro] = explode(':', $middleware, 2);
+
+            if (str_ends_with($alias, 'permission')) {
+                return trim(explode(',', $parametro)[0]);
+            }
+        }
+
+        return '';
+    }
+
+    // ── Los permisos canónicos ────────────────────────────────────────────────────────────────
+
+    /**
+     * Los permisos que esta subfuncionalidad declara, preguntándoselo a quien los crea.
+     *
+     * @return array<int, array{name: string, description: string, module: string}>
+     */
+    protected function permisosCanonicos(): array
+    {
+        $seeder = {{{ contractName }}}::PERMISSION_SEEDER;
+
+        return (new $seeder())->permissions();
+    }
+
+    /** Solo los nombres, que es lo que recorren los temas 3-5. @return array<int, string> */
+    protected function nombresDePermisos(): array
+    {
+        return array_column($this->permisosCanonicos(), 'name');
+    }
+
+    // ── Usuarios con y sin permiso ────────────────────────────────────────────────────────────
+
+    /**
+     * Un usuario que tiene exactamente los permisos indicados, y ninguno más.
+     *
+     * Los permisos se asignan **directos al usuario**, sin pasar por un rol: lo que el tema 5 mide es
+     * el permiso, y meter un rol en medio añade una pieza que puede fallar por su cuenta y confundir
+     * el diagnóstico.
+     *
+     * @param  array<int, string>  $permisos
+     */
+    protected function usuarioCon(array $permisos = []): object
+    {
+        $usuario = $this->nuevoUsuario();
+
+        if ($permisos === [] || ! Schema::connection({{{ contractName }}}::CONNECTION)->hasTable('model_has_permissions')) {
+            return $usuario;
+        }
+
+        $db = DB::connection({{{ contractName }}}::CONNECTION);
+
+        foreach ($permisos as $nombre) {
+            $db->table('permissions')->updateOrInsert(
+                ['name' => $nombre, 'guard_name' => $this->guard],
+                ['updated_at' => now(), 'created_at' => now()],
+            );
+
+            $db->table('model_has_permissions')->updateOrInsert([
+                'permission_id' => $db->table('permissions')->where('name', $nombre)->value('id'),
+                'model_type'    => $usuario::class,
+                'model_id'      => $usuario->getKey(),
+            ], []);
+        }
+
+        $this->olvidarCacheDePermisos();
+
+        return $usuario;
+    }
+
+    /** Un usuario autenticado sin un solo permiso: el otro lado del 403. */
+    protected function usuarioSinPermisos(): object
+    {
+        return $this->usuarioCon([]);
+    }
+
+    /** Un usuario del modelo que declare el proyecto, con factory si la tiene. */
+    protected function nuevoUsuario(): object
+    {
+        $modelo = (string) config('auth.providers.users.model', 'App\\Models\\User');
+
+        if (method_exists($modelo, 'factory')) {
+            return $modelo::factory()->create();
+        }
+
+        $usuario = new $modelo();
+
+        $usuario->forceFill([
+            'name'     => 'Prueba ' . Str::random(6),
+            'email'    => Str::random(12) . '@pruebas.local',
+            'password' => bcrypt(Str::random(16)),
+        ])->save();
+
+        return $usuario;
+    }
+
+    /**
+     * Vacía la caché de permisos, si el paquete que la mantiene está instalado.
+     *
+     * Sin esto, el permiso existe en la base de datos y la aplicación sigue respondiendo con los de
+     * antes: el síntoma es un 403 a quien acaba de recibir el permiso, y se persigue durante horas.
+     */
+    protected function olvidarCacheDePermisos(): void
+    {
+        $registrar = 'Spatie\\Permission\\PermissionRegistrar';
+
+        if (class_exists($registrar)) {
+            app($registrar)->forgetCachedPermissions();
+        }
+    }
+}

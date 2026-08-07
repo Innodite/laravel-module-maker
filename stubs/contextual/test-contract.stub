@@ -49,8 +49,15 @@ final class {{{ contractName }}}
     /**
      * Temas 3-5 — de estos dos se DERIVAN las rutas y los permisos. ⛔ No se listan a mano.
      *
-     * El prefijo filtra `Route::getRoutes()`, y el seeder es el que dice cuáles son los permisos
-     * canónicos: son las dos fuentes que ya existen, y por eso no hay una tercera.
+     * `ROUTE_PREFIX` es el prefijo del **nombre** de las rutas, no el de la URI, y filtra
+     * `Route::getRoutes()`. Es el nombre y no la URI por dos razones: en multitenant la URI lleva el
+     * contexto pegado con guion —`central-{{{ routeUri }}}`— así que filtrar por el nombre funcional
+     * no encontraría **ninguna ruta**, y una prueba que recorre un conjunto vacío pasa en verde sin
+     * haber comprobado nada. Y porque el punto final lo hace exacto: `{{{ routePrefix }}}` no
+     * alcanza a las rutas de otra subfuncionalidad cuyo nombre empiece igual.
+     *
+     * El seeder es la otra fuente: él dice cuáles son los permisos canónicos. Las dos ya existen, y
+     * por eso aquí no hay una tercera.
      */
     public const ROUTE_PREFIX = '{{{ routePrefix }}}';
 

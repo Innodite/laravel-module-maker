@@ -49,6 +49,9 @@ class TestGenerator extends AbstractComponentGenerator
         // que es exactamente la duplicación que R76 prohíbe.
         $this->writeContract();
 
+        // Y la base que lee ese manifiesto: donde vive la derivación de rutas, permisos y usuarios.
+        $this->writeBase();
+
         // ── Sin contexto NI subfuncionalidad: comportamiento legacy ───────────
         // La condición era «sin contexto», y eso convertía single-app en un caso degradado: como
         // ahí el contexto siempre está vacío, un proyecto sin tenants caía en el camino legacy y
@@ -170,7 +173,8 @@ class TestGenerator extends AbstractComponentGenerator
             'subFeature'       => $subFeature,
             'connection'       => $this->connectionLiteral(),
             'tables'           => $this->tablesLiteral(),
-            'routePrefix'      => $this->getFunctionality(),
+            'routePrefix'      => $this->routeNamePrefix(),
+            'routeUri'         => $this->getFunctionality(),
             'permissionSeeder' => '\\' . $this->buildNamespace('Database\\Seeders') . '\\'
                 . SeederNames::piece($this->getClassPrefix(), $this->moduleName, $subFeature, 'Permissions'),
             'viewActions'      => $this->viewActionsLiteral(),
@@ -182,6 +186,64 @@ class TestGenerator extends AbstractComponentGenerator
             $stub,
             "Contrato de pruebas '{$contractName}' creado en Modules/{$this->moduleName}/Tests/Feature."
         );
+    }
+
+    /**
+     * Escribe la base del grupo — `{Prefijo}{SubFunc}TestCase` —, si no está ya.
+     *
+     * Es la pieza que hace que las otras cinco no repitan la derivación: rutas del router, permiso
+     * del middleware, permisos canónicos del seeder, usuarios con y sin permiso. Vive en la misma
+     * carpeta que ellas porque es del grupo, no del módulo.
+     */
+    protected function writeBase(): void
+    {
+        $subFeature = $this->getSubFeatureFolder();
+
+        if ($subFeature === '') {
+            return;
+        }
+
+        $dir = $this->buildPath('Tests/Feature');
+
+        $this->ensureDirectoryExists($dir);
+
+        $baseName = $this->getClassPrefix() . $subFeature . 'TestCase';
+        $destino  = "{$dir}/{$baseName}.php";
+
+        if (File::exists($destino)) {
+            $this->warn("Base de pruebas '{$baseName}' ya existe. Se omite para no pisar lo que tenga dentro.");
+
+            return;
+        }
+
+        $stub = $this->getStubContent('test-base.stub', $this->isClean, [
+            'namespace'    => $this->buildNamespace('Tests\\Feature'),
+            'baseName'     => $baseName,
+            'contractName' => $this->getClassPrefix() . $subFeature . 'Contract',
+            'subFeature'   => $subFeature,
+            'routePrefix'  => $this->routeNamePrefix(),
+        ]);
+
+        $this->putFile(
+            $destino,
+            $stub,
+            "Base de pruebas '{$baseName}' creada en Modules/{$this->moduleName}/Tests/Feature."
+        );
+    }
+
+    /**
+     * El prefijo del **nombre** de las rutas de esta subfuncionalidad: `invoices.`, `central.billings.`
+     *
+     * Se compone igual que lo compone el generador de rutas —`route_name` del contexto más la
+     * funcionalidad más el punto— y no de otra forma: si las dos mitades divergen, el filtro del
+     * contrato no encuentra ninguna ruta y los temas 3-5 recorren un conjunto vacío. Una prueba que
+     * recorre la nada **pasa**, y esa es la peor manera de fallar.
+     */
+    protected function routeNamePrefix(): string
+    {
+        $contexto = $this->mode()->hasContextAxis() ? ($this->getContext()['route_name'] ?? '') : '';
+
+        return $contexto . $this->getFunctionality() . '.';
     }
 
     /** La conexión, tal cual va en la constante: `null` o `'central'`. La misma que el modelo. */

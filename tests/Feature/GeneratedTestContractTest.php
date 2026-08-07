@@ -72,10 +72,11 @@ it('el manifiesto carga y declara lo que la subfuncionalidad es', function () {
     expect($contrato::TABLES['invoices'])->toContain('id', 'created_at', 'deleted_at');
 
     expect($contrato::ROUTE_PREFIX)->toBe(
-        'invoices',
-        'FALLA: el prefijo de rutas no es el de la funcionalidad. · FIX: es lo que filtra '
-        . 'Route::getRoutes() en los temas 3-5; si no coincide, esas pruebas no ven ninguna ruta y '
-        . 'pasan en verde sin comprobar nada.'
+        'invoices.',
+        'FALLA: el prefijo no es el del NOMBRE de las rutas, con su punto final. · FIX: es lo que '
+        . 'filtra Route::getRoutes() en los temas 3-5; si no coincide, esas pruebas no ven ninguna '
+        . 'ruta y pasan en verde sin comprobar nada. El punto lo hace exacto: `invoices.` no alcanza '
+        . 'a las rutas de `invoice_lines`.'
     );
 
     expect($contrato::VIEW_ACTIONS)->toBe([
@@ -139,9 +140,12 @@ it('no enumera lo que se deriva del código', function () {
 
     $contenido = $modulo->contents('Tests/Feature/Invoice/InvoiceContract.php');
 
+    // Se afirma sobre el booleano y no con `not->toContain($permiso, $mensaje)`: ese segundo
+    // argumento no es el mensaje —`toContain()` recibe valores—, así que la negación acabaría
+    // comprobando que el archivo tampoco contiene el texto de ayuda. Es decir: pasaría siempre,
+    // incluso con el permiso enumerado dentro. Una prueba verde por la razón equivocada.
     foreach (['invoices_index', 'invoices_list', 'invoices_store', 'invoices_show', 'invoices_update', 'invoices_destroy'] as $permisoDeRuta) {
-        expect($contenido)->not->toContain(
-            "'{$permisoDeRuta}'",
+        expect(str_contains($contenido, "'{$permisoDeRuta}'"))->toBeFalse(
             "FALLA: el manifiesto enumera el permiso de ruta '{$permisoDeRuta}'. · FIX: los permisos "
             . 'de ruta se derivan del PermissionsSeeder que ya declara PERMISSION_SEEDER; enumerarlos '
             . 'aquí crea una segunda lista (R76).'
