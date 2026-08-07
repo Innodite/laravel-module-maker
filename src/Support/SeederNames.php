@@ -128,7 +128,7 @@ final class SeederNames
             . ($contexto === [] ? '' : '\\' . implode('\\', $contexto))
             . '\\' . $subFeature;
 
-        return $namespace . '\\' . self::piece(implode('', $contexto), $module, $subFeature, $piece);
+        return $namespace . '\\' . self::piece(self::prefijoDeLaCarpeta($contexto), $module, $subFeature, $piece);
     }
 
     /**
@@ -188,7 +188,41 @@ final class SeederNames
             . ($contexto === [] ? '' : '\\' . implode('\\', $contexto))
             . '\\' . self::MASTER_FOLDER;
 
-        return $namespace . '\\' . self::masterFor(implode('', $contexto), $module, $piece);
+        return $namespace . '\\' . self::masterFor(self::prefijoDeLaCarpeta($contexto), $module, $piece);
+    }
+
+    /**
+     * El prefijo de clase que le corresponde a una carpeta de contexto.
+     *
+     * **Lo dice `contexts.json`, no la carpeta.** Pegar los segmentos parece equivalente, y lo es en
+     * los dos contextos que el paquete venía probando —`Central` → `Central`, `Tenant/Shared` →
+     * `TenantShared`—; por eso el defecto sobrevivió. Con un tenant de lógica propia deja de
+     * coincidir, porque su `class_prefix` no repite el segmento padre:
+     *
+     *     carpeta `Tenant/TenantOne`   pegando segmentos → TenantTenantOne
+     *                                  class_prefix real → TenantOne      ← el que se generó
+     *
+     * El resultado era que `innodite:deploy --context=tenant` **no encontraba un solo maestro** en
+     * modo per-tenant: los derivaba con un nombre que el generador nunca escribió, y avisaba de que
+     * «el módulo no se generó con este paquete». El módulo estaba perfectamente generado.
+     *
+     * El respaldo por concatenación se conserva para la carpeta que `contexts.json` no declara —un
+     * proyecto que todavía no lo publicó, o una carpeta escrita a mano—: ahí el comportamiento sigue
+     * siendo el de siempre, que es lo que esperan los proyectos existentes.
+     *
+     * @param  array<int, string>  $contexto  Segmentos de la carpeta, ya separados
+     */
+    private static function prefijoDeLaCarpeta(array $contexto): string
+    {
+        if ($contexto === []) {
+            return '';
+        }
+
+        $declarado = ContextResolver::findByFolder(implode('/', $contexto));
+
+        $prefijo = is_array($declarado) ? (string) ($declarado['class_prefix'] ?? '') : '';
+
+        return $prefijo !== '' ? $prefijo : implode('', $contexto);
     }
 
     /**

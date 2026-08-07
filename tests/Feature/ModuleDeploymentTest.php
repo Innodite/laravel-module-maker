@@ -7,6 +7,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Str;
+use Symfony\Component\Console\Output\BufferedOutput;
 use Innodite\LaravelModuleMaker\Support\ModuleMode;
 use Innodite\LaravelModuleMaker\Support\SeederNames;
 use Innodite\LaravelModuleMaker\Tests\Support\GeneratedModule;
@@ -137,14 +138,19 @@ function moduloEnElProyecto(string $nombre, ModuleMode $modo, ?string $contexto 
 
     $raiz = base_path('Modules');
 
-    // Se limpia **antes de generar**, y no solo en el `afterAll`. Ese cubre la corrida que llega al
-    // final; no cubre la que se interrumpe —un fallo duro, un Ctrl-C, una prueba que revienta antes—,
-    // y ahí el módulo se queda dentro de `vendor/`: invisible al repositorio, y suficiente para que
-    // `make-module` se niegue a generar en la corrida siguiente porque «ya existe». El síntoma es una
-    // suite que falla entera sin que nadie haya tocado nada, y que vuelve a pasar sola al intento
-    // siguiente. Pasó mientras se escribía esta tarea: **una corrida no puede depender de que la
-    // anterior terminara bien.**
-    File::deleteDirectory($raiz);
+    // Se limpia **antes del primer módulo**, y no solo en el `afterAll`. Ese cubre la corrida que
+    // llega al final; no cubre la que se interrumpe —un fallo duro, un Ctrl-C, una prueba que revienta
+    // antes—, y ahí el módulo se queda dentro de `vendor/`: invisible al repositorio, y suficiente
+    // para que `make-module` se niegue a generar en la corrida siguiente porque «ya existe». El
+    // síntoma es una suite que falla entera sin que nadie haya tocado nada, y que vuelve a pasar sola
+    // al intento siguiente. Pasó mientras se escribía TASK-002: **una corrida no puede depender de
+    // que la anterior terminara bien.**
+    //
+    // Solo con el registro vacío, que es lo que distingue «arranco» de «voy por el segundo módulo»:
+    // el multitenant genera dos —uno por contexto— y borrar aquí sin más se llevaría el primero.
+    if ($GLOBALS['modulosDelDespliegue'] === []) {
+        File::deleteDirectory($raiz);
+    }
 
     config()->set('make-module.module_path', $raiz);
 
@@ -376,5 +382,162 @@ it('en producción también levanta, con su propia pieza', function () {
         0,
         'FALLA: producción no sembró los permisos. · FIX: el paso de permisos corre en los dos '
         . 'entornos — una pantalla sin su permiso creado es un 403 para todo el mundo.'
+    );
+});
+
+// ── El punta a punta en multitenant ──────────────────────────────────────────────────────────
+
+/** Las tablas del proyecto anfitrión, en la conexión que se le diga. */
+function tablasDeLaConvencionEn(string $conexion): void
+{
+    $schema = Schema::connection($conexion);
+
+    $schema->create('modules', function ($tabla): void {
+        $tabla->id();
+        $tabla->string('name');
+        $tabla->timestamps();
+    });
+
+    $schema->create('permissions', function ($tabla): void {
+        $tabla->id();
+        $tabla->string('name');
+        $tabla->string('guard_name');
+        $tabla->string('description')->nullable();
+        $tabla->unsignedBigInteger('module_id')->nullable();
+        $tabla->timestamps();
+    });
+
+    $schema->create('roles', function ($tabla): void {
+        $tabla->id();
+        $tabla->string('name');
+        $tabla->string('guard_name');
+        $tabla->timestamps();
+    });
+
+    $schema->create('role_has_permissions', function ($tabla): void {
+        $tabla->unsignedBigInteger('permission_id');
+        $tabla->unsignedBigInteger('role_id');
+    });
+
+    $schema->create('users', function ($tabla): void {
+        $tabla->id();
+        $tabla->string('name');
+        $tabla->string('email')->unique();
+        $tabla->string('password');
+        $tabla->timestamp('email_verified_at')->nullable();
+        $tabla->timestamps();
+    });
+
+    $schema->create('model_has_roles', function ($tabla): void {
+        $tabla->unsignedBigInteger('role_id');
+        $tabla->string('model_type');
+        $tabla->unsignedBigInteger('model_id');
+    });
+}
+
+/**
+ * Despliega un contexto y devuelve `[código, salida completa]`.
+ *
+ * Con un buffer propio en vez de `Artisan::output()`, y no es un detalle de estilo: el despliegue
+ * llama por dentro a `migrate`, y `Artisan::output()` devuelve el buffer del **último** comando
+ * ejecutado. El mensaje de fallo salía enseñando la salida de `migrate` —dos líneas de «migración
+ * aplicada»— mientras el error de verdad, con su archivo y su línea, quedaba fuera. Un mensaje que
+ * enseña lo que sí funcionó es peor que no tener mensaje.
+ *
+ * @return array{0: int, 1: string}
+ */
+function desplegarContexto(string $contexto, string $entorno = 'stage'): array
+{
+    $buffer = new BufferedOutput();
+
+    $codigo = Artisan::call(
+        'innodite:deploy',
+        ['entorno' => $entorno, '--context' => $contexto, '--no-interaction' => true],
+        $buffer,
+    );
+
+    return [$codigo, $buffer->fetch()];
+}
+
+/** Una base sqlite de verdad, en un archivo del temporal de la prueba. */
+function conexionSqlite(string $nombre): void
+{
+    $archivo = test()->tempPath("database/{$nombre}.sqlite");
+
+    File::ensureDirectoryExists(dirname($archivo));
+    touch($archivo);
+
+    config()->set("database.connections.{$nombre}", [
+        'driver'   => 'sqlite',
+        'database' => $archivo,
+        'prefix'   => '',
+    ]);
+}
+
+it('en multitenant cada despliegue levanta lo suyo, y no lo del otro', function () {
+    // **Es lo que ninguna prueba del paquete mira hoy.** Todo lo demás puede estar en verde y el
+    // despliegue central estar creando sus tablas dentro de la base de un inquilino: dos contextos,
+    // una sola base de datos, y nadie enterándose hasta que dos clientes comparten la misma fila.
+    requiereBaseDeDatos();
+
+    $this->withMode(ModuleMode::MultitenantPerTenant);
+
+    conexionSqlite('central');
+    conexionSqlite('tenant_one');
+
+    tablasDeLaConvencionEn('central');
+    tablasDeLaConvencionEn('tenant_one');
+
+    $ledger = moduloEnElProyecto('Ledger', ModuleMode::MultitenantPerTenant, 'central');
+    $meter  = moduloEnElProyecto('Meter', ModuleMode::MultitenantPerTenant, 'tenant-one');
+
+    Artisan::call('innodite:module-setup', ['--mode' => 'multitenant-per-tenant', '--no-interaction' => true]);
+
+    cargarSeederDelProyecto('WebmasterSeeder');
+    cargarSeederDelProyecto('InnoditeCentralDeploySeeder');
+    cargarSeederDelProyecto('InnoditeTenantDeploySeeder');
+
+    cargarPiezas($ledger, 'Database/Seeders/Central/Ledger', SeederNames::subFeaturePieces('Central', 'Ledger', 'Ledger'));
+    cargarPiezas($ledger, 'Database/Seeders/Central/Application', SeederNames::masterPieces('Central', 'Ledger'));
+
+    cargarPiezas($meter, 'Database/Seeders/Tenant/TenantOne/Meter', SeederNames::subFeaturePieces('TenantOne', 'Meter', 'Meter'));
+    cargarPiezas($meter, 'Database/Seeders/Tenant/TenantOne/Application', SeederNames::masterPieces('TenantOne', 'Meter'));
+
+    config()->set('make-module.deploy', [
+        'central' => ['Ledger/Central/Ledger'],
+        'tenant'  => ['Meter/Tenant/TenantOne/Meter'],
+    ]);
+
+    // ── Los dos despliegues, contra sus dos bases ──────────────────────────────────────────
+    [$codigoCentral, $salidaCentral] = desplegarContexto('central');
+
+    expect($codigoCentral)->toBe(0, "El despliegue central falló.\n\n{$salidaCentral}");
+
+    [$codigoTenant, $salidaTenant] = desplegarContexto('tenant');
+
+    expect($codigoTenant)->toBe(0, "El despliegue del inquilino falló.\n\n{$salidaTenant}");
+
+    // ── Cada uno levantó lo suyo ───────────────────────────────────────────────────────────
+    expect(Schema::connection('central')->hasTable('ledgers'))->toBeTrue(
+        'FALLA: el despliegue central no creó su tabla en la conexión central.'
+    );
+
+    expect(Schema::connection('tenant_one')->hasTable('meters'))->toBeTrue(
+        'FALLA: el despliegue del inquilino no creó su tabla en la conexión del inquilino.'
+    );
+
+    // ── Y NADA de lo del otro ──────────────────────────────────────────────────────────────
+    // Esta es la mitad que importa: la de arriba pasaría igual si ambos despliegues escribieran
+    // en la misma base.
+    expect(Schema::connection('tenant_one')->hasTable('ledgers'))->toBeFalse(
+        'FALLA: la tabla del contexto central apareció en la base del inquilino. · FIX: el seeder '
+        . 'declara su conexión en `$connection`, y sale del contexto con el que se generó. Si es '
+        . 'null donde debía decir «central», siembra contra la conexión por defecto — que en un '
+        . 'servidor real es la de otro.'
+    );
+
+    expect(Schema::connection('central')->hasTable('meters'))->toBeFalse(
+        'FALLA: la tabla del inquilino apareció en la base central. · FIX: mismo origen que el '
+        . 'anterior, y peor consecuencia: los datos de un cliente en la base que ven todos.'
     );
 });

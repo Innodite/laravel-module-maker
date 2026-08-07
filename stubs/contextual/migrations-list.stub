@@ -33,18 +33,37 @@ trait {{{ traitName }}}
     }
 
     /**
-     * Ejecuta las migraciones de esta subfuncionalidad, una a una y con `--path`.
+     * Ejecuta las migraciones de esta subfuncionalidad, una a una, con `--path` y **contra su
+     * conexión**.
      *
      * Con `--path` y no `migrate` a secas: así se despliega **solo** esta subfuncionalidad, sin
      * arrastrar migraciones pendientes de otros módulos que quizá no toca tocar todavía.
+     *
+     * Y con `--database`, que es la mitad que faltaba. El seeder que usa este trait declara su
+     * conexión en `$connection` y **valida y siembra contra ella** —`Schema::connection()`,
+     * `DB::connection()`—, pero `migrate` sin `--database` aplica contra la conexión **por defecto**.
+     * En una aplicación única las dos son la misma y no se nota nunca. En multitenant no: las tablas
+     * de cada contexto acababan **todas en la base por defecto**, y ninguna en la suya.
+     *
+     * El síntoma inmediato es «Faltan tablas después de migrar» con la migración recién dada por
+     * aplicada — migra en una base y comprueba en otra. El caso peor es que nadie valide: dos
+     * inquilinos escribiendo sobre la misma tabla sin un solo error.
      */
     public function runMigrations(): void
     {
         foreach ($this->getMigrationsList() as $migration) {
-            Artisan::call('migrate', [
+            $parametros = [
                 '--path'  => $migration,
                 '--force' => true,
-            ]);
+            ];
+
+            // `null` significa «la de por defecto», y ahí no hay nada que decirle a `migrate`:
+            // pasarle `--database => null` sería nombrar una conexión que no existe.
+            if ($this->connection !== null) {
+                $parametros['--database'] = $this->connection;
+            }
+
+            Artisan::call('migrate', $parametros);
         }
     }
 }

@@ -430,13 +430,35 @@ it('con el orden vacío, el despliegue termina en verde', function () {
 });
 
 it('sin el seeder de despliegue dice quién lo escribe', function () {
-    // Con el contexto central, que ninguna otra prueba carga en memoria: las clases requeridas por
-    // una prueba siguen declaradas en las siguientes, y `class_exists` las encontraría.
-    Artisan::call('innodite:deploy', [
-        'entorno'          => 'production',
-        '--context'        => 'central',
-        '--no-interaction' => true,
-    ]);
+    // **Por qué esta prueba lee el comando en vez de ejecutarlo, que es lo contrario de lo que hace
+    // el resto del archivo.**
+    //
+    // El escenario que describe —que la clase del seeder de despliegue NO exista— lo decide
+    // `class_exists`, que es global al proceso, y PHP no descarga clases. Basta con que cualquier
+    // otra prueba de la suite haya cargado ese seeder para que aquí ya exista y el comando no emita
+    // el aviso. La versión anterior lo intentaba esquivar eligiendo el contexto «que ninguna otra
+    // prueba carga en memoria», y funcionó hasta que el punta a punta multitenant tuvo que cargar
+    // los dos: los únicos que hay.
+    //
+    // Así que pasaba o fallaba según qué archivo corriera antes. Una prueba cuyo resultado depende
+    // del orden no afirma nada, y disfrazarla de verde es peor que no tenerla.
+    //
+    // Lo que aquí importa proteger es **el mensaje**: que quien se tope con el fallo sepa que el
+    // seeder es del proyecto, que lo escribe el instalador, y con qué comando. Eso se comprueba
+    // donde vive — y ahí sí es determinista, corra lo que corra antes.
+    $comando = File::get(dirname(__DIR__, 2) . '/src/Commands/DeployCommand.php');
 
-    expect(Artisan::output())->toContain('innodite:module-setup');
+    expect($comando)->toContain('class_exists($fqcn)');
+
+    expect(str_contains($comando, 'lo escribe el instalador'))->toBeTrue(
+        'FALLA: el comando ya no explica de dónde sale el seeder de despliegue. · FIX: quien lo ve '
+        . 'por primera vez no tiene forma de saber que es del proyecto y no del paquete; el mensaje '
+        . 'tiene que nombrar al instalador.'
+    );
+
+    expect(str_contains($comando, 'innodite:module-setup'))->toBeTrue(
+        'FALLA: el mensaje no dice el comando que lo arregla. · FIX: un error que describe el '
+        . 'problema y no la salida obliga a ir a buscarla, que es justo lo que un mensaje de error '
+        . 'está para evitar.'
+    );
 });
