@@ -6,6 +6,7 @@ use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Str;
 use Innodite\LaravelModuleMaker\Support\ModuleMode;
 use Innodite\LaravelModuleMaker\Support\SeederNames;
 use Innodite\LaravelModuleMaker\Tests\Support\GeneratedModule;
@@ -136,6 +137,15 @@ function moduloEnElProyecto(string $nombre, ModuleMode $modo, ?string $contexto 
 
     $raiz = base_path('Modules');
 
+    // Se limpia **antes de generar**, y no solo en el `afterAll`. Ese cubre la corrida que llega al
+    // final; no cubre la que se interrumpe —un fallo duro, un Ctrl-C, una prueba que revienta antes—,
+    // y ahí el módulo se queda dentro de `vendor/`: invisible al repositorio, y suficiente para que
+    // `make-module` se niegue a generar en la corrida siguiente porque «ya existe». El síntoma es una
+    // suite que falla entera sin que nadie haya tocado nada, y que vuelve a pasar sola al intento
+    // siguiente. Pasó mientras se escribía esta tarea: **una corrida no puede depender de que la
+    // anterior terminara bien.**
+    File::deleteDirectory($raiz);
+
     config()->set('make-module.module_path', $raiz);
 
     return $GLOBALS['modulosDelDespliegue'][$clave] = GeneratedModule::generate($nombre, $raiz, $modo, $contexto);
@@ -174,6 +184,31 @@ afterAll(function (): void {
 
     unset($GLOBALS['modulosDelDespliegue']);
 });
+
+/**
+ * Deja el proyecto listo y despliega. Devuelve el código de salida.
+ *
+ * Las cuatro pruebas de este archivo arrancan igual —modo, tablas de la convención, módulo,
+ * preparación— y lo único que cambia es el entorno y lo que afirman después.
+ */
+function desplegar(string $entorno = 'stage'): int
+{
+    return Artisan::call('innodite:deploy', ['entorno' => $entorno, '--no-interaction' => true]);
+}
+
+/** El montaje común: modo, tablas del proyecto anfitrión, módulo generado y piezas cargadas. */
+function proyectoConModuloDesplegable(): GeneratedModule
+{
+    test()->withMode(ModuleMode::SingleApp);
+
+    tablasDeLaConvencion();
+
+    $modulo = moduloEnElProyecto('Deploy', ModuleMode::SingleApp);
+
+    prepararDespliegue($modulo, 'Deploy');
+
+    return $modulo;
+}
 
 // ── El punta a punta ─────────────────────────────────────────────────────────────────────────
 
@@ -247,3 +282,99 @@ it('un módulo generado levanta entero con un solo comando', function () {
     );
 });
 
+
+// ── Las tres garantías del despliegue ────────────────────────────────────────────────────────
+//
+// Un despliegue que levanta bien la primera vez no dice nada sobre las siguientes, y son las
+// siguientes las que se ejecutan en un servidor con datos dentro. Las tres preguntas que importan a
+// partir de la segunda corrida: ¿deja el mismo estado? ¿respeta lo que ya había? ¿y en producción?
+
+it('desplegar dos veces deja el mismo estado que desplegar una', function () {
+    requiereBaseDeDatos();
+
+    proyectoConModuloDesplegable();
+
+    expect(desplegar())->toBe(0, 'La primera corrida ya falló: ' . Artisan::output());
+
+    $permisosTrasLaPrimera = DB::table('permissions')->count();
+    $rolesTrasLaPrimera    = DB::table('roles')->count();
+    $usuariosTrasLaPrimera = DB::table('users')->count();
+    $asignacionesPrimera   = DB::table('role_has_permissions')->count();
+
+    expect(desplegar())->toBe(
+        0,
+        'FALLA: la segunda corrida del despliegue terminó en error. · FIX: un despliegue se ejecuta '
+        . "muchas veces sobre el mismo servidor; fallar en la segunda lo hace inservible.\n\n"
+        . Artisan::output()
+    );
+
+    expect(DB::table('permissions')->count())->toBe(
+        $permisosTrasLaPrimera,
+        'FALLA: la segunda corrida cambió el número de permisos. · FIX: el PermissionsSeeder tiene '
+        . 'que ser un upsert por nombre. Duplicarlos rompe la unicidad que el tema 3 exige, y '
+        . 'borrarlos y recrearlos deja sin permisos a los roles que ya los tenían asignados.'
+    );
+
+    expect(DB::table('role_has_permissions')->count())->toBe(
+        $asignacionesPrimera,
+        'FALLA: la segunda corrida cambió las asignaciones del rol. · FIX: reasignar lo ya asignado '
+        . 'duplica filas; recrear los permisos deja las asignaciones apuntando a identificadores que '
+        . 'ya no existen. En los dos casos el webmaster acaba con menos permisos de los que ve.'
+    );
+
+    expect(DB::table('roles')->count())->toBe($rolesTrasLaPrimera, 'La segunda corrida duplicó roles.');
+    expect(DB::table('users')->count())->toBe($usuariosTrasLaPrimera, 'La segunda corrida duplicó usuarios.');
+});
+
+it('un dato que ya estaba sobrevive al siguiente despliegue', function () {
+    // La garantía que se comprueba una sola vez y se agradece siempre: R71 dice que los seeders son
+    // NO destructivos salvo que se pida lo contrario con SEEDER_DESTRUCTIVE. Aquí no se pide, así
+    // que un registro de negocio tiene que seguir ahí después de volver a desplegar.
+    requiereBaseDeDatos();
+
+    proyectoConModuloDesplegable();
+
+    expect(desplegar())->toBe(0, 'La primera corrida ya falló: ' . Artisan::output());
+
+    $id = (string) Str::ulid();
+
+    DB::table('deploys')->insert([
+        'id'         => $id,
+        'created_at' => now(),
+        'updated_at' => now(),
+    ]);
+
+    expect(desplegar())->toBe(0, 'La segunda corrida falló: ' . Artisan::output());
+
+    expect(DB::table('deploys')->where('id', $id)->exists())->toBeTrue(
+        'FALLA: el despliegue se llevó por delante un registro que ya estaba. · FIX: sin '
+        . 'SEEDER_DESTRUCTIVE=true, el StageSeeder NO vacía su tabla (R71). Un truncate por defecto '
+        . 'convierte cada despliegue en una pérdida de datos, y en producción no hay vuelta atrás.'
+    );
+});
+
+it('en producción también levanta, con su propia pieza', function () {
+    // `production` no es `stage` con otro nombre: ejecuta el ProductionSeeder, que nunca borra nada.
+    // Si esta prueba falla, lo que está roto es justo el camino que corre en el servidor de verdad.
+    requiereBaseDeDatos();
+
+    proyectoConModuloDesplegable();
+
+    expect(desplegar('production'))->toBe(
+        0,
+        "FALLA: `innodite:deploy production` terminó en error. · FIX: es el camino que se ejecuta en "
+        . "el servidor real; comprueba que el ProductionSeeder de la subfuncionalidad existe y que "
+        . "el maestro lo invoca con la pieza 'Production'.\n\n" . Artisan::output()
+    );
+
+    expect(Schema::hasTable('deploys'))->toBeTrue(
+        'FALLA: producción no dejó el esquema puesto. · FIX: el ProductionSeeder también aplica sus '
+        . 'migraciones; si no, un servidor nuevo desplegado en producción se queda sin tablas.'
+    );
+
+    expect(DB::table('permissions')->count())->toBeGreaterThan(
+        0,
+        'FALLA: producción no sembró los permisos. · FIX: el paso de permisos corre en los dos '
+        . 'entornos — una pantalla sin su permiso creado es un 403 para todo el mundo.'
+    );
+});
