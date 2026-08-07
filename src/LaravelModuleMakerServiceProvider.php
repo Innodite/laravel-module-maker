@@ -17,6 +17,7 @@ use Innodite\LaravelModuleMaker\Commands\MigratePlanCommand;
 use Innodite\LaravelModuleMaker\Commands\ModuleCheckCommand;
 use Innodite\LaravelModuleMaker\Commands\PublishFrontendCommand;
 use Innodite\LaravelModuleMaker\Commands\SetupModuleMakerCommand;
+use Innodite\LaravelModuleMaker\Commands\TestCommand;
 use Innodite\LaravelModuleMaker\Commands\TestModuleCommand;
 use Innodite\LaravelModuleMaker\Commands\TestSyncCommand;
 use Innodite\LaravelModuleMaker\Middleware\InnoditeContextBridge;
@@ -54,6 +55,7 @@ class LaravelModuleMakerServiceProvider extends ServiceProvider
                 SetupModuleMakerCommand::class,
                 PublishFrontendCommand::class,
                 CheckEnvCommand::class,
+                TestCommand::class,
                 TestModuleCommand::class,
                 TestSyncCommand::class,
             ]);

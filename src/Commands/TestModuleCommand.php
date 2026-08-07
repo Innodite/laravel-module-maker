@@ -46,7 +46,7 @@ class TestModuleCommand extends Command
      *
      * @var string
      */
-    protected $description = 'Ejecuta los tests de un módulo o todos los módulos con cobertura de código';
+    protected $description = '[REEMPLAZADO por innodite:test] Ejecuta los tests de un módulo con cobertura. Se retira junto al manifiesto JSON de tests.';
 
     /**
      * Ruta base para guardar reportes.

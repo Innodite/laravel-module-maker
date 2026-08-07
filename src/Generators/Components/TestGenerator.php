@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\File;
 use Innodite\LaravelModuleMaker\Generators\Concerns\HasStubs;
 use Innodite\LaravelModuleMaker\Support\SeederNames;
 use Innodite\LaravelModuleMaker\Support\SubFeaturePermissions;
+use Innodite\LaravelModuleMaker\Support\TestNames;
 
 class TestGenerator extends AbstractComponentGenerator
 {
@@ -338,16 +339,20 @@ PHP;
             return;
         }
 
+        // Los nombres salen de `TestNames`, que es de donde los lee también el comando que ejecuta
+        // el grupo en cascada. Escritos aquí a mano serían dos listas: el día que una pieza cambie
+        // de nombre, el generador emitiría el nuevo y el comando seguiría buscando el viejo — y no
+        // daría error, diría que esa prueba no existe, que es lo mismo que decir que está en verde.
         $comunes = [
             'namespace'       => $this->buildNamespace('Tests\\Feature'),
             'subFeature'      => $subFeature,
-            'contractName'    => $prefijo . $subFeature . 'Contract',
-            'baseName'        => $prefijo . $subFeature . 'TestCase',
-            'scaffoldName'    => $prefijo . $subFeature . 'ScaffoldTest',
-            'schemaName'      => $prefijo . $subFeature . 'SchemaTest',
-            'permissionsName' => $prefijo . $subFeature . 'PermissionsTest',
-            'deploymentName'  => $prefijo . $subFeature . 'DeploymentTest',
-            'httpName'        => $prefijo . $subFeature . 'HttpTest',
+            'contractName'    => TestNames::piece($prefijo, $subFeature, TestNames::CONTRACT),
+            'baseName'        => TestNames::piece($prefijo, $subFeature, TestNames::BASE),
+            'scaffoldName'    => TestNames::piece($prefijo, $subFeature, 'ScaffoldTest'),
+            'schemaName'      => TestNames::piece($prefijo, $subFeature, 'SchemaTest'),
+            'permissionsName' => TestNames::piece($prefijo, $subFeature, 'PermissionsTest'),
+            'deploymentName'  => TestNames::piece($prefijo, $subFeature, 'DeploymentTest'),
+            'httpName'        => TestNames::piece($prefijo, $subFeature, 'HttpTest'),
         ];
 
         $this->putFile(
