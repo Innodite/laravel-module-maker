@@ -1,0 +1,78 @@
+<?php
+
+declare(strict_types=1);
+
+namespace {{{ namespace }}};
+
+/**
+ * Contrato de la subfuncionalidad {{{ subFeature }}} — la fuente única de lo que sus pruebas recorren.
+ *
+ * **Aquí se declara solo lo que NO se puede derivar del código.** Las rutas salen de
+ * `Route::getRoutes()` y los permisos del propio `PermissionsSeeder`: escribirlos también aquí los
+ * convertiría en una segunda lista que el día que alguien añada una acción solo se actualizará una
+ * vez. Eso es lo que infla las suites y lo que las vuelve mentirosas.
+ *
+ * **Qué se gana:** un campo nuevo se declara **en este archivo** y los temas 0, 1, 2 y 8 lo recorren
+ * solos, sin tocar un test. Una ruta nueva no suma ni una prueba: entra en el recorrido de las que
+ * ya existen.
+ *
+ * Lo lee el grupo de pruebas de esta subfuncionalidad, que vive en esta misma carpeta:
+ *
+ *     {{{ subFeature }}}ScaffoldTest      tema 0     · las piezas existen y su contenido cumple
+ *     {{{ subFeature }}}SchemaTest        temas 1-2  · tablas y columnas
+ *     {{{ subFeature }}}PermissionsTest   temas 3-5  · ruta ↔ permiso, y 403/200
+ *     {{{ subFeature }}}DeploymentTest    tema 8     · el despliegue, ejecutado de verdad
+ *     {{{ subFeature }}}HttpTest          tema 7     · el comportamiento del negocio
+ */
+final class {{{ contractName }}}
+{
+    /**
+     * La conexión contra la que vive esta subfuncionalidad. `null` es la de por defecto.
+     *
+     * Es la misma que declara su modelo y la misma contra la que siembran sus seeders: si aquí
+     * dijera otra, las pruebas mirarían una base de datos distinta de la que se despliega — y
+     * pasarían en verde sin haber comprobado nada.
+     */
+    public const CONNECTION = {{{ connection }}};
+
+    /**
+     * Temas 1-2 — las tablas de esta subfuncionalidad y las columnas de su contrato.
+     *
+     * No es el esquema entero: son las columnas de las que **depende alguien más** —la vista, el
+     * servicio, otro módulo—. Añadir una columna al contrato es añadirla aquí; la prueba del tema 2
+     * la recorre sin tocarse.
+     *
+     * @var array<string, array<int, string>>
+     */
+    public const TABLES = [{{{ tables }}}];
+
+    /**
+     * Temas 3-5 — de estos dos se DERIVAN las rutas y los permisos. ⛔ No se listan a mano.
+     *
+     * El prefijo filtra `Route::getRoutes()`, y el seeder es el que dice cuáles son los permisos
+     * canónicos: son las dos fuentes que ya existen, y por eso no hay una tercera.
+     */
+    public const ROUTE_PREFIX = '{{{ routePrefix }}}';
+
+    public const PERMISSION_SEEDER = {{{ permissionSeeder }}}::class;
+
+    /**
+     * Tema 6 — cada acción de la vista con el permiso que la hace visible.
+     *
+     * Son los permisos de VISTA (R20), independientes de los de ruta: ocultar el botón no protege el
+     * endpoint, y proteger el endpoint no limpia la pantalla.
+     *
+     * @var array<string, string>
+     */
+    public const VIEW_ACTIONS = [{{{ viewActions }}}];
+
+    /**
+     * Tema 0 — las piezas que esta subfuncionalidad necesita para levantarse.
+     *
+     * La prueba del andamiaje comprueba que existen **y que su contenido cumple la norma**: una
+     * pieza presente pero mal escrita despliega mal, y por existir ya nadie vuelve a mirarla.
+     *
+     * @var array<string, string>
+     */
+    public const SCAFFOLD = [{{{ scaffold }}}];
+}
