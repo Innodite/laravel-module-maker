@@ -23,7 +23,7 @@ class {{{ serviceName }}} implements {{{ serviceInterfaceName }}}
         return $this->{{{ repositoryInstance }}}->list($filters);
     }
 
-    public function findById(int $id): mixed
+    public function findById(string $id): mixed
     {
         return $this->{{{ repositoryInstance }}}->findById($id);
     }
@@ -33,12 +33,12 @@ class {{{ serviceName }}} implements {{{ serviceInterfaceName }}}
         return $this->{{{ repositoryInstance }}}->create($data);
     }
 
-    public function update(int $id, array $data): mixed
+    public function update(string $id, array $data): mixed
     {
         return $this->{{{ repositoryInstance }}}->update($id, $data);
     }
 
-    public function delete(int $id): bool
+    public function delete(string $id): bool
     {
         return $this->{{{ repositoryInstance }}}->delete($id);
     }

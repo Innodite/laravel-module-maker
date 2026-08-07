@@ -34,17 +34,17 @@ class {{{ controllerName }}} extends Controller
         return response()->json($this->{{{ serviceInstance }}}->create($request->validated()), 201);
     }
 
-    public function show(int $id): JsonResponse
+    public function show(string $id): JsonResponse
     {
         return response()->json($this->{{{ serviceInstance }}}->findById($id));
     }
 
-    public function update(Request $request, int $id): JsonResponse
+    public function update(Request $request, string $id): JsonResponse
     {
         return response()->json($this->{{{ serviceInstance }}}->update($id, $request->validated()));
     }
 
-    public function destroy(int $id): JsonResponse
+    public function destroy(string $id): JsonResponse
     {
         $this->{{{ serviceInstance }}}->delete($id);
         return response()->json(null, 204);
