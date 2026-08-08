@@ -240,6 +240,23 @@ abstract class AbstractComponentGenerator
     }
 
     /**
+     * El nombre de la subfuncionalidad para **componer clases**, no carpetas.
+     *
+     * Se diferencia de `getSubFeatureFolder()` en el caso vacío, y esa diferencia importa: una
+     * carpeta puede no existir —y entonces la capa se escribe un nivel más arriba—, pero una clase
+     * siempre tiene que llamarse de algo. Sin subfuncionalidad declarada, el nombre lo pone el
+     * módulo.
+     *
+     * Existe aquí porque lo necesitan los dos lados de la misma pareja: el generador que **escribe**
+     * los FormRequests y el que los **importa** en la firma del controlador. Cada uno resolviendo el
+     * caso vacío por su cuenta es la forma exacta en que dos nombres correctos dejan de coincidir.
+     */
+    protected function subFeatureName(): string
+    {
+        return $this->getSubFeatureFolder() ?: $this->moduleName;
+    }
+
+    /**
      * Fragmento de namespace del contexto — **si el modo tiene eje de contexto**.
      *
      * Espeja a getContextFolder(): la carpeta y el namespace no pueden discrepar, o las clases

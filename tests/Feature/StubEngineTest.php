@@ -25,7 +25,7 @@ function packageStubs(): array
     return glob(dirname(__DIR__, 2) . '/stubs/contextual/*.stub') ?: [];
 }
 
-it('encuentra los 40 stubs del paquete', function () {
+it('encuentra los 38 stubs del paquete', function () {
     // La cuenta sube cuando el paquete aprende a generar una pieza nueva —las últimas son las
     // cuatro del grupo de pruebas: el manifiesto, su base y las piezas de los nueve temas, de la
     // fase 4; antes fueron las tres
@@ -35,7 +35,10 @@ it('encuentra los 40 stubs del paquete', function () {
     // salieron `route-api.stub` y `route-web.stub` —el camino de single-app, que escribía rutas
     // sin un solo permiso— porque ese modo pasó a usar el mismo bloque que los contextos, y en la
     // fase 4 salieron `test.stub`, `test-unit.stub` y `test-support.stub`: los tres emitían
-    // `assertTrue(true)` y ninguno estaba en los 9 temas del contrato (B4).
+    // `assertTrue(true)` y ninguno estaba en los 9 temas del contrato (B4). En la fase 5 salieron
+    // `request-store.stub` y `request-update.stub`, que se fusionaron en un único `request.stub`
+    // —la pieza es la misma, lo que cambia es la acción que valida—, y con ellos desapareció el
+    // camino que escribía un Request genérico distinto según el contexto.
     // Lo que esta prueba vigila es lo otro: que no reaparezcan las copias por
     // contexto que A4 borró, donde la copia le ganaba por prioridad al original corregido.
     //
@@ -43,8 +46,8 @@ it('encuentra los 40 stubs del paquete', function () {
     // atrás —decía «los 29» mientras exigía 27—, y un título que miente sobre lo que la prueba
     // exige se lee y se cree.
     expect(packageStubs())->toHaveCount(
-        40,
-        'El paquete lleva 40 stubs, una sola copia de cada uno. Si aparecen más sin haber añadido '
+        38,
+        'El paquete lleva 38 stubs, una sola copia de cada uno. Si aparecen más sin haber añadido '
         . 'una pieza, alguien devolvió las copias por contexto; si aparecen menos, falta un stub.'
     );
 });

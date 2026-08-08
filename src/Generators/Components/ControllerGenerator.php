@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Innodite\LaravelModuleMaker\Generators\Components;
 
 use Illuminate\Support\Str;
+use Innodite\LaravelModuleMaker\Support\RequestNames;
 
 /**
  * Genera el archivo del controlador respetando la convención de contextos.
@@ -60,6 +61,14 @@ class ControllerGenerator extends AbstractComponentGenerator
         $serviceInterfaceNs = $this->buildContractsNamespace('Services') . '\\' . $serviceInterface;
         $viewName           = $this->prefixClass("{$this->modelName}Index");
 
+        // Los dos FormRequests que reciben `store()` y `update()`. El nombre lo decide
+        // `RequestNames`, que es de donde lo lee también el generador que los escribe: componerlo
+        // aquí por separado sería la tercera copia del mismo cálculo, y es esa clase de copia la
+        // que dejó al manifiesto del contrato apuntando —en uno de los modos— a una clase que
+        // nadie generaba nunca.
+        $requests   = RequestNames::all($this->getClassPrefix(), $this->subFeatureName());
+        $requestsNs = $this->buildNamespace('Http\\Requests');
+
         $this->ensureDirectoryExists($controllerDir);
 
         $stub = $this->getStubContent('controller.stub', $this->isClean, [
@@ -70,6 +79,10 @@ class ControllerGenerator extends AbstractComponentGenerator
             'serviceInstance'          => $serviceInstance,
             'serviceInterfaceNamespace' => $serviceInterfaceNs,
             'viewName'                 => $viewName,
+            'storeRequest'             => $requests['store'],
+            'updateRequest'            => $requests['update'],
+            'storeRequestNamespace'    => "{$requestsNs}\\{$requests['store']}",
+            'updateRequestNamespace'   => "{$requestsNs}\\{$requests['update']}",
         ]);
 
         $relativePath = "Http/Controllers/{$this->getContextFolder()}/{$controllerName}.php";

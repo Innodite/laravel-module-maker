@@ -222,7 +222,7 @@ class ModuleGenerator
         $this->run(new ControllerGenerator($this->moduleName, $this->modulePath, true, $modelName, $componentConfig));
         $this->run(new ServiceGenerator($this->moduleName, $this->modulePath, true, $modelName, $componentConfig));
         $this->run(new RepositoryGenerator($this->moduleName, $this->modulePath, true, $modelName, $componentConfig));
-        $this->run(new RequestGenerator($this->moduleName, $this->modulePath, true, "{$modelName}StoreRequest", $componentConfig));
+        $this->run(new RequestGenerator($this->moduleName, $this->modulePath, true, $componentConfig));
         $this->run(new ProviderGenerator($this->moduleName, $this->modulePath, true, [$componentConfig], $componentConfig));
         $this->run(new RouteGenerator($this->moduleName, $this->modulePath, true, $modelName, $componentConfig));
         $this->run(new MigrationGenerator($this->moduleName, $this->modulePath, true, $modelName, [], [], $componentConfig));
@@ -299,7 +299,6 @@ class ModuleGenerator
 
         foreach ($components as $component) {
             $modelName   = Str::studly($component['name']);
-            $requestName = "{$modelName}StoreRequest";
 
             // Garantizar que 'subFeature' está en el config para el subfolder por entidad
             if (!isset($component['subFeature'])) {
@@ -310,7 +309,7 @@ class ModuleGenerator
             $this->run(new ControllerGenerator($this->moduleName, $this->modulePath, false, $modelName, $component));
             $this->run(new ServiceGenerator($this->moduleName, $this->modulePath, false, $modelName, $component));
             $this->run(new RepositoryGenerator($this->moduleName, $this->modulePath, false, $modelName, $component));
-            $this->run(new RequestGenerator($this->moduleName, $this->modulePath, false, $requestName, $component));
+            $this->run(new RequestGenerator($this->moduleName, $this->modulePath, false, $component));
             $this->run(new MigrationGenerator($this->moduleName, $this->modulePath, false, $modelName, $component['attributes'] ?? [], $component['indexes'] ?? [], $component));
             $this->run(new SubFeatureSeederGenerator($this->moduleName, $this->modulePath, false, $component));
             $this->run(new ModuleMasterSeederGenerator($this->moduleName, $this->modulePath, false, $component));
@@ -370,7 +369,7 @@ class ModuleGenerator
         }
 
         if ($flags['request'] ?? false) {
-            $this->run(new RequestGenerator($this->moduleName, $this->modulePath, true, "{$modelName}StoreRequest", $componentConfig));
+            $this->run(new RequestGenerator($this->moduleName, $this->modulePath, true, $componentConfig));
         }
 
         // ── El grupo de pruebas de la subfuncionalidad ────────────────────────
