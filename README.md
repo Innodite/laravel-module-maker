@@ -457,6 +457,29 @@ que describen el síntoma y esconden la causa.
 **El tema 6 se nombra siempre**, también cuando todo pasa. Un contrato «en verde» que se saltó un
 tema sin decirlo es la peor clase de silencio.
 
+#### Qué tiene que traer tu proyecto para que el grupo corra
+
+El grupo generado se escribe **contra las tablas y contra el router**, no contra las clases de un
+paquete concreto — así sobrevive a que cambies de versión, o de paquete de permisos. A cambio da por
+supuestas cinco cosas, y las cinco las pone el proyecto, no el módulo:
+
+| Lo que hace falta | Por qué |
+|---|---|
+| `Tests\TestCase` | La base del grupo la extiende. Es la de Laravel de toda la vida |
+| `Modules\` en el autoload PSR-4 de Composer | Sin él las piezas no se cargan |
+| `users` y las tablas de permisos | `permissions` (con `description` y `module_id`), `modules`, `roles`, `model_has_permissions` y `role_has_permissions`. El seeder generado llena `description` y `module_id` **si existen** |
+| El alias del middleware de permiso, registrado | El que use tu proyecto: `permission`, `central-permission`, `tenant-permission`… El grupo lo lee de la propia ruta, así que reconoce cualquiera que termine en `permission` |
+| `APP_KEY` | El grupo `web` cifra la sesión: sin clave, la petición revienta **antes** de llegar al middleware de permiso, y el fallo no se parece en nada a su causa |
+
+Y una consecuencia del diseño de las migraciones: el trait `MigrationsList` declara sus rutas
+**relativas a la raíz del proyecto**, porque así las recibe `migrate --path`. El módulo tiene que
+vivir bajo esa raíz para que el seeder las encuentre.
+
+**Tres pruebas nacen saltadas, y es a propósito.** Las de validación —entrada inválida, edición
+inválida, y la de crear y volver a leer— se saltan mientras el FormRequest generado no declare
+reglas: sin `rules()` no hay nada que pueda fallar la validación, y una prueba que pasa porque no
+comprueba nada es peor que una que dice que no corrió. **Escribe tus reglas y corren solas.**
+
 > **Viene de `innodite:test-module`, que ya no existe.** El comando anterior trabajaba por módulo y
 > contexto leyendo `Modules/{Modulo}/Tests/test-config.json`. Ese archivo era el último manifiesto
 > JSON del paquete y se retiró junto con `innodite:test-sync`, que lo generaba: el contexto lo dice
