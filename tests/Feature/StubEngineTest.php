@@ -184,13 +184,21 @@ it('la vista generada pide una ruta real, no el nombre del placeholder', functio
     // resources/js/Pages/Role/RoleIndex.vue, que es lo que describe el patrón.
     $this->withMode(ModuleMode::SingleApp);
 
-    (new VueGenerator('UserManagement', $modulePath, false, 'Role', ['subFeature' => 'Role']))->generate();
+    // `functionality` es lo que el comando pasa siempre: es el prefijo del NOMBRE de las rutas, y
+    // desde la fase 5 la vista lo lee del mismo sitio que el generador que las escribe.
+    (new VueGenerator('UserManagement', $modulePath, false, 'Role', [
+        'subFeature'    => 'Role',
+        'functionality' => 'roles',
+    ]))->generate();
 
     $index = File::get("{$modulePath}/resources/js/Pages/Role/RoleIndex.vue");
 
-    expect(str_contains($index, "contextRoute('roles.index')"))->toBeTrue(
+    expect(str_contains($index, "contextRoute('roles.list')"))->toBeTrue(
         'Aquí es donde B15 dolía de verdad: con el placeholder literal, la vista pedía la ruta '
-        . "'{{ entityPlural }}.index' y la pantalla no cargaba nada."
+        . "'{{ entityPlural }}.index' y la pantalla no cargaba nada.\n"
+        . 'Y desde la fase 5 pide `list`, no `index`: son dos rutas distintas a propósito — `index` '
+        . 'devuelve la pantalla por Inertia y `list` los datos. Confundirlas no da error, deja la '
+        . 'tabla vacía para siempre.'
     );
     expect(str_contains($index, 'RoleIndex'))->toBeTrue(
         'El nombre del componente se inyecta en el log de errores de la vista.'

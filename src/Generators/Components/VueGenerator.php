@@ -67,7 +67,13 @@ class VueGenerator extends AbstractComponentGenerator
             $content = $this->getStubContent(
                 $stubFile,
                 $this->isClean,
-                array_merge($placeholders, ['vueComponentName' => $componentName])
+                array_merge($placeholders, [
+                    'vueComponentName' => $componentName,
+                    // El nombre **sin** el sufijo de la vista, para que el índice pueda componer el
+                    // de sus tres modales. Sin esto habría que pegarlos a mano en el stub, que es
+                    // la forma de que dejen de coincidir el día que cambie la convención.
+                    'vueComponentBase' => $this->prefixClass($this->modelName),
+                ])
             );
 
             $this->putFile($targetFile, $content, "Vista generada: {$componentName}.vue");
@@ -91,6 +97,12 @@ class VueGenerator extends AbstractComponentGenerator
     {
         return [
             'moduleName'         => $this->moduleName,
+            // El prefijo del **nombre** de las rutas, salido de `getFunctionality()`: el mismo sitio
+            // del que lo toma el generador que las escribe. La vista lo derivaba por su cuenta del
+            // nombre del modelo — coinciden mientras el módulo tenga una sola subfuncionalidad, y
+            // dejan de coincidir en cuanto tiene dos. El síntoma no es un error de compilación: es
+            // un `route()` que no encuentra la ruta, ya en el navegador del usuario.
+            'routeBase'          => $this->getFunctionality(),
             'subFeaturePlural'   => Str::kebab(Str::plural(Str::snake($this->modelName))),
             'subFeatureSingular' => Str::kebab(Str::snake($this->modelName)),
             'subFeatureLabel'    => $this->modelName,

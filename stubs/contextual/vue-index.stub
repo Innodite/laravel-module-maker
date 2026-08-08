@@ -1,8 +1,29 @@
 <script setup>
+/**
+ * La pantalla de {{{ subFeatureLabel }}} — y **la única** de esta subfuncionalidad.
+ *
+ * Crear, ver y editar ocurren en modales sobre esta misma tabla, no en pantallas aparte. Es lo que
+ * encaja con las rutas que el paquete genera: de las seis, solo `index` devuelve una pantalla; las
+ * otras cinco devuelven datos. Con pantallas separadas harían falta rutas y permisos que no existen
+ * —y esa es exactamente la grieta por la que antes se le pasaba a `route()` el nombre de un permiso,
+ * porque no había ningún nombre de ruta que pasarle.
+ *
+ * **Cómo se conecta esto con el resto del patrón**, que es lo que conviene leer una vez:
+ *
+ *     esta pantalla  →  pide `list`      →  la ruta exige su permiso
+ *                                        →  el Controller delega en el Service
+ *                                        →  el Service pregunta al Repository
+ *                                        →  y solo el Repository toca el modelo
+ *
+ * Los `can()` de abajo son permisos **de vista**, distintos de los que protegen cada ruta: ocultar un
+ * botón no protege el endpoint, y proteger el endpoint no limpia la pantalla. Se emiten los dos.
+ */
 import { ref, onMounted } from 'vue'
-import { router } from '@inertiajs/vue3'
 import { useModuleContext } from '@/Composables/useModuleContext'
 import { usePermissions } from '@/Composables/usePermissions'
+import {{{ vueComponentBase }}}Create from './{{{ vueComponentBase }}}Create.vue'
+import {{{ vueComponentBase }}}Edit from './{{{ vueComponentBase }}}Edit.vue'
+import {{{ vueComponentBase }}}Show from './{{{ vueComponentBase }}}Show.vue'
 
 const { contextRoute } = useModuleContext()
 const { can } = usePermissions()
@@ -12,11 +33,22 @@ const loading = ref(false)
 const meta    = ref({ current_page: 1, last_page: 1, total: 0 })
 const error   = ref(null)
 
+/** Qué modal está abierto y sobre qué registro. `null` = ninguno. */
+const modal = ref(null)
+const seleccionado = ref(null)
+
+/**
+ * El listado pide `list`, no `index`.
+ *
+ * Son dos rutas distintas a propósito, y confundirlas no da error: `index` devuelve la **pantalla**
+ * por Inertia, así que la petición respondía 200 con el HTML de la página y la tabla se quedaba
+ * vacía para siempre — que se lee igual que «todavía no hay datos».
+ */
 async function fetchItems(page = 1) {
     loading.value = true
     error.value   = null
     try {
-        const { data } = await axios.get(route(contextRoute('{{{ subFeaturePlural }}}.index')), {
+        const { data } = await axios.get(route(contextRoute('{{{ routeBase }}}.list')), {
             params: { page }
         })
         items.value = data.data
@@ -36,23 +68,37 @@ async function fetchItems(page = 1) {
 async function destroy(id) {
     if (!confirm('¿Estás seguro de eliminar este registro?')) return
     try {
-        await axios.delete(route(contextRoute('{{{ subFeaturePlural }}}.destroy'), { id }))
+        await axios.delete(route(contextRoute('{{{ routeBase }}}.destroy'), { id }))
         await fetchItems(meta.value.current_page)
     } catch (err) {
         alert(err.response?.data?.message ?? 'No se pudo eliminar el registro.')
     }
 }
 
-function goToCreate() {
-    router.visit(route(contextRoute('{{{ permViewStore }}}')))
+function abrirCrear() {
+    seleccionado.value = null
+    modal.value = 'crear'
 }
 
-function goToEdit(id) {
-    router.visit(route(contextRoute('{{{ permViewUpdate }}}'), { id }))
+function abrirEditar(id) {
+    seleccionado.value = id
+    modal.value = 'editar'
 }
 
-function goToShow(id) {
-    router.visit(route(contextRoute('{{{ subFeaturePlural }}}.show'), { id }))
+function abrirDetalle(id) {
+    seleccionado.value = id
+    modal.value = 'ver'
+}
+
+function cerrarModal() {
+    modal.value = null
+    seleccionado.value = null
+}
+
+/** Tras guardar, el modal se cierra y la tabla se recarga en la página donde estaba. */
+async function alGuardar() {
+    cerrarModal()
+    await fetchItems(meta.value.current_page)
 }
 
 onMounted(() => fetchItems())
@@ -67,7 +113,7 @@ onMounted(() => fetchItems())
             <button
                 v-if="can('{{{ permViewStore }}}')"
                 data-test="boton-crear"
-                @click="goToCreate"
+                @click="abrirCrear"
                 class="inline-flex items-center px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition"
             >
                 + Nuevo {{{ subFeatureLabel }}}
@@ -115,7 +161,7 @@ onMounted(() => fetchItems())
                                     v-if="can('{{{ permViewShow }}}')"
                                     data-test="enlace-ver"
                                     class="text-blue-600 cursor-pointer hover:underline"
-                                    @click="goToShow(item.id)"
+                                    @click="abrirDetalle(item.id)"
                                 >
                                     {{ item.id }}
                                 </span>
@@ -125,7 +171,7 @@ onMounted(() => fetchItems())
                                 <button
                                     v-if="can('{{{ permViewUpdate }}}')"
                                     data-test="boton-editar"
-                                    @click="goToEdit(item.id)"
+                                    @click="abrirEditar(item.id)"
                                     class="text-blue-600 hover:underline text-xs"
                                 >
                                     Editar
@@ -163,5 +209,32 @@ onMounted(() => fetchItems())
             </div>
 
         </template>
+
+        <!--
+            Los tres modales, sobre esta misma pantalla.
+
+            Cada uno recibe el identificador y avisa cuando termina; el índice se encarga de cerrar y
+            de recargar la tabla. Así el estado de «qué registro estoy mirando» vive en un solo sitio.
+        -->
+        <{{{ vueComponentBase }}}Create
+            v-if="modal === 'crear'"
+            @guardado="alGuardar"
+            @cerrar="cerrarModal"
+        />
+
+        <{{{ vueComponentBase }}}Edit
+            v-if="modal === 'editar'"
+            :id="seleccionado"
+            @guardado="alGuardar"
+            @cerrar="cerrarModal"
+        />
+
+        <{{{ vueComponentBase }}}Show
+            v-if="modal === 'ver'"
+            :id="seleccionado"
+            @editar="abrirEditar"
+            @eliminado="alGuardar"
+            @cerrar="cerrarModal"
+        />
     </div>
 </template>

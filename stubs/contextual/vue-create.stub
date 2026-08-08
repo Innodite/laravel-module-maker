@@ -1,8 +1,20 @@
 <script setup>
+/**
+ * El alta de {{{ subFeatureLabel }}} — un **modal** sobre el listado, no una pantalla aparte.
+ *
+ * No navega a ningún sitio: avisa al índice con dos eventos y él decide qué hacer. `guardado` para
+ * que recargue la tabla, `cerrar` para que la descarte. Ese reparto es lo que mantiene el estado de
+ * «qué estoy mirando» en un solo componente.
+ *
+ * **La validación no se escribe aquí.** El 422 que llega en el `catch` viene del FormRequest del
+ * back, y este formulario solo lo reparte por campo. Duplicar las reglas en el navegador crea dos
+ * verdades que se separan a la primera.
+ */
 import { ref } from 'vue'
-import { router } from '@inertiajs/vue3'
 import { useModuleContext } from '@/Composables/useModuleContext'
 import { usePermissions } from '@/Composables/usePermissions'
+
+const emit = defineEmits(['guardado', 'cerrar'])
 
 const { contextRoute } = useModuleContext()
 const { can }          = usePermissions()
@@ -18,8 +30,8 @@ async function submit() {
     errors.value = {}
 
     try {
-        await axios.post(route(contextRoute('{{{ subFeaturePlural }}}.store')), form.value)
-        router.visit(route(contextRoute('{{{ subFeaturePlural }}}.index')))
+        await axios.post(route(contextRoute('{{{ routeBase }}}.store')), form.value)
+        emit('guardado')
     } catch (err) {
         if (err.response?.status === 422) {
             errors.value = err.response.data.errors ?? {}
@@ -33,7 +45,7 @@ async function submit() {
 }
 
 function goBack() {
-    router.visit(route(contextRoute('{{{ subFeaturePlural }}}.index')))
+    emit('cerrar')
 }
 </script>
 

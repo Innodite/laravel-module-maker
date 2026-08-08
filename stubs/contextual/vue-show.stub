@@ -1,8 +1,9 @@
 <script setup>
 import { ref, onMounted } from 'vue'
-import { router } from '@inertiajs/vue3'
 import { useModuleContext } from '@/Composables/useModuleContext'
 import { usePermissions } from '@/Composables/usePermissions'
+
+const emit = defineEmits(['editar', 'eliminado', 'cerrar'])
 
 const props = defineProps({
     id: { type: [Number, String], required: true },
@@ -18,7 +19,7 @@ async function fetchItem() {
     loading.value = true
     try {
         const { data } = await axios.get(
-            route(contextRoute('{{{ subFeaturePlural }}}.show'), { id: props.id })
+            route(contextRoute('{{{ routeBase }}}.show'), { id: props.id })
         )
         item.value = data
     } catch (err) {
@@ -34,20 +35,20 @@ async function destroy() {
     if (!confirm('¿Estás seguro de eliminar este registro?')) return
     try {
         await axios.delete(
-            route(contextRoute('{{{ subFeaturePlural }}}.destroy'), { id: props.id })
+            route(contextRoute('{{{ routeBase }}}.destroy'), { id: props.id })
         )
-        router.visit(route(contextRoute('{{{ subFeaturePlural }}}.index')))
+        emit('eliminado')
     } catch (err) {
         alert(err.response?.data?.message ?? 'No se pudo eliminar el registro.')
     }
 }
 
 function goToEdit() {
-    router.visit(route(contextRoute('{{{ permViewUpdate }}}'), { id: props.id }))
+    emit('editar', props.id)
 }
 
 function goBack() {
-    router.visit(route(contextRoute('{{{ subFeaturePlural }}}.index')))
+    emit('cerrar')
 }
 
 onMounted(() => fetchItem())

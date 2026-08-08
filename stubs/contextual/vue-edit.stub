@@ -1,8 +1,9 @@
 <script setup>
 import { ref, onMounted } from 'vue'
-import { router } from '@inertiajs/vue3'
 import { useModuleContext } from '@/Composables/useModuleContext'
 import { usePermissions } from '@/Composables/usePermissions'
+
+const emit = defineEmits(['guardado', 'cerrar'])
 
 const props = defineProps({
     id: { type: [Number, String], required: true },
@@ -20,7 +21,7 @@ async function fetchItem() {
     loading.value = true
     try {
         const { data } = await axios.get(
-            route(contextRoute('{{{ subFeaturePlural }}}.show'), { id: props.id })
+            route(contextRoute('{{{ routeBase }}}.show'), { id: props.id })
         )
         form.value = { ...data }
     } catch (err) {
@@ -39,10 +40,10 @@ async function submit() {
 
     try {
         await axios.put(
-            route(contextRoute('{{{ subFeaturePlural }}}.update'), { id: props.id }),
+            route(contextRoute('{{{ routeBase }}}.update'), { id: props.id }),
             form.value
         )
-        router.visit(route(contextRoute('{{{ subFeaturePlural }}}.index')))
+        emit('guardado')
     } catch (err) {
         if (err.response?.status === 422) {
             errors.value = err.response.data.errors ?? {}
@@ -56,7 +57,7 @@ async function submit() {
 }
 
 function goBack() {
-    router.visit(route(contextRoute('{{{ subFeaturePlural }}}.index')))
+    emit('cerrar')
 }
 
 onMounted(() => fetchItem())
