@@ -14,6 +14,7 @@ import { ref } from 'vue'
 import { useModuleContext } from '@/Composables/useModuleContext'
 import { usePermissions } from '@/Composables/usePermissions'
 import { useAvisos } from '@/Composables/useAvisos'
+import InnoditeModal from '@/Components/InnoditeModal.vue'
 
 const emit = defineEmits(['guardado', 'cerrar'])
 
@@ -31,6 +32,19 @@ const form     = ref({})
 const errors   = ref({})
 const saving   = ref(false)
 
+/**
+ * Guardar recorre el patrón entero. Conviene leerlo una vez, porque es el mismo en las cuatro
+ * pantallas y en cualquier módulo que generes después:
+ *
+ *     este POST  →  la ruta exige `{{{ permViewStore }}}`
+ *                →  el FormRequest de alta valida la entrada
+ *                →  el Controller delega en el Service
+ *                →  el Service pregunta al Repository
+ *                →  y solo el Repository toca el modelo
+ *
+ * Ninguna de esas capas se salta: el Controller no consulta el modelo y el Service tampoco. Es la
+ * regla que hace que un cambio de persistencia se toque en un archivo y no en cuatro.
+ */
 async function submit() {
     if (!can('{{{ permViewStore }}}')) return
 
@@ -61,50 +75,52 @@ function goBack() {
 </script>
 
 <template>
-    <div class="p-6 max-w-2xl">
+    <!--
+        El ancho y el número de columnas son de esta funcionalidad, no del componente.
 
-        <!-- Cabecera -->
-        <div class="flex items-center gap-3 mb-6">
-            <button @click="goBack" class="text-gray-400 hover:text-gray-600 transition">
-                ← Volver
-            </button>
-            <h1 class="text-2xl font-semibold text-gray-800">Nuevo {{{ subFeatureLabel }}}</h1>
-        </div>
+        `columnas` reparte los campos en rejilla en vez de apilarlos, que es lo que evita el scroll
+        en un alta de diez campos. Un campo que necesite la fila entera se marca donde se declara:
 
-        <form @submit.prevent="submit" class="space-y-5">
+            <div class="sm:col-span-2"> … </div>
 
-            <!--
-                TODO: Añade aquí los campos del formulario.
-                Ejemplo:
-                <div>
-                    <label class="block text-sm font-medium text-gray-700 mb-1">Nombre</label>
-                    <input
-                        v-model="form.name"
-                        type="text"
-                        class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
-                    />
-                    <p v-if="errors.name" class="mt-1 text-xs text-red-500">{{ errors.name[0] }}</p>
-                </div>
-            -->
+        Y cuando ni con rejilla cabe, el mismo modal hace de asistente — sin cambiar nada más:
 
-            <!-- Acciones -->
-            <div class="flex items-center gap-3 pt-4 border-t border-gray-100">
-                <button
-                    type="submit"
-                    :disabled="saving"
-                    class="px-5 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 disabled:opacity-50 transition"
-                >
-                    {{ saving ? 'Guardando...' : 'Guardar' }}
-                </button>
-                <button
-                    type="button"
-                    @click="goBack"
-                    class="px-5 py-2 bg-white text-gray-600 text-sm border border-gray-300 rounded-lg hover:bg-gray-50 transition"
-                >
-                    Cancelar
-                </button>
+            <InnoditeModal :pasos="['Datos generales', 'Detalle']" …>
+                <template #default="{ paso }">
+                    <div v-show="paso === 0" class="sm:col-span-2"> …primer grupo… </div>
+                    <div v-show="paso === 1" class="sm:col-span-2"> …segundo grupo… </div>
+                </template>
+            </InnoditeModal>
+    -->
+    <InnoditeModal
+        titulo="Nuevo {{{ subFeatureLabel }}}"
+        tamano="lg"
+        :columnas="2"
+        :guardando="saving"
+        texto-guardar="Guardar"
+        @guardar="submit"
+        @cerrar="goBack"
+    >
+        <!--
+            TODO: Añade aquí los campos del formulario. Este es el molde de uno — etiqueta, control
+            enlazado a `form`, y el error de ESE campo debajo, que es de donde sale el 422:
+
+            <div>
+                <label class="block text-sm font-medium text-gray-700 mb-1">Nombre</label>
+                <input
+                    v-model="form.name"
+                    type="text"
+                    class="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:ring-2 focus:ring-blue-500 focus:outline-none"
+                />
+                <p v-if="errors.name" class="mt-1 text-xs text-red-500">{{ errors.name[0] }}</p>
             </div>
 
-        </form>
-    </div>
+            El paquete no los escribe por ti a propósito: conoce la forma de una subfuncionalidad,
+            no los campos de tu negocio. Lo que sí deja resuelto es todo lo de alrededor.
+        -->
+        <p class="sm:col-span-2 text-sm text-gray-400">
+            Sin campos todavía. Añádelos en <code class="text-xs">{{{ vueComponentName }}}.vue</code>.
+        </p>
+
+    </InnoditeModal>
 </template>

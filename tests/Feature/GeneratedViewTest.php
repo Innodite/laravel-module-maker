@@ -171,12 +171,41 @@ it('el listado monta el componente de avisos, y lo monta una sola vez', function
     }
 });
 
-/** Quita comentarios de bloque, de línea y de plantilla, para no confundir una mención con una llamada. */
-function sinComentarios(string $codigo): string
-{
-    return preg_replace(
-        ['#/\*.*?\*/#s', '#//[^\n]*#', '#<!--.*?-->#s'],
-        '',
-        $codigo
-    ) ?? $codigo;
-}
+it('crear, ver y editar se dibujan como modal y no como pantalla suelta', function () {
+    // La forma anterior era una pantalla: un contenedor con su propio ancho y un «← Volver» arriba
+    // a la izquierda. Con las tres acciones resueltas sobre el listado, ese botón no lleva a
+    // ninguna parte y el ancho propio compite con el del modal que las contiene.
+    $modulo = $this->generateModule('Invoice', ModuleMode::SingleApp);
+
+    foreach (['Create', 'Edit', 'Show'] as $pieza) {
+        $vista = $modulo->contents("resources/js/Pages/Invoice/Invoice{$pieza}.vue");
+
+        expect(str_contains($vista, '<InnoditeModal'))->toBeTrue(
+            "FALLA: Invoice{$pieza}.vue no se dibuja dentro de InnoditeModal. · FIX: las tres "
+            . 'acciones ocurren sobre el listado; el modal es el que les da ancho, rejilla y pasos.'
+        );
+
+        expect(str_contains($vista, 'Volver'))->toBeFalse(
+            "FALLA: Invoice{$pieza}.vue conserva el botón de volver de la forma anterior. · FIX: "
+            . 'no hay a dónde volver — se emite `cerrar` y el listado descarta el modal.'
+        );
+    }
+});
+
+it('el formulario reparte los campos en rejilla, que es lo que evita el scroll', function () {
+    // Un alta de diez campos apilados no cabe en pantalla, y el usuario acaba desplazándose dentro
+    // de una ventana para rellenar un formulario. La rejilla es la primera respuesta; el asistente
+    // por pasos, la segunda, y la decide quien escribe los campos.
+    $modulo = $this->generateModule('Invoice', ModuleMode::SingleApp);
+
+    foreach (['Create', 'Edit'] as $pieza) {
+        $vista = $modulo->contents("resources/js/Pages/Invoice/Invoice{$pieza}.vue");
+
+        expect(preg_match('/:columnas="\d+"/', $vista))->toBe(
+            1,
+            "FALLA: Invoice{$pieza}.vue no declara cuántas columnas ocupa su formulario. · FIX: "
+            . '`:columnas` es lo que reparte los campos; sin él vuelven a apilarse.'
+        );
+    }
+});
+

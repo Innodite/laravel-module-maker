@@ -153,19 +153,32 @@ onMounted(() => fetchItems())
 
         <template v-else>
 
-            <!-- Tabla -->
+            <!--
+                Tabla.
+
+                TODO: Añade aquí las columnas de tu negocio. Cada una es una cabecera y su celda:
+
+                    <th class="px-4 py-3 text-left font-medium text-gray-600">Nombre</th>
+                    ...
+                    <td class="px-4 py-3 text-gray-800">{{ item.name }}</td>
+
+                Recuerda subir el `colspan` de la fila vacía al añadirlas. El paquete deja las
+                genéricas —el identificador y las fechas— porque son las únicas que existen en
+                cualquier subfuncionalidad; los campos del negocio los conoces tú.
+            -->
             <div class="overflow-x-auto rounded-lg border border-gray-200">
                 <table class="min-w-full divide-y divide-gray-200 text-sm">
                     <thead class="bg-gray-50">
                         <tr>
                             <th class="px-4 py-3 text-left font-medium text-gray-600">#</th>
                             <th class="px-4 py-3 text-left font-medium text-gray-600">ID</th>
+                            <th class="px-4 py-3 text-left font-medium text-gray-600">Creado</th>
                             <th class="px-4 py-3 text-right font-medium text-gray-600">Acciones</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-gray-100 bg-white">
                         <tr v-if="items.length === 0">
-                            <td colspan="3" class="px-4 py-8 text-center text-gray-400">
+                            <td colspan="4" class="px-4 py-8 text-center text-gray-400">
                                 No hay registros para mostrar.
                             </td>
                         </tr>
@@ -188,6 +201,7 @@ onMounted(() => fetchItems())
                                 </span>
                                 <span v-else class="text-gray-500">{{ item.id }}</span>
                             </td>
+                            <td class="px-4 py-3 text-gray-500">{{ item.created_at }}</td>
                             <td class="px-4 py-3 text-right space-x-3">
                                 <button
                                     v-if="can('{{{ permViewUpdate }}}')"

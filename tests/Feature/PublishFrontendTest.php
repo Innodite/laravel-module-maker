@@ -112,6 +112,31 @@ it('el tag de publicación declara los dos grupos, no solo los composables', fun
     );
 });
 
+it('el modal publicado sabe dimensionarse, repartir en rejilla y partirse en pasos', function () {
+    // Las tres cosas responden al mismo requisito: que rellenar un formulario no obligue a hacer
+    // scroll dentro de la ventana. Si alguna se cae del componente, las vistas generadas la piden
+    // igual y la prop simplemente se ignora — en silencio.
+    $modal = File::get(dirname(__DIR__, 2) . '/stubs/resources/js/Components/InnoditeModal.vue');
+
+    foreach (['tamano', 'columnas', 'pasos'] as $prop) {
+        expect(preg_match("/\b{$prop}:\s*\{/", $modal))->toBe(
+            1,
+            "FALLA: InnoditeModal ya no declara la prop `{$prop}`. · FIX: las vistas generadas la "
+            . 'pasan; una prop que no existe se ignora sin avisar.'
+        );
+    }
+
+    // Y las clases se escriben enteras: Tailwind busca nombres de clase completos en los archivos,
+    // así que un `max-w-${tamano}` armado en ejecución no llega al CSS compilado y el modal sale
+    // sin ancho. Es el mismo defecto de dos mitades que no se encuentran, con el compilador de CSS
+    // en el papel del que no se entera.
+    expect(preg_match('/(max-w|grid-cols)-\$\{/', sinComentarios($modal)))->toBe(
+        0,
+        'FALLA: InnoditeModal arma un nombre de clase concatenando. · FIX: escríbelas enteras en '
+        . 'el mapa de anchos o de rejillas; Tailwind no compila lo que no encuentra escrito.'
+    );
+});
+
 it('todo lo que la vista generada importa de resources/js existe en el paquete', function () {
     // Esta es la que ata los dos lados. Un import nuevo en un stub Vue —de un componente que aún
     // no existe, o mal escrito— pasa desapercibido: el stub no se ejecuta al generarse, y el

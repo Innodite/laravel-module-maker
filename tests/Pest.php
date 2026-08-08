@@ -40,6 +40,24 @@ function soloCodigo(string $php): string
 }
 
 /**
+ * Lo mismo que `soloCodigo()`, para un archivo Vue o JavaScript.
+ *
+ * Misma lección y mismo motivo: una prueba que prohíbe `alert()` en las pantallas generadas tiene que
+ * dejar que el archivo **explique por qué** no lo usa, y una que prohíbe armar un nombre de clase de
+ * Tailwind concatenando tiene que dejar que el componente cuente qué pasa si lo haces. Prohibir la
+ * llamada es prohibirla en el código; prohibir nombrarla obliga al archivo a callar justo lo que más
+ * falta hace entender.
+ */
+function sinComentarios(string $codigo): string
+{
+    return preg_replace(
+        ['#/\*.*?\*/#s', '#//[^\n]*#', '#<!--.*?-->#s'],
+        '',
+        $codigo
+    ) ?? $codigo;
+}
+
+/**
  * Carga en memoria las piezas de seeder de un módulo generado, en el orden en que PHP las admite.
  *
  * Dos detalles, y los dos son de PHP y no del paquete:
