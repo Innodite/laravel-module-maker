@@ -63,11 +63,43 @@ class RouteGenerator extends AbstractComponentGenerator
      */
     public function generate(): void
     {
+        // ── Quién decide la forma de las rutas es el MODO ─────────────────────
+        //
+        // Antes lo decidía la **ausencia de una clave**: sin `context` en la configuración, las
+        // rutas salían por el camino simple. Eso tenía dos caras, y las dos malas.
+        //
+        // Hacia un lado convertía la aplicación única en un caso degradado —ahí el contexto está
+        // vacío siempre, así que un proyecto sin tenants caía en el «fallback»— cuando es un modo
+        // de primera clase. Es la misma corrección que ya se hizo en `RequestGenerator`, y por el
+        // mismo motivo.
+        //
+        // Hacia el otro, y peor: en un proyecto **multitenant** cuyo componente no declarase
+        // contexto, las rutas salían también por ahí. El resultado no era un error, era un archivo
+        // plausible y equivocado: sin el `foreach` de dominios centrales, en `web.php` en vez de
+        // `tenant.php`, y exigiendo `tenant-permission:tenant_…` porque eso es lo que responde el
+        // modo cuando no se le dice el contexto. Rutas que protegen algo distinto de lo que dicen,
+        // y ni una señal de que algo fuera mal.
+        if (! $this->mode()->hasContextAxis()) {
+            $this->generateSingleAppRoutes();
+            return;
+        }
+
         $context = $this->getContext();
 
-        // Sin contexto definido → comportamiento legacy (ruta simple)
         if (empty($context)) {
-            $this->generateLegacy();
+            // No se escribe nada, y se dice por qué. Escribir aquí el camino simple sería el
+            // «éxito que no ocurrió» de A15: un archivo generado que hay que rehacer entero, y que
+            // nadie va a mirar porque el comando terminó en verde.
+            $this->error(
+                "⛔ No se generaron las rutas de {$this->moduleName}: el proyecto es "
+                . "«{$this->mode()->label()}» y este componente no declara contexto."
+            );
+            $this->warn(
+                '   · FIX: declara `context` en la configuración del componente. Sin él no se '
+                . 'puede saber qué dominio sirve la ruta ni con qué permiso protegerla, y lo que '
+                . 'se escriba será plausible y equivocado.'
+            );
+
             return;
         }
 
@@ -468,10 +500,19 @@ class RouteGenerator extends AbstractComponentGenerator
     }
 
     /**
-     * Rutas sin eje de contexto: single-app, y los proyectos v3 que no usan contexts.json.
+     * Las rutas de una aplicación **sin eje de contexto**: el modo `single-app`.
      *
-     * Dos cosas se arreglaron aquí, y las dos las destapó el arnés al poner el archivo generado
-     * contra el árbol:
+     * Se llamaba `generateLegacy()`, y el nombre describía lo que este camino **fue**, no lo que
+     * es. No es un fallback ni un resto de la v3: es la forma que tienen las rutas cuando el
+     * proyecto no tiene tenants que separar, que es un modo de primera clase de los tres. Un
+     * método que se llama «legacy» se lee como algo a punto de retirarse, y nadie lo mantiene.
+     *
+     * Todo lo que lo diferencia del camino con contexto es lo que **no** hay: sin prefijo de
+     * contexto en la URL, sin `foreach` de dominios, sin envoltorio de middleware de tenancy. Las
+     * seis rutas y sus seis permisos son exactamente los mismos, salidos del mismo sitio.
+     *
+     * Dos cosas se arreglaron aquí antes, y las dos las destapó el arnés al poner el archivo
+     * generado contra el árbol:
      *
      *   1. El import se armaba dentro del stub —`Modules\{Módulo}\Http\Controllers\{Clase}`—
      *      **sin la carpeta de la subfuncionalidad**, que es carpeta en todas las capas desde
@@ -483,12 +524,9 @@ class RouteGenerator extends AbstractComponentGenerator
      *      salida**: el sexto agujero de la red, después de los cinco que cerró TASK-003b. Un
      *      `routes/web.php` que no parsea tumba la aplicación entera, no un módulo.
      *
-     * Lo que este camino NO hace todavía —prefijo de ruta y middleware de permiso por modo— es
-     * de F-4 (FEAT-005), que rehace el flujo de rutas entero.
-     *
      * @return void
      */
-    private function generateLegacy(): void
+    private function generateSingleAppRoutes(): void
     {
         $routesDir = $this->getComponentBasePath() . '/Routes';
         $this->ensureDirectoryExists($routesDir);
