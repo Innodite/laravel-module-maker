@@ -278,6 +278,35 @@ it('la vista lleva el ancla que la prueba busca', function () {
     }
 });
 
+it('la prueba de la vista monta el listado con datos, no vacío', function () {
+    // Tres de las cuatro acciones —ver, editar y eliminar— viven dentro de la fila de la tabla. Una
+    // prueba que monte el listado sin datos no las encuentra **aunque el permiso esté concedido**, y
+    // falla diciendo «el permiso no llega a la vista»: señala al sitio equivocado y manda a buscar un
+    // typo que no existe.
+    //
+    // Para que haya filas hacen falta tres cosas, y las tres se comprueban aquí: el doble de `axios`
+    // —que en el proyecto es global, no un import—, el de `route`, y la espera a que la petición de
+    // `onMounted` se resuelva antes de mirar el DOM.
+    $prueba = $this->generateModule('Invoice', ModuleMode::SingleApp)
+        ->contents('resources/js/__tests__/Invoice/InvoiceIndex.test.js');
+
+    expect(str_contains($prueba, 'globalThis.axios'))->toBeTrue(
+        'FALLA: la prueba de la vista no declara el doble de axios. · FIX: en el proyecto es una '
+        . 'global que pone Laravel; sin ella la petición revienta dentro del try y la tabla se queda '
+        . 'vacía — sin filas, tres de las cuatro acciones no existen.'
+    );
+
+    expect(str_contains($prueba, 'globalThis.route'))->toBeTrue(
+        'FALLA: la prueba de la vista no declara el doble de route(). · FIX: mismo caso que axios; '
+        . 'es una global del proyecto, no un import del componente.'
+    );
+
+    expect(str_contains($prueba, 'flushPromises'))->toBeTrue(
+        'FALLA: la prueba mira el DOM sin esperar a la primera página. · FIX: el listado pide sus '
+        . 'datos en onMounted; sin la espera se comprueba el DOM del «Cargando...», donde no hay tabla.'
+    );
+});
+
 it('el módulo entero sigue coherente con las piezas dentro', function (ModuleMode $modo, ?string $contexto) {
     $this->generateModule('Invoice', $modo, $contexto)->assertCoherent();
 })->with([
