@@ -128,6 +128,20 @@ final class GeneratedFileCheck
             return;
         }
 
+        // El punto ciego que tenía esta comprobación: un `.php` que **no abre etiqueta PHP** no es
+        // código roto para el parser — es un archivo de texto, y `token_get_all()` lo da por bueno
+        // con un único token de HTML. Se escribió uno así: el archivo de rutas de un contexto de
+        // tenant salía sin `<?php`, sin sus `use` y con una coma suelta dentro del `middleware([…])`.
+        // Pasó este chequeo, pasó `php -l`, y no habría registrado una sola ruta. Es el peor final
+        // para un archivo generado: se ve correcto y no hace nada.
+        if (! str_contains($content, '<?php')) {
+            throw GeneratedFileRejectedException::invalidPhp(
+                $path,
+                'el archivo no abre etiqueta PHP. Sin `<?php` su contenido es texto plano: no falla '
+                . 'al parsear, simplemente no se ejecuta nada de lo que hay dentro.'
+            );
+        }
+
         try {
             token_get_all($content, TOKEN_PARSE);
         } catch (ParseError $e) {

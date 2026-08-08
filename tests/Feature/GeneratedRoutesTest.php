@@ -142,6 +142,37 @@ it('el marcador que el generador escribe es el que el inyector busca', function 
     );
 });
 
+it('el archivo de rutas de un tenant es PHP de verdad, no un bloque suelto', function () {
+    // Tres defectos en el mismo archivo, y ninguno se veía leyéndolo por encima: salía **sin
+    // `<?php`** —así que su contenido era texto plano y Laravel no registraba nada—, sin el `use`
+    // del controlador al que apuntan sus rutas, y con un `Route::middleware([ , ])` de coma suelta
+    // que habría sido un error de sintaxis si el archivo hubiera llegado a ser PHP.
+    //
+    // El chequeo de salida no los vio por el mismo motivo por el que `php -l` tampoco: un archivo
+    // que no abre PHP siempre «parsea». Se descubrieron al **ejecutar** el contrato del módulo en
+    // un contexto de tenant.
+    $rutas = $this->generateModule('Meter', ModuleMode::MultitenantPerTenant, 'tenant-one')
+        ->contents('Routes/tenant.php');
+
+    expect(str_starts_with(trim($rutas), '<?php'))->toBeTrue(
+        "FALLA: el archivo de rutas del tenant no abre etiqueta PHP. · FIX: el contenido de un "
+        . "archivo nuevo lleva su cabecera; el bloque suelto es solo lo que se inyecta cuando el "
+        . "archivo ya existe.\nEl archivo dice:\n" . $rutas
+    );
+
+    expect(str_contains($rutas, 'use Modules\\Meter\\Http\\Controllers\\Tenant\\TenantOne\\Meter\\TenantOneMeterController;'))->toBeTrue(
+        "FALLA: el archivo no importa el controlador al que apuntan sus rutas. · FIX: sin el `use`, "
+        . "cada ruta referencia una clase que no existe en ese espacio de nombres.\nEl archivo "
+        . "dice:\n" . $rutas
+    );
+
+    expect(preg_match('/middleware\(\[\s*,/', $rutas))->toBe(
+        0,
+        'FALLA: el array de middleware sale con una coma suelta. · FIX: sin middlewares declarados '
+        . 'no se envuelve nada — el bloque hereda la seguridad del grupo padre del proyecto.'
+    );
+});
+
 it('en multitenant las rutas llevan el prefijo y el middleware de su contexto', function () {
     $rutas = $this->generateModule('Invoice', ModuleMode::MultitenantPerTenant, 'central')
         ->contents('Routes/web.php');

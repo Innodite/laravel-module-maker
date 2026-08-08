@@ -272,7 +272,7 @@ class RouteGenerator extends AbstractComponentGenerator
         $permPrefix      = $this->resolvePermissionPrefix($context, $this->componentConfig['context'] ?? null, $context['id'] ?? null);
         $permMiddleware  = $this->resolvePermissionMiddleware($context, $this->componentConfig['context'] ?? null);
         $permKey         = SubFeaturePermissions::key($functionality);
-        $middleware      = $this->buildMiddlewareArray($context['route_middleware'] ?? []);
+        $middlewareLista = $context['route_middleware'] ?? [];
         $label           = $context['id'] ?? $context['label'] ?? $classPrefix;
         $separator       = str_repeat('─', 74);
 
@@ -286,18 +286,44 @@ class RouteGenerator extends AbstractComponentGenerator
             indent:          '    '
         );
 
-        $section = <<<PHP
+        $titulo = <<<PHP
         // {$separator}
         // {$label} — {$this->moduleName}
         // {$separator}
-        Route::middleware({$middleware})->group(function () {
-
-        {$block}
-            // {{{$markerKey}_END}}
-        });
         PHP;
 
-        $this->writeOrAppend("{$routesDir}/tenant.php", $section, "{$markerKey}_END", $block, $controllerFqcn);
+        // Sin middlewares declarados no se envuelve nada: el bloque hereda la seguridad del grupo
+        // padre del proyecto, igual que hace el camino compartido. Envolver «por simetría» escribía
+        // un `Route::middleware([])->group(...)` que no aporta y que, con la lista vacía, salía con
+        // una coma suelta dentro de los corchetes.
+        if ($middlewareLista === []) {
+            $section = <<<PHP
+            {$titulo}
+            {$block}
+                // {{{$markerKey}_END}}
+            PHP;
+        } else {
+            $middleware = $this->buildMiddlewareArray($middlewareLista);
+
+            $section = <<<PHP
+            {$titulo}
+            Route::middleware({$middleware})->group(function () {
+
+            {$block}
+                // {{{$markerKey}_END}}
+            });
+            PHP;
+        }
+
+        // La cabecera solo viaja en el contenido del archivo **nuevo**: si el archivo ya existe,
+        // `writeOrAppend()` inserta el bloque en el marcador y añade el `use` que falte.
+        $this->writeOrAppend(
+            "{$routesDir}/tenant.php",
+            $this->buildFileHeader($controllerFqcn) . $section,
+            "{$markerKey}_END",
+            $block,
+            $controllerFqcn
+        );
     }
 
     /**
@@ -415,8 +441,39 @@ class RouteGenerator extends AbstractComponentGenerator
      */
     private function buildMiddlewareArray(array $middleware): string
     {
+        // Sin middlewares el array se escribe vacío y ya está. La versión anterior componía
+        // `"[\n" . '' . ",\n]"` — una coma suelta dentro de los corchetes, que es un error de
+        // sintaxis. No dio la cara en su día porque el único camino que llamaba aquí con la lista
+        // vacía escribía además un archivo **sin `<?php`**, y un archivo que no abre PHP no se
+        // parsea: era texto plano, y el error de sintaxis no existía porque no había sintaxis.
+        if ($middleware === []) {
+            return '[]';
+        }
+
         $items = array_map(fn ($m) => "    '{$m}'", $middleware);
         return "[\n" . implode(",\n", $items) . ",\n]";
+    }
+
+    /**
+     * La cabecera de un archivo de rutas recién creado.
+     *
+     * Existe porque los dos caminos que escriben rutas la necesitan igual y solo uno la ponía: el de
+     * los tenants componía su sección —el separador, el `Route::middleware(...)->group()` y el
+     * bloque— y la entregaba tal cual como contenido de un archivo nuevo. Lo que salía era un `.php`
+     * sin apertura, sin `use` y sin una sola ruta que Laravel pudiera registrar.
+     */
+    private function buildFileHeader(string $controllerFqcn): string
+    {
+        return <<<PHP
+        <?php
+
+        declare(strict_types=1);
+
+        use Illuminate\Support\Facades\Route;
+        use {$controllerFqcn};
+
+
+        PHP;
     }
 
     /**

@@ -48,6 +48,16 @@ it('rechaza PHP que no parsea', function () {
     ))->toThrow(GeneratedFileRejectedException::class, 'no es válido');
 });
 
+it('rechaza un .php que no abre etiqueta PHP', function () {
+    // El punto ciego que tenía este chequeo, y por el que se escribió un archivo de rutas entero sin
+    // `<?php`: para el parser eso no es código roto, es un archivo de texto — un solo token de HTML,
+    // ni un error. Pasaba aquí, pasaba `php -l`, y no registraba una sola ruta.
+    expect(fn () => GeneratedFileCheck::assertWritable(
+        '/tmp/tenant.php',
+        "// Rutas del tenant\nRoute::prefix('meters')->group(function () {});\n"
+    ))->toThrow(GeneratedFileRejectedException::class, 'no abre etiqueta PHP');
+});
+
 it('rechaza un placeholder en el formato de la v3, que ya no se resuelve', function () {
     expect(fn () => GeneratedFileCheck::assertWritable(
         '/tmp/RoleSeeder.php',
