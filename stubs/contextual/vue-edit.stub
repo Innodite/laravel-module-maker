@@ -2,6 +2,7 @@
 import { ref, onMounted } from 'vue'
 import { useModuleContext } from '@/Composables/useModuleContext'
 import { usePermissions } from '@/Composables/usePermissions'
+import { useAvisos } from '@/Composables/useAvisos'
 
 const emit = defineEmits(['guardado', 'cerrar'])
 
@@ -11,6 +12,9 @@ const props = defineProps({
 
 const { contextRoute } = useModuleContext()
 const { can }          = usePermissions()
+
+/** El componente que pinta estos avisos está montado en el listado, y el estado es compartido. */
+const { exito, error: avisarError, mensajeDeError } = useAvisos()
 
 const form    = ref({})
 const errors  = ref({})
@@ -25,7 +29,8 @@ async function fetchItem() {
         )
         form.value = { ...data }
     } catch (err) {
-        alert(err.response?.data?.message ?? 'No se pudo cargar el registro.')
+        // El modal se cierra, pero el aviso se queda: el estado no vive en este componente.
+        avisarError(mensajeDeError(err, 'No se pudo cargar el registro.'))
         goBack()
     } finally {
         loading.value = false
@@ -43,12 +48,15 @@ async function submit() {
             route(contextRoute('{{{ routeBase }}}.update'), { id: props.id }),
             form.value
         )
+        exito('Registro actualizado.')
         emit('guardado')
     } catch (err) {
         if (err.response?.status === 422) {
+            // Cada mensaje del 422 va junto a su campo; el aviso general queda para lo que no
+            // pertenece a ninguno.
             errors.value = err.response.data.errors ?? {}
         } else {
-            alert(err.response?.data?.message ?? 'Error al actualizar el registro.')
+            avisarError(mensajeDeError(err, 'Error al actualizar el registro.'))
         }
         console.error('[{{{ vueComponentName }}}]', err)
     } finally {

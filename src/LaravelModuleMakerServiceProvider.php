@@ -71,9 +71,12 @@ class LaravelModuleMakerServiceProvider extends ServiceProvider
                 __DIR__ . '/../stubs/contexts.json' => base_path('module-maker-config/contexts.json'),
             ], 'module-maker-contexts');
 
-            // ── Publicar composables Vue 3 ────────────────────────────────────
+            // ── Publicar composables y componentes Vue 3 ──────────────────────
+            // Los dos grupos van bajo el mismo tag: la vista generada importa de ambos, así que
+            // publicar solo uno deja la pantalla con imports que no resuelven.
             $this->publishes([
                 __DIR__ . '/../stubs/resources/js/Composables' => resource_path('js/Composables'),
+                __DIR__ . '/../stubs/resources/js/Components'  => resource_path('js/Components'),
             ], 'module-maker-frontend');
 
             // ── First-run: sugerir setup si module-maker-config/ no existe ────

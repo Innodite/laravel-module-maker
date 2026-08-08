@@ -13,11 +13,19 @@
 import { ref } from 'vue'
 import { useModuleContext } from '@/Composables/useModuleContext'
 import { usePermissions } from '@/Composables/usePermissions'
+import { useAvisos } from '@/Composables/useAvisos'
 
 const emit = defineEmits(['guardado', 'cerrar'])
 
 const { contextRoute } = useModuleContext()
 const { can }          = usePermissions()
+
+/**
+ * Los avisos no se pintan aquí: el componente que los muestra vive en el listado y el estado es
+ * compartido. Por eso un mensaje lanzado desde este formulario sigue en pantalla después de que el
+ * modal se cierre — que es exactamente cuando hay algo que contar.
+ */
+const { exito, error: avisarError, mensajeDeError } = useAvisos()
 
 const form     = ref({})
 const errors   = ref({})
@@ -31,12 +39,15 @@ async function submit() {
 
     try {
         await axios.post(route(contextRoute('{{{ routeBase }}}.store')), form.value)
+        exito('Registro creado.')
         emit('guardado')
     } catch (err) {
         if (err.response?.status === 422) {
+            // Los errores de validación se reparten por campo, junto al campo. Un aviso general
+            // que diga «revisa el formulario» obliga a buscar cuál.
             errors.value = err.response.data.errors ?? {}
         } else {
-            alert(err.response?.data?.message ?? 'Error al guardar el registro.')
+            avisarError(mensajeDeError(err, 'Error al guardar el registro.'))
         }
         console.error('[{{{ vueComponentName }}}]', err)
     } finally {

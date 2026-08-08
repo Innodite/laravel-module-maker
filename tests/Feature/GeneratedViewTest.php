@@ -120,3 +120,63 @@ it('las tres acciones ocurren en modales sobre el listado, sin navegar', functio
                 . 'índice cierra el modal y recarga la tabla.');
     }
 });
+
+it('ninguna pantalla generada avisa con alert() ni pregunta con confirm()', function () {
+    // Son las dos únicas formas de aviso que trae el navegador y las dos peores que puede tener una
+    // aplicación: bloquean el hilo, no se estilan, no se prueban sin interceptar `window` y, sobre
+    // un modal abierto, tapan la pantalla entera para decir «no se pudo guardar». Un módulo recién
+    // generado no puede nacer con ocho.
+    $modulo = $this->generateModule('Invoice', ModuleMode::SingleApp);
+
+    foreach (['Index', 'Create', 'Edit', 'Show'] as $pieza) {
+        $codigo = sinComentarios($modulo->contents("resources/js/Pages/Invoice/Invoice{$pieza}.vue"));
+
+        expect(preg_match('/\balert\s*\(/', $codigo))->toBe(
+            0,
+            "FALLA: Invoice{$pieza}.vue llama a alert(). · FIX: `useAvisos()` da exito(), error() e "
+            . 'info(); el componente que los pinta se monta una vez, en el listado.'
+        );
+
+        // `confirmar(` no cae aquí: la palabra sigue con «ar», así que `\bconfirm\s*\(` no la toca.
+        expect(preg_match('/\bconfirm\s*\(/', $codigo))->toBe(
+            0,
+            "FALLA: Invoice{$pieza}.vue llama a confirm(). · FIX: `await confirmar(...)` devuelve "
+            . 'una promesa y se lee igual, sin bloquear el navegador.'
+        );
+    }
+});
+
+it('el listado monta el componente de avisos, y lo monta una sola vez', function () {
+    // El estado de los avisos es compartido por el módulo, así que el componente que los pinta va
+    // en la pantalla raíz. Montarlo también dentro de cada modal duplicaría cada mensaje y, peor,
+    // haría desaparecer el aviso al cerrar el modal que lo lanzó — que es justo cuando hay algo que
+    // contar: «no se pudo cargar el registro» se lanza y se cierra en la misma línea.
+    $modulo = $this->generateModule('Invoice', ModuleMode::SingleApp);
+
+    $index = $modulo->contents('resources/js/Pages/Invoice/InvoiceIndex.vue');
+
+    expect(substr_count($index, '<InnoditeAviso'))->toBe(
+        1,
+        'FALLA: el listado no monta exactamente un <InnoditeAviso />. · FIX: uno, y en el índice: '
+        . "es el que sobrevive al cierre de los modales.\nLa vista dice:\n" . $index
+    );
+
+    foreach (['Create', 'Edit', 'Show'] as $modal) {
+        $vista = $modulo->contents("resources/js/Pages/Invoice/Invoice{$modal}.vue");
+
+        expect(str_contains($vista, '<InnoditeAviso'))->toBeFalse(
+            "FALLA: Invoice{$modal}.vue monta su propio <InnoditeAviso />. · FIX: usa useAvisos() "
+            . 'para lanzar el mensaje; pintarlo es cosa del listado.'
+        );
+    }
+});
+
+/** Quita comentarios de bloque, de línea y de plantilla, para no confundir una mención con una llamada. */
+function sinComentarios(string $codigo): string
+{
+    return preg_replace(
+        ['#/\*.*?\*/#s', '#//[^\n]*#', '#<!--.*?-->#s'],
+        '',
+        $codigo
+    ) ?? $codigo;
+}

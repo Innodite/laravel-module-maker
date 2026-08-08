@@ -21,12 +21,23 @@
 import { ref, onMounted } from 'vue'
 import { useModuleContext } from '@/Composables/useModuleContext'
 import { usePermissions } from '@/Composables/usePermissions'
+import { useAvisos } from '@/Composables/useAvisos'
+import InnoditeAviso from '@/Components/InnoditeAviso.vue'
 import {{{ vueComponentBase }}}Create from './{{{ vueComponentBase }}}Create.vue'
 import {{{ vueComponentBase }}}Edit from './{{{ vueComponentBase }}}Edit.vue'
 import {{{ vueComponentBase }}}Show from './{{{ vueComponentBase }}}Show.vue'
 
 const { contextRoute } = useModuleContext()
 const { can } = usePermissions()
+
+/**
+ * Los avisos y la confirmación, sin `alert()` ni `confirm()`.
+ *
+ * `error` se renombra al desestructurar porque abajo hay un `error` propio: el de «la tabla no
+ * cargó», que se queda escrito en la pantalla. Son dos cosas distintas —un fallo que impide ver los
+ * datos no es un mensaje que se desvanece a los seis segundos— y por eso conviven.
+ */
+const { error: avisarError, exito, confirmar, mensajeDeError } = useAvisos()
 
 const items   = ref([])
 const loading = ref(false)
@@ -66,12 +77,22 @@ async function fetchItems(page = 1) {
 }
 
 async function destroy(id) {
-    if (!confirm('¿Estás seguro de eliminar este registro?')) return
+    // La confirmación devuelve una promesa, así que la espera se lee igual que antes con `confirm()`
+    // — pero sin bloquear el navegador y con una ventana que sí se puede estilar y probar.
+    const confirmado = await confirmar('Esta acción no se puede deshacer.', {
+        titulo: 'Eliminar registro',
+        textoConfirmar: 'Eliminar',
+        peligrosa: true,
+    })
+
+    if (!confirmado) return
+
     try {
         await axios.delete(route(contextRoute('{{{ routeBase }}}.destroy'), { id }))
+        exito('Registro eliminado.')
         await fetchItems(meta.value.current_page)
     } catch (err) {
-        alert(err.response?.data?.message ?? 'No se pudo eliminar el registro.')
+        avisarError(mensajeDeError(err, 'No se pudo eliminar el registro.'))
     }
 }
 
@@ -236,5 +257,14 @@ onMounted(() => fetchItems())
             @eliminado="alGuardar"
             @cerrar="cerrarModal"
         />
+
+        <!--
+            Los avisos, montados **una sola vez** y aquí.
+
+            El estado lo comparte `useAvisos`, así que los modales de arriba avisan por este mismo
+            componente. Montar uno dentro de cada modal duplicaría los mensajes, y además haría
+            desaparecer el aviso justo al cerrar el modal que lo lanzó — que es cuando hace falta.
+        -->
+        <InnoditeAviso />
     </div>
 </template>

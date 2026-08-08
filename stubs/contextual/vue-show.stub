@@ -2,6 +2,7 @@
 import { ref, onMounted } from 'vue'
 import { useModuleContext } from '@/Composables/useModuleContext'
 import { usePermissions } from '@/Composables/usePermissions'
+import { useAvisos } from '@/Composables/useAvisos'
 
 const emit = defineEmits(['editar', 'eliminado', 'cerrar'])
 
@@ -11,6 +12,9 @@ const props = defineProps({
 
 const { contextRoute } = useModuleContext()
 const { can }          = usePermissions()
+
+/** Avisos y confirmación: los pinta el componente montado en el listado. */
+const { exito, error: avisarError, confirmar, mensajeDeError } = useAvisos()
 
 const item    = ref(null)
 const loading = ref(false)
@@ -23,7 +27,8 @@ async function fetchItem() {
         )
         item.value = data
     } catch (err) {
-        alert(err.response?.data?.message ?? 'No se pudo cargar el registro.')
+        // Se cierra el modal y el aviso permanece: el estado es compartido, no de este componente.
+        avisarError(mensajeDeError(err, 'No se pudo cargar el registro.'))
         goBack()
     } finally {
         loading.value = false
@@ -32,14 +37,23 @@ async function fetchItem() {
 
 async function destroy() {
     if (!can('{{{ permViewDestroy }}}')) return
-    if (!confirm('¿Estás seguro de eliminar este registro?')) return
+
+    const confirmado = await confirmar('Esta acción no se puede deshacer.', {
+        titulo: 'Eliminar registro',
+        textoConfirmar: 'Eliminar',
+        peligrosa: true,
+    })
+
+    if (!confirmado) return
+
     try {
         await axios.delete(
             route(contextRoute('{{{ routeBase }}}.destroy'), { id: props.id })
         )
+        exito('Registro eliminado.')
         emit('eliminado')
     } catch (err) {
-        alert(err.response?.data?.message ?? 'No se pudo eliminar el registro.')
+        avisarError(mensajeDeError(err, 'No se pudo eliminar el registro.'))
     }
 }
 

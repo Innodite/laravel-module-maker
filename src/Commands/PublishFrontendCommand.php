@@ -8,22 +8,33 @@ use Illuminate\Console\Command;
 use Illuminate\Support\Facades\File;
 
 /**
- * PublishFrontendCommand — Publica los Composables Vue 3 del bridge Innodite
+ * PublishFrontendCommand — Publica el frontend Vue 3 del bridge Innodite
  *
  * Uso:
  *   php artisan innodite:publish-frontend
  *   php artisan innodite:publish-frontend --force   # sobreescribir existentes
  *
- * Publica en: resources/js/Composables/
+ * Publica en resources/js/Composables/
  *   - useModuleContext.js  → Rutas conscientes de contexto
- *   - usePermissions.js   → Validación de permisos con doble estrategia
+ *   - usePermissions.js    → Validación de permisos con doble estrategia
+ *   - useAvisos.js         → Mensajes y confirmaciones, sin alert() ni confirm()
+ *
+ * Publica en resources/js/Components/
+ *   - InnoditeAviso.vue    → Pinta los avisos y las confirmaciones
+ *   - InnoditeModal.vue    → La ventana de crear/ver/editar: tamaños, rejilla y pasos
+ *
+ * Los dos grupos se publican juntos porque la vista generada importa de ambos: publicar solo los
+ * composables deja la pantalla con imports de componentes que no existen, y al revés igual.
  */
 class PublishFrontendCommand extends Command
 {
     protected $signature = 'innodite:publish-frontend
         {--force : Sobreescribir archivos existentes sin confirmación}';
 
-    protected $description = 'Publica los Composables Vue 3 del bridge Innodite en resources/js/Composables/.';
+    protected $description = 'Publica los Composables y Componentes Vue 3 del bridge Innodite en resources/js/.';
+
+    /** Carpeta de stubs → destino en el proyecto. El orden es el del listado en pantalla. */
+    private const GRUPOS = ['Composables', 'Components'];
 
     public function handle(): int
     {
@@ -47,45 +58,49 @@ class PublishFrontendCommand extends Command
         $this->checkPackageJson();
         $this->newLine();
 
-        // ── Publicar composables ──────────────────────────────────────────────
-        $composablesPath = resource_path('js/Composables');
-        $stubsPath       = __DIR__ . '/../../stubs/resources/js/Composables';
-
-        if (!File::isDirectory($stubsPath)) {
-            $this->components->error("Directorio de stubs no encontrado: {$stubsPath}");
-            return self::FAILURE;
-        }
-
-        if (!File::isDirectory($composablesPath)) {
-            File::makeDirectory($composablesPath, 0755, true);
-            $this->components->twoColumnDetail('Directorio creado', $composablesPath);
-        }
-
+        // ── Publicar composables y componentes ────────────────────────────────
         $published = 0;
         $skipped   = 0;
 
-        foreach (File::files($stubsPath) as $stub) {
-            $filename = $stub->getFilename();
-            $dest     = "{$composablesPath}/{$filename}";
+        foreach (self::GRUPOS as $grupo) {
+            $stubsPath   = __DIR__ . "/../../stubs/resources/js/{$grupo}";
+            $destinoPath = resource_path("js/{$grupo}");
 
-            if (File::exists($dest) && !$this->option('force')) {
-                $this->components->twoColumnDetail(
-                    $filename,
-                    '<fg=yellow>Ya existe — usa --force para sobreescribir</>'
-                );
-                $skipped++;
-                continue;
+            if (!File::isDirectory($stubsPath)) {
+                $this->components->error("Directorio de stubs no encontrado: {$stubsPath}");
+                return self::FAILURE;
             }
 
-            File::copy($stub->getPathname(), $dest);
-            $this->components->twoColumnDetail($filename, '<fg=green>Publicado</>');
-            $published++;
+            if (!File::isDirectory($destinoPath)) {
+                File::makeDirectory($destinoPath, 0755, true);
+                $this->components->twoColumnDetail('Directorio creado', $destinoPath);
+            }
+
+            $this->line("  <fg=cyan>{$grupo}</>");
+
+            foreach (File::files($stubsPath) as $stub) {
+                $filename = $stub->getFilename();
+                $dest     = "{$destinoPath}/{$filename}";
+
+                if (File::exists($dest) && !$this->option('force')) {
+                    $this->components->twoColumnDetail(
+                        $filename,
+                        '<fg=yellow>Ya existe — usa --force para sobreescribir</>'
+                    );
+                    $skipped++;
+                    continue;
+                }
+
+                File::copy($stub->getPathname(), $dest);
+                $this->components->twoColumnDetail($filename, '<fg=green>Publicado</>');
+                $published++;
+            }
+
+            $this->newLine();
         }
 
-        $this->newLine();
-
         if ($published > 0) {
-            $this->components->info("{$published} composable(s) publicado(s) correctamente.");
+            $this->components->info("{$published} archivo(s) publicado(s) correctamente.");
         }
 
         if ($skipped > 0) {
