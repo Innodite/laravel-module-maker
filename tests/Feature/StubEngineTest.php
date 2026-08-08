@@ -5,6 +5,7 @@ declare(strict_types=1);
 use Illuminate\Support\Facades\File;
 use Innodite\LaravelModuleMaker\Generators\Components\VueGenerator;
 use Innodite\LaravelModuleMaker\Support\ModuleMode;
+use Innodite\LaravelModuleMaker\Support\RouteMarkers;
 use Innodite\LaravelModuleMaker\Support\StubPlaceholder;
 
 /**
@@ -25,7 +26,7 @@ function packageStubs(): array
     return glob(dirname(__DIR__, 2) . '/stubs/contextual/*.stub') ?: [];
 }
 
-it('encuentra los 38 stubs del paquete', function () {
+it('encuentra los 37 stubs del paquete', function () {
     // La cuenta sube cuando el paquete aprende a generar una pieza nueva —las últimas son las
     // cuatro del grupo de pruebas: el manifiesto, su base y las piezas de los nueve temas, de la
     // fase 4; antes fueron las tres
@@ -46,8 +47,8 @@ it('encuentra los 38 stubs del paquete', function () {
     // atrás —decía «los 29» mientras exigía 27—, y un título que miente sobre lo que la prueba
     // exige se lee y se cree.
     expect(packageStubs())->toHaveCount(
-        38,
-        'El paquete lleva 38 stubs, una sola copia de cada uno. Si aparecen más sin haber añadido '
+        37,
+        'El paquete lleva 37 stubs, una sola copia de cada uno. Si aparecen más sin haber añadido '
         . 'una pieza, alguien devolvió las copias por contexto; si aparecen menos, falta un stub.'
     );
 });
@@ -105,14 +106,40 @@ it('las claves del paquete dentro de los stubs Vue están en triple llave', func
     }
 });
 
-it('el marcador de rutas de tenant sigue en doble llave, porque debe sobrevivir', function () {
-    // Este stub está huérfano (B14, se arregla en F-4), pero su marcador ya enseña la regla:
-    // un marcador viaja hasta el archivo del proyecto, un placeholder muere al generar.
-    $stub = File::get(dirname(__DIR__, 2) . '/stubs/contextual/route-tenant.stub');
+it('el marcador de rutas sigue en doble llave, porque debe sobrevivir al generar', function () {
+    // Esta prueba leía `route-tenant.stub`, que estaba huérfano —ningún generador lo abría— y se
+    // retiró en la fase 5 con el resto del flujo de rutas. La regla que enseñaba sigue viva, así
+    // que se comprueba contra la pieza que hoy la decide: un **marcador** viaja hasta el archivo
+    // del proyecto y sobrevive allí; un **placeholder** muere al generar.
+    //
+    // Por eso el marcador va en doble llave y sin espacios interiores: es lo que lo distingue del
+    // `{{{ clave }}}` del paquete y de la interpolación `{{ variable }}` de Vue, y lo que hace que
+    // el chequeo de salida no lo confunda con algo sin resolver.
+    foreach ([
+        ['central', 'web.php', '',           '// {{CENTRAL_ROUTES_END}}'],
+        ['shared', 'tenant.php', '',         '// {{TENANT_SHARED_ROUTES_END}}'],
+        ['tenant', 'tenant.php', 'clinic-one', '// {{TENANT_CLINIC_ONE_ROUTES_END}}'],
+    ] as [$contexto, $archivo, $id, $esperado]) {
+        expect(RouteMarkers::comment($contexto, $archivo, $id))->toBe(
+            $esperado,
+            "FALLA: el marcador de '{$contexto}' en {$archivo} cambió de forma. · FIX: estos "
+            . 'marcadores ya están escritos en los routes/*.php de los proyectos instalados; '
+            . 'cambiarlos deja huérfanos los archivos que los llevan, y la siguiente '
+            . 'subfuncionalidad se colgará al final en vez de dentro de su grupo.'
+        );
+    }
 
-    expect(str_contains($stub, '{{TENANT_ROUTES_END}}'))->toBeTrue(
-        'Un marcador de inyección no es un placeholder: se escribe tal cual para que la siguiente '
-        . 'ejecución encuentre dónde añadir rutas.'
+    expect(StubPlaceholder::unresolvedPattern())->not->toBeEmpty();
+
+    // Y la comprobación que cierra el círculo: el marcador NO se parece a un placeholder sin
+    // resolver, o el chequeo de salida tumbaría todo archivo de rutas que el paquete escriba.
+    preg_match_all(StubPlaceholder::unresolvedPattern(), RouteMarkers::comment('central', 'web.php'), $m);
+
+    expect($m[0])->toBe(
+        [],
+        'FALLA: el chequeo de salida lee el marcador como un placeholder sin resolver. · FIX: el '
+        . 'marcador va sin espacios interiores; con ellos, ningún archivo de rutas pasaría el '
+        . 'chequeo y la generación fallaría siempre.'
     );
 });
 

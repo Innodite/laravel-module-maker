@@ -441,9 +441,21 @@ class RouteGenerator extends AbstractComponentGenerator
     ): void {
         $marker = "// {{{$markerKey}}}";
 
+        // ⚠️ Las tres salidas de este método escriben por `putFile()`, y no por `file_put_contents`.
+        //
+        // Escribían directo, así que **el camino de rutas con contexto esquivaba el chequeo de
+        // salida** — el que comprueba que lo escrito parsea y no lleva placeholders sin resolver.
+        // Era el último agujero de esa red, y el más caro de todos: un `routes/web.php` que no
+        // parsea no rompe un módulo, tumba la aplicación entera. El resto del paquete lleva desde
+        // la fase 1 pasando por aquí.
+
         if (! file_exists($filePath)) {
-            file_put_contents($filePath, $fullContent);
-            $this->info("✅ Archivo de rutas creado: " . basename(dirname($filePath, 2)) . '/Routes/' . basename($filePath));
+            $this->putFile(
+                $filePath,
+                $fullContent,
+                'Archivo de rutas creado: ' . basename(dirname($filePath, 2)) . '/Routes/' . basename($filePath)
+            );
+
             return;
         }
 
@@ -463,13 +475,20 @@ class RouteGenerator extends AbstractComponentGenerator
         }
 
         if (str_contains($existing, $marker)) {
-            $updated = str_replace($marker, $newBlock . PHP_EOL . '    ' . $marker, $existing);
-            file_put_contents($filePath, $updated);
-            $this->info("✅ Rutas agregadas en sección existente: " . basename($filePath));
-        } else {
-            file_put_contents($filePath, $existing . PHP_EOL . PHP_EOL . $fullContent);
-            $this->info("✅ Nueva sección de rutas creada en: " . basename($filePath));
+            $this->putFile(
+                $filePath,
+                str_replace($marker, $newBlock . PHP_EOL . '    ' . $marker, $existing),
+                'Rutas agregadas en sección existente: ' . basename($filePath)
+            );
+
+            return;
         }
+
+        $this->putFile(
+            $filePath,
+            $existing . PHP_EOL . PHP_EOL . $fullContent,
+            'Nueva sección de rutas creada en: ' . basename($filePath)
+        );
     }
 
     /**
