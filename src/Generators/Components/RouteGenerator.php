@@ -6,6 +6,7 @@ namespace Innodite\LaravelModuleMaker\Generators\Components;
 
 use Illuminate\Support\Str;
 use Innodite\LaravelModuleMaker\Support\ContextResolver;
+use Innodite\LaravelModuleMaker\Support\RouteMarkers;
 use Innodite\LaravelModuleMaker\Support\ModuleMode;
 use Innodite\LaravelModuleMaker\Support\SubFeaturePermissions;
 
@@ -119,121 +120,93 @@ class RouteGenerator extends AbstractComponentGenerator
             return;
         }
 
-        // central → envuelto en foreach central_domains
-        if ($context['wrap_central_domains'] ?? false) {
-            $this->generateCentralRoutes($routesDir);
-            return;
-        }
-
-        // shared / central sin wrap → web.php simple
-        $this->generateSharedRoutes($routesDir, $context);
+        // El resto —`central` y `shared`— escribe donde su contexto declare.
+        $this->generateContextRoutes($routesDir, $context, $contextKey);
     }
 
     // ─── Generadores por tipo de contexto ────────────────────────────────────
 
     /**
-     * Genera rutas para la app central, envueltas en foreach de central_domains.
+     * Las rutas de un contexto, **en los archivos que ese contexto declara**.
      *
-     * @param  string  $routesDir  Ruta al directorio de rutas del módulo
+     * Antes este método era `generateSharedRoutes()` y escribía **siempre en los dos** —`web.php` y
+     * `tenant.php`—, porque estaba pensado para `shared`, que sí vive en los dos lados. Pero era
+     * también donde acababa `central`, y ahí el resultado era grave: el bloque `central-…`, con su
+     * `central-permission:central_…`, quedaba dentro del archivo de rutas **que se sirve a los
+     * tenants**. Rutas de la aplicación central publicadas en el dominio de cada cliente.
+     *
+     * Nadie lo veía porque el archivo es correcto: parsea, las rutas existen y sus permisos son los
+     * que dicen ser. Solo está en el sitio equivocado.
+     *
+     * **El catálogo ya tenía la respuesta y no se leía**: cada contexto declara su `route_file`.
+     * `central` dice `web.php`; `tenant_shared` y los tenants dicen `tenant.php`; `shared` **no
+     * declara ninguno**, y esa ausencia es su forma de decir que vive en los dos — es el único que
+     * de verdad es dual.
+     *
+     * @param  string  $routesDir   Ruta al directorio de rutas del módulo
+     * @param  array   $context     Configuración del contexto ya resuelta
+     * @param  string  $contextKey  Clave del contexto, que decide el marcador
      * @return void
      */
-    private function generateCentralRoutes(string $routesDir): void
+    private function generateContextRoutes(string $routesDir, array $context, string $contextKey): void
     {
-        $context          = $this->getContext();
-        $functionality    = $this->getFunctionality();
-        $controllerClass  = $this->buildControllerClass();
-        $controllerFqcn   = $this->buildControllerNamespace() . '\\' . $controllerClass;
-        $permPrefix       = $this->resolvePermissionPrefix($context, 'central');
-        $permMiddleware   = $this->resolvePermissionMiddleware($context, 'central');
-        $permKey          = SubFeaturePermissions::key($functionality);
+        $middleware = $context['route_middleware'] ?? [];
 
-        $block = $this->buildRouteBlock(
-            routePrefix:    $context['route_prefix'] . '-' . $functionality,
-            routeName:      $context['route_name'] . $functionality . '.',
-            controllerClass: $controllerClass,
-            permMiddleware: $permMiddleware,
-            permPrefix:     $permPrefix,
-            permKey:        $permKey,
-            indent:         '        '
-        );
+        // Un `route_file` declarado significa «solo aquí». Sin él, el contexto vive en los dos.
+        $archivos = isset($context['route_file'])
+            ? [(string) $context['route_file']]
+            : ['web.php', 'tenant.php'];
 
-        $content = <<<PHP
-        <?php
-
-        declare(strict_types=1);
-
-        use Illuminate\Support\Facades\Route;
-        use {$controllerFqcn};
-
-        foreach (config('tenancy.central_domains') as \$domain) {
-            Route::domain(\$domain)->group(function () {
-
-        {$block}
-            // {{CENTRAL_END}}
-            });
+        foreach ($archivos as $archivo) {
+            $this->escribirSeccion($routesDir, $context, $contextKey, $archivo, $middleware);
         }
-        PHP;
-
-        $this->writeOrAppend("{$routesDir}/web.php", $content, '{{CENTRAL_END}}', $block, $controllerFqcn);
     }
 
     /**
-     * Genera rutas para un contexto Shared (dual: web.php + tenant.php).
+     * Escribe —o amplía— la sección de este contexto en uno de sus archivos de rutas.
      *
-     * El contexto Shared escribe en DOS archivos con prefijos distintos para
-     * evitar colisiones de nombres de ruta:
-     *   web.php    → usa web_route_prefix / web_route_name    (ej: central.shared-users)
-     *   tenant.php → usa tenant_route_prefix / tenant_route_name (ej: tenant.shared-users)
+     * Los prefijos se resuelven por archivo porque `shared` los necesita distintos en cada lado: sus
+     * dos bloques declaran las mismas acciones, y con el mismo nombre de ruta el segundo pisaría al
+     * primero al registrarse.
      *
-     * Si route_middleware es vacío, NO se añade ->middleware() (hereda del grupo padre).
-     *
-     * @param  string  $routesDir  Ruta al directorio de rutas del módulo
-     * @param  array   $context    Configuración del contexto shared
-     * @return void
+     * @param  array<string, mixed>  $context
+     * @param  array<int, string>    $middleware
      */
-    private function generateSharedRoutes(string $routesDir, array $context): void
-    {
+    private function escribirSeccion(
+        string $routesDir,
+        array $context,
+        string $contextKey,
+        string $archivo,
+        array $middleware
+    ): void {
         $functionality   = $this->getFunctionality();
         $controllerClass = $this->buildControllerClass();
         $controllerFqcn  = $this->buildControllerNamespace() . '\\' . $controllerClass;
-        $permPrefix      = $this->resolvePermissionPrefix($context, $this->componentConfig['context'] ?? null);
-        $permMiddleware  = $this->resolvePermissionMiddleware($context, $this->componentConfig['context'] ?? null);
-        $permKey         = SubFeaturePermissions::key($functionality);
-        $middleware      = $context['route_middleware'] ?? [];
+        $permPrefix      = $this->resolvePermissionPrefix($context, $contextKey ?: null);
+        $permMiddleware  = $this->resolvePermissionMiddleware($context, $contextKey ?: null);
 
-        // ── Prefijos diferenciados por archivo ────────────────────────────────
-        $webPrefix  = ($context['web_route_prefix']  ?? $context['route_prefix']  ?? 'shared') . '-' . $functionality;
-        $webName    = ($context['web_route_name']    ?? $context['route_name']    ?? 'shared.') . $functionality . '.';
-        $tnntPrefix = ($context['tenant_route_prefix'] ?? $context['route_prefix']  ?? 'shared') . '-' . $functionality;
-        $tnntName   = ($context['tenant_route_name']   ?? $context['route_name']    ?? 'shared.') . $functionality . '.';
+        $esTenant = $archivo === 'tenant.php';
+        $prefijo  = ($esTenant ? $context['tenant_route_prefix'] ?? null : $context['web_route_prefix'] ?? null)
+            ?? $context['route_prefix'] ?? 'shared';
+        $nombre   = ($esTenant ? $context['tenant_route_name'] ?? null : $context['web_route_name'] ?? null)
+            ?? $context['route_name'] ?? 'shared.';
 
-        // ── Bloque para web.php ───────────────────────────────────────────────
-        $webBlock = $this->buildRouteBlock(
-            routePrefix:     $webPrefix,
-            routeName:       $webName,
+        $bloque = $this->buildRouteBlock(
+            routePrefix:     $prefijo . '-' . $functionality,
+            routeName:       $nombre . $functionality . '.',
             controllerClass: $controllerClass,
             permMiddleware:  $permMiddleware,
             permPrefix:      $permPrefix,
-            permKey:         $permKey,
+            permKey:         SubFeaturePermissions::key($functionality),
             indent:          '    '
         );
 
-        $webContent = $this->buildSharedFileContent($controllerFqcn, $webBlock, $middleware, 'SHARED_WEB_END');
-        $this->writeOrAppend("{$routesDir}/web.php", $webContent, 'SHARED_WEB_END', $webBlock, $controllerFqcn);
+        // El marcador sale de RouteMarkers, que es de donde lo lee también el inyector. Antes cada
+        // lado lo componía por su cuenta y no coincidían.
+        $marcador = RouteMarkers::key($contextKey, $archivo, (string) ($context['id'] ?? ''));
 
-        // ── Bloque para tenant.php ────────────────────────────────────────────
-        $tenantBlock = $this->buildRouteBlock(
-            routePrefix:     $tnntPrefix,
-            routeName:       $tnntName,
-            controllerClass: $controllerClass,
-            permMiddleware:  $permMiddleware,
-            permPrefix:      $permPrefix,
-            permKey:         $permKey,
-            indent:          '    '
-        );
-
-        $tenantContent = $this->buildSharedFileContent($controllerFqcn, $tenantBlock, $middleware, 'SHARED_TENANT_END');
-        $this->writeOrAppend("{$routesDir}/tenant.php", $tenantContent, 'SHARED_TENANT_END', $tenantBlock, $controllerFqcn);
+        $contenido = $this->buildSharedFileContent($controllerFqcn, $bloque, $middleware, $marcador);
+        $this->writeOrAppend("{$routesDir}/{$archivo}", $contenido, $marcador, $bloque, $controllerFqcn);
     }
 
     /**

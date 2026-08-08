@@ -7,6 +7,7 @@ namespace Innodite\LaravelModuleMaker\Services;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Str;
 use Innodite\LaravelModuleMaker\Support\GeneratedFileCheck;
+use Innodite\LaravelModuleMaker\Support\RouteMarkers;
 
 /**
  * RouteInjectionService — Motor de Inyección de Rutas (WORKPLAN Fase 3)
@@ -269,15 +270,12 @@ class RouteInjectionService
      */
     private function resolveMarkerKey(string $contextKey, string $contextId, string $routeFile): string
     {
-        return match (true) {
-            $contextKey === 'central'                                => 'CENTRAL_ROUTES_END',
-            $contextKey === 'shared' && $routeFile === 'web.php'    => 'CENTRAL_ROUTES_END',
-            $contextKey === 'shared' && $routeFile === 'tenant.php' => 'TENANT_SHARED_ROUTES_END',
-            $contextKey === 'tenant_shared'                          => 'TENANT_SHARED_ROUTES_END',
-            $contextKey === 'tenant'
-                => 'TENANT_' . strtoupper(Str::snake(Str::studly($contextId))) . '_ROUTES_END',
-            default => 'ROUTES_END',
-        };
+        // La tabla vive en RouteMarkers, que es de donde la lee también el generador que **escribe**
+        // el marcador. Tenerla aquí era la mitad de un par que había dejado de coincidir: el
+        // generador escribía `{{CENTRAL_END}}` y esto buscaba `CENTRAL_ROUTES_END`, así que el
+        // bloque nuevo no se insertaba dentro del grupo —con su dominio y su middleware— sino
+        // pegado al final del archivo.
+        return RouteMarkers::key($contextKey, $routeFile, $contextId);
     }
 
     /**

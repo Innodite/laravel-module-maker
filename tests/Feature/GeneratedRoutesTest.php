@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use Innodite\LaravelModuleMaker\Generators\Components\RouteGenerator;
 use Innodite\LaravelModuleMaker\Support\ModuleMode;
+use Innodite\LaravelModuleMaker\Support\RouteMarkers;
 
 /**
  * Las rutas generadas: qué forma tienen, y **quién decide** esa forma.
@@ -93,6 +94,51 @@ it('en un modo con eje de contexto, sin contexto no se escribe ninguna ruta', fu
         . 'sin contexto no se puede saber qué dominio sirve la ruta ni qué permiso la protege. Lo '
         . 'que se escriba será plausible y equivocado, y nadie volverá a mirarlo porque el comando '
         . 'habrá terminado en verde.'
+    );
+});
+
+it('las rutas de la aplicación central no acaban en el archivo de los tenants', function () {
+    // El defecto más caro de la fase. El contexto `central` caía en el camino pensado para `shared`
+    // —el único que de verdad vive en los dos lados— y escribía **también** en `tenant.php`: el
+    // bloque `central-…`, con su `central-permission:central_…`, dentro del archivo de rutas que se
+    // sirve a cada cliente.
+    //
+    // Nadie lo veía porque el archivo es correcto: parsea, las rutas existen y sus permisos son los
+    // que dicen ser. Solo estaban en el sitio equivocado.
+    $modulo = $this->generateModule('Invoice', ModuleMode::MultitenantPerTenant, 'central');
+
+    expect($modulo->has('Routes/tenant.php'))->toBeFalse(
+        'FALLA: el contexto central escribió rutas en tenant.php. · FIX: cada contexto escribe en el '
+        . 'route_file que declara; solo `shared` vive en los dos, y lo dice no declarando ninguno.'
+        . ($modulo->has('Routes/tenant.php') ? "\ntenant.php dice:\n" . $modulo->contents('Routes/tenant.php') : '')
+    );
+
+    expect($modulo->has('Routes/web.php'))->toBeTrue(
+        'FALLA: el contexto central no escribió sus rutas donde declara (web.php).'
+    );
+});
+
+it('el marcador que el generador escribe es el que el inyector busca', function () {
+    // Los dos lados de la misma pareja. El generador deja el marcador para que la siguiente
+    // subfuncionalidad se añada **dentro** del grupo; el inyector lo busca cuando el archivo ya
+    // existe. Componían la clave por separado y no coincidían —`{{CENTRAL_END}}` contra
+    // `CENTRAL_ROUTES_END`—, así que el bloque nuevo acababa pegado al final del archivo, fuera del
+    // grupo que le da dominio y middleware. Sin error, y sin protección.
+    $rutas = $this->generateModule('Invoice', ModuleMode::MultitenantPerTenant, 'central')
+        ->contents('Routes/web.php');
+
+    $marcador = RouteMarkers::comment('central', 'web.php');
+
+    expect(str_contains($rutas, $marcador))->toBeTrue(
+        "FALLA: el archivo generado no lleva el marcador '{$marcador}'. · FIX: la clave la decide "
+        . "RouteMarkers, que es de donde la lee el inyector.\nEl archivo dice:\n" . $rutas
+    );
+
+    expect($marcador)->toBe(
+        '// {{CENTRAL_ROUTES_END}}',
+        'FALLA: cambió el marcador de la sección central. · FIX: es el que ya está escrito en los '
+        . 'routes/web.php de los proyectos instalados; cambiarlo deja huérfanos los archivos que '
+        . 'ya lo llevan.'
     );
 });
 
