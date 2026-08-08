@@ -83,6 +83,26 @@ final class {{{ scaffoldName }}} extends {{{ baseName }}}
                 . 'middleware de permiso individual; uno por ruta, sin compartirlo con otra.'
             );
         }
+
+        // 4. Las dos acciones que reciben datos los validan con **su** FormRequest. Un `Request`
+        //    genérico ahí no valida nada y encima no tiene `validated()`: la llamada muere con un
+        //    error fatal en cuanto alguien da de alta algo de verdad. El archivo, mientras tanto,
+        //    es PHP perfectamente válido — por eso esto se comprueba leyendo la firma, y no se
+        //    descubre al generar.
+        $controlador = new ReflectionClass({{{ contractName }}}::SCAFFOLD['controller']);
+
+        foreach (['store' => 'form_request_store', 'update' => 'form_request_update'] as $accion => $pieza) {
+            $parametros = $controlador->getMethod($accion)->getParameters();
+            $recibido   = isset($parametros[0]) ? ltrim((string) $parametros[0]->getType(), '?\\') : '';
+
+            $this->assertSame(
+                ltrim({{{ contractName }}}::SCAFFOLD[$pieza], '\\'),
+                $recibido,
+                "FALLA: {$accion}() recibe '{$recibido}' en vez de su FormRequest. · FIX: declárala "
+                . "recibiendo la clase que el manifiesto pone en '{$pieza}'. Con un Request genérico "
+                . 'la entrada no se valida y validated() no existe: el primer alta real revienta.'
+            );
+        }
     }
 
     /** El código de una pieza, sin sus comentarios: lo que de verdad se ejecuta. */

@@ -79,13 +79,13 @@ final class {{{ httpName }}} extends {{{ baseName }}}
      */
     public function test_una_entrada_invalida_no_se_guarda(): void
     {
-        $formRequest = {{{ contractName }}}::SCAFFOLD['form_request'];
+        $formRequest = {{{ contractName }}}::SCAFFOLD['form_request_store'];
         $reglas      = (new $formRequest())->rules();
 
         if ($reglas === []) {
             $this->markTestSkipped(
-                'El FormRequest de la subfuncionalidad todavía no declara reglas, así que no hay nada '
-                . 'que pueda fallar la validación. Escríbelas en su rules() y esta prueba corre sola.'
+                'El FormRequest del alta todavía no declara reglas, así que no hay nada que pueda '
+                . 'fallar la validación. Escríbelas en su rules() y esta prueba corre sola.'
             );
         }
 
@@ -96,6 +96,37 @@ final class {{{ httpName }}} extends {{{ baseName }}}
             $respuesta->getStatusCode(),
             'FALLA: un alta sin datos no fue rechazada con 422. · FIX: comprueba que el controlador '
             . 'recibe el FormRequest en su firma —no un Request genérico— y que sus reglas se aplican.'
+        );
+    }
+
+    /**
+     * Qué prueba: que una edición inválida tampoco se guarda.
+     * Resultado esperado: 422.
+     * Por qué existe: **son dos FormRequests, y hasta ahora solo uno estaba vigilado.** Las reglas de
+     *   una edición casi nunca son las del alta —el `unique` tiene que ignorarse a sí mismo, los
+     *   obligatorios al crear suelen ser opcionales al actualizar—, así que el de la edición es el
+     *   que más fácil se queda a medio escribir. Y sin nadie mirándolo, «a medio escribir» y
+     *   «terminado» se ven igual.
+     */
+    public function test_una_edicion_invalida_no_se_guarda(): void
+    {
+        $formRequest = {{{ contractName }}}::SCAFFOLD['form_request_update'];
+        $reglas      = (new $formRequest())->rules();
+
+        if ($reglas === []) {
+            $this->markTestSkipped(
+                'El FormRequest de la edición todavía no declara reglas. Escríbelas en su rules() y '
+                . 'esta prueba corre sola — no suelen ser las mismas que las del alta.'
+            );
+        }
+
+        $respuesta = $this->llamarAccion('update', ['id' => (string) Str::ulid()], []);
+
+        $this->assertSame(
+            422,
+            $respuesta->getStatusCode(),
+            'FALLA: una edición sin datos válidos no fue rechazada con 422. · FIX: `update()` recibe '
+            . 'su propio FormRequest, no el del alta ni un Request genérico.'
         );
     }
 

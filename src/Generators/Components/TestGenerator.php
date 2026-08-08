@@ -7,6 +7,7 @@ namespace Innodite\LaravelModuleMaker\Generators\Components;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\File;
 use Innodite\LaravelModuleMaker\Generators\Concerns\HasStubs;
+use Innodite\LaravelModuleMaker\Support\RequestNames;
 use Innodite\LaravelModuleMaker\Support\SeederNames;
 use Innodite\LaravelModuleMaker\Support\SubFeaturePermissions;
 use Innodite\LaravelModuleMaker\Support\TestNames;
@@ -453,7 +454,14 @@ PHP;
             'repository'         => '\\' . $this->buildNamespace('Repositories') . "\\{$clase}Repository::class",
             'service'            => '\\' . $this->buildNamespace('Services') . "\\{$clase}Service::class",
             'controller'         => '\\' . $this->buildNamespace('Http\\Controllers') . "\\{$clase}Controller::class",
-            'form_request'       => '\\' . $this->buildNamespace('Http\\Requests') . "\\{$clase}StoreRequest::class",
+            // Los dos, no uno. Declarar solo el del alta dejaba al de la edición sin nadie que lo
+            // mirase; y este literal componía el nombre a mano —`{$clase}StoreRequest`—, que era la
+            // cuarta copia del mismo cálculo. Con el generador escribiendo un Request genérico en
+            // uno de sus modos, esa copia apuntaba a una clase que ahí no existía nunca.
+            'form_request_store'  => '\\' . $this->buildNamespace('Http\\Requests') . '\\'
+                . RequestNames::store($prefijo, $subFeature) . '::class',
+            'form_request_update' => '\\' . $this->buildNamespace('Http\\Requests') . '\\'
+                . RequestNames::update($prefijo, $subFeature) . '::class',
             'view'               => "'" . $this->rutaEnElModulo('resources/js/Pages') . "/{$clase}Index.vue'",
         ];
 

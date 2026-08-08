@@ -88,6 +88,38 @@ it('el manifiesto carga y declara lo que la subfuncionalidad es', function () {
      . 'salen de SubFeaturePermissions; si divergen, el tema 6 comprueba permisos que no existen.');
 });
 
+it('el andamiaje declara los dos FormRequests, no uno', function () {
+    // La prueba de más arriba comprueba que **cada** pieza declarada existe. Esta comprueba lo
+    // contrario, que es lo que aquella no puede ver: que **no falte** ninguna. Quitar
+    // `form_request_update` del manifiesto no rompe nada — simplemente deja al FormRequest de la
+    // edición sin nadie que lo mire, y «sin escribir» pasa a verse igual que «terminado».
+    //
+    // Es el hueco por el que el manifiesto llegó a declarar una sola clase mientras el generador
+    // escribía otra cosa en uno de sus modos.
+    $modulo = $this->generateModule('Invoice', ModuleMode::SingleApp);
+
+    cargarPiezas($modulo, 'Tests/Feature/Invoice', ['InvoiceContract']);
+
+    $contrato = 'Modules\Invoice\Tests\Feature\Invoice\InvoiceContract';
+
+    expect($contrato::SCAFFOLD)->toHaveKeys(
+        ['form_request_store', 'form_request_update'],
+        'FALLA: el andamiaje no declara los dos FormRequests. · FIX: toda subfuncionalidad nace con '
+        . 'el del alta y el de la edición; el manifiesto declara los dos para que el tema 0 mire los '
+        . 'dos. Salen de RequestNames, igual que los que el controlador recibe en su firma.'
+    );
+
+    expect($contrato::SCAFFOLD['form_request_store'])->toBe(
+        'Modules\Invoice\Http\Requests\Invoice\InvoiceStoreRequest',
+        'FALLA: el manifiesto apunta a otra clase que la que el generador escribe.'
+    );
+
+    expect($contrato::SCAFFOLD['form_request_update'])->toBe(
+        'Modules\Invoice\Http\Requests\Invoice\InvoiceUpdateRequest',
+        'FALLA: el manifiesto apunta a otra clase que la que el generador escribe.'
+    );
+});
+
 it('cada pieza del andamiaje apunta a algo que el módulo escribió', function (ModuleMode $modo, ?string $contexto, string $carpeta, string $contrato) {
     // El cruce que ningún chequeo por archivo puede hacer: le falta el otro lado del par. Un
     // manifiesto con un FQCN mal compuesto —el namespace de otra capa, el nombre sin prefijo— pasa
