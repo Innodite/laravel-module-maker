@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\File;
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -105,4 +106,33 @@ it('lee correctamente el contexts.json y valida el contexto', function () {
         '--context'   => 'invalid-context-xyz',
         '--no-routes' => true,
     ])->assertFailed();
+});
+
+// ─── D9 · Sin contexto no se genera, y se dice cuáles hay ────────────────────────────────────
+
+it('en multitenant sin --context no genera nada: lo exige y lista el catálogo', function () {
+    // Antes caía en la selección interactiva, y sin nadie a quien preguntar esa selección devuelve
+    // **el primero del catálogo**: `central`. El módulo salía entero en el eje equivocado — rutas en
+    // web.php, protegidas con `central-permission`— para una subfuncionalidad pensada para tenants.
+    // Perfectamente escrito y completamente mal, que es la forma de defecto que no da la cara.
+    config()->set('make-module.mode', 'multitenant-per-tenant');
+
+    $codigo = Artisan::call('innodite:make-module', [
+        'name'             => 'Invoice',
+        '--no-routes'      => true,
+        '--no-interaction' => true,
+    ]);
+
+    $salida = Artisan::output();
+
+    expect($codigo)->not->toBe(
+        0,
+        "FALLA: generó un módulo sin saber su contexto.\n{$salida}"
+    );
+
+    expect($salida)->toContain('--context');
+    expect(File::isDirectory($this->tempPath('Modules/Invoice')))->toBeFalse(
+        'FALLA: dejó archivos escritos pese a no poder decidir el contexto. · FIX: se comprueba '
+        . 'ANTES de escribir nada; un módulo a medias hay que borrarlo a mano.'
+    );
 });

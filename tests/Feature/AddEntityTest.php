@@ -145,3 +145,40 @@ it('los permisos de la entidad agregada son los suyos, no los del módulo', func
         . 'la tabla sale de la subfuncionalidad, no del módulo.'
     );
 });
+
+// ─── D9 · El contexto: obligatorio donde lo hay, prohibido donde no ──────────────────────────
+//
+// `add-entity` no miraba el modo en absoluto. Y aquí equivocarse de eje es peor que en
+// `make-module`: el módulo queda **mitad en un contexto y mitad en otro**, y nada se ve raro al
+// abrirlo — cada archivo por separado está bien escrito.
+
+it('en multitenant no genera sin contexto: lo exige y lista el catálogo', function () {
+    $modulo = $this->generateModule('Invoice', ModuleMode::MultitenantPerTenant, 'central');
+
+    [$codigo, $salida] = agregarEntidad($modulo->name, 'Payment');
+
+    expect($codigo)->not->toBe(
+        0,
+        'FALLA: se agregó una entidad sin saber su contexto. · FIX: asumir uno la escribe en el eje '
+        . "equivocado, con el permiso de otro contexto, y el archivo sale perfecto y mal.\n{$salida}"
+    );
+
+    expect($salida)->toContain('--context');
+    expect(str_contains($salida, 'central'))->toBeTrue(
+        "R30: el error lista el catálogo, para que el FIX no obligue a ir a buscarlo.\n{$salida}"
+    );
+});
+
+it('en single-app pasar un contexto es un error explícito, no algo que se ignore', function () {
+    $modulo = $this->generateModule('Invoice', ModuleMode::SingleApp);
+
+    [$codigo, $salida] = agregarEntidad($modulo->name, 'Payment', 'central');
+
+    expect($codigo)->not->toBe(
+        0,
+        'FALLA: el comando aceptó un contexto en un modo que no los tiene. · FIX: aceptarlo y luego '
+        . "ignorarlo hace creer que la subfuncionalidad salió contextualizada.\n{$salida}"
+    );
+
+    expect($salida)->toContain('no tiene contextos');
+});

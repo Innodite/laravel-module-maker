@@ -9,7 +9,9 @@ use Illuminate\Support\Facades\File;
 use Illuminate\Support\Str;
 use Innodite\LaravelModuleMaker\Generators\Components\ModuleGenerator;
 use Innodite\LaravelModuleMaker\Services\RouteInjectionService;
+use Innodite\LaravelModuleMaker\Support\ContextOption;
 use Innodite\LaravelModuleMaker\Support\ContextResolver;
+use Innodite\LaravelModuleMaker\Support\ModuleMode;
 use Throwable;
 
 /**
@@ -170,12 +172,23 @@ class AddEntityCommand extends Command
 
     /**
      * Resuelve el contexto desde la opción --context o interactivamente.
-     * Lógica idéntica a MakeModuleCommand::resolveContext().
+     *
+     * Las guardas del modo son **las mismas** que aplica `make-module`, y por eso salen de
+     * `ContextOption` en vez de estar copiadas aquí: este comando añade subfuncionalidades a un
+     * módulo que ya existe, así que equivocarse de eje produce un módulo **mitad en un contexto y
+     * mitad en otro** — peor que uno entero mal, porque nada se ve raro al abrirlo.
      */
     private function resolveContext(): array
     {
+        $mode        = ModuleMode::current();
         $allContexts = ContextResolver::all();
         $option      = trim($this->option('context') ?? '');
+
+        ContextOption::check($mode, $option, $allContexts, $this->input->isInteractive());
+
+        if (! $mode->hasContextAxis()) {
+            return ['', []];
+        }
 
         if ($option === '') {
             return $this->askContextInteractive($allContexts);

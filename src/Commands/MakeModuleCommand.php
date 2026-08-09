@@ -10,6 +10,7 @@ use Illuminate\Support\Str;
 use Innodite\LaravelModuleMaker\Generators\Components\ModuleGenerator;
 use Innodite\LaravelModuleMaker\Services\ModuleAuditor;
 use Innodite\LaravelModuleMaker\Services\RouteInjectionService;
+use Innodite\LaravelModuleMaker\Support\ContextOption;
 use Innodite\LaravelModuleMaker\Support\ContextResolver;
 use Innodite\LaravelModuleMaker\Support\ModuleMode;
 use Throwable;
@@ -378,31 +379,18 @@ class MakeModuleCommand extends Command
         $allContexts = $this->loadContexts();
         $option      = trim($this->option('context') ?? '');
 
-        // ── El modo manda: en single-app no hay contexto que elegir ────────────
-        // Antes se preguntaba siempre, así que una aplicación única se quedaba esperando que
-        // eligieran entre central y tenant — o tenía que declarar contextos falsos para pasar el
-        // diagnóstico (C2). No es que single-app estuviera «sin implementar»: estaba bloqueado.
+        // ── Lo que el modo exige de --context, antes de resolver nada ──────────
+        // Las tres guardas viven en ContextOption porque `add-entity` necesita exactamente las
+        // mismas: cada comando llevaba su copia de esta resolución y las guardas se habían añadido
+        // solo a uno.
+        ContextOption::check($mode, $option, $allContexts, $this->input->isInteractive());
+
+        // En single-app no hay contexto que elegir. Antes se preguntaba siempre, así que una
+        // aplicación única se quedaba esperando que eligieran entre central y tenant — o tenía que
+        // declarar contextos falsos para pasar el diagnóstico (C2). No es que single-app estuviera
+        // «sin implementar»: estaba bloqueado.
         if (! $mode->hasContextAxis()) {
-            if ($option !== '') {
-                throw new \InvalidArgumentException(
-                    "El modo '{$mode->value}' no tiene contextos: no pases --context={$option}.\n"
-                    . "  En una aplicación única la subfuncionalidad va directa bajo la capa\n"
-                    . "  (Models/Role/), sin Central/ ni Tenant/ y sin prefijo de clase.\n"
-                    . '  Si este proyecto sí tiene tenants, cambia make-module.mode en la configuración.'
-                );
-            }
-
             return ['', []];
-        }
-
-        // ── Y el contexto pedido tiene que corresponder al modo ────────────────
-        if ($option !== '' && isset($allContexts[$option]) && ! $mode->supportsContext($option)) {
-            throw new \InvalidArgumentException(
-                "El contexto '{$option}' existe en contexts.json pero no corresponde al modo '{$mode->value}'.\n"
-                . '  Contextos de este modo: ' . implode(', ', $mode->requiredContextKeys()) . "\n"
-                . '  Generar para un tenant nombrado en el modo de tenants iguales produce justo lo que'
-                . ' ese modo evita: una copia por tenant de lógica idéntica.'
-            );
         }
 
         // Sin opción → selección interactiva
