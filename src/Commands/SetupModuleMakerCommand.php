@@ -45,7 +45,14 @@ class SetupModuleMakerCommand extends Command
         // Va inmediatamente después del modo y por el mismo motivo: decide la envoltura de cada
         // archivo de rutas que se genere, y preguntarlo más tarde deja escritas las rutas de los
         // primeros módulos sin ella.
-        $this->configureTenancyPackage($mode);
+        //
+        // En multitenant es OBLIGATORIO y detiene la instalación, igual que el modo. La alternativa
+        // —dejar que la configuración se quede sin declarar y confiar en que alguien la escriba
+        // después— apuesta a que el usuario lea la documentación antes de generar su primer módulo.
+        // No la lee: genera, ve archivos escritos y sigue.
+        if (! $this->configureTenancyPackage($mode)) {
+            return;
+        }
 
         // ── Carpeta de módulos ────────────────────────────────────────────────
         // Las rutas salen de la configuración, no de base_path(): son las MISMAS que leen los
@@ -154,30 +161,36 @@ class SetupModuleMakerCommand extends Command
      * En una aplicación única no se pregunta porque no hay nada que envolver: ni dominios centrales
      * que separar ni tenant que identificar. Preguntarlo igual sería pedir una decisión que no
      * cambia un solo archivo generado.
+     *
+     * @return bool  false cuando el modo lo exige y no se pudo determinar: la instalación se detiene
      */
-    private function configureTenancyPackage(?ModuleMode $mode): void
+    private function configureTenancyPackage(?ModuleMode $mode): bool
     {
         if ($mode === null || ! $mode->hasContextAxis()) {
-            return;
+            return true;
         }
 
         $elegido = $this->resolveTenancyPackage();
 
         if ($elegido === null) {
-            // Sin elegir NO se bloquea la instalación, y ahí está la diferencia con el modo: el modo
-            // decide la forma de cada archivo y no tiene respuesta correcta, mientras que aquí la
-            // ausencia tiene una salida honesta —escribir las rutas sin envoltura, con la nota que
-            // dice dónde va—. El proyecto arranca y el hueco queda a la vista.
-            $this->warn('  Sin paquete de tenencia declarado, las rutas generadas saldrán sin envoltura.');
-            $this->line('  Cada archivo dirá dónde va y qué haría stancl. Para declararlo: '
-                . '<comment>--tenancy=stancl</comment>');
+            // Se pregunta y se exige, como el modo. «none» es una respuesta válida —y la que reciben
+            // los proyectos que no corren stancl—, pero tiene que **elegirse**: no declarar nada
+            // deja las rutas sin envoltura por omisión, y eso solo se descubre cuando el módulo ya
+            // está generado y sirviéndose en el dominio equivocado.
+            $this->warn('  Sin paquete de tenencia elegido no se puede envolver una sola ruta, así '
+                . 'que este paso no se puede omitir en un proyecto multitenant.');
+            $this->line('  Vuelve a ejecutar el comando, o pásalo directo: '
+                . '<comment>--tenancy=stancl</comment> · <comment>--tenancy=none</comment> si tu '
+                . 'proyecto usa otro y prefieres escribir tú la envoltura.');
 
-            return;
+            return false;
         }
 
         $this->line("  Paquete de tenencia: <comment>{$elegido->label()}</comment>");
 
         $this->persistEnvKey('MODULE_MAKER_TENANCY_PACKAGE', $elegido->value, 'paquete de tenencia');
+
+        return true;
     }
 
     /** @return TenancyPackage|null  null si no se pudo determinar y no hay con quién hablar */

@@ -34,12 +34,17 @@ enum TenancyPackage: string
     /**
      * The configured tenancy package.
      *
-     * Unlike {@see PrimaryKeyMode::current()}, an unrecognised value does NOT throw. The set of
-     * primary keys is closed — there are two and there will be two — while the set of tenancy
-     * packages is open: a project running one the package has not wired in yet is a legitimate
-     * project, not a mistake. It gets the same treatment as declaring none, and
-     * {@see self::unsupportedValue()} is what lets the caller say so out loud instead of
-     * silently ignoring the declaration.
+     * An unrecognised value throws, exactly like {@see PrimaryKeyMode::current()} — and that is
+     * deliberate even though the set of tenancy packages will grow. Today it has two members and
+     * only two, so `tenancy-for-laravel` in the configuration is not "a package we support
+     * silently doing nothing": it is a declaration the package cannot honour. Treating it as
+     * {@see self::None} would hand the developer route files with no wrapper while their
+     * configuration says otherwise — the exact shape of every defect this package has spent six
+     * phases removing: two halves that are each plausible and point somewhere else.
+     *
+     * Absent is a different case and does NOT throw: it means "I did not choose", and the answer
+     * to that is {@see self::None} plus a note in the generated file. When another package gets
+     * wired in, it becomes a case here and the message lists it on its own.
      */
     public static function current(): self
     {
@@ -49,25 +54,12 @@ enum TenancyPackage: string
             return self::None;
         }
 
-        return self::tryFrom($declarado) ?? self::None;
-    }
-
-    /**
-     * The declared value when it names a package we do not support yet — null otherwise.
-     *
-     * Absent means "I did not choose"; unrecognised means "I chose and you do not know it".
-     * The second one deserves a warning: without it the developer declares `tenancy-for-laravel`
-     * and gets route files with no wrapper and no explanation of why.
-     */
-    public static function unsupportedValue(): ?string
-    {
-        $declarado = self::declaredValue();
-
-        if ($declarado === '' || self::tryFrom($declarado) !== null) {
-            return null;
-        }
-
-        return $declarado;
+        return self::tryFrom($declarado)
+            ?? throw new \InvalidArgumentException(
+                "FALLA: el paquete de tenencia '{$declarado}' no está soportado. · FIX: usa "
+                .self::valoresValidos().' en config/make-module.php. Con «none» las rutas se '
+                .'generan sin envoltura y el archivo dice dónde va la tuya.'
+            );
     }
 
     /** Does this package know how to wrap the generated route files? */
@@ -154,10 +146,10 @@ enum TenancyPackage: string
      */
     public function missingWrapperNote(string $routeFile): string
     {
-        $declarado = self::unsupportedValue();
-        $motivo = $declarado === null
-            ? 'el proyecto no declara ningún paquete de tenencia'
-            : "el paquete de tenencia declarado ('{$declarado}') todavía no está soportado";
+        // Un valor no soportado ya no llega hasta aquí: lo rechaza `current()`. El único caso que
+        // queda es el declarado a propósito — «ninguno de los que soportas», que es una respuesta
+        // legítima mientras el paquete solo sepa envolver con stancl.
+        $motivo = 'el proyecto declara que no usa ninguno de los paquetes de tenencia soportados';
 
         if ($routeFile === 'tenant.php') {
             return <<<PHP
@@ -187,6 +179,12 @@ enum TenancyPackage: string
             self::Stancl => 'stancl/tenancy (identificación por dominio)',
             self::None => 'Ninguno soportado — la envoltura de las rutas la escribo yo',
         };
+    }
+
+    /** The supported values, as the error message lists them. */
+    private static function valoresValidos(): string
+    {
+        return "'".implode("' o '", array_column(self::cases(), 'value'))."'";
     }
 
     /** The raw declared value, trimmed; empty string when absent or not a string. */

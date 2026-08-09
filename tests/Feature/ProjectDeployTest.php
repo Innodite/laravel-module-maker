@@ -121,7 +121,7 @@ it('en multitenant escribe los dos, y cada uno declara los contextos que le toca
     // Son dos despliegues contra dos bases de datos distintas, y el de tenant se ejecuta una vez por
     // tenant. Qué claves del orden cubre cada uno queda escrito en el archivo generado, no en el
     // paquete: en un proyecto donde 'shared' viva en la central, eso hay que poder corregirlo.
-    Artisan::call('innodite:module-setup', ['--mode' => 'multitenant-shared', '--no-interaction' => true]);
+    Artisan::call('innodite:module-setup', ['--mode' => 'multitenant-shared', '--tenancy' => 'stancl', '--no-interaction' => true]);
 
     expect(File::exists(database_path('seeders/InnoditeDeploySeeder.php')))->toBeFalse();
 

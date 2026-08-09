@@ -491,7 +491,7 @@ it('en multitenant cada despliegue levanta lo suyo, y no lo del otro', function 
     $ledger = moduloEnElProyecto('Ledger', ModuleMode::MultitenantPerTenant, 'central');
     $meter  = moduloEnElProyecto('Meter', ModuleMode::MultitenantPerTenant, 'tenant-one');
 
-    Artisan::call('innodite:module-setup', ['--mode' => 'multitenant-per-tenant', '--no-interaction' => true]);
+    Artisan::call('innodite:module-setup', ['--mode' => 'multitenant-per-tenant', '--tenancy' => 'stancl', '--no-interaction' => true]);
 
     cargarSeederDelProyecto('WebmasterSeeder');
     cargarSeederDelProyecto('InnoditeCentralDeploySeeder');

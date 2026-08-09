@@ -86,24 +86,6 @@ class RouteGenerator extends AbstractComponentGenerator
             return;
         }
 
-        // Un paquete de tenencia declarado y desconocido se dice en voz alta, una vez. Ausente
-        // significa «no elegí» y el archivo ya lleva la nota; declarado y no soportado significa
-        // «elegí y no me hiciste caso», y eso sin aviso deja al desarrollador buscando por qué sus
-        // rutas salen sin envoltura cuando él declaró una.
-        $noSoportado = TenancyPackage::unsupportedValue();
-
-        if ($noSoportado !== null) {
-            $this->warn(
-                "⚠️  FALLA: el paquete de tenencia '{$noSoportado}' todavía no está soportado, así "
-                . 'que las rutas salen sin envoltura.'
-            );
-            $this->warn(
-                '   · FIX: escríbela tú donde el archivo generado lo indica, o declara '
-                . "'stancl' en `tenancy.package` de config/make-module.php si tu proyecto usa "
-                . 'stancl/tenancy.'
-            );
-        }
-
         $context = $this->getContext();
 
         if (empty($context)) {

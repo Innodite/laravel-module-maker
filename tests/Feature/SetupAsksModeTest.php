@@ -116,6 +116,26 @@ it('en single-app no pregunta el paquete de tenencia ni lo escribe', function ()
     File::delete($env);
 });
 
+it('en multitenant no sigue adelante sin elegir el paquete de tenencia', function () {
+    // Lo mismo que el modo, y por lo mismo: dejar la clave sin declarar apuesta a que el usuario
+    // lea la configuración antes de generar su primer módulo. No la lee — genera, ve archivos
+    // escritos y sigue, con las rutas sin envoltura.
+    //
+    // «none» es respuesta válida, pero elegida: es distinto de no responder.
+    Artisan::call('innodite:module-setup', [
+        '--mode'           => 'multitenant-per-tenant',
+        '--no-interaction' => true,
+    ]);
+
+    $salida = Artisan::output();
+
+    expect($salida)->toContain('--tenancy=stancl');
+    expect(str_contains($salida, 'no se puede omitir'))->toBeTrue(
+        'FALLA: la instalación siguió sin paquete de tenencia declarado. · FIX: en multitenant el '
+        . "paso es obligatorio.\nLa salida dice:\n" . $salida
+    );
+});
+
 it('rechaza un paquete de tenencia que no soporta, y dice cuáles hay', function () {
     Artisan::call('innodite:module-setup', [
         '--mode'           => 'multitenant-shared',

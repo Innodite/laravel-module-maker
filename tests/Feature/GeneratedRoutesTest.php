@@ -5,6 +5,7 @@ declare(strict_types=1);
 use Innodite\LaravelModuleMaker\Generators\Components\RouteGenerator;
 use Innodite\LaravelModuleMaker\Support\ModuleMode;
 use Innodite\LaravelModuleMaker\Support\RouteMarkers;
+use Innodite\LaravelModuleMaker\Support\TenancyPackage;
 
 /**
  * Las rutas generadas: qué forma tienen, y **quién decide** esa forma.
@@ -249,23 +250,27 @@ it('sin paquete de tenencia declarado no se inventa envoltura: el archivo dice d
     );
 });
 
-it('un paquete de tenencia declarado y desconocido no se ignora en silencio', function () {
-    // Ausente significa «no elegí»; desconocido significa «elegí y no me hiciste caso». El segundo
-    // se dice en voz alta: si no, el desarrollador declara su paquete y se queda buscando por qué
-    // sus rutas salen sin envoltura.
+it('un paquete de tenencia que no existe es un error, no un archivo sin envoltura', function () {
+    // Hoy los valores válidos son dos y solo dos. Un tercero no es «un paquete que todavía no
+    // sabemos envolver»: es una declaración que el generador no puede cumplir, y tratarla como
+    // «ninguno» devuelve archivos sin envoltura mientras la configuración del proyecto dice lo
+    // contrario — las dos mitades plausibles apuntando a sitios distintos, otra vez.
+    //
+    // Ausente sí es distinto y no falla: significa «no elegí», y a eso responde la nota del archivo.
     config()->set('make-module.tenancy.package', 'tenancy-for-laravel');
 
-    $modulo = $this->generateModule('Invoice', ModuleMode::MultitenantPerTenant, 'central');
+    expect(fn () => TenancyPackage::current())
+        ->toThrow(InvalidArgumentException::class);
 
-    expect(str_contains($modulo->output(), 'tenancy-for-laravel'))->toBeTrue(
-        'FALLA: el paquete declarado no se reconoce y el comando no lo dice. · FIX: R30 — el aviso '
-        . "nombra el valor y dice cómo corregirlo.\nLa salida dice:\n" . $modulo->output()
-    );
-
-    expect(str_contains($modulo->contents('Routes/web.php'), 'tenancy-for-laravel'))->toBeTrue(
-        'FALLA: el archivo generado no dice por qué le falta la envoltura. · FIX: la nota nombra el '
-        . 'paquete declarado, que es lo que conecta el hueco con la decisión que lo dejó ahí.'
-    );
+    try {
+        TenancyPackage::current();
+    } catch (InvalidArgumentException $e) {
+        expect($e->getMessage())->toContain('tenancy-for-laravel');
+        expect($e->getMessage())->toContain('stancl');
+        expect(str_contains($e->getMessage(), 'FIX:'))->toBeTrue(
+            'R30: el mensaje trae el error y cómo corregirlo, con los valores que sí valen.'
+        );
+    }
 });
 
 it('en single-app no hay envoltura de tenencia que declarar', function () {

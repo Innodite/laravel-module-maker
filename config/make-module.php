@@ -59,15 +59,21 @@ return [
     | en el vocabulario del paquete de tenencia que use el proyecto—, así que el proyecto
     | la declara, igual que declara el modo. Ningún comando la adivina mirando el vendor.
     |
-    | Con cualquier otro valor —o sin declarar— el paquete NO envuelve: escribe el archivo
-    | de rutas con un comentario que dice dónde va la envoltura y qué haría stancl. La
-    | asimetría es deliberada y por eso el valor por defecto es 'none' y no 'stancl':
-    | escribir una envoltura de stancl en un proyecto que no lo tiene produce un archivo de
-    | rutas que referencia clases inexistentes y la aplicación deja de arrancar; dejarla
-    | fuera deja una nota visible en un archivo que sigue siendo válido.
+    | Con 'none' el paquete NO envuelve: escribe el archivo de rutas con un comentario que
+    | dice dónde va la envoltura y qué haría stancl. El valor por defecto es ese y no
+    | 'stancl' por la asimetría del fallo: escribir una envoltura de stancl en un proyecto
+    | que no lo tiene produce un archivo de rutas que referencia clases inexistentes y la
+    | aplicación deja de arrancar; dejarla fuera deja una nota visible en un archivo válido.
     |
-    | Se elige AL INSTALAR, junto al modo, y solo se pregunta en multitenant: una
-    | aplicación única no tiene tenants que identificar ni dominios centrales que separar.
+    | ⛔ Los valores válidos son esos DOS y ninguno más. Cualquier otro es un error, no un
+    | «todavía no soportado que se ignora»: la configuración diría que el proyecto corre con
+    | un paquete y las rutas saldrían sin envoltura, que es la clase de contradicción que no
+    | da la cara hasta que el módulo ya está sirviéndose. Cuando se integre otro paquete de
+    | tenencia, se añade aquí y pasa a ser válido.
+    |
+    | Se elige AL INSTALAR, junto al modo, y en multitenant es OBLIGATORIO: sin elegirlo, el
+    | instalador no continúa. En single-app no se pregunta — no hay tenants que identificar
+    | ni dominios centrales que separar.
     |
     */
     'tenancy' => [
