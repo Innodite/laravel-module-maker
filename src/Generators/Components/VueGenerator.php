@@ -10,7 +10,7 @@ use Innodite\LaravelModuleMaker\Support\ModuleMode;
 use Innodite\LaravelModuleMaker\Support\SubFeaturePermissions;
 
 /**
- * Genera los 4 componentes Vue para un módulo contextualizado.
+ * Genera los 4 componentes Vue de una subfuncionalidad: **una pantalla y tres modales**.
  *
  * Arquitectura Frontend (regla obligatoria):
  *   - Inertia.js SOLO para navegación entre páginas (router.visit)
@@ -18,10 +18,16 @@ use Innodite\LaravelModuleMaker\Support\SubFeaturePermissions;
  *   - Las vistas son "shells" que se autocargan al montarse
  *
  * Archivos generados por contexto (ejemplo central, entidad User):
- *   resources/js/Pages/Central/CentralUserIndex.vue   → lista paginada
- *   resources/js/Pages/Central/CentralUserCreate.vue  → formulario de creación
- *   resources/js/Pages/Central/CentralUserEdit.vue    → formulario de edición
- *   resources/js/Pages/Central/CentralUserShow.vue    → vista de detalle
+ *   resources/js/Pages/Central/CentralUserIndex.vue   → la pantalla: lista paginada
+ *   resources/js/Pages/Central/CentralUserCreate.vue  → modal de alta, montado por el índice
+ *   resources/js/Pages/Central/CentralUserEdit.vue    → modal de edición, montado por el índice
+ *   resources/js/Pages/Central/CentralUserShow.vue    → modal de detalle, montado por el índice
+ *
+ * Los tres últimos **no son pantallas** y no tienen ruta propia: se importan desde el índice y se
+ * abren encima de él. Es lo que encaja con las rutas que el paquete genera —de las seis, solo
+ * `index` devuelve una pantalla; las otras cinco devuelven datos—, y por eso no existen `create`
+ * ni `edit` en el controlador. Describirlos como pantallas aparte fue lo que sostuvo durante toda
+ * la v3 un bloque de rutas inyectado que apuntaba a dos métodos inexistentes.
  */
 class VueGenerator extends AbstractComponentGenerator
 {

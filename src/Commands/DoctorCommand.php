@@ -293,12 +293,12 @@ class DoctorCommand extends Command
     {
         $this->line('  <fg=cyan;options=bold>3. Permisos de escritura</>');
 
+        // Los tres `routes/*.php` del proyecto estaban aquí porque el generador escribía en ellos.
+        // Ya no: las rutas se quedan dentro del módulo. Comprobar el permiso de escritura de un
+        // archivo que nadie va a escribir es pedirle al usuario que arregle algo que no importa.
         $rutas = [
-            'Modules/'          => $this->rutaDeModulos(),
-            'routes/web.php'    => base_path('routes/web.php'),
-            'routes/tenant.php' => base_path('routes/tenant.php'),
-            'routes/api.php'    => base_path('routes/api.php'),
-            'storage/logs/'     => storage_path('logs'),
+            'Modules/'      => $this->rutaDeModulos(),
+            'storage/logs/' => storage_path('logs'),
         ];
 
         $ok = true;

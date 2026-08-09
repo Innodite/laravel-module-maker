@@ -13,7 +13,6 @@ it('genera un módulo con contexto central y crea la estructura de directorios',
     $this->artisan('innodite:make-module', [
         'name'        => 'User',
         '--context'   => 'central',
-        '--no-routes' => true,
     ])->assertSuccessful();
 
     $modulePath = $this->tempPath('Modules/User');
@@ -33,7 +32,6 @@ it('escribe una entrada en el log de auditoría tras la generación exitosa', fu
     $this->artisan('innodite:make-module', [
         'name'        => 'Product',
         '--context'   => 'central',
-        '--no-routes' => true,
     ])->assertSuccessful();
 
     $logPath = storage_path('logs/module_maker.log');
@@ -52,7 +50,6 @@ it('rechaza nombres que son palabras reservadas de PHP', function () {
     $this->artisan('innodite:make-module', [
         'name'        => 'class',
         '--context'   => 'central',
-        '--no-routes' => true,
     ])->assertFailed();
 });
 
@@ -60,12 +57,11 @@ it('rechaza nombres de módulo inválidos (no PascalCase)', function () {
     $this->artisan('innodite:make-module', [
         'name'        => '123invalid',
         '--context'   => 'central',
-        '--no-routes' => true,
     ])->assertFailed();
 });
 
 it('impide la creación de un módulo duplicado', function () {
-    $args = ['name' => 'Invoice', '--context' => 'central', '--no-routes' => true];
+    $args = ['name' => 'Invoice', '--context' => 'central'];
 
     $this->artisan('innodite:make-module', $args)->assertSuccessful();
     $this->artisan('innodite:make-module', $args)->assertFailed();
@@ -75,7 +71,6 @@ it('crea los archivos de documentación Docs/', function () {
     $this->artisan('innodite:make-module', [
         'name'        => 'Role',
         '--context'   => 'central',
-        '--no-routes' => true,
     ])->assertSuccessful();
 
     $docsPath = $this->tempPath('Modules/Role/Docs');
@@ -89,7 +84,6 @@ it('genera el ServiceProvider del módulo con namespace correcto', function () {
     $this->artisan('innodite:make-module', [
         'name'        => 'Permission',
         '--context'   => 'central',
-        '--no-routes' => true,
     ])->assertSuccessful();
 
     $providerFile = $this->tempPath('Modules/Permission/Providers/PermissionServiceProvider.php');
@@ -104,7 +98,6 @@ it('lee correctamente el contexts.json y valida el contexto', function () {
     $this->artisan('innodite:make-module', [
         'name'        => 'Tenant',
         '--context'   => 'invalid-context-xyz',
-        '--no-routes' => true,
     ])->assertFailed();
 });
 
@@ -119,7 +112,6 @@ it('en multitenant sin --context no genera nada: lo exige y lista el catálogo',
 
     $codigo = Artisan::call('innodite:make-module', [
         'name'             => 'Invoice',
-        '--no-routes'      => true,
         '--no-interaction' => true,
     ]);
 

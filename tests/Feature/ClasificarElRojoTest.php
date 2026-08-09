@@ -61,7 +61,7 @@ function moduloYBaseDePruebas(): array
     config()->set('make-module.mode', ModuleMode::SingleApp->value);
 
     Artisan::call('innodite:make-module', [
-        'name' => 'Ledger', '--no-routes' => true, '--no-interaction' => true,
+        'name' => 'Ledger', '--no-interaction' => true,
     ]);
 
     return ['Ledger', "{$raiz}/Ledger/Tests/Feature/Ledger"];

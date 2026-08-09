@@ -70,11 +70,10 @@ final class GeneratedModule
 
         $module = new self($name, rtrim($modulesRoot, '/') . '/' . $name, $mode);
 
-        // Sin rutas por defecto: la inyección necesita el `routes/web.php` del proyecto anfitrión,
-        // que en una prueba no es el objeto de estudio. Quien lo necesite lo pide con options.
+        // El `--no-routes` que iba aquí desapareció con la inyección al proyecto: las rutas se
+        // escriben dentro del módulo y son parte de lo que hay que mirar, no algo que apagar.
         $defaults = [
             'name'             => $name,
-            '--no-routes'      => true,
             '--no-interaction' => true,
         ];
 

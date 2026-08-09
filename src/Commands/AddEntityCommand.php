@@ -11,7 +11,6 @@ use Innodite\LaravelModuleMaker\Commands\Concerns\RehearsesChanges;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Str;
 use Innodite\LaravelModuleMaker\Generators\Components\ModuleGenerator;
-use Innodite\LaravelModuleMaker\Services\RouteInjectionService;
 use Innodite\LaravelModuleMaker\Support\ContextOption;
 use Innodite\LaravelModuleMaker\Support\ContextResolver;
 use Innodite\LaravelModuleMaker\Support\ModuleMode;
@@ -43,7 +42,6 @@ class AddEntityCommand extends Command
         {module                : Nombre del módulo existente (ej: UserManagement)}
         {entity                : Nombre de la nueva entidad en singular (ej: Role)}
         {--context=            : Contexto donde se genera, en multitenant: central | shared | tenant_shared | id del tenant}
-        {--no-routes           : Omite la inyección de rutas en el proyecto}
         {--M|model             : Solo añade el modelo}
         {--C|controller        : Solo añade el controlador}
         {--S|service           : Solo añade el servicio e interface}
@@ -143,27 +141,10 @@ class AddEntityCommand extends Command
                 return true;
             });
 
-            // ── Inyectar rutas si se generó controller ────────────────────────
-            if (!$this->option('no-routes') && ($flags['controller'] ?? false)) {
-                $this->components->task('Inyectando rutas', function () use (
-                    $moduleName,
-                    $entityName,
-                    $contextKey,
-                    $contextId,
-                    $contextItem
-                ) {
-                    $controllerFqcn = $this->buildControllerFqcn($moduleName, $entityName, $contextItem);
-
-                    (new RouteInjectionService($this))->inject(
-                        contextKey:     $contextKey,
-                        entityName:     $entityName,
-                        contextId:      $contextId,
-                        controllerFqcn: $controllerFqcn,
-                        contextConfig:  $contextItem
-                    );
-                    return true;
-                });
-            }
+            // Aquí se inyectaban las rutas de la entidad en el `routes/web.php` del proyecto. Esa
+            // vía escribía `create` y `edit` —pantallas que la v4 no genera— y ninguna ruta con
+            // permiso. Las de la entidad ya están en Modules/{Módulo}/Routes/, con sus seis
+            // acciones y su permiso cada una, y el ServiceProvider del paquete las carga solo.
 
             $this->newLine();
             $this->components->info("Entidad '{$entityName}' agregada al módulo '{$moduleName}' correctamente.");
@@ -175,23 +156,6 @@ class AddEntityCommand extends Command
     }
 
     // ─── Helpers ─────────────────────────────────────────────────────────────
-
-    /**
-     * Construye el FQCN del controlador de la entidad.
-     * Patrón: Modules\{Module}\Http\Controllers\{ContextNs}\{Entity}\{Prefix}{Entity}Controller
-     */
-    private function buildControllerFqcn(string $moduleName, string $entityName, array $contextItem): string
-    {
-        $prefix    = $contextItem['class_prefix']   ?? '';
-        $nsPath    = $contextItem['namespace_path'] ?? '';
-        $className = "{$prefix}{$entityName}Controller";
-
-        $namespace = $nsPath
-            ? "Modules\\{$moduleName}\\Http\\Controllers\\{$nsPath}\\{$entityName}"
-            : "Modules\\{$moduleName}\\Http\\Controllers\\{$entityName}";
-
-        return "{$namespace}\\{$className}";
-    }
 
     /**
      * Resuelve el contexto desde la opción --context o interactivamente.

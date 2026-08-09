@@ -83,7 +83,7 @@ it('las seis se instancian de verdad, no solo parsean', function () {
 it('el seeder de permisos siembra exactamente los permisos que exigen las rutas', function () {
     // La novena pareja, contrastada sobre los archivos escritos y no sobre la clase que los calcula.
     // Cuando estos dos conjuntos se separaron, la pantalla generada cargaba sin un solo botón.
-    $modulo = $this->generateModule('Invoice', ModuleMode::SingleApp, options: ['--no-routes' => false]);
+    $modulo = $this->generateModule('Invoice', ModuleMode::SingleApp);
 
     $seeder = $modulo->contents('Database/Seeders/Invoice/InvoiceInvoicePermissionsSeeder.php');
 

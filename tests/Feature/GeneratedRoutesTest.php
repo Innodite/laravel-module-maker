@@ -2,6 +2,7 @@
 
 declare(strict_types=1);
 
+use Illuminate\Support\Facades\File;
 use Innodite\LaravelModuleMaker\Generators\Components\RouteGenerator;
 use Innodite\LaravelModuleMaker\Support\ModuleMode;
 use Innodite\LaravelModuleMaker\Support\RouteMarkers;
@@ -336,4 +337,57 @@ it('en multitenant las rutas llevan el prefijo y el middleware de su contexto', 
         . '· FIX: los dos los responde el modo; si aquí sale el de tenant, es que la forma la '
         . "decidió otra cosa.\nEl archivo dice:\n" . $rutas
     );
+});
+
+// ─────────────────────────────────────────────────────────────────────────────
+// La vía que se retiró: el bloque que el paquete inyectaba en el proyecto
+// ─────────────────────────────────────────────────────────────────────────────
+
+it('generar un módulo no escribe una sola línea en el routes/web.php del proyecto', function () {
+    // Hasta la v3 el paquete escribía las rutas **dos veces**: dentro del módulo, y otra vez en el
+    // `routes/web.php` del proyecto. Esa segunda copia declaraba `create` y `edit` —dos pantallas
+    // que ya no existen, porque el alta y la edición ocurren en un modal sobre el listado—, salía
+    // con un prefijo mal formado y **sin un solo permiso**. Instalar un módulo publicaba seis rutas
+    // sin proteger.
+    //
+    // Ninguna red lo veía: el contrato deriva las rutas del router, y en el anfitrión de pruebas
+    // solo se carga el archivo del módulo, que es el bueno.
+    $webPhp = $this->tempPath('routes/web.php');
+
+    $original = <<<'PHP'
+    <?php
+
+    use Illuminate\Support\Facades\Route;
+
+    Route::middleware(['web', 'auth'])->group(function () {
+        // {{CENTRAL_ROUTES_END}}
+    });
+    PHP;
+
+    File::put($webPhp, $original);
+
+    $this->generateModule('Invoice', ModuleMode::MultitenantPerTenant, 'central');
+
+    expect(File::get($webPhp))->toBe(
+        $original,
+        'FALLA: la generación modificó el routes/web.php del proyecto. · FIX: el paquete escribe '
+        . 'las rutas solo dentro del módulo; el ServiceProvider carga Modules/*/Routes/ solo. Si '
+        . 'algo volvió a inyectar en el proyecto, se retira: esa vía publicaba rutas sin permiso.'
+    );
+});
+
+it('las rutas del módulo no declaran las pantallas que la v4 no genera', function () {
+    // `create` y `edit` no son acciones del controlador y nunca lo fueron en la v4: el listado abre
+    // los tres modales sobre sí mismo. Una ruta que los nombre apunta a un método inexistente —500
+    // en cada petición— y además pide un permiso que ningún seeder crea.
+    $rutas = $this->generateModule('Invoice', ModuleMode::SingleApp)
+        ->contents('Routes/web.php');
+
+    foreach (['create', 'edit'] as $accion) {
+        expect(str_contains($rutas, "'{$accion}'"))->toBeFalse(
+            "FALLA: el archivo de rutas declara la acción '{$accion}', que el controlador generado "
+            . 'no tiene. · FIX: las seis acciones salen de SubFeaturePermissions::routes(), que es '
+            . "de donde las lee también el seeder de permisos.\nEl archivo dice:\n" . $rutas
+        );
+    }
 });

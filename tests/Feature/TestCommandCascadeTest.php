@@ -58,7 +58,6 @@ function moduloConGrupo(string $nombre = 'Ledger'): array
 
     Illuminate\Support\Facades\Artisan::call('innodite:make-module', [
         'name'             => $nombre,
-        '--no-routes'      => true,
         '--no-interaction' => true,
     ]);
 

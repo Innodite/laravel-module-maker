@@ -30,7 +30,6 @@ it('make-module en ensayo no escribe ni un archivo, y enumera lo que escribiría
     $codigo = Artisan::call('innodite:make-module', [
         'name'             => 'Invoice',
         '--context'        => 'central',
-        '--no-routes'      => true,
         '--dry-run'        => true,
         '--no-interaction' => true,
     ]);
@@ -63,7 +62,6 @@ it('el interruptor se apaga al terminar: el comando siguiente sí escribe', func
     Artisan::call('innodite:make-module', [
         'name'             => 'Invoice',
         '--context'        => 'central',
-        '--no-routes'      => true,
         '--dry-run'        => true,
         '--no-interaction' => true,
     ]);
@@ -73,7 +71,6 @@ it('el interruptor se apaga al terminar: el comando siguiente sí escribe', func
     Artisan::call('innodite:make-module', [
         'name'             => 'Invoice',
         '--context'        => 'central',
-        '--no-routes'      => true,
         '--no-interaction' => true,
     ]);
 

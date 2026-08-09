@@ -12,7 +12,6 @@ use Innodite\LaravelModuleMaker\Generators\Components\ExceptionGenerator;
 use Innodite\LaravelModuleMaker\Generators\Components\Factory\FactoryGenerator;
 use Innodite\LaravelModuleMaker\Generators\Components\JobGenerator;
 use Innodite\LaravelModuleMaker\Generators\Components\NotificationGenerator;
-use Innodite\LaravelModuleMaker\Services\RouteInjectionService;
 use Innodite\LaravelModuleMaker\Support\ContextResolver;
 use Innodite\LaravelModuleMaker\Support\ModuleMode;
 use Innodite\LaravelModuleMaker\Support\SeederNames;
@@ -269,8 +268,10 @@ class ModuleGenerator
             $this->run(new ExceptionGenerator($resolvedContext, $this->modulePath, $this->moduleName));
         }
 
-        // ── Inyectar rutas en el proyecto ─────────────────────────────────────
-        $this->injectRoutes($contextKey, $contextId, $componentConfig);
+        // Las rutas ya quedaron escritas por RouteGenerator, dentro del módulo. Aquí se inyectaba
+        // además una segunda copia en el `routes/web.php` del proyecto —y se hacía **sin mirar
+        // `--no-routes`**, así que esa opción nunca detuvo de verdad la inyección en el camino del
+        // módulo completo. Retirada: el ServiceProvider del paquete carga Modules/*/Routes/ solo.
 
         if ($this->command) {
             $this->command->info("✅ Módulo '{$this->moduleName}' creado (contexto: {$contextKey} / {$contextId}).");
@@ -388,58 +389,9 @@ class ModuleGenerator
             $this->run(new TestGenerator($this->moduleName, $this->modulePath, true, $componentConfig));
         }
 
-        // Si se generó un controller, inyectar (o actualizar) las rutas
-        if (($flags['controller'] ?? false) && !empty($componentConfig['context'])) {
-            $this->injectRoutes(
-                $componentConfig['context'],
-                $componentConfig['context_id'] ?? null,
-                $componentConfig
-            );
-        }
-
         if ($this->command) {
             $this->command->info("✅ Componentes creados en el módulo '{$this->moduleName}'.");
         }
-    }
-
-    // ─── Inyección de rutas en el proyecto ───────────────────────────────────
-
-    /**
-     * Inyecta las rutas del módulo en los archivos de rutas del proyecto.
-     * Solo se ejecuta si el contexto tiene configuración de ruta en contexts.json.
-     *
-     * @param  string  $contextKey      Clave del contexto
-     * @param  string|null  $contextId  ID del contexto
-     * @param  array   $componentConfig  Configuración del componente
-     * @return void
-     */
-    private function injectRoutes(string $contextKey, ?string $contextId, array $componentConfig): void
-    {
-        try {
-            $contextConfig = $contextId
-                ? ContextResolver::resolveById($contextKey, $contextId)
-                : ContextResolver::resolve($contextKey);
-        } catch (\InvalidArgumentException) {
-            return;
-        }
-
-        // El controlador usa la entidad (puede diferir del módulo en add-entity)
-        $entityName      = $componentConfig['subFeature'] ?? $this->moduleName;
-        $controllerClass = ($contextConfig['class_prefix'] ?? '') . $entityName . 'Controller';
-        $nsPath          = $contextConfig['namespace_path'] ?? '';
-        $controllerNs    = $nsPath
-            ? "Modules\\{$this->moduleName}\\Http\\Controllers\\{$nsPath}\\{$entityName}"
-            : "Modules\\{$this->moduleName}\\Http\\Controllers\\{$entityName}";
-        $controllerFqcn  = "{$controllerNs}\\{$controllerClass}";
-
-        $injector = new RouteInjectionService($this->command);
-        $injector->inject(
-            contextKey:     $contextKey,
-            entityName:     $this->moduleName,
-            contextId:      $contextId ?? '',
-            controllerFqcn: $controllerFqcn,
-            contextConfig:  $contextConfig
-        );
     }
 
     // ─── Helpers privados ────────────────────────────────────────────────────

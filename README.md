@@ -189,9 +189,6 @@ php artisan innodite:make-module Product --context=innodite
 # Contexto shared (rutas en web.php Y tenant.php simultáneamente)
 php artisan innodite:make-module Invoice --context=shared
 
-# Sin inyección de rutas en el proyecto
-php artisan innodite:make-module Report --context=central --no-routes
-
 # Componentes individuales en módulo existente
 php artisan innodite:make-module User --context=central -S -R   # Service + Repository
 php artisan innodite:make-module User --context=central -C      # Controller + rutas
@@ -232,9 +229,6 @@ php artisan innodite:add-entity UserManagement Role --context=central
 # Solo componentes específicos
 php artisan innodite:add-entity UserManagement Permission --context=central -M -C -S -R -G -Q
 
-# Sin inyectar rutas
-php artisan innodite:add-entity UserManagement Module --context=central --no-routes
-
 # Para un tenant específico
 php artisan innodite:add-entity UserManagement Role --context=acme
 ```
@@ -242,7 +236,7 @@ php artisan innodite:add-entity UserManagement Role --context=acme
 **Firma:**
 
 ```
-innodite:add-entity {module} {entity} {--context=} [-M] [-C] [-S] [-R] [-G] [-Q] [--no-routes]
+innodite:add-entity {module} {entity} {--context=} [-M] [-C] [-S] [-R] [-G] [-Q]
 ```
 
 | Argumento | Descripción |
@@ -251,7 +245,6 @@ innodite:add-entity {module} {entity} {--context=} [-M] [-C] [-S] [-R] [-G] [-Q]
 | `entity` | Nombre de la entidad nueva (ej: `Role`, `Permission`) |
 | `--context=` | ID del contexto destino (ej: `central`, `acme`) |
 | `-M` a `-Q` | Mismos flags que `make-module` (sin flags = genera todos los componentes) |
-| `--no-routes` | Omite la inyección de rutas |
 
 **Ejemplo de archivos generados** — `add-entity UserManagement Role --context=central`:
 

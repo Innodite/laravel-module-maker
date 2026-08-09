@@ -24,7 +24,6 @@ function agregarEntidad(string $modulo, string $entidad, ?string $contexto = nul
     $opciones = [
         'module'           => $modulo,
         'entity'           => $entidad,
-        '--no-routes'      => true,
         '--no-interaction' => true,
     ];
 

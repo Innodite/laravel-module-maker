@@ -12,7 +12,6 @@ use Illuminate\Support\Facades\File;
 use Illuminate\Support\Str;
 use Innodite\LaravelModuleMaker\Generators\Components\ModuleGenerator;
 use Innodite\LaravelModuleMaker\Services\ModuleAuditor;
-use Innodite\LaravelModuleMaker\Services\RouteInjectionService;
 use Innodite\LaravelModuleMaker\Support\ContextOption;
 use Innodite\LaravelModuleMaker\Support\ContextResolver;
 use Innodite\LaravelModuleMaker\Support\ModuleMode;
@@ -34,8 +33,8 @@ use Throwable;
  *   4. Desde JSON de configuración dinámica:
  *        php artisan innodite:make-module User --json
  *
- *   5. Sin inyección de rutas:
- *        php artisan innodite:make-module User --context=central --no-routes
+ * Las rutas se escriben **solo** dentro del módulo, en Modules/{Module}/Routes/. El ServiceProvider
+ * del paquete las carga solo, así que el generador no toca ningún archivo del proyecto.
  */
 class MakeModuleCommand extends Command
 {
@@ -47,7 +46,6 @@ class MakeModuleCommand extends Command
         {name                  : Nombre de la entidad en singular (se convierte a PascalCase)}
         {--context=            : Contexto donde se genera, en multitenant: central | shared | tenant_shared | id del tenant}
         {--json                : Usa module-maker-config/{module}.json como fuente de configuración}
-        {--no-routes           : Omite la inyección de rutas en el proyecto}
         {--M|model             : Solo añade el modelo}
         {--C|controller        : Solo añade el controlador}
         {--S|service           : Solo añade el servicio e interface}
@@ -56,7 +54,7 @@ class MakeModuleCommand extends Command
         {--Q|request           : Solo añade el form request}
         {--dry-run             : Ensayo: enseña lo que haría, sin escribir nada}';
 
-    protected $description = 'Genera un módulo completo con inyección de rutas contextualizada.';
+    protected $description = 'Genera un módulo completo con sus rutas contextualizadas.';
 
     // ─── Entry point ──────────────────────────────────────────────────────────
 
@@ -154,27 +152,11 @@ class MakeModuleCommand extends Command
                 return true;
             });
 
-            // ── Paso 2: Inyectar rutas en el proyecto (Fase 3) ────────────────
-            if (!$this->option('no-routes')) {
-                $this->components->task('Inyectando rutas en el proyecto', function () use (
-                    $contextKey,
-                    $moduleName,
-                    $contextId,
-                    $contextItem
-                ) {
-                    $controllerFqcn = $this->buildControllerFqcn($moduleName, $contextItem);
-
-                    (new RouteInjectionService($this))->inject(
-                        contextKey:     $contextKey,
-                        entityName:     $moduleName,
-                        contextId:      $contextId,
-                        controllerFqcn: $controllerFqcn,
-                        contextConfig:  $contextItem
-                    );
-
-                    return true;
-                });
-            }
+            // Aquí había un paso 2 que escribía las rutas **otra vez**, en el `routes/web.php` del
+            // proyecto. Era la vía de la v3, y declaraba `create` y `edit`: dos pantallas que la v4
+            // ya no genera, porque el alta y la edición ocurren en un modal sobre el listado. Las
+            // rutas buenas son las del módulo, con sus seis acciones reales y su permiso cada una,
+            // y el ServiceProvider del paquete ya las carga solo.
 
             $this->newLine();
             $this->displaySuccess($moduleName, $contextKey, $contextId);
@@ -185,7 +167,6 @@ class MakeModuleCommand extends Command
                 'context_key'   => $contextKey,
                 'context_id'    => $contextId,
                 'functionality' => $functionality,
-                'routes'        => !$this->option('no-routes'),
             ]);
 
             return Command::SUCCESS;
@@ -266,25 +247,6 @@ class MakeModuleCommand extends Command
                     ->createIndividualComponents($flags, $componentConfig);
                 return true;
             });
-
-            // Inyectar rutas si se generó un controller
-            if (!$this->option('no-routes') && ($flags['controller'] ?? false)) {
-                $this->components->task('Inyectando rutas', function () use (
-                    $contextKey,
-                    $moduleName,
-                    $contextId,
-                    $contextItem
-                ) {
-                    (new RouteInjectionService($this))->inject(
-                        contextKey:     $contextKey,
-                        entityName:     $moduleName,
-                        contextId:      $contextId,
-                        controllerFqcn: $this->buildControllerFqcn($moduleName, $contextItem),
-                        contextConfig:  $contextItem
-                    );
-                    return true;
-                });
-            }
 
             return Command::SUCCESS;
         } catch (Throwable $e) {
@@ -572,32 +534,6 @@ class MakeModuleCommand extends Command
     // ─── Helpers de orquestación ──────────────────────────────────────────────
 
     /**
-     * Construye el FQCN del controlador para el contexto dado.
-     * Con la nueva estructura de subfolder por entidad, el patrón es:
-     *   Modules\{Module}\Http\Controllers\{ContextNs}\{Entity}\{Prefix}{Entity}Controller
-     *
-     * En make-module, entity = module (son el mismo nombre).
-     * En add-entity, entity es diferente del module (se pasa explícitamente).
-     *
-     * @param  string  $moduleName   Nombre del módulo contenedor
-     * @param  array   $contextItem  Configuración del contexto
-     * @param  string|null  $entityName  Nombre de la entidad (por defecto igual a $moduleName)
-     */
-    private function buildControllerFqcn(string $moduleName, array $contextItem, ?string $entityName = null): string
-    {
-        $entity    = $entityName ?? $moduleName;
-        $prefix    = $contextItem['class_prefix']   ?? '';
-        $nsPath    = $contextItem['namespace_path'] ?? '';
-        $className = "{$prefix}{$entity}Controller";
-
-        $namespace = $nsPath
-            ? "Modules\\{$moduleName}\\Http\\Controllers\\{$nsPath}\\{$entity}"
-            : "Modules\\{$moduleName}\\Http\\Controllers\\{$entity}";
-
-        return "{$namespace}\\{$className}";
-    }
-
-    /**
      * Derive la funcionalidad (prefijo de ruta) desde el nombre del módulo.
      * Sub-proceso atómico: User → users, InvoiceItem → invoice-items
      */
@@ -652,7 +588,6 @@ class MakeModuleCommand extends Command
                 ['Contexto',      $contextKey],
                 ['Variante',      $contextId],
                 ['Prefijo ruta',  $functionality],
-                ['Inyectar rutas', $this->option('no-routes') ? 'No' : 'Sí'],
             ]
         );
     }
@@ -665,9 +600,11 @@ class MakeModuleCommand extends Command
         $this->components->info("Módulo <comment>{$moduleName}</comment> generado exitosamente.");
         $this->newLine();
         $this->line("  Próximos pasos:");
-        $this->line("    1. Añade los marcadores en <comment>routes/web.php</comment> o <comment>routes/tenant.php</comment> si aún no los tienes.");
-        $this->line("    2. Registra el Service Provider en <comment>bootstrap/providers.php</comment> si usas Laravel 11+.");
-        $this->line("    3. Ejecuta <comment>php artisan migrate</comment> para crear las tablas.");
+        // El primer paso pedía añadir marcadores en el `routes/web.php` del proyecto, que era donde
+        // el generador inyectaba una segunda copia de las rutas. Ya no escribe ahí: las del módulo
+        // viven en Modules/{$moduleName}/Routes/ y las carga el ServiceProvider del paquete.
+        $this->line("    1. Registra el Service Provider en <comment>bootstrap/providers.php</comment> si usas Laravel 11+.");
+        $this->line("    2. Ejecuta <comment>php artisan migrate</comment> para crear las tablas.");
         $this->newLine();
     }
 }
