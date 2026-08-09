@@ -133,6 +133,9 @@ class PublishFrontendCommand extends Command
             $this->components->warn("{$skipped} archivo(s) omitido(s). Usa --force para sobreescribir.");
         }
 
+        // ── El motor que ejecuta el tema 6 ────────────────────────────────────
+        $this->publicarRunnerDeVitest();
+
         // ── Instrucciones de activación ───────────────────────────────────────
         if ($published > 0) {
             $this->newLine();
@@ -152,6 +155,128 @@ class PublishFrontendCommand extends Command
         }
 
         return self::SUCCESS;
+    }
+
+    // ─── El runner de Vitest (D5) ─────────────────────────────────────────────
+
+    /**
+     * Publica el entorno que ejecuta las pruebas de vista — el hueco que dejaba el paquete.
+     *
+     * El generador escribe la prueba del tema 6 desde la fase 4, y hasta hoy **nadie la ejecutaba**:
+     * Vitest, jsdom y el plugin de Vue son dependencias del proyecto, no del paquete, así que el
+     * archivo nacía correcto y sin motor. Se notó al cerrar F5, cuando hubo que montar todo eso a
+     * mano para poder correr una prueba que llevaba una fase entera generándose — y la primera vez
+     * que se ejecutó, falló 3 de sus 8 casos.
+     *
+     * Una prueba que nunca se ha ejecutado no es una prueba: es un archivo con la forma de una.
+     */
+    private function publicarRunnerDeVitest(): void
+    {
+        $this->line('  <fg=cyan>El motor de las pruebas de vista (tema 6)</>');
+
+        $destino = base_path('vitest.config.js');
+
+        if (File::exists($destino) && ! $this->option('force')) {
+            $this->components->twoColumnDetail(
+                'vitest.config.js',
+                '<fg=yellow>Ya existe — usa --force para sobreescribir</>'
+            );
+        } else {
+            Disk::copy(__DIR__ . '/../../stubs/vitest.config.js', $destino);
+            $this->components->twoColumnDetail('vitest.config.js', '<fg=green>Publicado</>');
+        }
+
+        $this->dejarScriptDePruebas();
+        $this->comprobarDependenciasDeVitest();
+
+        $this->newLine();
+    }
+
+    /**
+     * Deja `npm run test:js` en el package.json del proyecto.
+     *
+     * Solo lo añade si no está: el `package.json` es del proyecto, y pisar un script que alguien
+     * escribió es peor que no ponerlo. Las dependencias no se tocan nunca desde aquí — eso es trabajo
+     * de npm, y escribirlas a mano en el JSON deja versiones que nadie instaló.
+     */
+    private function dejarScriptDePruebas(): void
+    {
+        $ruta = base_path('package.json');
+
+        if (! File::exists($ruta)) {
+            return;
+        }
+
+        $contenido = json_decode(File::get($ruta), true);
+
+        if (! is_array($contenido)) {
+            return;
+        }
+
+        if (isset($contenido['scripts']['test:js'])) {
+            $this->components->twoColumnDetail('npm run test:js', '<fg=green>OK — ya estaba</>');
+
+            return;
+        }
+
+        $contenido['scripts']['test:js'] = 'vitest run';
+
+        Disk::put(
+            $ruta,
+            json_encode($contenido, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) . "\n"
+        );
+
+        $this->components->twoColumnDetail('npm run test:js', '<fg=green>Añadido a package.json</>');
+    }
+
+    /** Las cuatro que hacen falta para montar un componente Vue fuera del navegador. */
+    private function comprobarDependenciasDeVitest(): void
+    {
+        $instaladas = $this->dependenciasDeclaradas();
+
+        if ($instaladas === null) {
+            return;
+        }
+
+        $faltan = array_values(array_diff(
+            ['vitest', '@vue/test-utils', 'jsdom', '@vitejs/plugin-vue'],
+            array_keys($instaladas)
+        ));
+
+        if ($faltan === []) {
+            $this->components->twoColumnDetail('Dependencias de Vitest', '<fg=green>OK — están las cuatro</>');
+
+            return;
+        }
+
+        $this->fallo(
+            'faltan ' . count($faltan) . ' dependencia(s) para ejecutar las pruebas de vista: '
+            . implode(', ', $faltan) . '.',
+            'instálalas: npm i -D ' . implode(' ', $faltan),
+            'Sin ellas el archivo de prueba existe y no lo ejecuta nadie, que es la situación que '
+            . 'esta publicación viene a cerrar.'
+        );
+    }
+
+    /** @return array<string, string>|null  null si el proyecto no declara dependencias JS */
+    private function dependenciasDeclaradas(): ?array
+    {
+        $ruta = base_path('package.json');
+
+        if (! File::exists($ruta)) {
+            return null;
+        }
+
+        $contenido = json_decode(File::get($ruta), true);
+
+        if (! is_array($contenido)) {
+            return null;
+        }
+
+        return array_merge(
+            $contenido['dependencies'] ?? [],
+            $contenido['devDependencies'] ?? []
+        );
     }
 
     // ─── Helpers ──────────────────────────────────────────────────────────────
