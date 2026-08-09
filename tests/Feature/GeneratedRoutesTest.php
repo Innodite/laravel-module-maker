@@ -273,6 +273,42 @@ it('un paquete de tenencia que no existe es un error, no un archivo sin envoltur
     }
 });
 
+it('varios tenants escriben en el mismo archivo sin pegarle otro archivo dentro', function () {
+    // El defecto que este caso fija: `tenant_shared` escribe **un bloque por tenant** en el mismo
+    // `tenant.php`, cada uno con su propio marcador. El primero creaba el archivo; el segundo no
+    // encontraba el suyo y se anexaba el archivo ENTERO —con su `<?php`— dentro del que ya existía.
+    // El resultado no parsea, el chequeo de salida lo rechaza y la generación aborta: el contexto
+    // principal de `multitenant-shared` no podía generar en cuanto el proyecto tenía dos tenants,
+    // que es su caso normal.
+    //
+    // Llevaba ahí desde que existe ese camino, oculto porque `tenant_shared` no tenía ni una prueba
+    // de generación — anotado como pendiente al cerrar la fase anterior.
+    config()->set('make-module.tenancy.package', 'stancl');
+
+    $rutas = $this->generateModule('Meter', ModuleMode::MultitenantShared, 'tenant_shared')
+        ->contents('Routes/tenant.php');
+
+    expect(substr_count($rutas, '<?php'))->toBe(
+        1,
+        "FALLA: el archivo tiene más de una apertura de PHP. · FIX: a un archivo que ya existe se le "
+        . "anexa la SECCIÓN, no el contenido de un archivo nuevo.\nEl archivo dice:\n" . $rutas
+    );
+
+    foreach (['TENANT_ONE_END', 'TENANT_TWO_END'] as $marcador) {
+        expect(str_contains($rutas, "// {{{$marcador}}}"))->toBeTrue(
+            "FALLA: falta el bloque de un tenant (marcador {$marcador}). · FIX: cada tenant escribe "
+            . 'su sección con su marcador, para que la subfuncionalidad siguiente entre dentro de su '
+            . "grupo.\nEl archivo dice:\n" . $rutas
+        );
+    }
+
+    expect(substr_count($rutas, 'use Stancl\\Tenancy\\Middleware\\InitializeTenancyByDomain;'))->toBe(
+        1,
+        'FALLA: el import de la identificación aparece repetido. · FIX: al ampliar un archivo se '
+        . 'añaden solo los `use` que le faltan.'
+    );
+});
+
 it('en single-app no hay envoltura de tenencia que declarar', function () {
     // La otra cara de la regla: aquí no hay dominios centrales que separar ni tenant que
     // identificar, así que declarar stancl no puede cambiar un solo archivo generado.

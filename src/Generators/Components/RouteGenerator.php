@@ -214,28 +214,49 @@ class RouteGenerator extends AbstractComponentGenerator
         // lado lo componía por su cuenta y no coincidían.
         $marcador = RouteMarkers::key($contextKey, $archivo, (string) ($context['id'] ?? ''));
 
-        $contenido = $this->buildSharedFileContent($controllerFqcn, $bloque, $middleware, $marcador, $archivo);
-        $this->writeOrAppend("{$routesDir}/{$archivo}", $contenido, $marcador, $bloque, $controllerFqcn);
+        $seccion = $this->buildSectionContent($bloque, $middleware, $marcador, $archivo);
+
+        $this->writeOrAppend(
+            "{$routesDir}/{$archivo}",
+            $this->buildFileHeader($controllerFqcn, $archivo) . $seccion,
+            $marcador,
+            $bloque,
+            $this->importsDelArchivo($controllerFqcn, $archivo),
+            $seccion
+        );
     }
 
     /**
-     * Construye el contenido de archivo de rutas para contexto Shared.
+     * Los `use` que el archivo de rutas necesita: el del controlador y los del paquete de tenencia.
+     *
+     * @return array<int, string>
+     */
+    private function importsDelArchivo(string $controllerFqcn, string $archivo): array
+    {
+        return [$controllerFqcn, ...TenancyPackage::current()->routeImports($archivo)];
+    }
+
+    /**
+     * La **sección** de rutas de este contexto — sin cabecera, para que sirva a los dos casos.
+     *
+     * Devolver la sección sola es lo que permite anexarla a un archivo que ya existe. Antes este
+     * método devolvía el archivo entero y era lo único que había, así que ampliar un archivo
+     * significaba pegarle otro archivo dentro. La cabecera la pone quien crea el archivo nuevo.
+     *
      * Si route_middleware está vacío, omite el ->middleware() (hereda del grupo padre).
      *
-     * La envoltura del archivo la decide el **paquete de tenencia declarado**, no este generador:
-     * `web.php` se sirve en los dominios centrales y `tenant.php` identifica a su tenant, y las dos
-     * formas están escritas en el vocabulario de ese paquete. Sin uno soportado no se inventa una
-     * envoltura genérica: se escribe el archivo con la nota que dice dónde va y qué haría stancl.
+     * La envoltura la decide el **paquete de tenencia declarado**, no este generador: `web.php` se
+     * sirve en los dominios centrales y `tenant.php` identifica a su tenant, y las dos formas están
+     * escritas en el vocabulario de ese paquete. Sin uno soportado no se inventa una envoltura
+     * genérica: se escribe la sección con la nota que dice dónde va y qué haría stancl.
      *
-     * @param  string  $controllerFqcn  FQCN del controlador
-     * @param  string  $block           Bloque de rutas CRUD
-     * @param  array   $middleware      Array de middlewares (vacío = sin wrapper)
-     * @param  string  $markerKey       Clave del marcador sin llaves
-     * @param  string  $archivo         Archivo de rutas destino: 'web.php' o 'tenant.php'
+     * @param  string  $block       Bloque de rutas CRUD
+     * @param  array   $middleware  Array de middlewares (vacío = sin wrapper)
+     * @param  string  $markerKey   Clave del marcador sin llaves
+     * @param  string  $archivo     Archivo de rutas destino: 'web.php' o 'tenant.php'
      * @return string
      */
-    private function buildSharedFileContent(
-        string $controllerFqcn,
+    private function buildSectionContent(
         string $block,
         array $middleware,
         string $markerKey,
@@ -261,8 +282,7 @@ class RouteGenerator extends AbstractComponentGenerator
             PHP;
         }
 
-        return $this->buildFileHeader($controllerFqcn, $archivo)
-            . $this->envolverSegunTenencia($cuerpo, $archivo);
+        return $this->envolverSegunTenencia($cuerpo, $archivo);
     }
 
     // ─── La envoltura que decide el paquete de tenencia ──────────────────────
@@ -376,7 +396,8 @@ class RouteGenerator extends AbstractComponentGenerator
             $this->buildFileHeader($controllerFqcn, 'tenant.php') . $section,
             "{$markerKey}_END",
             $block,
-            $controllerFqcn
+            $this->importsDelArchivo($controllerFqcn, 'tenant.php'),
+            $section
         );
     }
 
@@ -529,11 +550,9 @@ class RouteGenerator extends AbstractComponentGenerator
         // Los `use` de la tenencia van aquí y no en la envoltura porque los escribe quien sabe qué
         // archivo se está creando: un `InitializeTenancyByDomain::class` sin su import es una clase
         // inexistente en ese espacio de nombres, y el archivo entero deja de registrar rutas.
-        $imports = [$controllerFqcn, ...TenancyPackage::current()->routeImports($archivo)];
-
         $lineas = implode("\n", array_map(
             static fn (string $fqcn): string => "use {$fqcn};",
-            $imports
+            $this->importsDelArchivo($controllerFqcn, $archivo)
         ));
 
         return <<<PHP
@@ -551,14 +570,26 @@ class RouteGenerator extends AbstractComponentGenerator
     /**
      * Escribe el archivo de rutas o agrega una nueva sección si el archivo ya existe.
      * Busca el marcador y agrega el nuevo bloque antes de él.
-     * Si el marcador no está en el archivo, agrega la sección completa al final.
-     * Cuando el archivo ya existe, agrega el import `use` si aún no está presente.
+     * Si el marcador no está en el archivo, agrega **la sección** —no el archivo entero— al final.
+     * Cuando el archivo ya existe, agrega los import `use` que aún no estén presentes.
      *
-     * @param  string  $filePath       Ruta absoluta al archivo de rutas
-     * @param  string  $fullContent    Contenido completo para archivo nuevo
-     * @param  string  $markerKey      Clave del marcador sin llaves (ej: 'CENTRAL_END')
-     * @param  string  $newBlock       Bloque de rutas a insertar
-     * @param  string  $controllerFqcn FQCN del controlador para el import use
+     * Esa distinción es el defecto que esta tarea cierra. El tercer camino anexaba `$fullContent`,
+     * que es el contenido de un archivo **nuevo**: con su `<?php`, su `declare` y sus `use`. Pegado
+     * dentro de un archivo que ya existía, el resultado no parsea —`unexpected token "<"`— y el
+     * chequeo de salida lo rechaza, así que la generación aborta entera.
+     *
+     * Y no era un caso raro: es exactamente lo que pasa en `tenant_shared`, donde cada tenant
+     * escribe su bloque con **su propio marcador** en el mismo `tenant.php`. El primero creaba el
+     * archivo y el segundo no encontraba el suyo. Es decir, el contexto principal del modo
+     * `multitenant-shared` no podía generar en cuanto el proyecto tenía dos tenants — que es el
+     * caso normal de ese modo.
+     *
+     * @param  string             $filePath     Ruta absoluta al archivo de rutas
+     * @param  string             $fullContent  Contenido completo, solo para el archivo nuevo
+     * @param  string             $markerKey    Clave del marcador sin llaves (ej: 'CENTRAL_END')
+     * @param  string             $newBlock     Bloque de rutas a insertar en el marcador
+     * @param  array<int, string> $imports      FQCN a importar si el archivo ya existe
+     * @param  string             $section      La sección SIN cabecera, para anexar a un archivo existente
      * @return void
      */
     private function writeOrAppend(
@@ -566,7 +597,8 @@ class RouteGenerator extends AbstractComponentGenerator
         string $fullContent,
         string $markerKey,
         string $newBlock,
-        string $controllerFqcn = ''
+        array $imports = [],
+        string $section = ''
     ): void {
         $marker = "// {{{$markerKey}}}";
 
@@ -590,13 +622,20 @@ class RouteGenerator extends AbstractComponentGenerator
 
         $existing = file_get_contents($filePath);
 
-        // Añadir el import use si el FQCN está definido y no está ya en el archivo
-        if ($controllerFqcn !== '' && ! str_contains($existing, "use {$controllerFqcn};")) {
+        // Añadir los `use` que falten — el del controlador y los del paquete de tenencia. Un
+        // `::class` sin su import nombra una clase que no existe en ese espacio de nombres, y el
+        // archivo deja de registrar rutas: el mismo par descoordinado de siempre, un lado escribe y
+        // el otro no importa.
+        foreach ($imports as $fqcn) {
+            if ($fqcn === '' || str_contains($existing, "use {$fqcn};")) {
+                continue;
+            }
+
             // Insertar después del último `use ...;` existente
             if (preg_match('/^(use [^;]+;)(?!.*^use [^;]+;)/ms', $existing)) {
                 $existing = preg_replace(
                     '/(use [^;]+;)(?=(?:(?!use [^;]+;)[\s\S])*$)/',
-                    "$1\nuse {$controllerFqcn};",
+                    "$1\nuse {$fqcn};",
                     $existing,
                     1
                 );
@@ -613,9 +652,25 @@ class RouteGenerator extends AbstractComponentGenerator
             return;
         }
 
+        // Lo que se anexa es la SECCIÓN, nunca el archivo entero: dentro de un archivo que ya abrió
+        // PHP, un segundo `<?php` no es texto, es un error de sintaxis. Sin sección que anexar no se
+        // escribe nada y se dice qué línea falta — un archivo roto cuesta más que una instrucción.
+        if ($section === '') {
+            $this->warn(
+                'FALLA: no se pudo ampliar ' . basename($filePath) . ": falta el marcador "
+                . "{$marker} y no hay sección que anexar."
+            );
+            $this->warn(
+                "   · FIX: vuelve a poner {$marker} dentro del grupo donde deben entrar las rutas "
+                . 'nuevas, o pega el bloque a mano ahí.'
+            );
+
+            return;
+        }
+
         $this->putFile(
             $filePath,
-            $existing . PHP_EOL . PHP_EOL . $fullContent,
+            rtrim($existing) . PHP_EOL . PHP_EOL . $section . PHP_EOL,
             'Nueva sección de rutas creada en: ' . basename($filePath)
         );
     }
