@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use Illuminate\Support\Facades\File;
 use Innodite\LaravelModuleMaker\Services\ModuleAuditor;
+use Innodite\LaravelModuleMaker\Support\PackageVersion;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Unit: ModuleAuditor
@@ -29,9 +30,32 @@ it('escribe una línea JSON válida en el log', function () {
     expect(json_last_error())->toBe(JSON_ERROR_NONE)
         ->and($decoded['event'])->toBe('test.event')
         ->and($decoded['module'])->toBe('TestModule')
-        ->and($decoded['package'])->toBe('innodite/laravel-module-maker')
-        ->and($decoded['version'])->toBe('3.0.0')
+        ->and($decoded['package'])->toBe(PackageVersion::PACKAGE)
+        ->and($decoded['version'])->toBe(PackageVersion::current())
         ->and($decoded)->toHaveKey('timestamp');
+});
+
+it('la versión de cada línea es la instalada de verdad, no un literal', function () {
+    // Este archivo existe para responder «¿quién generó esto y cuándo?». El campo `version` estaba
+    // escrito a mano —`'3.0.0'`—, así que un proyecto con la 4.2 instalada acumulaba líneas jurando
+    // que las generó la 3.0.0. Un historial que miente sobre su autor es ruido con formato JSON.
+    //
+    // Y la prueba anterior no lo habría visto nunca: comparaba contra el mismo literal.
+    ModuleAuditor::log('module.created', ['module' => 'Ledger']);
+
+    $version = json_decode(trim(File::get(ModuleAuditor::logPath())), true)['version'];
+
+    expect($version)->toBe(
+        PackageVersion::current(),
+        'FALLA: la versión del log no es la que Composer reporta. · FIX: se le pregunta a '
+        . 'PackageVersion::current(), nunca se escribe a mano.'
+    );
+
+    expect($version)->not->toBe(
+        '3.0.0',
+        'FALLA: volvió el literal «3.0.0» al log de auditoría. · FIX: el paquete va por la v4; una '
+        . 'versión escrita a mano es falsa desde la publicación siguiente.'
+    );
 });
 
 it('acumula múltiples entradas en líneas separadas (NDJSON)', function () {
@@ -57,14 +81,15 @@ it('readLog() retorna array vacío cuando el log no existe', function () {
 });
 
 it('readLog() parsea correctamente las entradas existentes', function () {
-    ModuleAuditor::log('module.created',  ['module' => 'User', 'context_key' => 'central']);
-    ModuleAuditor::log('routes.injected', ['module' => 'User', 'route_file'  => 'web.php']);
+    // `routes.injected` era el cuarto evento y ya no se emite: nadie inyecta rutas en el proyecto.
+    ModuleAuditor::log('module.created',    ['module' => 'User', 'context_key' => 'central']);
+    ModuleAuditor::log('module.components', ['module' => 'User', 'context_key' => 'central']);
 
     $entries = ModuleAuditor::readLog();
 
     expect($entries)->toHaveCount(2)
         ->and($entries[0]['event'])->toBe('module.created')
-        ->and($entries[1]['event'])->toBe('routes.injected');
+        ->and($entries[1]['event'])->toBe('module.components');
 });
 
 it('logPath() retorna la ruta correcta al archivo de log', function () {

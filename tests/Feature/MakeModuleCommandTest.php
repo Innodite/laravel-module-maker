@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\File;
+use Innodite\LaravelModuleMaker\Support\PackageVersion;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Feature: innodite:make-module
@@ -43,7 +44,10 @@ it('escribe una entrada en el log de auditoría tras la generación exitosa', fu
         ->and($lastEntry['event'])->toBe('module.created')
         ->and($lastEntry['module'])->toBe('Product')
         ->and($lastEntry['context_key'])->toBe('central')
-        ->and($lastEntry['version'])->toBe('3.0.0');
+        // La versión que quedó grabada es la instalada, no un literal. Esta línea decía '3.0.0' y
+        // era la segunda de las dos que sostenían el número escrito a mano: la prueba comparaba
+        // contra la misma constante equivocada, así que el defecto pasaba en verde por partida doble.
+        ->and($lastEntry['version'])->toBe(PackageVersion::current());
 });
 
 it('rechaza nombres que son palabras reservadas de PHP', function () {
