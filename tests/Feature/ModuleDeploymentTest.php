@@ -541,3 +541,57 @@ it('en multitenant cada despliegue levanta lo suyo, y no lo del otro', function 
         . 'anterior, y peor consecuencia: los datos de un cliente en la base que ven todos.'
     );
 });
+
+// ── Tenants que comparten funcionalidad: el despliegue entra en el contexto ─────────────────
+
+it('con tenants iguales no despliega sin decir a cuál', function () {
+    // **El fallo que esto cierra era silencioso.** Cuando los tenants comparten funcionalidad, sus
+    // seeders no declaran conexión a propósito: el paquete de tenencia conmuta la conexión por
+    // defecto al entrar en el contexto, y en HTTP eso lo hace el middleware de identificación. En
+    // consola no hay middleware, así que el despliegue corría contra la conexión por defecto —la
+    // central— creyendo que escribía en la base del cliente. Sin error y sin aviso.
+    $this->withMode(ModuleMode::MultitenantShared);
+
+    Artisan::call('innodite:module-setup', ['--mode' => 'multitenant-shared', '--tenancy' => 'stancl', '--no-interaction' => true]);
+
+    cargarSeederDelProyecto('WebmasterSeeder');
+    cargarSeederDelProyecto('InnoditeTenantDeploySeeder');
+
+    [$codigo, $salida] = desplegarContexto('tenant');
+
+    expect($codigo)->not->toBe(0, "FALLA: desplegó sin que nadie eligiera el tenant.\n\n{$salida}");
+
+    expect(str_contains($salida, '--tenant') && str_contains($salida, '--all'))->toBeTrue(
+        "FALLA: no dice cómo elegir el tenant.\n\n{$salida}"
+    );
+});
+
+it('con tenants iguales avisa si no sabe entrar en el contexto', function () {
+    // Sin un paquete de tenencia que el generador sepa inicializar, la única alternativa a fallar es
+    // desplegar contra la base por defecto — que es exactamente el fallo que se está cerrando. Se
+    // dice, y no se despliega.
+    $this->withMode(ModuleMode::MultitenantShared);
+
+    Artisan::call('innodite:module-setup', ['--mode' => 'multitenant-shared', '--no-interaction' => true]);
+
+    cargarSeederDelProyecto('WebmasterSeeder');
+    cargarSeederDelProyecto('InnoditeTenantDeploySeeder');
+
+    config()->set('make-module.tenancy_package', 'none');
+
+    $buffer = new BufferedOutput();
+
+    $codigo = Artisan::call(
+        'innodite:deploy',
+        ['environment' => 'stage', '--context' => 'tenant', '--all' => true, '--no-interaction' => true],
+        $buffer,
+    );
+
+    $salida = $buffer->fetch();
+
+    expect($codigo)->not->toBe(0, "FALLA: desplegó sin saber entrar en el contexto del tenant.\n\n{$salida}");
+
+    expect(str_contains($salida, 'la central'))->toBeTrue(
+        "FALLA: el aviso no dice cuál es la consecuencia —escribir en la base central—.\n\n{$salida}"
+    );
+});

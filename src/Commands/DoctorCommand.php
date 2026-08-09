@@ -99,6 +99,8 @@ class DoctorCommand extends Command
         $this->newLine();
         $ok = $this->comprobarColisiones() && $ok;
         $this->newLine();
+        $ok = $this->comprobarConfigPublicada() && $ok;
+        $this->newLine();
         $ok = $this->comprobarStubsPublicados() && $ok;
         $this->newLine();
         $this->mostrarLogDeEventos();
@@ -544,9 +546,42 @@ class DoctorCommand extends Command
      *
      * Here it costs one line and lands before anything is written.
      */
+    /**
+     * The published configuration, without which generating registers nothing.
+     *
+     * **It is a failure, not a note.** The generator writes the module either way and the diagnostic
+     * used to pass, so the project looked healthy — but `deploy` lives in this file, and with no file
+     * there is nowhere to declare the new subfeature. What is left is a module fully written on disk
+     * that no deployment ever runs: its tables are never created and its permissions never exist, so
+     * the screen it generated opens for nobody. The generator says so as it writes, in one line among
+     * forty, and that line is read once.
+     */
+    private function comprobarConfigPublicada(): bool
+    {
+        $this->line('  <fg=cyan;options=bold>5. Configuración publicada</>');
+
+        if (File::exists(config_path('make-module.php'))) {
+            $this->components->twoColumnDetail(
+                'config/make-module.php',
+                '<fg=green>OK — publicada</>'
+            );
+
+            return true;
+        }
+
+        $this->fallo(
+            'config/make-module.php no está publicada.',
+            'publícala con: php artisan vendor:publish --tag=module-maker-config',
+            'El orden de despliegue (`deploy`) vive en ese archivo: sin él, generar un módulo no lo '
+            . 'declara en ningún sitio y el despliegue nunca lo levanta.'
+        );
+
+        return false;
+    }
+
     private function comprobarStubsPublicados(): bool
     {
-        $this->line('  <fg=cyan;options=bold>5. Stubs publicados</>');
+        $this->line('  <fg=cyan;options=bold>6. Stubs publicados</>');
 
         $carpeta = rtrim((string) config('make-module.config_path'), '/\\') . '/stubs/contextual';
 
@@ -609,7 +644,7 @@ class DoctorCommand extends Command
      */
     private function mostrarLogDeEventos(): void
     {
-        $this->line('  <fg=cyan;options=bold>6. Log de eventos</>');
+        $this->line('  <fg=cyan;options=bold>7. Log de eventos</>');
 
         $entradas = ModuleAuditor::readLog();
 

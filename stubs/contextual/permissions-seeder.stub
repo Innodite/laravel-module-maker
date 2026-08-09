@@ -7,6 +7,7 @@ namespace {{{ namespace }}};
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Str;
 use Innodite\LaravelModuleMaker\Traits\ReportsSeederErrors;
 
 /**
@@ -154,22 +155,44 @@ class {{{ seederName }}} extends Seeder
      * Es lo que convierte una lista plana de doscientas claves en un bloque por funcionalidad con
      * una pestaña por subfuncionalidad (R21).
      */
-    protected function resolveModuleId(): ?int
+    protected function resolveModuleId(): int|string|null
     {
-        if (! Schema::connection($this->connection)->hasTable('modules')) {
+        $schema = Schema::connection($this->connection);
+
+        if (! $schema->hasTable('modules')) {
             return null;
         }
 
         $db = DB::connection($this->connection);
+        $ya = $db->table('modules')->where('name', $this->moduleLabel)->value('id');
 
-        $db->table('modules')->updateOrInsert(
-            ['name' => $this->moduleLabel],
-            ['updated_at' => now(), 'created_at' => now()],
-        );
+        if ($ya !== null) {
+            $db->table('modules')->where('name', $this->moduleLabel)->update(['updated_at' => now()]);
 
-        $id = $db->table('modules')->where('name', $this->moduleLabel)->value('id');
+            return $ya;
+        }
 
-        return $id === null ? null : (int) $id;
+        $fila = ['name' => $this->moduleLabel, 'updated_at' => now(), 'created_at' => now()];
+
+        // `modules` es una tabla DEL PROYECTO, no del paquete: su clave puede ser autoincremental o
+        // un identificador de texto (ULID/UUID), y las dos formas son legítimas. Por eso se mira el
+        // esquema y no el modo declarado en la configuración —que describe las tablas que genera el
+        // paquete, no esta—. Solo una columna entera se rellena sola: con una de texto, insertar sin
+        // `id` devuelve «Field 'id' doesn't have a default value» y detiene el despliegue entero en
+        // el primer módulo, antes de crear una sola tabla.
+        if (! $this->autoIncrementa($schema->getColumnType('modules', 'id'))) {
+            $fila['id'] = (string) Str::ulid();
+        }
+
+        $db->table('modules')->insert($fila);
+
+        return $fila['id'] ?? $db->table('modules')->where('name', $this->moduleLabel)->value('id');
+    }
+
+    /** ¿La columna se rellena sola? Solo las enteras lo hacen. */
+    private function autoIncrementa(string $tipo): bool
+    {
+        return in_array(strtolower($tipo), ['int', 'integer', 'bigint', 'mediumint', 'smallint'], true);
     }
 
     /**

@@ -217,6 +217,9 @@ it('pasa en verde cuando el generador puede escribir y el proyecto cumple su con
         app_path('Http/Middleware/HandleInertiaRequests.php') => "<?php\n\n"
             . "class HandleInertiaRequests\n{\n    public function share()\n    {\n"
             . "        return ['auth' => ['permissions' => []]];\n    }\n}\n",
+        // Un proyecto que cumple su contrato la tiene publicada: el orden de despliegue vive
+        // dentro, y sin ella generar un módulo no lo declara en ningún sitio.
+        config_path('make-module.php') => "<?php\n\nreturn ['deploy' => []];\n",
     ], function () {
         [$codigo, $salida] = diagnostico();
 
@@ -226,4 +229,20 @@ it('pasa en verde cuando el generador puede escribir y el proyecto cumple su con
             "FALLA: no lo declara listo.\n{$salida}"
         );
     });
+});
+
+it('no pasa en verde si la configuración no está publicada', function () {
+    // El diagnóstico daba verde sin ella, y el proyecto parecía sano: el generador escribe el módulo
+    // igual. Pero el orden de despliegue vive en ese archivo, así que sin él la subfuncionalidad no
+    // queda declarada en ninguna parte — y lo que queda es un módulo entero en disco que ningún
+    // despliegue levanta: sus tablas nunca se crean y sus permisos nunca existen.
+    $this->withMode(ModuleMode::SingleApp);
+
+    [$codigo, $salida] = diagnostico();
+
+    expect($codigo)->not->toBe(0, "FALLA: pasa en verde sin la configuración publicada.\n{$salida}");
+
+    expect(str_contains($salida, 'vendor:publish --tag=module-maker-config'))->toBeTrue(
+        "FALLA: no dice cómo publicarla, o dice un tag que no existe.\n{$salida}"
+    );
 });
