@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Innodite\LaravelModuleMaker\Commands\AddEntityCommand;
+use Innodite\LaravelModuleMaker\Commands\CreateTestDatabaseCommand;
 use Innodite\LaravelModuleMaker\Commands\DeployCommand;
 use Innodite\LaravelModuleMaker\Commands\DoctorCommand;
 use Innodite\LaravelModuleMaker\Commands\MakeModuleCommand;
@@ -49,6 +50,7 @@ class LaravelModuleMakerServiceProvider extends ServiceProvider
                 MigratePlanCommand::class,
                 DeployCommand::class,
                 DoctorCommand::class,
+                CreateTestDatabaseCommand::class,
                 SetupModuleMakerCommand::class,
                 PublishFrontendCommand::class,
                 TestCommand::class,

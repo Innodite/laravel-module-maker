@@ -123,6 +123,7 @@ it('la opción está en los que escriben o tocan una base, y en ninguno más', f
         'innodite:deploy',           // corre seeders contra una base real
         'innodite:migrate-one',      // ya la tenía: aplica una migración
         'innodite:migrate-plan',     // ya la tenía: aplica el plan
+        'innodite:crear-bd-test',    // crea una base de datos
     ];
 
     $sinEnsayo = [

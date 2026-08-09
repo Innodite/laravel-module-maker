@@ -6,7 +6,7 @@ use Illuminate\Support\Facades\Artisan;
 use Innodite\LaravelModuleMaker\Support\PackageVersion;
 
 /**
- * Los nueve comandos como **un** conjunto, no como nueve scripts con el mismo prefijo.
+ * Los diez comandos como **un** conjunto, no como diez scripts con el mismo prefijo.
  *
  * Lo que se fija aquí no es estilo. Una opción que se llama `--yes` en un comando y `--force` en los
  * otros dos obliga a mirar la ayuda antes de cada uso, y quien no la mira escribe la que recuerda y
@@ -24,7 +24,7 @@ function comandosDelPaquete(): array
     );
 }
 
-it('los nueve se presentan igual, y con la versión que corre', function () {
+it('los diez se presentan igual, y con la versión que corre', function () {
     // Se ejecutan de verdad —con parámetros que fallan pronto, o en ensayo— porque una cabecera
     // comprobada leyendo el código se cumple en el archivo y se incumple en pantalla.
     $invocaciones = [
@@ -32,6 +32,7 @@ it('los nueve se presentan igual, y con la versión que corre', function () {
         'innodite:add-entity'       => ['module' => 'Fantasma', 'entity' => 'Cosa', '--context' => 'central'],
         'innodite:deploy'           => ['environment' => 'preprod'],
         'innodite:doctor'           => [],
+        'innodite:crear-bd-test'    => ['--connection' => 'fantasma'],
         'innodite:migrate-one'      => ['coordinate' => 'Fantasma:Central/no-existe.php'],
         'innodite:migrate-plan'     => ['--context' => 'central'],
         'innodite:publish-frontend' => ['--dry-run' => true],
@@ -68,7 +69,7 @@ it('una sola forma de decir «no me preguntes»', function () {
     }
 });
 
-it('el ensayo se describe igual en los siete que lo tienen', function () {
+it('el ensayo se describe igual en los ocho que lo tienen', function () {
     foreach (comandosDelPaquete() as $nombre => $comando) {
         $definicion = $comando->getDefinition();
 
@@ -103,7 +104,7 @@ it('los argumentos se nombran en inglés, como el resto del código', function (
     }
 });
 
-it('los nueve devuelven código de salida', function () {
+it('los diez devuelven código de salida', function () {
     // `innodite:module-setup` devolvía void, y en consola eso es «éxito» siempre: encadenaba lo
     // siguiente aunque la instalación se hubiera detenido por falta de modo.
     foreach (comandosDelPaquete() as $nombre => $comando) {
