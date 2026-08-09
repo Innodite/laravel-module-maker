@@ -9,7 +9,7 @@ use Innodite\LaravelModuleMaker\Support\PackageVersion;
 use Illuminate\Support\Facades\File;
 
 /**
- * ModuleAuditor — el historial de lo que el generador ha creado en este proyecto.
+ * EventLog — el registro de lo que el generador ha hecho en este proyecto.
  *
  * Cada operación exitosa del generador escribe una línea JSON en:
  *   storage/logs/module_maker.log
@@ -26,7 +26,7 @@ use Illuminate\Support\Facades\File;
  * este archivo existe precisamente para responder «¿quién generó esto y cuándo?». Un historial que
  * miente sobre su autor no es un historial, es ruido con formato JSON.
  */
-final class ModuleAuditor
+final class EventLog
 {
     private const LOG_FILE = 'logs/module_maker.log';
 

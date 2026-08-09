@@ -3,11 +3,11 @@
 declare(strict_types=1);
 
 use Illuminate\Support\Facades\File;
-use Innodite\LaravelModuleMaker\Services\ModuleAuditor;
+use Innodite\LaravelModuleMaker\Services\EventLog;
 use Innodite\LaravelModuleMaker\Support\PackageVersion;
 
 // ─────────────────────────────────────────────────────────────────────────────
-// Unit: ModuleAuditor
+// Unit: EventLog
 // ─────────────────────────────────────────────────────────────────────────────
 
 beforeEach(function () {
@@ -19,7 +19,7 @@ beforeEach(function () {
 });
 
 it('escribe una línea JSON válida en el log', function () {
-    ModuleAuditor::log('test.event', ['module' => 'TestModule', 'context_key' => 'central']);
+    EventLog::log('test.event', ['module' => 'TestModule', 'context_key' => 'central']);
 
     $logPath = storage_path('logs/module_maker.log');
     expect(File::exists($logPath))->toBeTrue();
@@ -41,9 +41,9 @@ it('la versión de cada línea es la instalada de verdad, no un literal', functi
     // que las generó la 3.0.0. Un historial que miente sobre su autor es ruido con formato JSON.
     //
     // Y la prueba anterior no lo habría visto nunca: comparaba contra el mismo literal.
-    ModuleAuditor::log('module.created', ['module' => 'Ledger']);
+    EventLog::log('module.created', ['module' => 'Ledger']);
 
-    $version = json_decode(trim(File::get(ModuleAuditor::logPath())), true)['version'];
+    $version = json_decode(trim(File::get(EventLog::logPath())), true)['version'];
 
     expect($version)->toBe(
         PackageVersion::current(),
@@ -59,9 +59,9 @@ it('la versión de cada línea es la instalada de verdad, no un literal', functi
 });
 
 it('acumula múltiples entradas en líneas separadas (NDJSON)', function () {
-    ModuleAuditor::log('event.one',   ['module' => 'Alpha']);
-    ModuleAuditor::log('event.two',   ['module' => 'Beta']);
-    ModuleAuditor::log('event.three', ['module' => 'Gamma']);
+    EventLog::log('event.one',   ['module' => 'Alpha']);
+    EventLog::log('event.two',   ['module' => 'Beta']);
+    EventLog::log('event.three', ['module' => 'Gamma']);
 
     $logPath = storage_path('logs/module_maker.log');
     $lines   = array_filter(explode(PHP_EOL, trim(File::get($logPath))));
@@ -77,15 +77,15 @@ it('acumula múltiples entradas en líneas separadas (NDJSON)', function () {
 });
 
 it('readLog() retorna array vacío cuando el log no existe', function () {
-    expect(ModuleAuditor::readLog())->toBeArray()->toBeEmpty();
+    expect(EventLog::readLog())->toBeArray()->toBeEmpty();
 });
 
 it('readLog() parsea correctamente las entradas existentes', function () {
     // `routes.injected` era el cuarto evento y ya no se emite: nadie inyecta rutas en el proyecto.
-    ModuleAuditor::log('module.created',    ['module' => 'User', 'context_key' => 'central']);
-    ModuleAuditor::log('module.components', ['module' => 'User', 'context_key' => 'central']);
+    EventLog::log('module.created',    ['module' => 'User', 'context_key' => 'central']);
+    EventLog::log('module.components', ['module' => 'User', 'context_key' => 'central']);
 
-    $entries = ModuleAuditor::readLog();
+    $entries = EventLog::readLog();
 
     expect($entries)->toHaveCount(2)
         ->and($entries[0]['event'])->toBe('module.created')
@@ -93,5 +93,5 @@ it('readLog() parsea correctamente las entradas existentes', function () {
 });
 
 it('logPath() retorna la ruta correcta al archivo de log', function () {
-    expect(ModuleAuditor::logPath())->toEndWith('logs/module_maker.log');
+    expect(EventLog::logPath())->toEndWith('logs/module_maker.log');
 });

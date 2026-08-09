@@ -10,7 +10,7 @@ use Innodite\LaravelModuleMaker\Commands\Concerns\PrintsHeader;
 use Innodite\LaravelModuleMaker\Contracts\ProveedorDeCriterio;
 use Innodite\LaravelModuleMaker\LaravelModuleMakerServiceProvider;
 use Innodite\LaravelModuleMaker\Commands\Concerns\ReportsFailures;
-use Innodite\LaravelModuleMaker\Services\ModuleAuditor;
+use Innodite\LaravelModuleMaker\Services\EventLog;
 use Innodite\LaravelModuleMaker\Support\ModuleMode;
 use Innodite\LaravelModuleMaker\Support\StubPlaceholder;
 use Throwable;
@@ -646,7 +646,7 @@ class DoctorCommand extends Command
     {
         $this->line('  <fg=cyan;options=bold>7. Log de eventos</>');
 
-        $entradas = ModuleAuditor::readLog();
+        $entradas = EventLog::readLog();
 
         if ($entradas === []) {
             $this->components->twoColumnDetail(
@@ -657,7 +657,7 @@ class DoctorCommand extends Command
             return;
         }
 
-        $this->components->twoColumnDetail('module_maker.log', '<fg=green>' . ModuleAuditor::logPath() . '</>');
+        $this->components->twoColumnDetail('module_maker.log', '<fg=green>' . EventLog::logPath() . '</>');
         $this->newLine();
         $this->line('  <fg=gray>Últimas 5 operaciones:</>');
 

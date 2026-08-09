@@ -11,7 +11,7 @@ use Innodite\LaravelModuleMaker\Commands\Concerns\RehearsesChanges;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Str;
 use Innodite\LaravelModuleMaker\Generators\Components\ModuleGenerator;
-use Innodite\LaravelModuleMaker\Services\ModuleAuditor;
+use Innodite\LaravelModuleMaker\Services\EventLog;
 use Innodite\LaravelModuleMaker\Support\ContextOption;
 use Innodite\LaravelModuleMaker\Support\ContextResolver;
 use Innodite\LaravelModuleMaker\Support\ModuleMode;
@@ -162,7 +162,7 @@ class MakeModuleCommand extends Command
             $this->displaySuccess($moduleName, $contextKey, $contextId);
 
             // ── Auditoría ─────────────────────────────────────────────────────
-            ModuleAuditor::log('module.created', [
+            EventLog::log('module.created', [
                 'module'        => $moduleName,
                 'context_key'   => $contextKey,
                 'context_id'    => $contextId,
@@ -191,7 +191,7 @@ class MakeModuleCommand extends Command
             if ($hayRestos) {
                 if ($this->confirm("¿Deseas eliminar los archivos generados en '{$modulePath}'? (Rollback)")) {
                     $this->performRollback($modulePath);
-                    ModuleAuditor::log('module.rollback', [
+                    EventLog::log('module.rollback', [
                         'module'      => $moduleName,
                         'context_key' => $contextKey ?? 'unknown',
                         'reason'      => $e->getMessage(),
