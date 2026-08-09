@@ -2,14 +2,27 @@
 
 declare(strict_types=1);
 
-namespace {{ namespace }};
+namespace {{{ namespace }}};
 
-interface {{ serviceInterfaceName }}
+/**
+ * El contrato del servicio — lo que el controlador puede pedirle, y nada más.
+ *
+ * **El identificador es `string`, no `int`, y no es un detalle.** La clave primaria de toda tabla
+ * generada es un ULID: veintiséis caracteres, no un número. Declararlo `int` hace que la primera
+ * llamada real muera con un `TypeError` antes de tocar la base de datos.
+ *
+ * **Y por eso mismo aquí no hay Route Model Binding.** Laravel sabe resolver `show(Modelo $m)` solo,
+ * y es lo idiomático fuera de este patrón — pero para hacerlo inyecta el **modelo Eloquent** en la
+ * firma del controlador, y en este patrón el único archivo que toca Eloquent es el Repository. El
+ * identificador viaja como dato por las tres capas, y solo la última lo convierte en un registro.
+ * Es más explícito a propósito: se lee de arriba abajo quién hace qué.
+ */
+interface {{{ serviceInterfaceName }}}
 {
     public function paginate(array $filters = []): mixed;
     public function list(array $filters = []): mixed;
-    public function findById(int $id): mixed;
+    public function findById(string $id): mixed;
     public function create(array $data): mixed;
-    public function update(int $id, array $data): mixed;
-    public function delete(int $id): bool;
+    public function update(string $id, array $data): mixed;
+    public function delete(string $id): bool;
 }

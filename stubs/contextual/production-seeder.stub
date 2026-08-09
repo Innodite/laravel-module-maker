@@ -1,0 +1,96 @@
+<?php
+
+declare(strict_types=1);
+
+namespace {{{ namespace }}};
+
+use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\Schema;
+use Innodite\LaravelModuleMaker\Traits\ReportsSeederErrors;
+use RuntimeException;
+
+/**
+ * Producción de {{{ subFeature }}} — el mismo despliegue, sin una sola operación que borre.
+ *
+ *     php artisan db:seed --class="{{{ seederName }}}" --force
+ *
+ * **Qué hace:** crea las tablas que falten, aplica los cambios de esquema posteriores con su
+ * guardia, y mezcla los datos canónicos con `upsert`. Los datos que ya están **se actualizan**; los
+ * que el usuario creó siguen donde estaban.
+ *
+ * **Qué no hace, y no puede hacer:** truncar, `delete` masivo o `drop`. Y no es que aquí se responda
+ * «no» a la pregunta del modo destructivo: **la pregunta no está**. Este archivo no usa
+ * `ResolvesSeederDestructiveMode`, así que exportar `SEEDER_DESTRUCTIVE=true` en el servidor no
+ * habilita nada — no hay nada que habilitar (R23).
+ *
+ * **Idempotente:** ejecutarlo dos veces seguidas deja exactamente el mismo estado. Es la condición
+ * para poder relanzarlo cuando un despliegue se corta a medias, que es cuando más falta hace.
+ */
+class {{{ seederName }}} extends Seeder
+{
+    use {{{ migrationsListTrait }}};
+    use {{{ inlineAltersTrait }}};
+    use {{{ dataTrait }}};
+    use ReportsSeederErrors;
+
+    /**
+     * La conexión sobre la que opera esta subfuncionalidad.
+     *
+     * `null` significa la conexión por defecto de la aplicación.
+     */
+    protected ?string $connection = {{{ connection }}};
+
+    /**
+     * Las tablas de esta subfuncionalidad.
+     *
+     * Aquí solo se comprueban: en producción nada las vacía.
+     *
+     * @var array<int, string>
+     */
+    protected array $tables = [{{{ tables }}}];
+
+    public function run(): void
+    {
+        $this->say("\n🚀 {{{ seederName }}} — modo producción\n");
+
+        // Las dos mitades de R22b: la creación de lo que falte y los deltas con guardia.
+        $this->safe('runMigrations', fn () => $this->runMigrations());
+        $this->safe('runInlineAlters', fn () => $this->runInlineAlters());
+        $this->safe('validateTables', fn () => $this->validateTables());
+
+        // Merge sin destruir: inserta lo que no está, actualiza lo que sí.
+        $this->safe('upsertCanonicalData', fn () => $this->upsertCanonicalData());
+
+        // Los permisos, también sin borrar: las asignaciones hechas a mano sobreviven (R24).
+        $this->safe('seedPermissions', fn () => $this->callWith(
+            {{{ permissionsSeeder }}}::class,
+            ['destructive' => false],
+        ));
+
+        $this->reportErrors();
+
+        $this->say("\n✅ {{{ seederName }}} completado.\n");
+    }
+
+    /**
+     * Después de migrar, las tablas tienen que estar.
+     *
+     * En producción esta comprobación vale doble: descubrir aquí que una migración no se aplicó es
+     * barato; descubrirlo en la primera consulta de un usuario, no.
+     */
+    protected function validateTables(): void
+    {
+        $schema   = Schema::connection($this->connection);
+        $ausentes = array_values(array_filter(
+            $this->tables,
+            static fn (string $tabla): bool => ! $schema->hasTable($tabla),
+        ));
+
+        if ($ausentes !== []) {
+            throw new RuntimeException(
+                'Faltan tablas de {{{ subFeature }}} después de migrar: ' . implode(', ', $ausentes)
+                . '. Revisa la lista de migraciones de esta subfuncionalidad.'
+            );
+        }
+    }
+}

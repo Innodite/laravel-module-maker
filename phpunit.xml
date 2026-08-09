@@ -22,8 +22,5 @@
     <include>
       <directory suffix=".php">./src</directory>
     </include>
-    <exclude>
-      <directory>./src/Database/Seeders</directory>
-    </exclude>
   </source>
 </phpunit>

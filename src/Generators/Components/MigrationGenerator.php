@@ -1,8 +1,12 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Innodite\LaravelModuleMaker\Generators\Components;
 
 use Illuminate\Support\Str;
+use Innodite\LaravelModuleMaker\Support\PrimaryKeyMode;
+use Innodite\LaravelModuleMaker\Support\SeederNames;
 use Illuminate\Support\Facades\File;
 use Innodite\LaravelModuleMaker\Generators\Concerns\HasStubs;
 use InvalidArgumentException;
@@ -23,7 +27,6 @@ class MigrationGenerator extends AbstractComponentGenerator
     protected string $migrationName;
     protected array $attributes;
     protected array $indexes;
-    protected ?string $tableName = null; // Nueva propiedad para el nombre de la tabla
 
     /**
      * Define los atributos y modificadores válidos para cada tipo de dato.
@@ -89,7 +92,6 @@ class MigrationGenerator extends AbstractComponentGenerator
         $this->migrationName = Str::studly($migrationName);
         $this->attributes = $attributes;
         $this->indexes = $indexes;
-        $this->tableName = $componentConfig['table'] ?? null;
     }
 
     /**
@@ -104,19 +106,38 @@ class MigrationGenerator extends AbstractComponentGenerator
         $migrationDirectoryPath = $this->buildPath('Database/Migrations');
         $this->ensureDirectoryExists($migrationDirectoryPath);
 
-        $tableName   = $this->tableName ?: Str::snake(Str::plural($this->migrationName));
+        $tableName   = $this->tableName($this->migrationName);
         $tableSchema = $this->getMigrationSchema($this->attributes, $this->indexes);
 
         // Idempotencia: si ya existe una migración para esta tabla en este contexto, no duplicar.
-        $existingFiles = glob("{$migrationDirectoryPath}/*_create_{$tableName}_table.php") ?: [];
+        // Se buscan las dos formas del nombre —con y sin `_final`— para que un módulo generado con
+        // la v3 no reciba una segunda migración de la misma tabla al regenerarse.
+        $existingFiles = array_merge(
+            glob("{$migrationDirectoryPath}/*_create_{$tableName}_table.php") ?: [],
+            glob("{$migrationDirectoryPath}/*_create_{$tableName}_table_final.php") ?: []
+        );
+
         if (!empty($existingFiles)) {
             $this->warn("Migración para '{$tableName}' ya existe en " . basename(dirname($migrationDirectoryPath)) . "/Database/Migrations. Se omite la generación.");
+
+            // Aunque no se escriba migración nueva, el trait se reescribe: la lista se deriva de la
+            // carpeta, así que tiene que reflejar lo que hay AHORA. Si se saltara este paso, un
+            // módulo con una migración añadida a mano quedaría con una lista que no la nombra — dos
+            // mitades separándose otra vez, y esta vez en el despliegue.
+            $this->writeMigrationsListTrait($migrationDirectoryPath);
+
             return;
         }
 
-        // Timestamp con microsegundos para evitar colisiones entre archivos del mismo contexto
+        // Timestamp con microsegundos para evitar colisiones entre archivos del mismo contexto.
+        //
+        // El sufijo `_final` no es decoración (R22b): dice que ESTE archivo lleva el esquema
+        // completo de la tabla, no un delta. Con él, la carpeta de la subfuncionalidad se lee de un
+        // golpe —cada `_final` es una tabla— y los cambios posteriores van como delta con guardia en
+        // el trait `InlineAlters`, que llega en F-5. Sin el sufijo no se distingue la migración que
+        // crea la tabla de las que la modifican, y el orden de la carpeta deja de significar nada.
         $uniqueTimestamp = Carbon::now()->format('Y_m_d_Hisu');
-        $fileName        = "{$uniqueTimestamp}_create_{$tableName}_table.php";
+        $fileName        = "{$uniqueTimestamp}_create_{$tableName}_table_final.php";
 
         // IMPORTANTE: Se pasa el tableName pero NO un className.
         // El stub usa clases anónimas (return new class extends Migration {})
@@ -129,6 +150,100 @@ class MigrationGenerator extends AbstractComponentGenerator
         $contextFolder = $this->getContextFolder();
         $contextLabel  = $contextFolder ? "Database/Migrations/{$contextFolder}" : 'Database/Migrations';
         $this->putFile("{$migrationDirectoryPath}/{$fileName}", $stubContent, "Migración '{$tableName}' creada en Modules/{$this->moduleName}/{$contextLabel}");
+
+        $this->writeMigrationsListTrait($migrationDirectoryPath);
+    }
+
+    /**
+     * Escribe el trait `MigrationsList` de la subfuncionalidad — la lista ordenada, en código.
+     *
+     * Sustituye al manifiesto JSON (P2), y el motivo no es estético: un JSON es un segundo sitio que
+     * describe lo que ya dice la carpeta, no viaja con el módulo cuando alguien lo copia a otro
+     * proyecto, y **se desincroniza en silencio**. El trait es código, viaja con el módulo, y aquí
+     * se **deriva de la carpeta** en cada generación, así que no puede quedar desfasado.
+     *
+     * Vive con las otras cinco piezas de seeder —en `Database/Seeders/{Ctx}/{SubFunc}/`, no en
+     * `Migrations/`— porque es una de las seis (norma §6, `SeederNames`). Y es el seeder quien
+     * ejecuta las migraciones (**R22**): nadie corre `migrate` a mano.
+     */
+    protected function writeMigrationsListTrait(string $migrationDirectoryPath): void
+    {
+        $subFeature = $this->getSubFeatureFolder();
+
+        if ($subFeature === '') {
+            return;   // sin subfuncionalidad no hay grupo de seis piezas al que pertenecer
+        }
+
+        $traitName = SeederNames::piece($this->getClassPrefix(), $this->moduleName, $subFeature, 'MigrationsList');
+        $seederDir = $this->buildPath('Database/Seeders');
+
+        $this->ensureDirectoryExists($seederDir);
+
+        $archivos = glob("{$migrationDirectoryPath}/*.php") ?: [];
+        sort($archivos);   // el orden del despliegue es el de los nombres: el timestamp manda
+
+        $moduleRoot = dirname($this->getComponentBasePath());
+        $rutas      = array_map(
+            static fn (string $ruta): string => "            '" . str_replace(
+                '\\',
+                '/',
+                'Modules/' . ltrim(substr($ruta, strlen($moduleRoot)), '/\\')
+            ) . "',",
+            $archivos
+        );
+
+        $lista = $rutas === [] ? '' : "\n" . implode("\n", $rutas) . "\n        ";
+
+        $stub = $this->getStubContent('migrations-list.stub', $this->isClean, [
+            'namespace'   => $this->buildNamespace('Database\\Seeders'),
+            'traitName'   => $traitName,
+            'subFeature'  => $subFeature,
+            'migrations'  => $lista,
+        ]);
+
+        $this->putFile(
+            "{$seederDir}/{$traitName}.php",
+            $stub,
+            "Lista de migraciones creada: {$traitName}.php"
+        );
+
+        $this->writeInlineAltersTrait($seederDir, $subFeature);
+    }
+
+    /**
+     * Escribe el trait `InlineAlters` — el segundo registro de R22b.
+     *
+     * La norma pide **una sola `_final` por tabla** con el esquema completo, para que una
+     * instalación nueva levante la tabla como está hoy sin replicar su historial. Pero un proyecto
+     * que ya desplegó esa tabla no puede recibir un `create` otra vez: necesita el **delta**. De ahí
+     * el doble registro — el mismo cambio escrito en los dos sitios.
+     *
+     * Nace **vacío**, y eso es lo correcto: un módulo recién generado no tiene cambios posteriores,
+     * su esquema entero está en la `_final`. Lo que sí lleva es la estructura y el patrón con
+     * guardia documentado dentro, para que el primer delta se escriba bien. Emitir deltas inventados
+     * sería B3 otra vez: una pieza que aparenta contenido y no hace nada.
+     *
+     * No se reescribe si ya existe: dentro vive código que escribió el desarrollador.
+     */
+    protected function writeInlineAltersTrait(string $seederDir, string $subFeature): void
+    {
+        $traitName = SeederNames::piece($this->getClassPrefix(), $this->moduleName, $subFeature, 'InlineAlters');
+        $destino   = "{$seederDir}/{$traitName}.php";
+
+        if (File::exists($destino)) {
+            return;
+        }
+
+        $tableName = $this->tableName($this->migrationName);
+
+        $stub = $this->getStubContent('inline-alters.stub', $this->isClean, [
+            'namespace'  => $this->buildNamespace('Database\\Seeders'),
+            'traitName'  => $traitName,
+            'subFeature' => $subFeature,
+            'tableName'  => $tableName,
+        ]);
+
+        $this->putFile($destino, $stub, "Deltas de esquema creados: {$traitName}.php");
     }
 
     /**
@@ -160,15 +275,27 @@ class MigrationGenerator extends AbstractComponentGenerator
     {
         $schemaLines = [];
 
-        $hasId = false;
+        // La clave primaria la decide la CONFIGURACIÓN, con ULID por defecto (R10) — el
+        // autoincremental es enumerable: con un `id` en la URL se recorre la tabla entera probando
+        // números, y en un multitenant eso cruza inquilinos. Quien lo prefiera lo declara al
+        // instalar, de forma explícita y una sola vez.
+        //
+        // Y la pone **el generador, no el stub**. Hasta ahora la escribían los dos —el stub traía
+        // `$table->id();` fijo y esta línea inyectaba otro— y la migración salía con la columna
+        // DUPLICADA: `duplicate column name: id` en cuanto alguien la ejecutaba. Ninguna migración
+        // generada por el paquete se podía correr. Misma forma que B13, B15 y B18: dos mitades que
+        // asumen cada una que la otra no lo hace. Ahora el stub solo interpola `{{{ columns }}}`.
+        $declaraPropiaClave = false;
+
         foreach ($attributes as $attribute) {
-            if (isset($attribute['type']) && in_array($attribute['type'], ['increments', 'bigIncrements', 'id'])) {
-                $hasId = true;
+            if (isset($attribute['type']) && in_array($attribute['type'], ['increments', 'bigIncrements', 'id', 'ulid', 'uuid'], true)) {
+                $declaraPropiaClave = true;
                 break;
             }
         }
-        if (!$hasId) {
-            $schemaLines[] = "\$table->id();";
+
+        if (! $declaraPropiaClave) {
+            $schemaLines[] = PrimaryKeyMode::current()->primaryKeyColumn();
         }
 
         foreach ($attributes as $attribute) {
@@ -179,6 +306,23 @@ class MigrationGenerator extends AbstractComponentGenerator
             $this->validateAttribute($attribute);
 
             $schemaLines[] = $this->getSchemaLineForAttribute($attribute) . ";";
+        }
+
+        // Borrado lógico en toda tabla generada (R69 · R70): eliminar y restaurar tienen que estar
+        // siempre, y un `delete` que borra de verdad no se puede deshacer cuando el usuario se
+        // equivoca. El modelo recibe `SoftDeletes` en la misma pasada — si una mitad lo lleva y la
+        // otra no, la columna existe y nadie la usa, o el modelo filtra por una columna que no está.
+        $declaraBorradoLogico = false;
+
+        foreach ($attributes as $attribute) {
+            if (($attribute['name'] ?? null) === 'deleted_at' || ($attribute['type'] ?? null) === 'softDeletes') {
+                $declaraBorradoLogico = true;
+                break;
+            }
+        }
+
+        if (! $declaraBorradoLogico) {
+            $schemaLines[] = "\$table->softDeletes();";
         }
 
         $hasTimestamps = false;
@@ -436,10 +580,19 @@ class MigrationGenerator extends AbstractComponentGenerator
         return $this->addModifiersToDefinition($definition, $attribute);
     }
 
+    /**
+     * Clave foránea — del mismo tipo que la clave primaria que apunta.
+     *
+     * Si la PK es ULID (R10) y la FK sigue siendo `foreignId` —un entero—, la restricción no se
+     * puede crear: los tipos no casan. Es el mismo par que la clave primaria, un escalón más abajo,
+     * y por eso lo decide la MISMA pieza: dos sitios eligiendo por separado es exactamente cómo
+     * dejan de coincidir.
+     */
     protected function foreignIdColumn(array $attribute): string
     {
         $name = $attribute['name'];
-        $definition = "\$table->foreignId('{$name}')";
+        $metodo = PrimaryKeyMode::current()->foreignKeyMethod();
+        $definition = "\$table->{$metodo}('{$name}')";
 
         if (isset($attribute['on']) && isset($attribute['constrained']) && $attribute['constrained']) {
             $definition .= "->constrained('{$attribute['on']}')";

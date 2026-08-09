@@ -47,7 +47,7 @@ export function useModuleContext() {
                 console.warn(
                     '[InnoditeContextBridge] auth.context.route_prefix no está disponible en las props de Inertia.\n' +
                     'Asegúrate de haber registrado InnoditeContextBridge en el stack middleware web.\n' +
-                    'Ejecuta: php artisan innodite:check-env'
+                    'Ejecuta: php artisan innodite:doctor'
                 )
             }
             return name

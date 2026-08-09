@@ -2,21 +2,22 @@
 
 declare(strict_types=1);
 
-namespace {{ namespace }};
+namespace {{{ namespace }}};
 
+{{{ ulidImport }}}use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Factories\HasFactory;
-
-class {{ modelName }} extends Model
+use Illuminate\Database\Eloquent\SoftDeletes;
+{{{ imports }}}
+class {{{ modelName }}} extends Model
 {
     use HasFactory;
+{{{ ulidTrait }}}    use SoftDeletes;
 
-    /** @var string Nombre de tabla normalizado (WORKPLAN v3: obligatorio) */
-    {{ table }}
+    {{{ connection }}}
+    /** @var string Nombre de tabla explícito: el plural que adivina Eloquent no siempre acierta. */
+    {{{ table }}}
 
-    {{ fillable }}
+    {{{ fillable }}}
 
-    {{ useStatements }}
-
-    {{ relations }}
+    {{{ relations }}}
 }

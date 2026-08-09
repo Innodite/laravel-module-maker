@@ -1,9 +1,18 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Innodite\LaravelModuleMaker\Commands;
 
+use Innodite\LaravelModuleMaker\Support\Disk;
 use Illuminate\Console\Command;
+use Innodite\LaravelModuleMaker\Commands\Concerns\PrintsHeader;
+use Innodite\LaravelModuleMaker\Commands\Concerns\ReportsFailures;
+use Innodite\LaravelModuleMaker\Commands\Concerns\RehearsesChanges;
 use Illuminate\Support\Facades\File;
+use Innodite\LaravelModuleMaker\Generators\Components\ProjectSeederGenerator;
+use Innodite\LaravelModuleMaker\Support\ModuleMode;
+use Innodite\LaravelModuleMaker\Support\TenancyPackage;
 
 /**
  * Comando de instalación del paquete v3.0.0.
@@ -19,21 +28,80 @@ use Illuminate\Support\Facades\File;
  */
 class SetupModuleMakerCommand extends Command
 {
-    protected $signature = 'innodite:module-setup';
+    use RehearsesChanges;
+    use PrintsHeader;
+    use ReportsFailures;
 
-    protected $description = 'Configura el paquete v3.0.0: crea module-maker-config/ en el project root y publica stubs y contexts.json.';
+    protected $signature = 'innodite:module-setup
+        {--mode= : Modo del proyecto: single-app | multitenant-shared | multitenant-per-tenant}
+        {--tenancy= : Paquete de tenencia del proyecto (solo multitenant): stancl | none}
+        {--dry-run : Ensayo: enseña lo que instalaría, sin escribir nada}';
 
-    public function handle(): void
+    protected $description = 'Configura el paquete: elige el modo del proyecto y crea module-maker-config/ en el project root.';
+
+    public function handle(): int
     {
-        $this->info("Iniciando configuración de laravel-module-maker v3.0.0...");
-        $this->newLine();
+        // El ensayo se enciende antes de nada y se apaga pase lo que pase: el interruptor es
+        // del proceso, así que dejarlo puesto convertiría el siguiente comando en un ensayo
+        // que nadie pidió.
+        $this->startRehearsal();
+
+        try {
+            return $this->ejecutar();
+        } finally {
+            $this->reportRehearsal();
+        }
+    }
+
+    /**
+     * Devuelve código de salida, como los otros ocho.
+     *
+     * Devolvía `void`, y en consola eso significa «éxito» siempre: `innodite:module-setup && …`
+     * encadenaba lo siguiente aunque la instalación se hubiera detenido por falta de modo o de
+     * paquete de tenencia. Un instalador que no puede fallar es un instalador en el que no se puede
+     * confiar dentro de un script.
+     */
+    private function ejecutar(): int
+    {
+        $this->cabecera('Instalación en el proyecto');
+
+        // ── El modo, lo primero ───────────────────────────────────────────────
+        // La norma dice que el modo se ELIGE AL INSTALAR, no que se teclee después en un archivo
+        // de configuración. Y va primero porque decide la forma de todo lo demás: si se pregunta al
+        // final, lo que ya se generó nació con la estructura de otro modo.
+        $mode = $this->configureMode();
+
+        // Y sin modo se para aquí. Antes seguía adelante: creaba las carpetas, publicaba los stubs y
+        // terminaba anunciando «Configuración completa» sobre un proyecto que no había elegido modo
+        // —justo lo que la regla 5 prohíbe—. Ahora el código de salida lo dice también, que es lo
+        // único que lee un script.
+        if ($mode === null) {
+            return self::FAILURE;
+        }
+
+        // ── El paquete de tenencia, si el modo lo pide ────────────────────────
+        // Va inmediatamente después del modo y por el mismo motivo: decide la envoltura de cada
+        // archivo de rutas que se genere, y preguntarlo más tarde deja escritas las rutas de los
+        // primeros módulos sin ella.
+        //
+        // En multitenant es OBLIGATORIO y detiene la instalación, igual que el modo. La alternativa
+        // —dejar que la configuración se quede sin declarar y confiar en que alguien la escriba
+        // después— apuesta a que el usuario lea la documentación antes de generar su primer módulo.
+        // No la lee: genera, ve archivos escritos y sigue.
+        if (! $this->configureTenancyPackage($mode)) {
+            return self::FAILURE;
+        }
 
         // ── Carpeta de módulos ────────────────────────────────────────────────
-        $modulesPath = base_path('Modules');
+        // Las rutas salen de la configuración, no de base_path(): son las MISMAS que leen los
+        // generadores. Instalar en un sitio mientras se genera y se leen stubs de otro es la
+        // familia de fallo de siempre —dos mitades que dejan de coincidir—, y aquí el síntoma es
+        // desconcertante: el usuario edita un stub publicado y el paquete sigue usando el suyo.
+        $modulesPath = config('make-module.module_path');
         $this->ensureDirectory($modulesPath, "Modules/");
 
         // ── Carpeta de configuración (project root) ───────────────────────────
-        $configPath = base_path('module-maker-config');
+        $configPath = config('make-module.config_path');
         $this->ensureDirectory($configPath, "module-maker-config/");
 
         // ── Stubs ─────────────────────────────────────────────────────────────
@@ -42,14 +110,234 @@ class SetupModuleMakerCommand extends Command
         // ── contexts.json ─────────────────────────────────────────────────────
         $this->publishContextsJson($configPath);
 
+        // ── Seeders de despliegue del proyecto ────────────────────────────────
+        // Son del proyecto y no de un módulo —uno, o dos en multitenant—, así que se escriben al
+        // instalar: existen antes que el primer módulo, y `make-module` solo añade la entrada de
+        // cada subfuncionalidad al orden que estos leen.
+        $desplegadores = $this->publishDeploySeeders($mode);
+
         // ── DatabaseSeeder ────────────────────────────────────────────────────
-        $this->modifyDatabaseSeeder();
+        $this->modifyDatabaseSeeder($desplegadores);
 
         $this->newLine();
         $this->info("Configuración completa.");
         $this->line("  → Edita <comment>module-maker-config/contexts.json</comment> con los contextos de tu proyecto.");
         $this->line("  → Personaliza stubs en <comment>module-maker-config/stubs/contextual/</comment>.");
-        $this->line("  → Ejecuta: <comment>php artisan innodite:make-module NombreModulo</comment>");
+        $this->line("  → Ejecuta: <comment>php artisan innodite:make-module NombreModulo SubFuncionalidad</comment>");
+
+        return self::SUCCESS;
+    }
+
+    // ─── El modo del proyecto ─────────────────────────────────────────────────
+
+    /**
+     * Pregunta el modo y lo deja escrito, o dice exactamente qué escribir.
+     *
+     * Los tres modos son igual de legítimos y la elección da forma a **cada archivo generado**: el
+     * eje de contexto, el prefijo de las clases, la conexión del modelo y el middleware de cada ruta.
+     * Por eso no hay valor por defecto y por eso se pregunta aquí — adivinar produce una estructura
+     * equivocada multiplicada por cada módulo del proyecto, y eso solo se descubre tarde.
+     */
+    private function configureMode(): ?ModuleMode
+    {
+        $mode = $this->resolveMode();
+
+        if ($mode === null) {
+            $this->warn('Sin modo elegido no se genera nada, así que este paso no se puede omitir.');
+            $this->line('  Vuelve a ejecutar el comando, o pásalo directo: <comment>--mode=single-app</comment>');
+
+            return null;
+        }
+
+        $this->line("  Modo elegido: <comment>{$mode->label()}</comment>");
+
+        $this->persistMode($mode);
+
+        return $mode;
+    }
+
+    /** @return ModuleMode|null  null si no se pudo determinar y no hay con quién hablar */
+    private function resolveMode(): ?ModuleMode
+    {
+        $opcion = trim((string) $this->option('mode'));
+
+        if ($opcion !== '') {
+            $elegido = ModuleMode::tryFrom($opcion);
+
+            if ($elegido === null) {
+                $this->fallo(
+                    "el modo '{$opcion}' no existe.",
+                    'usa uno de estos — '
+                    . implode(' · ', array_column(ModuleMode::cases(), 'value')),
+                    'El modo decide la forma de cada archivo que se genere después.'
+                );
+
+                return null;
+            }
+
+            return $elegido;
+        }
+
+        if (! $this->input->isInteractive()) {
+            return null;
+        }
+
+        $etiquetas = [];
+
+        foreach (ModuleMode::cases() as $caso) {
+            $etiquetas[$caso->value] = $caso->label();
+        }
+
+        $this->line('  ¿Qué tipo de proyecto es? Decide la forma de todo lo que se genere.');
+
+        $respuesta = $this->choice('  Modo', $etiquetas, null, null, false);
+
+        // choice() devuelve la etiqueta cuando las claves son strings; se recupera el valor.
+        return ModuleMode::tryFrom($respuesta)
+            ?? ModuleMode::tryFrom((string) array_search($respuesta, $etiquetas, true));
+    }
+
+    // ─── El paquete de tenencia del proyecto ──────────────────────────────────
+
+    /**
+     * Pregunta con qué paquete de tenencia corre el proyecto — solo si el modo tiene tenants.
+     *
+     * En una aplicación única no se pregunta porque no hay nada que envolver: ni dominios centrales
+     * que separar ni tenant que identificar. Preguntarlo igual sería pedir una decisión que no
+     * cambia un solo archivo generado.
+     *
+     * @return bool  false cuando el modo lo exige y no se pudo determinar: la instalación se detiene
+     */
+    private function configureTenancyPackage(?ModuleMode $mode): bool
+    {
+        if ($mode === null || ! $mode->hasContextAxis()) {
+            return true;
+        }
+
+        $elegido = $this->resolveTenancyPackage();
+
+        if ($elegido === null) {
+            // Se pregunta y se exige, como el modo. «none» es una respuesta válida —y la que reciben
+            // los proyectos que no corren stancl—, pero tiene que **elegirse**: no declarar nada
+            // deja las rutas sin envoltura por omisión, y eso solo se descubre cuando el módulo ya
+            // está generado y sirviéndose en el dominio equivocado.
+            $this->warn('  Sin paquete de tenencia elegido no se puede envolver una sola ruta, así '
+                . 'que este paso no se puede omitir en un proyecto multitenant.');
+            $this->line('  Vuelve a ejecutar el comando, o pásalo directo: '
+                . '<comment>--tenancy=stancl</comment> · <comment>--tenancy=none</comment> si tu '
+                . 'proyecto usa otro y prefieres escribir tú la envoltura.');
+
+            return false;
+        }
+
+        $this->line("  Paquete de tenencia: <comment>{$elegido->label()}</comment>");
+
+        $this->persistEnvKey('MODULE_MAKER_TENANCY_PACKAGE', $elegido->value, 'paquete de tenencia');
+
+        return true;
+    }
+
+    /** @return TenancyPackage|null  null si no se pudo determinar y no hay con quién hablar */
+    private function resolveTenancyPackage(): ?TenancyPackage
+    {
+        $opcion = trim((string) $this->option('tenancy'));
+
+        if ($opcion !== '') {
+            $elegido = TenancyPackage::tryFrom($opcion);
+
+            if ($elegido === null) {
+                $this->error("FALLA: el paquete de tenencia '{$opcion}' todavía no está soportado.");
+                $this->line('  · FIX: usa uno de estos — '
+                    . implode(' · ', array_column(TenancyPackage::cases(), 'value'))
+                    . '. Con «none» las rutas salen sin envoltura y el archivo dice dónde va.');
+
+                return null;
+            }
+
+            return $elegido;
+        }
+
+        if (! $this->input->isInteractive()) {
+            return null;
+        }
+
+        $etiquetas = [];
+
+        foreach (TenancyPackage::cases() as $caso) {
+            $etiquetas[$caso->value] = $caso->label();
+        }
+
+        $this->line('  ¿Con qué paquete de tenencia corre el proyecto? Decide la envoltura de las '
+            . 'rutas generadas.');
+
+        $respuesta = $this->choice('  Paquete de tenencia', $etiquetas, null, null, false);
+
+        // choice() devuelve la etiqueta cuando las claves son strings; se recupera el valor.
+        return TenancyPackage::tryFrom($respuesta)
+            ?? TenancyPackage::tryFrom((string) array_search($respuesta, $etiquetas, true));
+    }
+
+    // ─── Escritura en el .env ─────────────────────────────────────────────────
+
+    /**
+     * Escribe el modo en el `.env`, y si no puede lo dice — nunca anuncia un éxito que no ocurrió.
+     *
+     * Esa última parte es la lección de A15: el comando anunciaba «DatabaseSeeder modificado» aunque
+     * el reemplazo no hubiera encajado, y el usuario se quedaba creyendo que estaba configurado.
+     */
+    private function persistMode(ModuleMode $mode): void
+    {
+        $this->persistEnvKey('MODULE_MAKER_MODE', $mode->value, 'modo');
+    }
+
+    /**
+     * Deja una clave escrita en el `.env` del proyecto, o dice exactamente qué línea añadir.
+     *
+     * Es el mismo procedimiento para las dos decisiones que se toman al instalar —el modo y el
+     * paquete de tenencia—, y por eso está escrito una vez: dos copias del mismo trámite acaban
+     * respondiendo distinto al `.env` que ya declaraba otra cosa, que es justo el caso delicado.
+     *
+     * @param  string  $clave  Nombre de la variable de entorno
+     * @param  string  $valor  Valor a dejar escrito
+     * @param  string  $queEs  Cómo se llama en los mensajes ('modo', 'paquete de tenencia')
+     */
+    private function persistEnvKey(string $clave, string $valor, string $queEs): void
+    {
+        $envPath = base_path('.env');
+        $linea   = "{$clave}={$valor}";
+
+        if (! File::exists($envPath)) {
+            $this->warn("  No hay .env en la raíz del proyecto, así que el {$queEs} no se ha escrito.");
+            $this->line("  Añade esta línea a tu .env:  <comment>{$linea}</comment>");
+
+            return;
+        }
+
+        $contenido = File::get($envPath);
+
+        if (preg_match("/^{$clave}=(.*)$/m", $contenido, $actual) === 1) {
+            $valorActual = trim($actual[1]);
+
+            if ($valorActual === $valor) {
+                $this->line("  El .env ya declaraba ese {$queEs}: no se toca nada.");
+
+                return;
+            }
+
+            if (! $this->confirm("  El .env dice '{$valorActual}'. ¿Cambiarlo a '{$valor}'?", false)) {
+                $this->warn("  El {$queEs} se queda como estaba.");
+
+                return;
+            }
+
+            Disk::put($envPath, preg_replace("/^{$clave}=.*$/m", $linea, $contenido));
+            $this->info("  ✅ .env actualizado: {$linea}");
+
+            return;
+        }
+
+        Disk::put($envPath, rtrim($contenido, "\n") . "\n\n{$linea}\n");
+        $this->info("  ✅ Escrito en .env: {$linea}");
     }
 
     /**
@@ -69,11 +357,15 @@ class SetupModuleMakerCommand extends Command
     protected function publishStubs(string $configPath): void
     {
         $packageStubsPath = dirname(__DIR__, 2) . '/stubs/contextual';
-        $destPath         = "{$configPath}/stubs/contextual";
+
+        // La carpeta destino es la que LEE el resolutor de stubs (nivel 2), no una derivada de
+        // $configPath: si el proyecto reconfigura `stubs.path`, publicar en otro sitio deja al
+        // usuario editando archivos que nadie lee.
+        $destPath = config('make-module.stubs.path') . '/contextual';
 
         if (!File::isDirectory($packageStubsPath)) {
             $this->warn("   No se encontró stubs/contextual/ en el paquete. Creando carpeta vacía...");
-            File::makeDirectory($destPath, 0755, true, true);
+            Disk::makeDirectory($destPath, 0755, true, true);
             return;
         }
 
@@ -82,7 +374,7 @@ class SetupModuleMakerCommand extends Command
             return;
         }
 
-        File::copyDirectory($packageStubsPath, $destPath);
+        Disk::copyDirectory($packageStubsPath, $destPath);
         $this->info("✅ Stubs publicados en: module-maker-config/stubs/contextual/");
     }
 
@@ -108,53 +400,102 @@ class SetupModuleMakerCommand extends Command
             return;
         }
 
-        File::copy($source, $destination);
+        Disk::copy($source, $destination);
         $this->info("✅ contexts.json publicado en: module-maker-config/contexts.json");
         $this->line("   Edita este archivo para configurar los contextos (Central, Shared, Tenants).");
     }
 
     /**
-     * Modifica el DatabaseSeeder.php del proyecto para incluir los seeders de módulos.
+     * Escribe los seeders de despliegue del proyecto y devuelve sus nombres de clase.
      *
-     * @return void
+     * Sin modo elegido no se escribe ninguno: la forma del despliegue depende del modo —uno en una
+     * aplicación única, dos en multitenant—, y escribir el que no era deja al proyecto con un archivo
+     * que no se sobreescribe nunca.
+     *
+     * **El modo llega por parámetro, no se relee de la configuración.** Acaba de escribirse en el
+     * `.env`, y el `.env` se lee al arrancar: preguntarle a `ModuleMode::current()` en esta misma
+     * ejecución devolvería el valor anterior —o ninguno, en una instalación nueva—, y el instalador
+     * escribiría el despliegue de otro modo justo el día que se elige.
+     *
+     * @return array<int, string>
      */
-    protected function modifyDatabaseSeeder(): void
+    protected function publishDeploySeeders(?ModuleMode $mode): array
     {
+        if ($mode === null) {
+            $this->warn('   Sin modo elegido no se escriben los seeders de despliegue.');
+            $this->line('   Elige el modo y vuelve a ejecutar este comando.');
+
+            return [];
+        }
+
+        return (new ProjectSeederGenerator($mode, $this))->generate();
+    }
+
+    /**
+     * Engancha los seeders de despliegue al `DatabaseSeeder.php` del proyecto.
+     *
+     * No hace falta importarlos: viven en `database/seeders/`, el mismo namespace que el propio
+     * `DatabaseSeeder`.
+     *
+     * **En multitenant se engancha solo el central**, y eso es a propósito. `db:seed` corre contra
+     * una base de datos; el despliegue de un tenant se ejecuta **una vez por tenant**, dentro del
+     * contexto de cada uno, y eso lo orquesta el paquete de tenancy del proyecto, no un `call()` en
+     * un archivo. Enganchar aquí el de tenant lo lanzaría contra la base central.
+     *
+     * @param  array<int, string>  $desplegadores
+     */
+    protected function modifyDatabaseSeeder(array $desplegadores): void
+    {
+        if ($desplegadores === []) {
+            return;
+        }
+
+        $principal = $desplegadores[0];
+        $callLine  = "        \$this->call({$principal}::class);";
+
         $seederPath = database_path('seeders/DatabaseSeeder.php');
 
-        if (!File::exists($seederPath)) {
-            $this->warn("   DatabaseSeeder.php no encontrado. Asegúrate de que el proyecto está inicializado.");
+        if (! File::exists($seederPath)) {
+            $this->warn('   No hay database/seeders/DatabaseSeeder.php, así que no se enganchó nada.');
+            $this->line("   Añade esta línea dentro de su run():  <comment>{$callLine}</comment>");
+
             return;
         }
 
         $seederContent = File::get($seederPath);
-        $callLine      = "        \$this->call(InnoditeModuleSeeder::class);";
-        $useStatement  = "use Innodite\\LaravelModuleMaker\\Database\\Seeders\\InnoditeModuleSeeder;";
 
-        if (str_contains($seederContent, $useStatement) && str_contains($seederContent, $callLine)) {
-            $this->warn("   DatabaseSeeder.php ya está configurado. No se realizaron cambios.");
+        if (str_contains($seederContent, "{$principal}::class")) {
+            $this->warn('   DatabaseSeeder.php ya llama al despliegue. No se realizaron cambios.');
+
             return;
         }
 
-        if (!str_contains($seederContent, $useStatement)) {
-            $seederContent = str_replace(
-                "use Illuminate\\Database\\Seeder;",
-                "use Illuminate\\Database\\Seeder;\n{$useStatement}",
-                $seederContent
-            );
+        if (str_contains($seederContent, 'InnoditeModuleSeeder')) {
+            // El enganche de la v3: recorría Modules/*/Database/Seeders/ por orden alfabético del
+            // sistema de archivos. En la v4 los seeders viven un par de carpetas más adentro y el
+            // orden lo declara el desarrollador, así que ahí ya no encontraba nada.
+            $this->warn('   DatabaseSeeder.php llama a InnoditeModuleSeeder, que ya no existe.');
+            $this->line('   Quita esa línea y su import; el despliegue lo hace ahora '
+                . "<comment>{$principal}</comment>.");
         }
 
-        if (!str_contains($seederContent, $callLine)) {
-            $comment       = "        // Generado por LaravelModuleMaker — ejecuta seeders de todos los módulos";
-            $seederContent = str_replace(
-                "public function run(): void\n    {\n",
-                "public function run(): void\n    {\n{$comment}\n{$callLine}\n",
-                $seederContent
-            );
+        $comment  = '        // Despliegue del proyecto: esquema, datos y permisos, en el orden'
+            . ' declarado en config/make-module.php';
+        $anclaje  = "public function run(): void\n    {\n";
+        $reemplazo = "{$anclaje}{$comment}\n{$callLine}\n";
+
+        if (! str_contains($seederContent, $anclaje)) {
+            // A15: nunca se anuncia un éxito que no ocurrió. El run() del proyecto puede estar escrito
+            // de otra forma —sin tipo de retorno, con atributos encima—, y ahí el reemplazo no encaja.
+            $this->warn('   No reconocí el run() de DatabaseSeeder.php, así que no se tocó.');
+            $this->line("   Añade esta línea dentro de su run():  <comment>{$callLine}</comment>");
+
+            return;
         }
 
-        File::put($seederPath, $seederContent);
-        $this->info("✅ DatabaseSeeder.php modificado para incluir los seeders de módulos.");
+        Disk::put($seederPath, str_replace($anclaje, $reemplazo, $seederContent));
+
+        $this->info("✅ DatabaseSeeder.php llama ahora a {$principal}.");
     }
 
     /**
@@ -169,7 +510,7 @@ class SetupModuleMakerCommand extends Command
         if (File::exists($path)) {
             $this->line("   <comment>{$label}</comment> ya existe.");
         } else {
-            File::makeDirectory($path, 0755, true);
+            Disk::makeDirectory($path, 0755, true);
             $this->info("✅ Carpeta creada: {$label}");
         }
     }

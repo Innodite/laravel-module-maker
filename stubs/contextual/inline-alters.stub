@@ -1,0 +1,56 @@
+<?php
+
+declare(strict_types=1);
+
+namespace {{{ namespace }}};
+
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+/**
+ * Cambios de esquema posteriores de {{{ subFeature }}} — el segundo registro de R22b.
+ *
+ * **Por qué existe.** La norma pide **una sola migración `_final` por tabla**, con el esquema
+ * completo: así la carpeta se lee de un vistazo y una instalación nueva levanta la tabla como está
+ * hoy, sin replicar el historial de cambios. Pero los proyectos que ya desplegaron esa tabla no
+ * pueden recibir un `create` otra vez — necesitan el **delta**.
+ *
+ * De ahí el **doble registro**: cada cambio se escribe en los dos sitios.
+ *
+ *   1. Dentro de la `_final`, como si la tabla siempre hubiera sido así  → instalación nueva
+ *   2. Aquí, como delta con guardia                                      → proyecto ya desplegado
+ *
+ * Olvidar el primero deja a las instalaciones nuevas sin la columna; olvidar el segundo deja a las
+ * existentes sin ella. Son dos mitades del mismo cambio.
+ *
+ * **La guardia no es opcional.** Este método se ejecuta en cada despliegue, así que tiene que poder
+ * correr N veces con el mismo resultado: `hasTable` antes de tocar una tabla, `hasColumn` antes de
+ * añadir una columna. Sin guardia, el segundo despliegue falla con «duplicate column».
+ *
+ * **Quién lo llama:** los seeders Stage y Production de esta subfuncionalidad, después de
+ * `runMigrations()`.
+ *
+ * Nace vacío porque un módulo recién generado no tiene cambios posteriores todavía: su esquema
+ * completo está en la `_final`. Aquí se añade el primero el día que la tabla cambie.
+ */
+trait {{{ traitName }}}
+{
+    /**
+     * Aplica los cambios de esquema posteriores, cada uno con su guardia.
+     *
+     * Ejemplo del patrón, para copiar cuando haga falta:
+     *
+     *     if (Schema::hasTable('{{{ tableName }}}')
+     *         && ! Schema::hasColumn('{{{ tableName }}}', 'nombre_columna')) {
+     *         Schema::table('{{{ tableName }}}', function (Blueprint $table): void {
+     *             $table->string('nombre_columna')->nullable();
+     *         });
+     *     }
+     *
+     * Y el mismo cambio, en la migración `_final` de la tabla.
+     */
+    public function runInlineAlters(): void
+    {
+        //
+    }
+}

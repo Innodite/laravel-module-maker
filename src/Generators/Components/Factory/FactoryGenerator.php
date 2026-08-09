@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Innodite\LaravelModuleMaker\Generators\Components\Factory;
 
 use Illuminate\Support\Str;
@@ -59,16 +61,24 @@ class FactoryGenerator extends AbstractComponentGenerator
         $definitionAttributes = $this->generateDefinitionAttributes();
         $modelUsesString = implode("\n", array_unique($this->modelUses));
 
+        // El modelo lleva el prefijo del contexto (CentralPermission), así que el factory
+        // tiene que importar ESE, no el nombre sin prefijo: apuntar a una clase que no existe
+        // es la otra mitad de B13. Y el propio factory se llama igual —CentralPermissionFactory—,
+        // porque en multitenant hay uno por contexto y sin prefijo colisionarían.
+        $modelClass   = $this->prefixClass($this->modelName);
+        $factoryClass = $this->prefixClass($this->factoryName);
+
         $stub = $this->getStubContent(self::STUB_FILE, $this->isClean, [
             'module' => $this->moduleName,
-            'namespace' => "Modules\\{$this->moduleName}\\Database\\Factories",
-            'factoryName' => $this->factoryName,
-            'modelName' => $this->modelName,
+            'namespace' => $this->buildNamespace('Database\\Factories'),
+            'factoryName' => $factoryClass,
+            'modelName' => $modelClass,
+            'modelNamespace' => $this->buildNamespace('Models') . '\\' . $modelClass,
             'modelUses' => $modelUsesString,
             'definitionAttributes' => $definitionAttributes,
         ]);
 
-        $this->putFile("{$factoryDir}/{$this->factoryName}" . self::FACTORY_FILE_SUFFIX, $stub, "Factory {$this->factoryName} creada en Modules/{$this->moduleName}/Database/Factories");
+        $this->putFile("{$factoryDir}/{$factoryClass}" . self::FACTORY_FILE_SUFFIX, $stub, "Factory {$factoryClass} creada en Modules/{$this->moduleName}/Database/Factories");
     }
 
     protected function generateDefinitionAttributes(): string
@@ -84,7 +94,7 @@ class FactoryGenerator extends AbstractComponentGenerator
         }
         $firstLine = array_shift($lines);
         $otherLines = implode("\n            ", $lines);
-        return $firstLine."            " . "\n            " . $otherLines;
+        return $firstLine . "            " . "\n            " . $otherLines;
     }
 
     protected function generateAttributeValue(array $attribute): string

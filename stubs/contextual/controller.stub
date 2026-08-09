@@ -2,51 +2,75 @@
 
 declare(strict_types=1);
 
-namespace {{ namespace }};
+namespace {{{ namespace }}};
 
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
 use Inertia\Response as InertiaResponse;
 use Innodite\LaravelModuleMaker\Traits\RendersInertiaModule;
-use {{ serviceInterfaceNamespace }};
+use {{{ serviceInterfaceNamespace }}};
+use {{{ storeRequestNamespace }}};
+use {{{ updateRequestNamespace }}};
 
-class {{ controllerName }} extends Controller
+/**
+ * El controlador — recibe la petición, delega y devuelve la respuesta. Nada más.
+ *
+ * **No valida, no consulta y no decide.** Cada una de esas tres cosas vive una capa más abajo:
+ *
+ *     el FormRequest   valida la entrada — si no cumple, este método ni se ejecuta
+ *     el Service       sabe qué significa la operación para el negocio
+ *     el Repository    es el único que habla con la base de datos
+ *
+ * Por eso `store()` y `update()` reciben **su FormRequest**, no un `Request` genérico: la validación
+ * ocurre antes de entrar al método, y `validated()` devuelve solo los campos que pasaron las reglas.
+ * Un `Request` genérico **no tiene ese método**, así que la llamada muere en cuanto alguien la usa
+ * de verdad — y ese fallo no aparece al generar, aparece en el primer alta.
+ *
+ * `list()` sí recibe un `Request`, y es correcto: no valida nada, solo lee los filtros del listado.
+ *
+ * El identificador llega como `string` porque la clave primaria es un ULID, y viaja como **dato**
+ * hasta el Repository: ver el contrato del servicio, donde está explicado por qué aquí no hay Route
+ * Model Binding.
+ */
+class {{{ controllerName }}} extends Controller
 {
     use RendersInertiaModule;
 
     public function __construct(
-        private readonly {{ serviceInterface }} ${{ serviceInstance }},
+        private readonly {{{ serviceInterface }}} ${{{ serviceInstance }}},
     ) {}
 
+    /** La pantalla. Lo único que devuelve Inertia; todo lo demás de aquí responde JSON. */
     public function index(): InertiaResponse
     {
-        return $this->renderModule('{{ module }}', '{{ viewName }}');
+        return $this->renderModule('{{{ module }}}', '{{{ viewName }}}');
     }
 
+    /** Los datos que la pantalla pide al montarse. Su permiso es distinto del de `index`. */
     public function list(Request $request): JsonResponse
     {
-        return response()->json($this->{{ serviceInstance }}->paginate($request->all()));
+        return response()->json($this->{{{ serviceInstance }}}->paginate($request->all()));
     }
 
-    public function store(Request $request): JsonResponse
+    public function store({{{ storeRequest }}} $request): JsonResponse
     {
-        return response()->json($this->{{ serviceInstance }}->create($request->validated()), 201);
+        return response()->json($this->{{{ serviceInstance }}}->create($request->validated()), 201);
     }
 
-    public function show(int $id): JsonResponse
+    public function show(string $id): JsonResponse
     {
-        return response()->json($this->{{ serviceInstance }}->findById($id));
+        return response()->json($this->{{{ serviceInstance }}}->findById($id));
     }
 
-    public function update(Request $request, int $id): JsonResponse
+    public function update({{{ updateRequest }}} $request, string $id): JsonResponse
     {
-        return response()->json($this->{{ serviceInstance }}->update($id, $request->validated()));
+        return response()->json($this->{{{ serviceInstance }}}->update($id, $request->validated()));
     }
 
-    public function destroy(int $id): JsonResponse
+    public function destroy(string $id): JsonResponse
     {
-        $this->{{ serviceInstance }}->delete($id);
+        $this->{{{ serviceInstance }}}->delete($id);
         return response()->json(null, 204);
     }
 }

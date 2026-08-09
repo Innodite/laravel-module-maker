@@ -1,0 +1,68 @@
+<?php
+
+declare(strict_types=1);
+
+namespace {{{ namespace }}};
+
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
+
+/**
+ * Datos canónicos de {{{ subFeature }}} — las filas que la funcionalidad necesita para existir.
+ *
+ * **Qué son datos canónicos.** Los que no crea el usuario y sin los cuales la funcionalidad no
+ * funciona: los estados de un pedido, los tipos de documento, las tasas de una tarifa. No son datos
+ * de prueba —esos van en el factory— ni datos del cliente, que se escriben en producción y aquí no
+ * se tocan jamás.
+ *
+ * **Nace vacío, y eso es lo correcto.** El paquete genera la estructura de un módulo; los datos del
+ * negocio no los conoce ni puede inventarlos. Rellenar esto con filas de ejemplo dejaría un seeder
+ * que aparenta contenido y siembra basura — el defecto que esta fase vino a cerrar.
+ *
+ * **Dos métodos porque son dos situaciones distintas**, y quien los llama ya decidió cuál:
+ *
+ *   upsertCanonicalData()   mezcla sin destruir. Lo llaman producción **y** el stage normal
+ *   seedCanonicalData()     inserta de golpe. Solo el stage, y solo después de vaciar
+ *
+ * Escribe las filas **una vez**, en un método privado que los dos consumen: dos listas separadas
+ * son dos verdades, y la que se corrija será siempre la otra.
+ */
+trait {{{ traitName }}}
+{
+    /**
+     * Mezcla los datos canónicos sin destruir nada — idempotente.
+     *
+     * Es el camino normal: producción y el stage sin modo destructivo. Inserta lo que falta,
+     * actualiza lo que ya está, y **no toca** lo que escribió el usuario.
+     *
+     * Patrón para cuando haya filas que sembrar:
+     *
+     *     if (! Schema::connection($this->connection)->hasTable('{{{ tableName }}}')) {
+     *         return;
+     *     }
+     *
+     *     DB::connection($this->connection)->table('{{{ tableName }}}')->upsert(
+     *         $this->canonicalRows(),
+     *         ['codigo'],                       // por qué columna se reconoce una fila ya existente
+     *         ['nombre', 'updated_at'],         // qué se actualiza cuando ya existe
+     *     );
+     */
+    protected function upsertCanonicalData(): void
+    {
+        //
+    }
+
+    /**
+     * Inserta los datos canónicos de golpe — **solo tras haber vaciado la tabla**.
+     *
+     * Lo llama únicamente el seeder de stage en modo destructivo, cuando la tabla acaba de quedar
+     * vacía. Fuera de ese caso duplicaría filas: no lleva guardia porque no debe usarse sin el
+     * vaciado previo.
+     *
+     *     DB::connection($this->connection)->table('{{{ tableName }}}')->insert($this->canonicalRows());
+     */
+    protected function seedCanonicalData(): void
+    {
+        //
+    }
+}

@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 namespace Innodite\LaravelModuleMaker\Generators\Components;
 
+use Innodite\LaravelModuleMaker\Support\Disk;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Str;
 use Innodite\LaravelModuleMaker\Generators\Concerns\HasStubs;
+use Innodite\LaravelModuleMaker\Generators\Concerns\WritesGeneratedFiles;
 
 /**
  * Genera el archivo de Console Command para el contexto dado.
@@ -18,12 +20,14 @@ use Innodite\LaravelModuleMaker\Generators\Concerns\HasStubs;
 class ConsoleCommandGenerator
 {
     use HasStubs;
+    use WritesGeneratedFiles;
 
     public function __construct(
-        private readonly array  $context,
+        private readonly array $context,
         private readonly string $modulePath,
         private readonly string $moduleName,
-    ) {}
+    ) {
+    }
 
     /**
      * Genera el archivo de Console Command en la carpeta correcta según el contexto.
@@ -50,7 +54,13 @@ class ConsoleCommandGenerator
 
         $commandDescription = "Execute {$className} {$action} operation.";
 
+        // El namespace completo lo arma quien sabe si hay contexto, no la plantilla:
+        // concatenarlo en el stub deja \\ cuando el contexto esta vacio, y eso no es PHP.
+        $namespace = $moduleNamespace . '\\Console\\Commands'
+            . ($contextNamespace !== '' ? '\\' . $contextNamespace : '');
+
         $placeholders = [
+            'namespace'          => $namespace,
             'moduleNamespace'    => $moduleNamespace,
             'contextFolder'      => $contextNamespace,
             'className'          => $className,
@@ -64,7 +74,11 @@ class ConsoleCommandGenerator
         $content = $this->getStubContent('console-command.stub', true, $placeholders);
 
         $dir = $this->modulePath . '/Console/Commands/' . $contextFolder;
-        File::ensureDirectoryExists($dir);
-        File::put($dir . '/' . $className . $commandSuffix . '.php', $content);
+        Disk::ensureDirectory($dir);
+        $this->putFile(
+            $dir . '/' . $className . $commandSuffix . '.php',
+            $content,
+            "Comando generado: {$className}{$commandSuffix}.php"
+        );
     }
 }

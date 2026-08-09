@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Innodite\LaravelModuleMaker\Generators\Components\Factory\Strategies;
 
 use Illuminate\Support\Str;
@@ -61,7 +63,7 @@ class ForeignIdStrategy implements AttributeValueStrategy
                      . "No se pudo encontrar el modelo '{$modelName}' en el módulo actual, otros módulos o App\Models. "
                      . "Por favor, ajuste el namespace manualmente en el archivo generado.";
             $this->generator->warn($message);
-            
+
             // Dejar el comentario en el código
             $this->modelUses[] = "/* TODO: Ajustar el namespace para el modelo '{$modelName}' */";
         }
@@ -103,7 +105,7 @@ class ForeignIdStrategy implements AttributeValueStrategy
         }
         return [];
     }
-    
+
     protected function classExists(string $class): bool
     {
         return class_exists($class);

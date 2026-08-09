@@ -6,7 +6,6 @@ namespace Innodite\LaravelModuleMaker\Generators\Components;
 
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Str;
-use Innodite\LaravelModuleMaker\Support\ContextResolver;
 
 /**
  * Genera y mantiene el Service Provider del módulo.
@@ -142,8 +141,14 @@ class ProviderGenerator extends AbstractComponentGenerator
         }
 
         if ($modified) {
-            File::put($filePath, $content);
-            $this->info("✅ Provider actualizado con nuevos bindings: {$this->moduleName}ServiceProvider.php");
+            // Por putFile, no por File::put: aquí se reescribe un archivo que YA existe en el
+            // proyecto. Si la inyección lo dejara sin cerrar, escribirlo rompería el provider
+            // del módulo entero — no solo el archivo nuevo de turno.
+            $this->putFile(
+                $filePath,
+                $content,
+                "Provider actualizado con nuevos bindings: {$this->moduleName}ServiceProvider.php"
+            );
         } else {
             $this->info("   Provider sin cambios (bindings ya registrados).");
         }
@@ -171,9 +176,15 @@ class ProviderGenerator extends AbstractComponentGenerator
     /**
      * Construye los bloques de imports (use statements) y bindings ($this->app->bind).
      *
-     * Usa la estructura de Contracts v3.0.0:
-     *   Services/Contracts/{Context}/  — NO Services/{Context}/Contracts/
-     *   Repositories/Contracts/{Context}/
+     * Los namespaces salen de `namespaceForComponent()`, el mismo cálculo que usa cada generador
+     * para decidir DÓNDE escribe su archivo. Se armaban aquí a mano, y desde que la
+     * subfuncionalidad es carpeta en todas las capas (TASK-004a) faltaba ese último tramo: el
+     * provider importaba `…\Services\InvoiceService` mientras el archivo estaba en
+     * `…\Services\Invoice\InvoiceService`. PHP válido, cero placeholders, y el módulo entero sin
+     * arrancar — el binding revienta al resolver el servicio. La misma forma de fallo que B13,
+     * B15 y B17: dos mitades que dejan de coincidir.
+     *
+     * Estructura de Contracts (v3.0.0): {Capa}/Contracts/{Contexto}/{SubFuncionalidad}/
      *
      * @return array{0: string, 1: string}  [imports, bindings]
      */
@@ -182,31 +193,31 @@ class ProviderGenerator extends AbstractComponentGenerator
         $imports  = '';
         $bindings = '';
 
-        $componentList = (! $this->isClean && ! empty($this->components))
+        $usaLista = ! $this->isClean && ! empty($this->components);
+
+        $componentList = $usaLista
             ? $this->components
             : [['name' => $this->moduleName, 'context' => $this->componentConfig['context'] ?? null, 'context_id' => $this->componentConfig['context_id'] ?? null]];
 
         foreach ($componentList as $component) {
-            $modelName   = Str::studly($component['name']);
-            $contextKey  = $component['context'] ?? null;
-            $contextId   = $component['context_id'] ?? null;
+            $modelName = Str::studly($component['name']);
 
-            $nsPath = $this->resolveNamespacePath($contextKey, $contextId);
+            // La subfuncionalidad decide la última carpeta de cada capa. En la vía dinámica el
+            // provider se instancia ANTES de que ModuleGenerator la rellene, así que se deriva
+            // igual que allí: del nombre del componente.
+            $component['subFeature'] ??= $usaLista ? $modelName : $this->getSubFeatureFolder();
 
-            $classPrefix = $this->resolveClassPrefix($contextKey, $contextId);
+            $classPrefix = $this->classPrefixFor($component);
 
             $serviceClass = $classPrefix . "{$modelName}Service";
             $serviceIface = $serviceClass . 'Interface';
             $repoClass    = $classPrefix . "{$modelName}Repository";
             $repoIface    = $repoClass . 'Interface';
 
-            // v3.0.0: Contracts viven en {Layer}/Contracts/{Context}/
-            $serviceBase        = "Modules\\{$this->moduleName}\\Services";
-            $repoBase           = "Modules\\{$this->moduleName}\\Repositories";
-            $serviceContractsNs = $nsPath ? "{$serviceBase}\\Contracts\\{$nsPath}" : "{$serviceBase}\\Contracts";
-            $serviceImplNs      = $nsPath ? "{$serviceBase}\\{$nsPath}"            : $serviceBase;
-            $repoContractsNs    = $nsPath ? "{$repoBase}\\Contracts\\{$nsPath}"    : "{$repoBase}\\Contracts";
-            $repoImplNs         = $nsPath ? "{$repoBase}\\{$nsPath}"               : $repoBase;
+            $serviceContractsNs = $this->namespaceForComponent('Services', $component, contracts: true);
+            $serviceImplNs      = $this->namespaceForComponent('Services', $component);
+            $repoContractsNs    = $this->namespaceForComponent('Repositories', $component, contracts: true);
+            $repoImplNs         = $this->namespaceForComponent('Repositories', $component);
 
             $imports .= "use {$serviceContractsNs}\\{$serviceIface};\n";
             $imports .= "use {$serviceImplNs}\\{$serviceClass};\n";
@@ -218,53 +229,5 @@ class ProviderGenerator extends AbstractComponentGenerator
         }
 
         return [$imports, $bindings];
-    }
-
-    /**
-     * Resuelve el namespace_path del contexto activo.
-     *
-     * @param  string|null  $contextKey   Clave del contexto
-     * @param  string|null  $contextId    ID del contexto
-     * @return string
-     */
-    private function resolveNamespacePath(?string $contextKey, ?string $contextId): string
-    {
-        if ($contextKey === null) {
-            return '';
-        }
-
-        try {
-            $ctx = $contextId !== null
-                ? ContextResolver::resolveById($contextKey, $contextId)
-                : ContextResolver::resolve($contextKey);
-
-            return $ctx['namespace_path'] ?? '';
-        } catch (\InvalidArgumentException) {
-            return '';
-        }
-    }
-
-    /**
-     * Resuelve el class_prefix del contexto activo.
-     *
-     * @param  string|null  $contextKey   Clave del contexto
-     * @param  string|null  $contextId    ID del contexto
-     * @return string
-     */
-    private function resolveClassPrefix(?string $contextKey, ?string $contextId): string
-    {
-        if ($contextKey === null) {
-            return '';
-        }
-
-        try {
-            $ctx = $contextId !== null
-                ? ContextResolver::resolveById($contextKey, $contextId)
-                : ContextResolver::resolve($contextKey);
-
-            return $ctx['class_prefix'] ?? '';
-        } catch (\InvalidArgumentException) {
-            return '';
-        }
     }
 }

@@ -1,8 +1,18 @@
 <script setup>
+/**
+ * El detalle de {{{ subFeatureLabel }}} — un modal de lectura, con sus dos acciones en el pie.
+ *
+ * No decide nada por su cuenta: «Editar» emite `editar` con el identificador y el índice abre el
+ * modal correspondiente; «Eliminar» emite `eliminado` y el índice recarga la tabla. Así hay un solo
+ * componente que sabe qué registro se está mirando.
+ */
 import { ref, onMounted } from 'vue'
-import { router } from '@inertiajs/vue3'
 import { useModuleContext } from '@/Composables/useModuleContext'
 import { usePermissions } from '@/Composables/usePermissions'
+import { useAvisos } from '@/Composables/useAvisos'
+import InnoditeModal from '@/Components/InnoditeModal.vue'
+
+const emit = defineEmits(['editar', 'eliminado', 'cerrar'])
 
 const props = defineProps({
     id: { type: [Number, String], required: true },
@@ -11,18 +21,33 @@ const props = defineProps({
 const { contextRoute } = useModuleContext()
 const { can }          = usePermissions()
 
+/** Avisos y confirmación: los pinta el componente montado en el listado. */
+const { exito, error: avisarError, confirmar, mensajeDeError } = useAvisos()
+
 const item    = ref(null)
 const loading = ref(false)
 
+/**
+ * El recorrido es el mismo que en las otras pantallas — y el permiso, distinto:
+ *
+ *     este GET  →  la ruta exige `{{{ permViewShow }}}`
+ *               →  el Controller delega en el Service
+ *               →  el Service pregunta al Repository
+ *               →  y solo el Repository toca el modelo
+ *
+ * Cada una de las seis acciones tiene su permiso propio. Ver no es editar, y editar no es borrar:
+ * por eso el `can()` de abajo no repite el de arriba.
+ */
 async function fetchItem() {
     loading.value = true
     try {
         const { data } = await axios.get(
-            route(contextRoute('{{ entityPlural }}.show'), { id: props.id })
+            route(contextRoute('{{{ routeBase }}}.show'), { id: props.id })
         )
         item.value = data
     } catch (err) {
-        alert(err.response?.data?.message ?? 'No se pudo cargar el registro.')
+        // Se cierra el modal y el aviso permanece: el estado es compartido, no de este componente.
+        avisarError(mensajeDeError(err, 'No se pudo cargar el registro.'))
         goBack()
     } finally {
         loading.value = false
@@ -30,95 +55,118 @@ async function fetchItem() {
 }
 
 async function destroy() {
-    if (!can('{{ entityPlural }}.delete')) return
-    if (!confirm('¿Estás seguro de eliminar este registro?')) return
+    if (!can('{{{ permViewDestroy }}}')) return
+
+    const confirmado = await confirmar('Esta acción no se puede deshacer.', {
+        titulo: 'Eliminar registro',
+        textoConfirmar: 'Eliminar',
+        peligrosa: true,
+    })
+
+    if (!confirmado) return
+
     try {
         await axios.delete(
-            route(contextRoute('{{ entityPlural }}.destroy'), { id: props.id })
+            route(contextRoute('{{{ routeBase }}}.destroy'), { id: props.id })
         )
-        router.visit(route(contextRoute('{{ entityPlural }}.index')))
+        exito('Registro eliminado.')
+        emit('eliminado')
     } catch (err) {
-        alert(err.response?.data?.message ?? 'No se pudo eliminar el registro.')
+        avisarError(mensajeDeError(err, 'No se pudo eliminar el registro.'))
     }
 }
 
 function goToEdit() {
-    router.visit(route(contextRoute('{{ entityPlural }}.edit'), { id: props.id }))
+    emit('editar', props.id)
 }
 
 function goBack() {
-    router.visit(route(contextRoute('{{ entityPlural }}.index')))
+    emit('cerrar')
 }
 
 onMounted(() => fetchItem())
 </script>
 
 <template>
-    <div class="p-6 max-w-2xl">
+    <!--
+        Leer ocupa menos que rellenar: este modal es más estrecho que el del formulario y se cierra
+        clicando fuera, cosa que el alta no hace — ahí un clic despistado tiraría lo escrito.
 
-        <!-- Cabecera -->
-        <div class="flex items-center justify-between mb-6">
-            <div class="flex items-center gap-3">
-                <button @click="goBack" class="text-gray-400 hover:text-gray-600 transition">
-                    ← Volver
-                </button>
-                <h1 class="text-2xl font-semibold text-gray-800">Detalle: {{ entityLabel }}</h1>
-            </div>
-            <div class="flex gap-2">
-                <button
-                    v-if="can('{{ entityPlural }}.edit')"
-                    @click="goToEdit"
-                    class="px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition"
-                >
-                    Editar
-                </button>
-                <button
-                    v-if="can('{{ entityPlural }}.delete')"
-                    @click="destroy"
-                    class="px-4 py-2 bg-red-500 text-white text-sm font-medium rounded-lg hover:bg-red-600 transition"
-                >
-                    Eliminar
-                </button>
-            </div>
-        </div>
-
-        <!-- Loader -->
-        <div v-if="loading" class="flex justify-center py-12">
-            <span class="text-gray-400 text-sm">Cargando...</span>
-        </div>
-
-        <!-- Detalle del registro -->
-        <div v-else-if="item" class="bg-white border border-gray-200 rounded-lg divide-y divide-gray-100">
-
+        El pie va por slot porque aquí las acciones no son «guardar» y «cancelar».
+    -->
+    <InnoditeModal
+        titulo="Detalle: {{{ subFeatureLabel }}}"
+        tamano="md"
+        :columnas="2"
+        :cargando="loading"
+        cerrar-al-clicar-fondo
+        @cerrar="goBack"
+    >
+        <template v-if="item">
             <!--
-                TODO: Añade aquí las filas de detalle del registro.
-                Ejemplo:
-                <div class="flex px-4 py-3">
-                    <span class="w-40 text-sm font-medium text-gray-500">Nombre</span>
+                TODO: Añade aquí las filas del registro. Cada una es una etiqueta y su valor:
+
+                <div>
+                    <span class="block text-xs font-medium text-gray-500">Nombre</span>
                     <span class="text-sm text-gray-800">{{ item.name }}</span>
                 </div>
-            -->
 
-            <div class="flex px-4 py-3">
-                <span class="w-40 text-sm font-medium text-gray-500">ID</span>
+                Van en la misma rejilla de dos columnas que el formulario, así que el detalle se lee
+                donde estaban los campos. Un valor largo —una descripción, una dirección— se marca
+                con `class="sm:col-span-2"` para que ocupe la fila entera.
+            -->
+            <div>
+                <span class="block text-xs font-medium text-gray-500">ID</span>
                 <span class="text-sm text-gray-800">{{ item.id }}</span>
             </div>
 
-            <div class="flex px-4 py-3">
-                <span class="w-40 text-sm font-medium text-gray-500">Creado</span>
+            <div>
+                <span class="block text-xs font-medium text-gray-500">Creado</span>
                 <span class="text-sm text-gray-800">{{ item.created_at }}</span>
             </div>
 
-            <div class="flex px-4 py-3">
-                <span class="w-40 text-sm font-medium text-gray-500">Actualizado</span>
+            <div>
+                <span class="block text-xs font-medium text-gray-500">Actualizado</span>
                 <span class="text-sm text-gray-800">{{ item.updated_at }}</span>
             </div>
+        </template>
 
-        </div>
-
-        <div v-else class="text-center py-12 text-gray-400 text-sm">
+        <p v-else-if="!loading" class="sm:col-span-2 text-center text-sm text-gray-400 py-6">
             Registro no encontrado.
-        </div>
+        </p>
 
-    </div>
+        <!--
+            Los dos botones se ocultan si el usuario no tiene el permiso, y aun así la ruta lo exige
+            por su cuenta. Son dos comprobaciones distintas y las dos hacen falta: ocultar el botón
+            no protege el endpoint, y proteger el endpoint no limpia la pantalla.
+        -->
+        <template #pie>
+            <button
+                type="button"
+                class="mr-auto rounded-lg border border-gray-300 bg-white px-5 py-2 text-sm text-gray-600 transition hover:bg-gray-50"
+                @click="goBack"
+            >
+                Cerrar
+            </button>
+            <button
+                v-if="can('{{{ permViewUpdate }}}')"
+                type="button"
+                data-test="boton-editar"
+                class="rounded-lg bg-blue-600 px-5 py-2 text-sm font-medium text-white transition hover:bg-blue-700"
+                @click="goToEdit"
+            >
+                Editar
+            </button>
+            <button
+                v-if="can('{{{ permViewDestroy }}}')"
+                type="button"
+                data-test="boton-eliminar"
+                class="rounded-lg bg-red-500 px-5 py-2 text-sm font-medium text-white transition hover:bg-red-600"
+                @click="destroy"
+            >
+                Eliminar
+            </button>
+        </template>
+
+    </InnoditeModal>
 </template>

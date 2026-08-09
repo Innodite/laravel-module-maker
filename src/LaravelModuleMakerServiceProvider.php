@@ -1,5 +1,7 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Innodite\LaravelModuleMaker;
 
 use Illuminate\Support\ServiceProvider;
@@ -7,50 +9,46 @@ use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Innodite\LaravelModuleMaker\Commands\AddEntityCommand;
-use Innodite\LaravelModuleMaker\Commands\CheckEnvCommand;
+use Innodite\LaravelModuleMaker\Commands\CreateTestDatabaseCommand;
+use Innodite\LaravelModuleMaker\Commands\DeployCommand;
+use Innodite\LaravelModuleMaker\Commands\DoctorCommand;
 use Innodite\LaravelModuleMaker\Commands\MakeModuleCommand;
 use Innodite\LaravelModuleMaker\Commands\MigrateOneCommand;
 use Innodite\LaravelModuleMaker\Commands\MigratePlanCommand;
-use Innodite\LaravelModuleMaker\Commands\MigrationSyncCommand;
-use Innodite\LaravelModuleMaker\Commands\SeedOneCommand;
-use Innodite\LaravelModuleMaker\Commands\ModuleCheckCommand;
 use Innodite\LaravelModuleMaker\Commands\PublishFrontendCommand;
 use Innodite\LaravelModuleMaker\Commands\SetupModuleMakerCommand;
-use Innodite\LaravelModuleMaker\Commands\TestModuleCommand;
-use Innodite\LaravelModuleMaker\Commands\TestSyncCommand;
+use Innodite\LaravelModuleMaker\Commands\TestCommand;
+use Innodite\LaravelModuleMaker\Contracts\ProveedorDeCriterio;
 use Innodite\LaravelModuleMaker\Middleware\InnoditeContextBridge;
+use Innodite\LaravelModuleMaker\Services\Criterio\CriterioLocal;
 use Illuminate\Support\Str;
-use Innodite\LaravelModuleMaker\Database\Seeders\InnoditeModuleSeeder;
 
 class LaravelModuleMakerServiceProvider extends ServiceProvider
 {
     public function register(): void
     {
         $this->mergeConfigFrom(
-            __DIR__.'/../config/make-module.php', 'make-module'
+            __DIR__ . '/../config/make-module.php',
+            'make-module'
         );
 
         // Alias del middleware para uso en rutas: Route::middleware('innodite.bridge')
         $this->app['router']->aliasMiddleware('innodite.bridge', InnoditeContextBridge::class);
 
-        $this->app->singleton('innodite.module_seeder', function ($app) {
-            $modulesPath      = base_path('Modules');
-            $allModuleSeeders = [];
+        // El enchufe del criterio. Quien pregunta pide la INTERFAZ; qué implementación llega lo dice
+        // la configuración. Es lo que hace que conectar el criterio remoto sea cambiar una clave en
+        // vez de tocar los comandos que preguntan.
+        $this->app->bind(ProveedorDeCriterio::class, function ($app) {
+            $clase = config('make-module.criterio.proveedor', CriterioLocal::class);
 
-            if (File::exists($modulesPath)) {
-                foreach (File::directories($modulesPath) as $modulePath) {
-                    $moduleName   = Str::studly(basename($modulePath));
-                    $seederClass  = "Modules\\{$moduleName}\\Database\\Seeders\\{$moduleName}DatabaseSeeder";
-                    if (class_exists($seederClass)) {
-                        $allModuleSeeders[] = $seederClass;
-                    }
-                }
-            }
-
-            $seeder = new InnoditeModuleSeeder();
-            $seeder->setModuleSeeders($allModuleSeeders);
-            return $seeder;
+            return $app->make(is_string($clase) && class_exists($clase) ? $clase : CriterioLocal::class);
         });
+
+        // Aquí vivía el singleton `innodite.module_seeder` (B27). Construía un InnoditeModuleSeeder
+        // y le llamaba a setModuleSeeders() — un método que esa clase nunca tuvo—, así que resolverlo
+        // era un fatal. No lo resolvía nadie: por eso llevaba desde la v3 sin dar un solo síntoma.
+        // Su trabajo lo hace ahora el seeder de despliegue del proyecto, que además lee el orden
+        // declarado en vez de recorrer el disco por orden alfabético.
     }
 
     public function boot(): void
@@ -61,14 +59,12 @@ class LaravelModuleMakerServiceProvider extends ServiceProvider
                 AddEntityCommand::class,
                 MigrateOneCommand::class,
                 MigratePlanCommand::class,
-                MigrationSyncCommand::class,
-                SeedOneCommand::class,
-                ModuleCheckCommand::class,
+                DeployCommand::class,
+                DoctorCommand::class,
+                CreateTestDatabaseCommand::class,
                 SetupModuleMakerCommand::class,
                 PublishFrontendCommand::class,
-                CheckEnvCommand::class,
-                TestModuleCommand::class,
-                TestSyncCommand::class,
+                TestCommand::class,
             ]);
 
             // ── Publicar configuración ────────────────────────────────────────
@@ -86,9 +82,12 @@ class LaravelModuleMakerServiceProvider extends ServiceProvider
                 __DIR__ . '/../stubs/contexts.json' => base_path('module-maker-config/contexts.json'),
             ], 'module-maker-contexts');
 
-            // ── Publicar composables Vue 3 ────────────────────────────────────
+            // ── Publicar composables y componentes Vue 3 ──────────────────────
+            // Los dos grupos van bajo el mismo tag: la vista generada importa de ambos, así que
+            // publicar solo uno deja la pantalla con imports que no resuelven.
             $this->publishes([
                 __DIR__ . '/../stubs/resources/js/Composables' => resource_path('js/Composables'),
+                __DIR__ . '/../stubs/resources/js/Components'  => resource_path('js/Components'),
             ], 'module-maker-frontend');
 
             // ── First-run: sugerir setup si module-maker-config/ no existe ────
@@ -160,7 +159,7 @@ class LaravelModuleMakerServiceProvider extends ServiceProvider
     {
         // Prioridad 1: Routes/ (v3.0.0+) — uppercase
         $routesPathV3 = "{$modulePath}/Routes";
-        
+
         // Prioridad 2: routes/ (v2.x legacy) — lowercase
         $routesPathV2 = "{$modulePath}/routes";
 
@@ -305,8 +304,7 @@ class LaravelModuleMakerServiceProvider extends ServiceProvider
             fwrite(STDERR, PHP_EOL
                 . "\033[33m[Innodite ModuleMaker]\033[0m Primera instalación detectada." . PHP_EOL
                 . "  Ejecuta el setup inicial para configurar el paquete:" . PHP_EOL
-                . "\033[36m  php artisan innodite:module-setup\033[0m" . PHP_EOL . PHP_EOL
-            );
+                . "\033[36m  php artisan innodite:module-setup\033[0m" . PHP_EOL . PHP_EOL);
         });
     }
 }

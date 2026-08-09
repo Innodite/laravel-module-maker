@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace Innodite\LaravelModuleMaker\Generators\Components;
 
+use Innodite\LaravelModuleMaker\Support\Disk;
 use Illuminate\Support\Facades\File;
 use Innodite\LaravelModuleMaker\Generators\Concerns\HasStubs;
+use Innodite\LaravelModuleMaker\Generators\Concerns\WritesGeneratedFiles;
 
 /**
  * Genera el archivo del Job para el contexto dado.
@@ -18,12 +20,14 @@ use Innodite\LaravelModuleMaker\Generators\Concerns\HasStubs;
 class JobGenerator
 {
     use HasStubs;
+    use WritesGeneratedFiles;
 
     public function __construct(
-        private readonly array  $context,
+        private readonly array $context,
         private readonly string $modulePath,
         private readonly string $moduleName,
-    ) {}
+    ) {
+    }
 
     /**
      * Genera el archivo del Job en la carpeta correcta según el contexto.
@@ -42,7 +46,13 @@ class JobGenerator
         $isTenantSpecific = str_starts_with($contextFolder, 'Tenant/') && !str_ends_with($contextFolder, '/Shared') && $contextFolder !== 'Tenant/Shared';
         $jobSuffix        = $isTenantSpecific ? 'ReportJob' : 'ExportJob';
 
+        // El namespace completo lo arma quien sabe si hay contexto, no la plantilla:
+        // concatenarlo en el stub deja \\ cuando el contexto esta vacio, y eso no es PHP.
+        $namespace = $moduleNamespace . '\\Jobs'
+            . ($contextNamespace !== '' ? '\\' . $contextNamespace : '');
+
         $placeholders = [
+            'namespace'       => $namespace,
             'moduleNamespace' => $moduleNamespace,
             'contextFolder'   => $contextNamespace,
             'className'       => $className,
@@ -54,7 +64,11 @@ class JobGenerator
         $content = $this->getStubContent('job.stub', true, $placeholders);
 
         $dir = $this->modulePath . '/Jobs/' . $contextFolder;
-        File::ensureDirectoryExists($dir);
-        File::put($dir . '/' . $className . $jobSuffix . '.php', $content);
+        Disk::ensureDirectory($dir);
+        $this->putFile(
+            $dir . '/' . $className . $jobSuffix . '.php',
+            $content,
+            "Job generado: {$className}{$jobSuffix}.php"
+        );
     }
 }

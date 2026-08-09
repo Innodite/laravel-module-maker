@@ -2,44 +2,44 @@
 
 declare(strict_types=1);
 
-namespace {{ namespace }};
+namespace {{{ namespace }}};
 
-use {{ serviceInterfaceNamespace }};
-use {{ repositoryInterfaceNamespace }};
+use {{{ serviceInterfaceNamespace }}};
+use {{{ repositoryInterfaceNamespace }}};
 
-class {{ serviceName }} implements {{ serviceInterfaceName }}
+class {{{ serviceName }}} implements {{{ serviceInterfaceName }}}
 {
     public function __construct(
-        private readonly {{ repositoryInterfaceName }} ${{ repositoryInstance }},
+        private readonly {{{ repositoryInterfaceName }}} ${{{ repositoryInstance }}},
     ) {}
 
     public function paginate(array $filters = []): mixed
     {
-        return $this->{{ repositoryInstance }}->paginate($filters);
+        return $this->{{{ repositoryInstance }}}->paginate($filters);
     }
 
     public function list(array $filters = []): mixed
     {
-        return $this->{{ repositoryInstance }}->list($filters);
+        return $this->{{{ repositoryInstance }}}->list($filters);
     }
 
-    public function findById(int $id): mixed
+    public function findById(string $id): mixed
     {
-        return $this->{{ repositoryInstance }}->findById($id);
+        return $this->{{{ repositoryInstance }}}->findById($id);
     }
 
     public function create(array $data): mixed
     {
-        return $this->{{ repositoryInstance }}->create($data);
+        return $this->{{{ repositoryInstance }}}->create($data);
     }
 
-    public function update(int $id, array $data): mixed
+    public function update(string $id, array $data): mixed
     {
-        return $this->{{ repositoryInstance }}->update($id, $data);
+        return $this->{{{ repositoryInstance }}}->update($id, $data);
     }
 
-    public function delete(int $id): bool
+    public function delete(string $id): bool
     {
-        return $this->{{ repositoryInstance }}->delete($id);
+        return $this->{{{ repositoryInstance }}}->delete($id);
     }
 }

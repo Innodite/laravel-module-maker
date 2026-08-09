@@ -1,0 +1,17 @@
+/**
+ * Contrato de {{{ subFeature }}} para el lado de la vista.
+ *
+ * El manifiesto de PHP no se puede leer desde Vitest, así que el lado JS tiene el suyo — **uno**, y
+ * lo importan todas las pruebas de las vistas de esta subfuncionalidad. Los dos los escribe el mismo
+ * generador, de la misma derivación, así que nacen diciendo lo mismo: la alternativa era que cada
+ * prueba de cada componente repitiera la lista de acciones, que es la duplicación que R76 evita.
+ *
+ * `accion → { permiso, ancla }`: el permiso que hace visible el elemento, y el `data-test` con el
+ * que la prueba lo encuentra. El ancla es lo que hace que la prueba **no dependa del texto** del
+ * botón: cambiar «Editar» por «Modificar» es un cambio de copy, y no puede romper una prueba de
+ * permisos.
+ */
+export const VIEW_ACTIONS = {{{ viewActionsJs }}};
+
+/** El componente de listado, que es donde viven las cuatro acciones. */
+export const COMPONENTE = '{{{ vueComponent }}}';

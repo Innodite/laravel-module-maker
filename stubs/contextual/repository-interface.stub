@@ -2,14 +2,24 @@
 
 declare(strict_types=1);
 
-namespace {{ namespace }};
+namespace {{{ namespace }}};
 
-interface {{ repositoryInterfaceName }}
+/**
+ * El contrato del repositorio — **la única capa que habla con la base de datos**.
+ *
+ * Todo lo que hay por encima —controlador y servicio— trata el identificador como un **dato**: un
+ * `string`, porque la clave primaria de toda tabla generada es un ULID. Aquí, y solo aquí, ese dato
+ * se convierte en un registro de Eloquent.
+ *
+ * Esa frontera es la que permite cambiar de dónde salen los datos sin tocar el negocio, y no es una
+ * recomendación: el `ScaffoldTest` de esta subfuncionalidad falla si el servicio importa Eloquent.
+ */
+interface {{{ repositoryInterfaceName }}}
 {
     public function paginate(array $filters = []): mixed;
     public function list(array $filters = []): mixed;
-    public function findById(int $id): mixed;
+    public function findById(string $id): mixed;
     public function create(array $data): mixed;
-    public function update(int $id, array $data): mixed;
-    public function delete(int $id): bool;
+    public function update(string $id, array $data): mixed;
+    public function delete(string $id): bool;
 }

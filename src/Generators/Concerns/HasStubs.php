@@ -1,20 +1,24 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Innodite\LaravelModuleMaker\Generators\Concerns;
 
 use Illuminate\Support\Facades\File;
+use Innodite\LaravelModuleMaker\Support\StubPlaceholder;
 
 /**
- * Trait HasStubs — v3.1.0
+ * Trait HasStubs
  *
- * Resuelve stubs en orden de prioridad (de más específico a más genérico):
- *   1. {config_path}/stubs/contextual/{ContextFolder}/{stub}  — custom del proyecto, por contexto
- *   2. {config_path}/stubs/contextual/{stub}                  — custom del proyecto, genérico
- *   3. package/stubs/contextual/{ContextFolder}/{stub}         — paquete, por contexto
- *   4. package/stubs/contextual/{stub}                         — paquete, genérico (fallback)
+ * Resolves stubs from most specific to most generic:
+ *   1. {config_path}/stubs/contextual/{ContextFolder}/{stub}  — project override, per context
+ *   2. {config_path}/stubs/contextual/{stub}                  — project override, generic
+ *   3. package/stubs/contextual/{stub}                        — the package, single source of truth
  *
- * El ContextFolder se pasa como $contextFolder (ej: "Central", "Tenant/Shared").
- * $isClean y $context se mantienen por compatibilidad de firma.
+ * ContextFolder is passed as $contextFolder (e.g. "Central", "Tenant/Shared").
+ * $isClean and $context are kept for signature compatibility.
+ *
+ * Placeholders are `{{{ key }}}` — see StubPlaceholder for why triple.
  */
 trait HasStubs
 {
@@ -43,10 +47,13 @@ trait HasStubs
         $stubPath = $this->getStubPath($stubFile, $isClean, $context);
 
         if (!File::exists($stubPath)) {
+            // El nivel 3 es el propio paquete: si aquí no está, no falta publicar nada
+            // —publicar stubs dejó de ser parte de instalar—, falta el archivo.
             throw new \Exception(
                 "El archivo stub '{$stubFile}' no se encuentra.\n" .
                 "Buscado en: {$stubPath}\n" .
-                "Ejecuta 'php artisan innodite:module-setup' para publicar los stubs."
+                "Ese es un stub del paquete, no del proyecto: reinstala con 'composer reinstall innodite/laravel-module-maker'.\n" .
+                "Si lo que querías era personalizarlo, publícalo con 'php artisan innodite:stubs publish {$stubFile}'."
             );
         }
 
@@ -57,14 +64,19 @@ trait HasStubs
      * Resuelve la ruta completa del archivo stub con resolución por carpeta de contexto.
      *
      * Orden de prioridad:
-     *   1. custom/{ContextFolder}/{stub}  — proyecto, específico por contexto
-     *   2. custom/{stub}                  — proyecto, genérico
-     *   3. package/{ContextFolder}/{stub} — paquete, específico por contexto
-     *   4. package/{stub}                 — paquete, genérico (fallback final)
+     *   1. custom/{ContextFolder}/{stub}  — project override, per context
+     *   2. custom/{stub}                  — project override, generic
+     *   3. package/{stub}                 — the package's single source of truth
      *
-     * @param  string       $stubFile       Nombre del archivo stub
-     * @param  bool         $isClean        Mantenido por compatibilidad
-     * @param  string|null  $contextFolder  Carpeta del contexto (ej: "Central", "Tenant/Shared")
+     * The package no longer ships per-context copies. It used to carry four of them
+     * (Central, Shared, TenantShared, TenantName), byte-for-byte identical to the base
+     * stub, and they took precedence over it: fixing a base stub without touching its
+     * four copies changed nothing, because the stale copy won. The context override
+     * still exists — but only where it can legitimately differ, in the project.
+     *
+     * @param  string       $stubFile       Stub file name
+     * @param  bool         $isClean        Kept for signature compatibility
+     * @param  string|null  $contextFolder  Context folder (e.g. "Central", "Tenant/Shared")
      * @return string
      */
     protected function getStubPath(string $stubFile, bool $isClean, ?string $contextFolder = null): string
@@ -74,21 +86,21 @@ trait HasStubs
 
         $folder = $this->normalizeContextFolder($contextFolder);
 
+        // 1. Project override, per context
         if ($folder) {
-            // 1. Custom del proyecto, específico por contexto
             $p = "{$customBase}/{$folder}/{$stubFile}";
-            if (File::exists($p)) return $p;
-
-            // 2. Paquete, específico por contexto
-            $p = "{$packageBase}/{$folder}/{$stubFile}";
-            if (File::exists($p)) return $p;
+            if (File::exists($p)) {
+                return $p;
+            }
         }
 
-        // 3. Custom del proyecto, genérico
+        // 2. Project override, generic
         $p = "{$customBase}/{$stubFile}";
-        if (File::exists($p)) return $p;
+        if (File::exists($p)) {
+            return $p;
+        }
 
-        // 4. Paquete, genérico (fallback final)
+        // 3. The package's single source of truth
         return "{$packageBase}/{$stubFile}";
     }
 
@@ -101,7 +113,9 @@ trait HasStubs
      */
     private function normalizeContextFolder(?string $context): ?string
     {
-        if (!$context) return null;
+        if (!$context) {
+            return null;
+        }
 
         // Si ya es una carpeta con slash (ej: "Tenant/Shared"), extraer el nombre de carpeta de stubs
         $map = [
@@ -128,17 +142,28 @@ trait HasStubs
     }
 
     /**
-     * Reemplaza los marcadores de posición {{ key }} en el contenido del stub.
+     * Resuelve los placeholders {{{ key }}} del contenido del stub.
      *
-     * @param  string  $stub          Contenido del stub
-     * @param  array   $placeholders  Mapa de marcadores → valores (sin llaves)
+     * Las claves llegan **desnudas** —`['modelName' => 'Role']`— y quien las envuelve es
+     * StubPlaceholder::wrap(), una sola vez. Una clave que llegue ya envuelta lanza, en vez
+     * de no sustituir nada en silencio: así fue B15, y costó cuatro vistas rotas por módulo.
+     *
+     * El valor se convierte a texto aquí. No es ceremonia: hay generadores que entregan números
+     * —un `0` de longitud, un contador— y hasta que este archivo declaró `strict_types` PHP los
+     * convertía por su cuenta, en silencio. Con la declaración puesta, `str_replace` rechaza el
+     * entero y **la generación entera se cae**; convertir aquí, en el único punto por el que pasan
+     * todos los placeholders, mantiene el contrato («el stub recibe texto») en un solo sitio.
+     *
+     * @param  string                       $stub          Contenido del stub
+     * @param  array<string, string|int|float|bool|null> $placeholders  Mapa clave desnuda → valor
      * @return string
      */
     protected function replacePlaceholders(string $stub, array $placeholders): string
     {
         foreach ($placeholders as $key => $value) {
-            $stub = str_replace("{{ {$key} }}", $value, $stub);
+            $stub = str_replace(StubPlaceholder::wrap((string) $key), (string) $value, $stub);
         }
+
         return $stub;
     }
 }

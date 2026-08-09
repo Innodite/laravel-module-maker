@@ -73,7 +73,6 @@
 │   │   ├── MigrationPlanResolver.php
 │   │   ├── MigrationTargetService.php
 │   │   ├── ModuleAuditor.php
-│   │   ├── RouteInjectionService.php
 │   │   └── TestContextConfigService.php
 │   ├── Support
 │   │   └── ContextResolver.php

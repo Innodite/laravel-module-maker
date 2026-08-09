@@ -1,0 +1,69 @@
+<?php
+
+declare(strict_types=1);
+
+namespace {{{ namespace }}};
+
+use Illuminate\Support\Facades\Artisan;
+
+/**
+ * Migraciones de {{{ subFeature }}}, en el orden en que se ejecutan.
+ *
+ * Esta lista la genera el paquete a partir de la carpeta de migraciones, cada vez que se genera una.
+ * Es código y viaja con el módulo: si alguien copia el módulo a otro proyecto, la lista va dentro.
+ *
+ * **Quién la usa:** los seeders Stage y Production de esta subfuncionalidad, que llaman a
+ * `runMigrations()` antes de sembrar. Nadie ejecuta `migrate` a mano — el vehículo del despliegue es
+ * el seeder.
+ *
+ * Si añades una migración a mano, añádela también aquí **en su posición**: el orden de esta lista es
+ * el orden del despliegue, y una tabla con clave foránea no puede crearse antes que aquella a la que
+ * apunta.
+ */
+trait {{{ traitName }}}
+{
+    /**
+     * Rutas relativas a la raíz del proyecto, en orden de ejecución.
+     *
+     * @return array<int, string>
+     */
+    public function getMigrationsList(): array
+    {
+        return [{{{ migrations }}}];
+    }
+
+    /**
+     * Ejecuta las migraciones de esta subfuncionalidad, una a una, con `--path` y **contra su
+     * conexión**.
+     *
+     * Con `--path` y no `migrate` a secas: así se despliega **solo** esta subfuncionalidad, sin
+     * arrastrar migraciones pendientes de otros módulos que quizá no toca tocar todavía.
+     *
+     * Y con `--database`, que es la mitad que faltaba. El seeder que usa este trait declara su
+     * conexión en `$connection` y **valida y siembra contra ella** —`Schema::connection()`,
+     * `DB::connection()`—, pero `migrate` sin `--database` aplica contra la conexión **por defecto**.
+     * En una aplicación única las dos son la misma y no se nota nunca. En multitenant no: las tablas
+     * de cada contexto acababan **todas en la base por defecto**, y ninguna en la suya.
+     *
+     * El síntoma inmediato es «Faltan tablas después de migrar» con la migración recién dada por
+     * aplicada — migra en una base y comprueba en otra. El caso peor es que nadie valide: dos
+     * inquilinos escribiendo sobre la misma tabla sin un solo error.
+     */
+    public function runMigrations(): void
+    {
+        foreach ($this->getMigrationsList() as $migration) {
+            $parametros = [
+                '--path'  => $migration,
+                '--force' => true,
+            ];
+
+            // `null` significa «la de por defecto», y ahí no hay nada que decirle a `migrate`:
+            // pasarle `--database => null` sería nombrar una conexión que no existe.
+            if ($this->connection !== null) {
+                $parametros['--database'] = $this->connection;
+            }
+
+            Artisan::call('migrate', $parametros);
+        }
+    }
+}

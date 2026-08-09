@@ -63,21 +63,4 @@ class ContextNotFoundException extends InvalidArgumentException
 
         return new self($message);
     }
-
-    /**
-     * Crea excepción para connection_key inválido.
-     *
-     * @param  string  $contextId  ID del contexto
-     * @param  string  $connectionKey  Clave de conexión inexistente
-     * @return self
-     */
-    public static function invalidConnectionKey(string $contextId, string $connectionKey): self
-    {
-        return new self(sprintf(
-            "[ContextResolver] El contexto '%s' define connection_key='%s' pero no existe en config/database.php.\n" .
-            "Añade la conexión a config/database.php o ejecuta: php artisan innodite:make-connections",
-            $contextId,
-            $connectionKey
-        ));
-    }
 }

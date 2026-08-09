@@ -4,8 +4,10 @@ declare(strict_types=1);
 
 namespace Innodite\LaravelModuleMaker\Generators\Components;
 
+use Innodite\LaravelModuleMaker\Support\Disk;
 use Illuminate\Support\Facades\File;
 use Innodite\LaravelModuleMaker\Generators\Concerns\HasStubs;
+use Innodite\LaravelModuleMaker\Generators\Concerns\WritesGeneratedFiles;
 
 /**
  * Genera el archivo de Exception (NotFoundException) para el contexto Central.
@@ -16,12 +18,14 @@ use Innodite\LaravelModuleMaker\Generators\Concerns\HasStubs;
 class ExceptionGenerator
 {
     use HasStubs;
+    use WritesGeneratedFiles;
 
     public function __construct(
-        private readonly array  $context,
+        private readonly array $context,
         private readonly string $modulePath,
         private readonly string $moduleName,
-    ) {}
+    ) {
+    }
 
     /**
      * Genera el archivo de Exception en la carpeta correcta según el contexto.
@@ -36,7 +40,13 @@ class ExceptionGenerator
         $moduleNamespace  = 'Modules\\' . $this->moduleName;
         $className        = $contextPrefix . $this->moduleName;
 
+        // El namespace completo lo arma quien sabe si hay contexto, no la plantilla:
+        // concatenarlo en el stub deja \\ cuando el contexto esta vacio, y eso no es PHP.
+        $namespace = $moduleNamespace . '\\Exceptions'
+            . ($contextNamespace !== '' ? '\\' . $contextNamespace : '');
+
         $placeholders = [
+            'namespace'       => $namespace,
             'moduleNamespace' => $moduleNamespace,
             'contextFolder'   => $contextNamespace,
             'className'       => $className,
@@ -47,7 +57,11 @@ class ExceptionGenerator
         $content = $this->getStubContent('exception.stub', true, $placeholders);
 
         $dir = $this->modulePath . '/Exceptions/' . $contextFolder;
-        File::ensureDirectoryExists($dir);
-        File::put($dir . '/' . $className . 'NotFoundException.php', $content);
+        Disk::ensureDirectory($dir);
+        $this->putFile(
+            $dir . '/' . $className . 'NotFoundException.php',
+            $content,
+            "Excepción generada: {$className}NotFoundException.php"
+        );
     }
 }

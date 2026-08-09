@@ -6,6 +6,10 @@ namespace Innodite\LaravelModuleMaker\Generators\Components;
 
 use Illuminate\Support\Str;
 use Innodite\LaravelModuleMaker\Support\ContextResolver;
+use Innodite\LaravelModuleMaker\Support\RouteMarkers;
+use Innodite\LaravelModuleMaker\Support\ModuleMode;
+use Innodite\LaravelModuleMaker\Support\SubFeaturePermissions;
+use Innodite\LaravelModuleMaker\Support\TenancyPackage;
 
 /**
  * Genera el archivo de rutas del módulo respetando la convención de contextos.
@@ -61,11 +65,43 @@ class RouteGenerator extends AbstractComponentGenerator
      */
     public function generate(): void
     {
+        // ── Quién decide la forma de las rutas es el MODO ─────────────────────
+        //
+        // Antes lo decidía la **ausencia de una clave**: sin `context` en la configuración, las
+        // rutas salían por el camino simple. Eso tenía dos caras, y las dos malas.
+        //
+        // Hacia un lado convertía la aplicación única en un caso degradado —ahí el contexto está
+        // vacío siempre, así que un proyecto sin tenants caía en el «fallback»— cuando es un modo
+        // de primera clase. Es la misma corrección que ya se hizo en `RequestGenerator`, y por el
+        // mismo motivo.
+        //
+        // Hacia el otro, y peor: en un proyecto **multitenant** cuyo componente no declarase
+        // contexto, las rutas salían también por ahí. El resultado no era un error, era un archivo
+        // plausible y equivocado: sin el `foreach` de dominios centrales, en `web.php` en vez de
+        // `tenant.php`, y exigiendo `tenant-permission:tenant_…` porque eso es lo que responde el
+        // modo cuando no se le dice el contexto. Rutas que protegen algo distinto de lo que dicen,
+        // y ni una señal de que algo fuera mal.
+        if (! $this->mode()->hasContextAxis()) {
+            $this->generateSingleAppRoutes();
+            return;
+        }
+
         $context = $this->getContext();
 
-        // Sin contexto definido → comportamiento legacy (ruta simple)
         if (empty($context)) {
-            $this->generateLegacy();
+            // No se escribe nada, y se dice por qué. Escribir aquí el camino simple sería el
+            // «éxito que no ocurrió» de A15: un archivo generado que hay que rehacer entero, y que
+            // nadie va a mirar porque el comando terminó en verde.
+            $this->error(
+                "⛔ No se generaron las rutas de {$this->moduleName}: el proyecto es "
+                . "«{$this->mode()->label()}» y este componente no declara contexto."
+            );
+            $this->warn(
+                '   · FIX: declara `context` en la configuración del componente. Sin él no se '
+                . 'puede saber qué dominio sirve la ruta ni con qué permiso protegerla, y lo que '
+                . 'se escriba será plausible y equivocado.'
+            );
+
             return;
         }
 
@@ -85,167 +121,206 @@ class RouteGenerator extends AbstractComponentGenerator
             return;
         }
 
-        // central → envuelto en foreach central_domains
-        if ($context['wrap_central_domains'] ?? false) {
-            $this->generateCentralRoutes($routesDir);
-            return;
-        }
-
-        // shared / central sin wrap → web.php simple
-        $this->generateSharedRoutes($routesDir, $context);
+        // El resto —`central` y `shared`— escribe donde su contexto declare.
+        $this->generateContextRoutes($routesDir, $context, $contextKey);
     }
 
     // ─── Generadores por tipo de contexto ────────────────────────────────────
 
     /**
-     * Genera rutas para la app central, envueltas en foreach de central_domains.
+     * Las rutas de un contexto, **en los archivos que ese contexto declara**.
      *
-     * @param  string  $routesDir  Ruta al directorio de rutas del módulo
+     * Antes este método era `generateSharedRoutes()` y escribía **siempre en los dos** —`web.php` y
+     * `tenant.php`—, porque estaba pensado para `shared`, que sí vive en los dos lados. Pero era
+     * también donde acababa `central`, y ahí el resultado era grave: el bloque `central-…`, con su
+     * `central-permission:central_…`, quedaba dentro del archivo de rutas **que se sirve a los
+     * tenants**. Rutas de la aplicación central publicadas en el dominio de cada cliente.
+     *
+     * Nadie lo veía porque el archivo es correcto: parsea, las rutas existen y sus permisos son los
+     * que dicen ser. Solo está en el sitio equivocado.
+     *
+     * **El catálogo ya tenía la respuesta y no se leía**: cada contexto declara su `route_file`.
+     * `central` dice `web.php`; `tenant_shared` y los tenants dicen `tenant.php`; `shared` **no
+     * declara ninguno**, y esa ausencia es su forma de decir que vive en los dos — es el único que
+     * de verdad es dual.
+     *
+     * @param  string  $routesDir   Ruta al directorio de rutas del módulo
+     * @param  array   $context     Configuración del contexto ya resuelta
+     * @param  string  $contextKey  Clave del contexto, que decide el marcador
      * @return void
      */
-    private function generateCentralRoutes(string $routesDir): void
+    private function generateContextRoutes(string $routesDir, array $context, string $contextKey): void
     {
-        $context          = $this->getContext();
-        $functionality    = $this->getFunctionality();
-        $controllerClass  = $this->buildControllerClass();
-        $controllerFqcn   = $this->buildControllerNamespace() . '\\' . $controllerClass;
-        $permPrefix       = $context['permission_prefix'];
-        $permMiddleware   = $context['permission_middleware'];
-        $permKey          = Str::snake(str_replace('-', '_', $functionality));
+        $middleware = $context['route_middleware'] ?? [];
 
-        $block = $this->buildRouteBlock(
-            routePrefix:    $context['route_prefix'] . '-' . $functionality,
-            routeName:      $context['route_name'] . $functionality . '.',
-            controllerClass: $controllerClass,
-            permMiddleware: $permMiddleware,
-            permPrefix:     $permPrefix,
-            permKey:        $permKey,
-            indent:         '        '
-        );
+        // Un `route_file` declarado significa «solo aquí». Sin él, el contexto vive en los dos.
+        $archivos = isset($context['route_file'])
+            ? [(string) $context['route_file']]
+            : ['web.php', 'tenant.php'];
 
-        $content = <<<PHP
-        <?php
-
-        declare(strict_types=1);
-
-        use Illuminate\Support\Facades\Route;
-        use {$controllerFqcn};
-
-        foreach (config('tenancy.central_domains') as \$domain) {
-            Route::domain(\$domain)->group(function () {
-
-        {$block}
-            // {{CENTRAL_END}}
-            });
+        foreach ($archivos as $archivo) {
+            $this->escribirSeccion($routesDir, $context, $contextKey, $archivo, $middleware);
         }
-        PHP;
-
-        $this->writeOrAppend("{$routesDir}/web.php", $content, '{{CENTRAL_END}}', $block, $controllerFqcn);
     }
 
     /**
-     * Genera rutas para un contexto Shared (dual: web.php + tenant.php).
+     * Escribe —o amplía— la sección de este contexto en uno de sus archivos de rutas.
      *
-     * El contexto Shared escribe en DOS archivos con prefijos distintos para
-     * evitar colisiones de nombres de ruta:
-     *   web.php    → usa web_route_prefix / web_route_name    (ej: central.shared-users)
-     *   tenant.php → usa tenant_route_prefix / tenant_route_name (ej: tenant.shared-users)
+     * Los prefijos se resuelven por archivo porque `shared` los necesita distintos en cada lado: sus
+     * dos bloques declaran las mismas acciones, y con el mismo nombre de ruta el segundo pisaría al
+     * primero al registrarse.
      *
-     * Si route_middleware es vacío, NO se añade ->middleware() (hereda del grupo padre).
-     *
-     * @param  string  $routesDir  Ruta al directorio de rutas del módulo
-     * @param  array   $context    Configuración del contexto shared
-     * @return void
+     * @param  array<string, mixed>  $context
+     * @param  array<int, string>    $middleware
      */
-    private function generateSharedRoutes(string $routesDir, array $context): void
-    {
+    private function escribirSeccion(
+        string $routesDir,
+        array $context,
+        string $contextKey,
+        string $archivo,
+        array $middleware
+    ): void {
         $functionality   = $this->getFunctionality();
         $controllerClass = $this->buildControllerClass();
         $controllerFqcn  = $this->buildControllerNamespace() . '\\' . $controllerClass;
-        $permPrefix      = $context['permission_prefix'] ?? '';
-        $permMiddleware  = $context['permission_middleware'] ?? '';
-        $permKey         = Str::snake(str_replace('-', '_', $functionality));
-        $middleware      = $context['route_middleware'] ?? [];
+        $permPrefix      = $this->resolvePermissionPrefix($context, $contextKey ?: null);
+        $permMiddleware  = $this->resolvePermissionMiddleware($context, $contextKey ?: null);
 
-        // ── Prefijos diferenciados por archivo ────────────────────────────────
-        $webPrefix  = ($context['web_route_prefix']  ?? $context['route_prefix']  ?? 'shared') . '-' . $functionality;
-        $webName    = ($context['web_route_name']    ?? $context['route_name']    ?? 'shared.') . $functionality . '.';
-        $tnntPrefix = ($context['tenant_route_prefix'] ?? $context['route_prefix']  ?? 'shared') . '-' . $functionality;
-        $tnntName   = ($context['tenant_route_name']   ?? $context['route_name']    ?? 'shared.') . $functionality . '.';
+        $esTenant = $archivo === 'tenant.php';
+        $prefijo  = ($esTenant ? $context['tenant_route_prefix'] ?? null : $context['web_route_prefix'] ?? null)
+            ?? $context['route_prefix'] ?? 'shared';
+        $nombre   = ($esTenant ? $context['tenant_route_name'] ?? null : $context['web_route_name'] ?? null)
+            ?? $context['route_name'] ?? 'shared.';
 
-        // ── Bloque para web.php ───────────────────────────────────────────────
-        $webBlock = $this->buildRouteBlock(
-            routePrefix:     $webPrefix,
-            routeName:       $webName,
+        // En `tenant.php` la envoltura ES middleware, así que se suma a la lista del contexto en vez
+        // de anidar otro grupo. `shared` escribe en los dos archivos y solo aquí la necesita: el
+        // mismo bloque, servido en el dominio de un cliente, tiene que identificar al tenant antes
+        // de tocar una sola tabla.
+        if ($esTenant) {
+            $middleware = $this->conMiddlewareDeTenencia($middleware);
+        }
+
+        $bloque = $this->buildRouteBlock(
+            routePrefix:     $prefijo . '-' . $functionality,
+            routeName:       $nombre . $functionality . '.',
             controllerClass: $controllerClass,
             permMiddleware:  $permMiddleware,
             permPrefix:      $permPrefix,
-            permKey:         $permKey,
+            permKey:         SubFeaturePermissions::key($functionality),
             indent:          '    '
         );
 
-        $webContent = $this->buildSharedFileContent($controllerFqcn, $webBlock, $middleware, 'SHARED_WEB_END');
-        $this->writeOrAppend("{$routesDir}/web.php", $webContent, 'SHARED_WEB_END', $webBlock, $controllerFqcn);
+        // El marcador sale de RouteMarkers, que es de donde lo lee también el inyector. Antes cada
+        // lado lo componía por su cuenta y no coincidían.
+        $marcador = RouteMarkers::key($contextKey, $archivo, (string) ($context['id'] ?? ''));
 
-        // ── Bloque para tenant.php ────────────────────────────────────────────
-        $tenantBlock = $this->buildRouteBlock(
-            routePrefix:     $tnntPrefix,
-            routeName:       $tnntName,
-            controllerClass: $controllerClass,
-            permMiddleware:  $permMiddleware,
-            permPrefix:      $permPrefix,
-            permKey:         $permKey,
-            indent:          '    '
+        $seccion = $this->buildSectionContent($bloque, $middleware, $marcador, $archivo);
+
+        $this->writeOrAppend(
+            "{$routesDir}/{$archivo}",
+            $this->buildFileHeader($controllerFqcn, $archivo) . $seccion,
+            $marcador,
+            $bloque,
+            $this->importsDelArchivo($controllerFqcn, $archivo),
+            $seccion
         );
-
-        $tenantContent = $this->buildSharedFileContent($controllerFqcn, $tenantBlock, $middleware, 'SHARED_TENANT_END');
-        $this->writeOrAppend("{$routesDir}/tenant.php", $tenantContent, 'SHARED_TENANT_END', $tenantBlock, $controllerFqcn);
     }
 
     /**
-     * Construye el contenido de archivo de rutas para contexto Shared.
+     * Los `use` que el archivo de rutas necesita: el del controlador y los del paquete de tenencia.
+     *
+     * @return array<int, string>
+     */
+    private function importsDelArchivo(string $controllerFqcn, string $archivo): array
+    {
+        return [$controllerFqcn, ...TenancyPackage::current()->routeImports($archivo)];
+    }
+
+    /**
+     * La **sección** de rutas de este contexto — sin cabecera, para que sirva a los dos casos.
+     *
+     * Devolver la sección sola es lo que permite anexarla a un archivo que ya existe. Antes este
+     * método devolvía el archivo entero y era lo único que había, así que ampliar un archivo
+     * significaba pegarle otro archivo dentro. La cabecera la pone quien crea el archivo nuevo.
+     *
      * Si route_middleware está vacío, omite el ->middleware() (hereda del grupo padre).
      *
-     * @param  string  $controllerFqcn  FQCN del controlador
-     * @param  string  $block           Bloque de rutas CRUD
-     * @param  array   $middleware      Array de middlewares (vacío = sin wrapper)
-     * @param  string  $markerKey       Clave del marcador sin llaves
+     * La envoltura la decide el **paquete de tenencia declarado**, no este generador: `web.php` se
+     * sirve en los dominios centrales y `tenant.php` identifica a su tenant, y las dos formas están
+     * escritas en el vocabulario de ese paquete. Sin uno soportado no se inventa una envoltura
+     * genérica: se escribe la sección con la nota que dice dónde va y qué haría stancl.
+     *
+     * @param  string  $block       Bloque de rutas CRUD
+     * @param  array   $middleware  Array de middlewares (vacío = sin wrapper)
+     * @param  string  $markerKey   Clave del marcador sin llaves
+     * @param  string  $archivo     Archivo de rutas destino: 'web.php' o 'tenant.php'
      * @return string
      */
-    private function buildSharedFileContent(string $controllerFqcn, string $block, array $middleware, string $markerKey): string
-    {
+    private function buildSectionContent(
+        string $block,
+        array $middleware,
+        string $markerKey,
+        string $archivo
+    ): string {
         $marker = "// {{{$markerKey}}}";
 
         if (empty($middleware)) {
             // Sin middleware wrapper — hereda seguridad del grupo padre
-            return <<<PHP
-            <?php
-
-            declare(strict_types=1);
-
-            use Illuminate\Support\Facades\Route;
-            use {$controllerFqcn};
-
+            $cuerpo = <<<PHP
             {$block}
                 {$marker}
             PHP;
+        } else {
+            $mw = $this->buildMiddlewareArray($middleware);
+
+            $cuerpo = <<<PHP
+            Route::middleware({$mw})->group(function () {
+
+            {$block}
+                {$marker}
+            });
+            PHP;
         }
 
-        $mw = $this->buildMiddlewareArray($middleware);
-        return <<<PHP
-        <?php
+        return $this->envolverSegunTenencia($cuerpo, $archivo);
+    }
 
-        declare(strict_types=1);
+    // ─── La envoltura que decide el paquete de tenencia ──────────────────────
 
-        use Illuminate\Support\Facades\Route;
-        use {$controllerFqcn};
+    /**
+     * Añade a la lista los middleware que identifican al tenant, sin duplicar los que ya estén.
+     *
+     * @param  array<int, string>  $middleware  Los que declara el contexto
+     * @return array<int, string>
+     */
+    private function conMiddlewareDeTenencia(array $middleware): array
+    {
+        return array_values(array_unique(
+            array_merge($middleware, TenancyPackage::current()->tenantMiddleware())
+        ));
+    }
 
-        Route::middleware({$mw})->group(function () {
+    /**
+     * Envuelve el cuerpo del archivo, o deja escrito dónde va la envoltura que falta.
+     *
+     * Solo `web.php` se envuelve aquí. En `tenant.php` la envoltura es middleware y ya viajó en la
+     * lista —anidar además un grupo sería el mismo dato escrito dos veces—, así que lo único que
+     * puede faltarle es la nota.
+     *
+     * @param  string  $cuerpo   El bloque de rutas con su marcador, ya montado
+     * @param  string  $archivo  'web.php' o 'tenant.php'
+     */
+    private function envolverSegunTenencia(string $cuerpo, string $archivo): string
+    {
+        $tenencia = TenancyPackage::current();
 
-        {$block}
-            {$marker}
-        });
-        PHP;
+        if (! $tenencia->wrapsRoutes()) {
+            return $tenencia->missingWrapperNote($archivo) . "\n\n" . $cuerpo;
+        }
+
+        return $archivo === 'web.php'
+            ? $tenencia->wrapCentralRoutes($cuerpo)
+            : $cuerpo;
     }
 
     /**
@@ -262,10 +337,10 @@ class RouteGenerator extends AbstractComponentGenerator
         $functionality   = $this->getFunctionality();
         $controllerClass = $this->buildControllerClass();
         $controllerFqcn  = $this->buildControllerNamespace() . '\\' . $controllerClass;
-        $permPrefix      = $context['permission_prefix'];
-        $permMiddleware  = $context['permission_middleware'];
-        $permKey         = Str::snake(str_replace('-', '_', $functionality));
-        $middleware      = $this->buildMiddlewareArray($context['route_middleware'] ?? []);
+        $permPrefix      = $this->resolvePermissionPrefix($context, $this->componentConfig['context'] ?? null, $context['id'] ?? null);
+        $permMiddleware  = $this->resolvePermissionMiddleware($context, $this->componentConfig['context'] ?? null);
+        $permKey         = SubFeaturePermissions::key($functionality);
+        $middlewareLista = $this->conMiddlewareDeTenencia($context['route_middleware'] ?? []);
         $label           = $context['id'] ?? $context['label'] ?? $classPrefix;
         $separator       = str_repeat('─', 74);
 
@@ -279,18 +354,51 @@ class RouteGenerator extends AbstractComponentGenerator
             indent:          '    '
         );
 
-        $section = <<<PHP
+        $titulo = <<<PHP
         // {$separator}
         // {$label} — {$this->moduleName}
         // {$separator}
-        Route::middleware({$middleware})->group(function () {
-
-        {$block}
-            // {{{$markerKey}_END}}
-        });
         PHP;
 
-        $this->writeOrAppend("{$routesDir}/tenant.php", $section, "{$markerKey}_END", $block, $controllerFqcn);
+        // Sin middlewares declarados no se envuelve nada: el bloque hereda la seguridad del grupo
+        // padre del proyecto, igual que hace el camino compartido. Envolver «por simetría» escribía
+        // un `Route::middleware([])->group(...)` que no aporta y que, con la lista vacía, salía con
+        // una coma suelta dentro de los corchetes.
+        if ($middlewareLista === []) {
+            $section = <<<PHP
+            {$titulo}
+            {$block}
+                // {{{$markerKey}_END}}
+            PHP;
+        } else {
+            $middleware = $this->buildMiddlewareArray($middlewareLista);
+
+            $section = <<<PHP
+            {$titulo}
+            Route::middleware({$middleware})->group(function () {
+
+            {$block}
+                // {{{$markerKey}_END}}
+            });
+            PHP;
+        }
+
+        // La identificación del tenant ya viaja en la lista de middleware cuando hay un paquete
+        // soportado. Cuando no lo hay, el archivo dice dónde va y qué haría stancl — porque un
+        // bloque de rutas de tenant sin identificar es el defecto que no se ve: responde igual, y
+        // contra la base que estuviera conectada.
+        $section = $this->envolverSegunTenencia($section, 'tenant.php');
+
+        // La cabecera solo viaja en el contenido del archivo **nuevo**: si el archivo ya existe,
+        // `writeOrAppend()` inserta el bloque en el marcador y añade el `use` que falte.
+        $this->writeOrAppend(
+            "{$routesDir}/tenant.php",
+            $this->buildFileHeader($controllerFqcn, 'tenant.php') . $section,
+            "{$markerKey}_END",
+            $block,
+            $this->importsDelArchivo($controllerFqcn, 'tenant.php'),
+            $section
+        );
     }
 
     /**
@@ -315,6 +423,13 @@ class RouteGenerator extends AbstractComponentGenerator
         $this->componentConfig['context_id'] = null;
         $this->resolveContextCache(null);
     }
+
+    // ─── De dónde salen el prefijo y el middleware del permiso ───────────────
+    //
+    // Los dos resolvedores **subieron al generador base** en la fase 3: los necesita también el
+    // generador de seeders, que es quien crea los permisos que estas rutas exigen. Tenerlos aquí,
+    // privados, era garantizar que el día que uno cambiara el otro seguiría emitiendo el nombre
+    // viejo — los dos lados de la misma pareja calculando por separado.
 
     // ─── Helpers de construcción de rutas ────────────────────────────────────
 
@@ -342,39 +457,30 @@ class RouteGenerator extends AbstractComponentGenerator
         $i  = $indent;
         $i2 = $indent . '    ';
 
+        // Las rutas y su permiso salen de RoutePermissions, que es también de donde los lee el
+        // PermissionsSeeder. Escribirlas aquí a mano las convertiría en la mitad de un par que puede
+        // dejar de coincidir: la ruta exigiría un permiso que el seeder no crea, y la pantalla daría
+        // 403 para todo el mundo.
+        $rutas = [];
+
+        foreach (SubFeaturePermissions::routes($permPrefix, $permKey) as $ruta) {
+            $metodo = strtolower($ruta['verb']);
+
+            $rutas[] = <<<PHP
+            {$i2}// {$ruta['comment']}
+            {$i2}Route::{$metodo}('{$ruta['uri']}', [{$controllerClass}::class, '{$ruta['action']}'])
+            {$i2}    ->name('{$ruta['route']}')
+            {$i2}    ->middleware('{$permMiddleware}:{$ruta['permission']}');
+            PHP;
+        }
+
+        $bloque = implode("\n\n", $rutas);
+
         return <<<PHP
         {$i}Route::prefix('{$routePrefix}')
         {$i}    ->name('{$routeName}')
         {$i}    ->group(function () {
-        {$i2}// Vista principal
-        {$i2}Route::get('/', [{$controllerClass}::class, 'index'])
-        {$i2}    ->name('index')
-        {$i2}    ->middleware('{$permMiddleware}:{$permPrefix}_{$permKey}_index');
-
-        {$i2}// Endpoint JSON listado
-        {$i2}Route::get('/list', [{$controllerClass}::class, 'list'])
-        {$i2}    ->name('list')
-        {$i2}    ->middleware('{$permMiddleware}:{$permPrefix}_{$permKey}_index');
-
-        {$i2}// Crear
-        {$i2}Route::post('/', [{$controllerClass}::class, 'store'])
-        {$i2}    ->name('store')
-        {$i2}    ->middleware('{$permMiddleware}:{$permPrefix}_{$permKey}_store');
-
-        {$i2}// Ver uno
-        {$i2}Route::get('/{id}', [{$controllerClass}::class, 'show'])
-        {$i2}    ->name('show')
-        {$i2}    ->middleware('{$permMiddleware}:{$permPrefix}_{$permKey}_show');
-
-        {$i2}// Actualizar
-        {$i2}Route::put('/{id}', [{$controllerClass}::class, 'update'])
-        {$i2}    ->name('update')
-        {$i2}    ->middleware('{$permMiddleware}:{$permPrefix}_{$permKey}_update');
-
-        {$i2}// Eliminar
-        {$i2}Route::delete('/{id}', [{$controllerClass}::class, 'destroy'])
-        {$i2}    ->name('destroy')
-        {$i2}    ->middleware('{$permMiddleware}:{$permPrefix}_{$permKey}_delete');
+        {$bloque}
         {$i}});
         PHP;
     }
@@ -410,21 +516,80 @@ class RouteGenerator extends AbstractComponentGenerator
      */
     private function buildMiddlewareArray(array $middleware): string
     {
-        $items = array_map(fn ($m) => "    '{$m}'", $middleware);
+        // Sin middlewares el array se escribe vacío y ya está. La versión anterior componía
+        // `"[\n" . '' . ",\n]"` — una coma suelta dentro de los corchetes, que es un error de
+        // sintaxis. No dio la cara en su día porque el único camino que llamaba aquí con la lista
+        // vacía escribía además un archivo **sin `<?php`**, y un archivo que no abre PHP no se
+        // parsea: era texto plano, y el error de sintaxis no existía porque no había sintaxis.
+        if ($middleware === []) {
+            return '[]';
+        }
+
+        // Una entrada que ya es expresión PHP —`InitializeTenancyByDomain::class`— se escribe tal
+        // cual. Entrecomillarla la convertiría en el alias literal «InitializeTenancyByDomain::class»,
+        // que ningún kernel resuelve: la ruta fallaría al registrarse, y solo en el proyecto del
+        // usuario.
+        $items = array_map(
+            static fn (string $m): string => str_ends_with($m, '::class') ? "    {$m}" : "    '{$m}'",
+            $middleware
+        );
+
         return "[\n" . implode(",\n", $items) . ",\n]";
+    }
+
+    /**
+     * La cabecera de un archivo de rutas recién creado.
+     *
+     * Existe porque los dos caminos que escriben rutas la necesitan igual y solo uno la ponía: el de
+     * los tenants componía su sección —el separador, el `Route::middleware(...)->group()` y el
+     * bloque— y la entregaba tal cual como contenido de un archivo nuevo. Lo que salía era un `.php`
+     * sin apertura, sin `use` y sin una sola ruta que Laravel pudiera registrar.
+     */
+    private function buildFileHeader(string $controllerFqcn, string $archivo): string
+    {
+        // Los `use` de la tenencia van aquí y no en la envoltura porque los escribe quien sabe qué
+        // archivo se está creando: un `InitializeTenancyByDomain::class` sin su import es una clase
+        // inexistente en ese espacio de nombres, y el archivo entero deja de registrar rutas.
+        $lineas = implode("\n", array_map(
+            static fn (string $fqcn): string => "use {$fqcn};",
+            $this->importsDelArchivo($controllerFqcn, $archivo)
+        ));
+
+        return <<<PHP
+        <?php
+
+        declare(strict_types=1);
+
+        use Illuminate\Support\Facades\Route;
+        {$lineas}
+
+
+        PHP;
     }
 
     /**
      * Escribe el archivo de rutas o agrega una nueva sección si el archivo ya existe.
      * Busca el marcador y agrega el nuevo bloque antes de él.
-     * Si el marcador no está en el archivo, agrega la sección completa al final.
-     * Cuando el archivo ya existe, agrega el import `use` si aún no está presente.
+     * Si el marcador no está en el archivo, agrega **la sección** —no el archivo entero— al final.
+     * Cuando el archivo ya existe, agrega los import `use` que aún no estén presentes.
      *
-     * @param  string  $filePath       Ruta absoluta al archivo de rutas
-     * @param  string  $fullContent    Contenido completo para archivo nuevo
-     * @param  string  $markerKey      Clave del marcador sin llaves (ej: 'CENTRAL_END')
-     * @param  string  $newBlock       Bloque de rutas a insertar
-     * @param  string  $controllerFqcn FQCN del controlador para el import use
+     * Esa distinción es el defecto que esta tarea cierra. El tercer camino anexaba `$fullContent`,
+     * que es el contenido de un archivo **nuevo**: con su `<?php`, su `declare` y sus `use`. Pegado
+     * dentro de un archivo que ya existía, el resultado no parsea —`unexpected token "<"`— y el
+     * chequeo de salida lo rechaza, así que la generación aborta entera.
+     *
+     * Y no era un caso raro: es exactamente lo que pasa en `tenant_shared`, donde cada tenant
+     * escribe su bloque con **su propio marcador** en el mismo `tenant.php`. El primero creaba el
+     * archivo y el segundo no encontraba el suyo. Es decir, el contexto principal del modo
+     * `multitenant-shared` no podía generar en cuanto el proyecto tenía dos tenants — que es el
+     * caso normal de ese modo.
+     *
+     * @param  string             $filePath     Ruta absoluta al archivo de rutas
+     * @param  string             $fullContent  Contenido completo, solo para el archivo nuevo
+     * @param  string             $markerKey    Clave del marcador sin llaves (ej: 'CENTRAL_END')
+     * @param  string             $newBlock     Bloque de rutas a insertar en el marcador
+     * @param  array<int, string> $imports      FQCN a importar si el archivo ya existe
+     * @param  string             $section      La sección SIN cabecera, para anexar a un archivo existente
      * @return void
      */
     private function writeOrAppend(
@@ -432,25 +597,45 @@ class RouteGenerator extends AbstractComponentGenerator
         string $fullContent,
         string $markerKey,
         string $newBlock,
-        string $controllerFqcn = ''
+        array $imports = [],
+        string $section = ''
     ): void {
         $marker = "// {{{$markerKey}}}";
 
+        // ⚠️ Las tres salidas de este método escriben por `putFile()`, y no por `file_put_contents`.
+        //
+        // Escribían directo, así que **el camino de rutas con contexto esquivaba el chequeo de
+        // salida** — el que comprueba que lo escrito parsea y no lleva placeholders sin resolver.
+        // Era el último agujero de esa red, y el más caro de todos: un `routes/web.php` que no
+        // parsea no rompe un módulo, tumba la aplicación entera. El resto del paquete lleva desde
+        // la fase 1 pasando por aquí.
+
         if (! file_exists($filePath)) {
-            file_put_contents($filePath, $fullContent);
-            $this->info("✅ Archivo de rutas creado: " . basename(dirname($filePath, 2)) . '/Routes/' . basename($filePath));
+            $this->putFile(
+                $filePath,
+                $fullContent,
+                'Archivo de rutas creado: ' . basename(dirname($filePath, 2)) . '/Routes/' . basename($filePath)
+            );
+
             return;
         }
 
         $existing = file_get_contents($filePath);
 
-        // Añadir el import use si el FQCN está definido y no está ya en el archivo
-        if ($controllerFqcn !== '' && ! str_contains($existing, "use {$controllerFqcn};")) {
+        // Añadir los `use` que falten — el del controlador y los del paquete de tenencia. Un
+        // `::class` sin su import nombra una clase que no existe en ese espacio de nombres, y el
+        // archivo deja de registrar rutas: el mismo par descoordinado de siempre, un lado escribe y
+        // el otro no importa.
+        foreach ($imports as $fqcn) {
+            if ($fqcn === '' || str_contains($existing, "use {$fqcn};")) {
+                continue;
+            }
+
             // Insertar después del último `use ...;` existente
             if (preg_match('/^(use [^;]+;)(?!.*^use [^;]+;)/ms', $existing)) {
                 $existing = preg_replace(
                     '/(use [^;]+;)(?=(?:(?!use [^;]+;)[\s\S])*$)/',
-                    "$1\nuse {$controllerFqcn};",
+                    "$1\nuse {$fqcn};",
                     $existing,
                     1
                 );
@@ -458,43 +643,102 @@ class RouteGenerator extends AbstractComponentGenerator
         }
 
         if (str_contains($existing, $marker)) {
-            $updated = str_replace($marker, $newBlock . PHP_EOL . '    ' . $marker, $existing);
-            file_put_contents($filePath, $updated);
-            $this->info("✅ Rutas agregadas en sección existente: " . basename($filePath));
-        } else {
-            file_put_contents($filePath, $existing . PHP_EOL . PHP_EOL . $fullContent);
-            $this->info("✅ Nueva sección de rutas creada en: " . basename($filePath));
+            $this->putFile(
+                $filePath,
+                str_replace($marker, $newBlock . PHP_EOL . '    ' . $marker, $existing),
+                'Rutas agregadas en sección existente: ' . basename($filePath)
+            );
+
+            return;
         }
+
+        // Lo que se anexa es la SECCIÓN, nunca el archivo entero: dentro de un archivo que ya abrió
+        // PHP, un segundo `<?php` no es texto, es un error de sintaxis. Sin sección que anexar no se
+        // escribe nada y se dice qué línea falta — un archivo roto cuesta más que una instrucción.
+        if ($section === '') {
+            $this->warn(
+                'FALLA: no se pudo ampliar ' . basename($filePath) . ": falta el marcador "
+                . "{$marker} y no hay sección que anexar."
+            );
+            $this->warn(
+                "   · FIX: vuelve a poner {$marker} dentro del grupo donde deben entrar las rutas "
+                . 'nuevas, o pega el bloque a mano ahí.'
+            );
+
+            return;
+        }
+
+        $this->putFile(
+            $filePath,
+            rtrim($existing) . PHP_EOL . PHP_EOL . $section . PHP_EOL,
+            'Nueva sección de rutas creada en: ' . basename($filePath)
+        );
     }
 
     /**
-     * Comportamiento legacy para componentes sin contexto definido.
-     * Mantiene retrocompatibilidad con proyectos que no usan contexts.json.
+     * Las rutas de una aplicación **sin eje de contexto**: el modo `single-app`.
+     *
+     * Se llamaba `generateLegacy()`, y el nombre describía lo que este camino **fue**, no lo que
+     * es. No es un fallback ni un resto de la v3: es la forma que tienen las rutas cuando el
+     * proyecto no tiene tenants que separar, que es un modo de primera clase de los tres. Un
+     * método que se llama «legacy» se lee como algo a punto de retirarse, y nadie lo mantiene.
+     *
+     * Todo lo que lo diferencia del camino con contexto es lo que **no** hay: sin prefijo de
+     * contexto en la URL, sin `foreach` de dominios, sin envoltorio de middleware de tenancy. Las
+     * seis rutas y sus seis permisos son exactamente los mismos, salidos del mismo sitio.
+     *
+     * Dos cosas se arreglaron aquí antes, y las dos las destapó el arnés al poner el archivo
+     * generado contra el árbol:
+     *
+     *   1. El import se armaba dentro del stub —`Modules\{Módulo}\Http\Controllers\{Clase}`—
+     *      **sin la carpeta de la subfuncionalidad**, que es carpeta en todas las capas desde
+     *      TASK-004a. Las cinco rutas del módulo apuntaban a un controlador inexistente: sintaxis
+     *      correcta, archivo escrito, 500 en cada petición. Ahora el FQCN lo entrega quien sabe
+     *      dónde vive la clase, `buildNamespace()`, que es el mismo que decidió dónde escribirla.
+     *
+     *   2. Escribía con `file_put_contents` directo, así que **no pasaba por el chequeo de
+     *      salida**: el sexto agujero de la red, después de los cinco que cerró TASK-003b. Un
+     *      `routes/web.php` que no parsea tumba la aplicación entera, no un módulo.
      *
      * @return void
      */
-    private function generateLegacy(): void
+    private function generateSingleAppRoutes(): void
     {
         $routesDir = $this->getComponentBasePath() . '/Routes';
         $this->ensureDirectoryExists($routesDir);
 
-        $controllerName = "{$this->modelName}Controller";
+        $functionality   = $this->getFunctionality();
+        $controllerClass = $this->prefixClass("{$this->modelName}Controller");
+        $controllerFqcn  = $this->buildNamespace('Http\\Controllers') . '\\' . $controllerClass;
 
-        $stubApi = $this->getStubContent('route-api.stub', $this->isClean, [
-            'StudlyModule'   => $this->moduleName,
-            'snakeModule'    => Str::snake($this->moduleName),
-            'controllerName' => $controllerName,
-        ]);
-        file_put_contents("{$routesDir}/api.php", $stubApi);
+        // El mismo bloque que usan los contextos: las 6 rutas, cada una con su permiso. Antes este
+        // camino escribía desde dos stubs propios que no ponían ni un solo `->middleware()`.
+        $block = $this->buildRouteBlock(
+            routePrefix:     $functionality,
+            routeName:       $functionality . '.',
+            controllerClass: $controllerClass,
+            permMiddleware:  $this->resolvePermissionMiddleware([], null),
+            permPrefix:      $this->resolvePermissionPrefix([], null),
+            permKey:         SubFeaturePermissions::key($functionality),
+            indent:          ''
+        );
 
-        $stubWeb = $this->getStubContent('route-web.stub', $this->isClean, [
-            'StudlyModule'   => $this->moduleName,
-            'snakeModule'    => Str::snake($this->moduleName),
-            'controllerName' => $controllerName,
-        ]);
-        file_put_contents("{$routesDir}/web.php", $stubWeb);
+        $content = <<<PHP
+        <?php
 
-        $this->info("✅ Rutas legacy creadas: Modules/{$this->moduleName}/Routes/");
+        declare(strict_types=1);
+
+        use Illuminate\Support\Facades\Route;
+        use {$controllerFqcn};
+
+        {$block}
+        PHP;
+
+        $this->putFile(
+            "{$routesDir}/web.php",
+            $content,
+            "Rutas creadas: Modules/{$this->moduleName}/Routes/web.php"
+        );
     }
 
     /**

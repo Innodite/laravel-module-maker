@@ -2,155 +2,106 @@
 
 declare(strict_types=1);
 
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 
-it('ejecuta migrate-plan en dry-run resolviendo coordenadas de migración', function () {
-    $manifestDir = $this->tempPath('module-maker-config/migrations');
-    File::ensureDirectoryExists($manifestDir);
+/**
+ * El esquema se aplica desde los traits, y la base de datos la dice el contexto.
+ *
+ * Las dos mitades de la retirada del manifiesto JSON. Antes **el orden** salía de una lista dentro
+ * del archivo —que no viajaba con el módulo al copiarlo y se desincronizaba en silencio— y **la
+ * conexión** salía de su nombre: `tenant-one.order.json` → contexto `tenant-one`. Pasar otro
+ * `--manifest` ejecutaba contra otra base de datos sin que nada lo advirtiera.
+ *
+ * Ahora el orden lo declara cada subfuncionalidad en su trait `MigrationsList`, y el contexto se
+ * dice en voz alta.
+ */
 
-    $migrationPath = $this->tempPath('Modules/User/Database/Migrations/Shared/2026_01_01_000001_create_users_table.php');
-    File::ensureDirectoryExists(dirname($migrationPath));
-    File::put($migrationPath, <<<'PHP'
-<?php
-
-use Illuminate\Database\Migrations\Migration;
-use Illuminate\Database\Schema\Blueprint;
-use Illuminate\Support\Facades\Schema;
-
-return new class extends Migration {
-    public function up(): void
-    {
-        Schema::create('users', function (Blueprint $table): void {
-            $table->id();
-        });
-    }
-
-    public function down(): void
-    {
-        Schema::dropIfExists('users');
-    }
-};
-PHP);
-
-    $manifestPath = "{$manifestDir}/central.order.json";
-    File::put($manifestPath, json_encode([
-        'migrations' => [
-            'User:Shared/2026_01_01_000001_create_users_table.php',
-        ],
-        'seeders' => [],
-    ], JSON_PRETTY_PRINT));
-
-    $this->artisan('innodite:migrate-plan', [
-        '--manifest' => 'central.order.json',
-        '--dry-run' => true,
-    ])->assertSuccessful();
-});
-
-it('falla cuando una coordenada de migración no existe', function () {
-    $manifestDir = $this->tempPath('module-maker-config/migrations');
-    File::ensureDirectoryExists($manifestDir);
-
-    $manifestPath = "{$manifestDir}/central.order.json";
-    File::put($manifestPath, json_encode([
-        'migrations' => [
-            'User:Shared/2026_01_01_999999_missing_table.php',
-        ],
-        'seeders' => [],
-    ], JSON_PRETTY_PRINT));
-
-    $this->artisan('innodite:migrate-plan', [
-        '--manifest' => 'central.order.json',
-        '--dry-run' => true,
-    ])->assertFailed();
-});
-
-
-it('ejecuta migraciones y seeders reales sobre una base sqlite temporal', function () {
-    if (!extension_loaded('pdo_sqlite')) {
-        $this->markTestSkipped('pdo_sqlite no está disponible en este entorno.');
-    }
-
-    $databasePath = $this->tempPath('database/test-central.sqlite');
-    File::ensureDirectoryExists(dirname($databasePath));
-    touch($databasePath);
-
-    config()->set('database.connections.central', [
-        'driver' => 'sqlite',
-        'database' => $databasePath,
-        'prefix' => '',
-        'foreign_key_constraints' => true,
-    ]);
-
-    $manifestDir = $this->tempPath('module-maker-config/migrations');
-    File::ensureDirectoryExists($manifestDir);
-
-    $migrationPath = $this->tempPath('Modules/Probe/Database/Migrations/Shared/2026_01_01_000001_create_probe_items_table.php');
-    File::ensureDirectoryExists(dirname($migrationPath));
-    File::put($migrationPath, <<<'PHP'
-<?php
-
-use Illuminate\Database\Migrations\Migration;
-use Illuminate\Database\Schema\Blueprint;
-use Illuminate\Support\Facades\Schema;
-
-return new class extends Migration {
-    public function up(): void
-    {
-        Schema::create('probe_items', function (Blueprint $table): void {
-            $table->id();
-            $table->string('name');
-            $table->timestamps();
-        });
-    }
-
-    public function down(): void
-    {
-        Schema::dropIfExists('probe_items');
-    }
-};
-PHP);
-
-    $seederPath = $this->tempPath('Modules/Probe/Database/Seeders/Shared/SharedProbeSeeder.php');
-    File::ensureDirectoryExists(dirname($seederPath));
-    File::put($seederPath, <<<'PHP'
-<?php
-
-namespace Modules\Probe\Database\Seeders\Shared;
-
-use Illuminate\Database\Seeder;
-use Illuminate\Support\Facades\DB;
-
-class SharedProbeSeeder extends Seeder
+/** Deja un trait MigrationsList con las migraciones que declara, y los archivos que nombra. */
+function traitConMigraciones(string $carpeta, array $migraciones): void
 {
-    public function run(): void
-    {
-        DB::table('probe_items')->insert([
-            'name' => 'seeded-item',
-            'created_at' => now(),
-            'updated_at' => now(),
-        ]);
+    $lista = implode("\n", array_map(
+        static fn (string $m): string => "            '{$m}',",
+        $migraciones
+    ));
+
+    $destino = test()->tempPath("Modules/Probe/Database/Seeders/{$carpeta}/Thing");
+    File::ensureDirectoryExists($destino);
+
+    File::put("{$destino}/ProbeThingMigrationsList.php", "<?php\n\ntrait ProbeThingMigrationsList\n{\n"
+        . "    protected function migrations(): array\n    {\n        return [\n{$lista}\n        ];\n    }\n}\n");
+
+    foreach ($migraciones as $migracion) {
+        $ruta = test()->tempPath(str_replace('Modules/', 'Modules/', $migracion));
+        File::ensureDirectoryExists(dirname($ruta));
+        File::put($ruta, "<?php\n");
     }
 }
-PHP);
 
-    require_once $seederPath;
+it('lista las migraciones que declaran los traits, sin ejecutar nada', function () {
+    traitConMigraciones('Central', [
+        'Modules/Probe/Database/Migrations/Central/2026_01_01_000001_crea_cosas.php',
+        'Modules/Probe/Database/Migrations/Central/2026_01_01_000002_crea_otras.php',
+    ]);
 
-    $manifestPath = "{$manifestDir}/central.order.json";
-    File::put($manifestPath, json_encode([
-        'migrations' => [
-            'Probe:Shared/2026_01_01_000001_create_probe_items_table.php',
-        ],
-        'seeders' => [
-            'Probe:Shared/SharedProbeSeeder',
-        ],
-    ], JSON_PRETTY_PRINT));
+    $this->artisan('innodite:migrate-plan', ['--context' => 'central', '--dry-run' => true])
+        ->expectsOutputToContain('2026_01_01_000001_crea_cosas.php')
+        ->expectsOutputToContain('2026_01_01_000002_crea_otras.php')
+        ->expectsOutputToContain('Dry-run completado')
+        ->assertSuccessful();
+});
 
-    $this->artisan('innodite:migrate-plan', [
-        '--manifest' => 'central.order.json',
-        '--seed' => true,
-    ])->assertSuccessful();
+it('sin contexto no adivina contra qué base de datos ejecutar', function () {
+    // Es el fallo que el manifiesto escondía: la base de datos salía del nombre de un archivo, así
+    // que siempre había una «por defecto» aunque nadie la hubiera elegido.
+    $this->artisan('innodite:migrate-plan')
+        ->expectsOutputToContain('--context=central')
+        ->assertFailed();
+});
 
-    expect(DB::connection('central')->table('probe_items')->count())->toBe(1)
-        ->and(DB::connection('central')->table('probe_items')->value('name'))->toBe('seeded-item');
+it('un contexto sin migraciones declaradas lo dice, en vez de fingir que desplegó', function () {
+    $this->artisan('innodite:migrate-plan', ['--context' => 'central', '--dry-run' => true])
+        ->expectsOutputToContain('No hay ninguna migración declarada')
+        ->assertSuccessful();
+});
+
+it('ejecuta las migraciones de verdad sobre una base sqlite temporal', function () {
+    requiereBaseDeDatos();
+
+    $baseDatos = $this->tempPath('database/test-central.sqlite');
+    File::ensureDirectoryExists(dirname($baseDatos));
+    touch($baseDatos);
+
+    config()->set('database.connections.central', [
+        'driver'   => 'sqlite',
+        'database' => $baseDatos,
+        'prefix'   => '',
+    ]);
+
+    $migracion = 'Modules/Probe/Database/Migrations/Central/2026_01_01_000001_crea_cosas.php';
+
+    traitConMigraciones('Central', [$migracion]);
+
+    // La migración de verdad: `migrate --path` la incluye y la ejecuta.
+    File::put($this->tempPath($migracion), <<<'PHP'
+        <?php
+
+        use Illuminate\Database\Migrations\Migration;
+        use Illuminate\Database\Schema\Blueprint;
+        use Illuminate\Support\Facades\Schema;
+
+        return new class extends Migration {
+            public function up(): void
+            {
+                Schema::create('cosas', function (Blueprint $tabla): void {
+                    $tabla->id();
+                    $tabla->string('nombre');
+                });
+            }
+        };
+        PHP);
+
+    $this->artisan('innodite:migrate-plan', ['--context' => 'central'])
+        ->assertSuccessful();
+
+    expect(Schema::connection('central')->hasTable('cosas'))->toBeTrue();
 });

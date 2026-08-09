@@ -189,9 +189,6 @@ php artisan innodite:make-module Product --context=innodite
 # Contexto shared (rutas en web.php Y tenant.php simultáneamente)
 php artisan innodite:make-module Invoice --context=shared
 
-# Sin inyección de rutas en el proyecto
-php artisan innodite:make-module Report --context=central --no-routes
-
 # Componentes individuales en módulo existente
 php artisan innodite:make-module User --context=central -S -R   # Service + Repository
 php artisan innodite:make-module User --context=central -C      # Controller + rutas
@@ -232,9 +229,6 @@ php artisan innodite:add-entity UserManagement Role --context=central
 # Solo componentes específicos
 php artisan innodite:add-entity UserManagement Permission --context=central -M -C -S -R -G -Q
 
-# Sin inyectar rutas
-php artisan innodite:add-entity UserManagement Module --context=central --no-routes
-
 # Para un tenant específico
 php artisan innodite:add-entity UserManagement Role --context=acme
 ```
@@ -242,7 +236,7 @@ php artisan innodite:add-entity UserManagement Role --context=acme
 **Firma:**
 
 ```
-innodite:add-entity {module} {entity} {--context=} [-M] [-C] [-S] [-R] [-G] [-Q] [--no-routes]
+innodite:add-entity {module} {entity} {--context=} [-M] [-C] [-S] [-R] [-G] [-Q]
 ```
 
 | Argumento | Descripción |
@@ -251,7 +245,6 @@ innodite:add-entity {module} {entity} {--context=} [-M] [-C] [-S] [-R] [-G] [-Q]
 | `entity` | Nombre de la entidad nueva (ej: `Role`, `Permission`) |
 | `--context=` | ID del contexto destino (ej: `central`, `acme`) |
 | `-M` a `-Q` | Mismos flags que `make-module` (sin flags = genera todos los componentes) |
-| `--no-routes` | Omite la inyección de rutas |
 
 **Ejemplo de archivos generados** — `add-entity UserManagement Role --context=central`:
 
@@ -332,344 +325,160 @@ Publica en `resources/js/Composables/`:
 
 ---
 
-### `innodite:migrate-plan` — Orquestador de Migraciones por Manifiesto
+### `innodite:migrate-plan` — Aplica el esquema del contexto
 
-Ejecuta migraciones en el orden exacto definido en un manifiesto JSON. Es ideal cuando hay dependencias entre módulos y contextos.
-Antes de ejecutar, valida la conexión objetivo y verifica que la base de datos exista para evitar procesos parciales o lanzados contra una BD incorrecta.
+Ejecuta las migraciones del proyecto **en el orden que declaran los traits `MigrationsList`** de cada
+subfuncionalidad. Antes de ejecutar valida la conexión del contexto y comprueba que la base de datos
+exista, para no lanzar un despliegue parcial ni contra la base equivocada.
 
 ```bash
-# Usar manifiesto por defecto (module-maker-config/migrations/central_order.json)
-php artisan innodite:migrate-plan
+# Todas las migraciones del contexto central
+php artisan innodite:migrate-plan --context=central
 
-# Usar manifiesto específico
-php artisan innodite:migrate-plan --manifest=tenant_innodite_order.json
-
-# Simular sin tocar BD
-php artisan innodite:migrate-plan --manifest=tenant_innodite_order.json --dry-run
-
-# Ejecutar también seeders después de migraciones
-php artisan innodite:migrate-plan --manifest=tenant_innodite_order.json --seed
+# Ver el plan sin aplicar nada
+php artisan innodite:migrate-plan --context=tenant_shared --dry-run
 ```
 
-**Formato de coordenadas soportado:**
+| Opción | Descripción |
+|---|---|
+| `--context=` | **Obligatoria.** Contra qué contexto se ejecuta: `central`, `shared`, `tenant_shared` o el id de un tenant |
+| `--dry-run` | Muestra el plan y no aplica nada |
 
-- Migraciones: `Modulo:Contexto/Archivo.php`
-- Seeders: `Modulo:Contexto/ClaseSeeder`
-
-**Ejemplo real de manifiesto (`module-maker-config/migrations/tenant_innodite_order.json`):**
-
-```json
-{
-    "migrations": [
-        "User:Shared/2026_01_01_000001_create_users_table.php",
-        "Roles:Tenant/Shared/2026_02_01_000001_create_tenant_roles_table.php",
-        "Custom:Tenant/INNODITE/2026_03_01_000001_innodite_extra_table.php"
-    ],
-    "seeders": [
-        "User:Shared/SharedUserSeeder",
-        "Roles:Tenant/Shared/TenantSharedRoleSeeder",
-        "Custom:Tenant/INNODITE/TenantINNODITECustomSeeder"
-    ]
-}
-```
-
-**Cómo resuelve rutas internas:**
-
-- `User:Shared/2026_...php` → `Modules/User/Database/Migrations/Shared/2026_...php`
-- `Roles:Tenant/Shared/TenantSharedRoleSeeder` → `Modules\Roles\Database\Seeders\Tenant\Shared\TenantSharedRoleSeeder`
-
-**Qué valida el comando:**
-
-- Que el manifiesto exista y sea JSON válido
-- Que `migrations` y `seeders` sean arrays
-- Que cada coordenada de migración apunte a un archivo real
-- Que el formato de coordenada sea correcto
-
-**Mensajes de error claros:**
-
-Si una coordenada no existe, el comando responde con la ruta esperada para corregirla rápidamente.
-Si la base de datos objetivo no existe, corta el proceso antes de ejecutar migraciones o seeders.
+> **El orden vive en el módulo, no en un JSON.** Cada subfuncionalidad declara sus migraciones en su
+> trait `MigrationsList`, así que el orden viaja con el módulo cuando se copia a otro proyecto. El
+> contexto se dice en voz alta con `--context`, y de él salen **a la vez** las migraciones que se
+> seleccionan y la conexión contra la que se aplican.
 
 ---
 
-### `innodite:migrate-one` — Ejecutar una Migración Específica
+### `innodite:migrate-one` — Ejecutar una migración específica
 
-Permite ejecutar una coordenada de migración puntual sin correr el manifiesto completo. Está pensado para casos quirúrgicos donde necesitas lanzar una sola migración y mantener sincronizado el manifiesto correspondiente.
+Ejecuta una sola migración, nombrada por su coordenada `Modulo:Contexto/archivo.php`. La base de
+datos sale de la propia coordenada, que ya lleva encima su carpeta de contexto.
 
 ```bash
-# Ejecutar una migración específica
-php artisan innodite:migrate-one "Products:Tenant/Alpha/2026_01_01_000001_create_products_table.php"
+php artisan innodite:migrate-one "Invoice:Central/2026_08_01_120000_crea_facturas.php"
 
-# Forzar un manifiesto concreto
-php artisan innodite:migrate-one "Forms:Shared/2026_01_01_000001_create_forms_table.php" --manifest=central_order.json
+# Sin confirmación interactiva
+php artisan innodite:migrate-one "Invoice:Central/2026_08_01_120000_crea_facturas.php" --yes
 
-# Simular sin escribir ni ejecutar
-php artisan innodite:migrate-one "Forms:Shared/2026_01_01_000001_create_forms_table.php" --dry-run
-
-# Omitir confirmaciones interactivas
-php artisan innodite:migrate-one "Products:Tenant/Alpha/2026_01_01_000001_create_products_table.php" --yes
+# Ver qué haría
+php artisan innodite:migrate-one "Invoice:Central/2026_08_01_120000_crea_facturas.php" --dry-run
 ```
 
-**Qué hace internamente:**
-
-1. Resuelve la ruta exacta del archivo de migración desde la coordenada.
-2. Detecta automáticamente el manifiesto objetivo según el contexto.
-3. Si la coordenada aplica a múltiples manifiestos, muestra los destinos y pide confirmación.
-4. Muestra antes de ejecutar:
-    - Tipo: migración
-    - Coordenada
-    - Conexión
-    - Base de datos
-    - Manifiesto destino
-    - Ruta real del archivo
-5. Si la coordenada no está registrada en el manifiesto, la agrega primero.
-6. Ejecuta solo la migración indicada.
-
-**Reglas de resolución:**
-
-- `Central` => `central_order.json`
-- `Shared` => puede aplicar a `central_order.json` y a los manifiestos tenant
-- `Tenant/Shared` => aplica a todos los manifiestos tenant
-- `Tenant/X` => aplica al manifiesto `tenant_x_order.json` correspondiente
-
-**Importante:**
-
-- Requiere confirmación interactiva antes de ejecutar, salvo que uses `--yes`.
-- En `--dry-run` no modifica el manifiesto ni ejecuta nada.
-- Si la base de datos objetivo no existe, falla antes de iniciar el proceso.
+| Opción | Descripción |
+|---|---|
+| `--context=` | Fuerza el contexto de ejecución en vez de derivarlo de la coordenada |
+| `--yes` | Omite la confirmación |
+| `--dry-run` | Muestra lo que haría sin ejecutar |
 
 ---
 
-### `innodite:seed-one` — Ejecutar un Seeder Específico
+### `innodite:deploy` — Levanta el proyecto entero
 
-Permite ejecutar un seeder puntual sin correr el manifiesto completo. Está pensado para casos quirúrgicos donde necesitas lanzar un solo seeder y mantener sincronizado el manifiesto correspondiente.
+Esquema, datos y permisos, en el orden declarado en `deploy` (`config/make-module.php`), más el
+webmaster al cerrar. Es el comando que sustituye a `innodite:seed-one` y a `innodite:migration-sync`.
 
 ```bash
-# Ejecutar un seeder específico
-php artisan innodite:seed-one "UserManagement:Tenant/Shared/TenantSharedPermissionSeeder"
+# Aplicación única
+php artisan innodite:deploy production
 
-# Forzar un manifiesto concreto
-php artisan innodite:seed-one "Forms:Shared/SharedFormsSeeder" --manifest=central_order.json
-
-# Simular sin escribir ni ejecutar
-php artisan innodite:seed-one "Forms:Shared/SharedFormsSeeder" --dry-run
-
-# Omitir confirmaciones interactivas
-php artisan innodite:seed-one "UserManagement:Tenant/Shared/TenantSharedPermissionSeeder" --yes
+# Multitenant: dos despliegues, contra dos bases de datos
+php artisan innodite:deploy production --context=central
+php artisan innodite:deploy stage --context=tenant
 ```
 
-**Qué hace internamente:**
+| Argumento / opción | Descripción |
+|---|---|
+| `entorno` | **Obligatorio.** `stage` o `production`. Nada por defecto: `stage` puede reconstruir desde cero |
+| `--context=` | Obligatorio en multitenant: `central` o `tenant` |
+| `--force` | No pedir confirmación aunque `SEEDER_DESTRUCTIVE` esté activo |
 
-1. Resuelve el FQCN (clase completa) del seeder desde la coordenada.
-2. Detecta automáticamente el manifiesto objetivo según el contexto.
-3. Si la coordenada aplica a múltiples manifiestos, muestra los destinos y pide confirmación.
-4. Muestra antes de ejecutar:
-    - Tipo: seeder
-    - Coordenada
-    - Conexión
-    - Base de datos
-    - Manifiesto destino
-    - Clase real que va a ejecutar
-5. Si la coordenada no está registrada en el manifiesto, la agrega primero.
-6. Ejecuta solo el seeder indicado.
+El seeder que invoca lo escribe el instalador en `database/seeders/`, y es donde se lee y se amplía
+la secuencia de pasos del despliegue.
 
-**Reglas de resolución:**
-
-- `Central` => `central_order.json`
-- `Shared` => puede aplicar a `central_order.json` y a los manifiestos tenant
-- `Tenant/Shared` => aplica a todos los manifiestos tenant
-- `Tenant/X` => aplica al manifiesto `tenant_x_order.json` correspondiente
-
-**Importante:**
-
-- Requiere confirmación interactiva antes de ejecutar, salvo que uses `--yes`.
-- En `--dry-run` no modifica el manifiesto ni ejecuta nada.
-- Si la base de datos objetivo no existe, falla antes de iniciar el proceso.
+> **Retirados en la v4:** `innodite:seed-one` y `innodite:migration-sync`. Los dos existían para
+> mantener los manifiestos `*.order.json`, que ya no lee nadie: el orden de las migraciones lo
+> declaran los traits `MigrationsList` y el de los seeders el array `deploy`. Si tu proyecto todavía
+> tiene esa carpeta, los comandos de migración te lo dirán al ejecutarse; puedes borrarla.
 
 ---
 
-### `innodite:migration-sync` — Sincronización Automática de Manifiestos
 
-Escanea los módulos y agrega al manifiesto las migraciones y seeders que aún no están registradas.
-
-```bash
-# Sincronizar automaticamente por contextos (central + tenants detectados)
-php artisan innodite:migration-sync
-
-# Sincronizar un manifiesto concreto
-php artisan innodite:migration-sync --manifest=tenant_innodite_order.json
-
-# Sincronizacion automatica sin prompt de confirmacion
-php artisan innodite:migration-sync --yes
-
-# Ver faltantes sin escribir cambios
-php artisan innodite:migration-sync --manifest=tenant_innodite_order.json --dry-run
-```
-
-**Comportamiento de sync:**
-
-1. Si no envías `--manifest`, lee `module-maker-config/contexts.json` y propone:
-    - `central_order.json`
-    - `tenant_{permission_prefix}_order.json` por cada tenant configurado.
-2. Pide confirmación en consola antes de generar/sincronizar múltiples manifiestos (omite prompt con `--yes`).
-3. Crea `module-maker-config/migrations/` si no existe.
-4. Crea cada manifiesto faltante (estructura vacía).
-5. Escanea:
-     - `Modules/*/Database/Migrations/**`
-     - `Modules/*/Database/Seeders/**`
-6. Convierte hallazgos a coordenadas.
-7. Filtra por alcance de manifiesto:
-    - `central_order.json` => contextos `Central` y `Shared`.
-    - `tenant_*.json` => `Shared` + `Tenant/Shared` + contexto `Tenant/{X}` del tenant objetivo.
-8. Hace append solo de faltantes (sin duplicar).
-
-**Importante:**
-
-- Solo sincroniza archivos en subcarpetas de contexto (`Shared`, `Central`, `Tenant/...`).
-- Esto mantiene consistencia con el modelo contextual del paquete.
-
-**Cuándo usarlo en la práctica:**
-
-- Después de generar nuevos módulos/entidades y querer actualizar manifiestos automáticamente.
-- Antes de un deploy, para verificar que no quedaron migraciones fuera del plan.
-- En CI/CD para detectar drift entre código y manifiesto.
-
----
-
-### `innodite:test-module` — Ejecutar Tests con Coverage
+### `innodite:test` — Ejecutar el contrato de una subfuncionalidad
 
 ```bash
-# 1) Sincronizar configuración por contexto (crea Tests/test-config.json)
-php artisan innodite:test-sync User
+# El contrato completo de una subfuncionalidad
+php artisan innodite:test Invoice Payment
 
-# 2) Ejecutar tests de un módulo (modo default sin contexto)
-php artisan innodite:test-module User
+# En multitenant, diciendo en qué contexto vive
+php artisan innodite:test Invoice Payment --context=central
 
-# 3) Ejecutar un contexto específico definido en test-config.json
-php artisan innodite:test-module User --context=central
+# Acotando dentro de una pieza
+php artisan innodite:test Invoice Payment --filter=test_no_se_ve_sin_permiso
 
-# 4) Ejecutar todos los contextos habilitados del módulo
-php artisan innodite:test-module User --all-contexts
-
-# 5) Coverage por módulo/contexto
-php artisan innodite:test-module User --context=central --coverage --format=html --format=clover
+# Sin corte temprano, para ver el grupo entero de una pasada
+php artisan innodite:test Invoice Payment --continuar
 ```
 
-**Características:**
+**Se ejecuta por subfuncionalidad, no por módulo**, porque el contrato es de ella: son sus nueve
+temas, su manifiesto y sus seis piezas. Un módulo con cuatro subfuncionalidades no tiene un
+contrato, tiene cuatro — y ejecutarlos juntos mezcla el resultado de cosas que se despliegan y
+fallan por separado.
 
-- ✅ Ejecuta PHPUnit en uno o todos los módulos
-- ✅ Usa configuración contextual en `Modules/{Modulo}/Tests/test-config.json`
-- ✅ Permite correr un contexto (`--context`) o todos los contextos habilitados (`--all-contexts`)
-- ✅ Escanea recursivamente toda la carpeta `Tests/` sin asumir estructura fija
-- ✅ Crea/usa archivo de configuración PHPUnit editable en `Modules/{Modulo}/Tests/phpunit-{contexto}.xml`
-- ✅ Puede ejecutar un `seeder` previo por contexto antes de PHPUnit
-- ✅ Genera reportes de coverage en múltiples formatos:
-    - **HTML** → `docs/test-reports/{Module}/{contexto}/html/index.html` (navegable)
-  - **Text** → Salida en consola con porcentajes
-    - **Clover XML** → `docs/test-reports/{Module}/{contexto}/clover.xml` (CI/CD)
-- ✅ Valida que Xdebug o PCOV estén activos para coverage
-- ✅ Muestra tabla resumen con resultados y porcentaje de cobertura
-- ✅ Soporta flag `--filter` de PHPUnit para tests específicos
-- ✅ Detección automática de módulos sin tests (warning + continuar)
-
-### `innodite:test-sync` — Sincronizar `Tests/test-config.json`
-
-Genera o actualiza el archivo `test-config.json` dentro de la carpeta `Tests/` de cada módulo, leyendo los contextos desde `module-maker-config/contexts.json`.
-
-Para testing, el sync solo genera contextos válidos de ejecución:
-
-- `central`
-- tenants específicos (`tenant_alpha`, `tenant_beta`, etc.)
-
-No genera `shared` ni `tenant_shared`, porque esos contextos no representan una base de datos de prueba autónoma.
-
-```bash
-# Sincronizar un módulo
-php artisan innodite:test-sync User
-
-# Sincronizar todos los módulos
-php artisan innodite:test-sync --all
-```
-
-**Reglas del sync:**
-
-- ✅ Crea `Modules/{Modulo}/Tests/test-config.json` si no existe
-- ✅ Agrega contextos faltantes sin duplicar
-- ✅ Conserva overrides manuales de `db_connection`, `db_database`, `seeder`, `enabled` y `env`
-- ✅ No asume ninguna base de datos por defecto: tú defines `db_connection` y `db_database`
-
-Ejemplo de `Modules/User/Tests/test-config.json`:
-
-```json
-{
-    "_readme": "Configuración de tests por contexto. Generado por innodite:test-sync.",
-    "contexts": {
-        "central": {
-            "db_connection": "mysql",
-            "db_database": "innodite_test",
-            "enabled": true,
-            "seeder": null,
-            "env": {}
-        },
-        "tenant_alpha": {
-            "db_connection": "tenant",
-            "db_database": "tenant_alpha_test",
-            "enabled": true,
-            "seeder": "Modules\\UserManagement\\Database\\Seeders\\Tenant\\TenantAlphaSeeder",
-            "env": {
-                "CACHE_DRIVER": "array"
-            }
-        }
-    }
-}
-```
-
-**Requisitos para Coverage:**
-
-```bash
-# Opción 1: Xdebug (desarrollo)
-pecl install xdebug
-# Añadir a php.ini: zend_extension=xdebug.so
-
-# Opción 2: PCOV (más rápido, CI/CD)
-pecl install pcov
-# Añadir a php.ini: extension=pcov.so
-```
-
-**Ejemplo de Salida:**
+**En cascada, y con corte temprano:**
 
 ```
-🧪 Innodite Module Maker - Test Runner
+Scaffold  →  Schema     →  Permissions  →  Deployment  →  Http
+tema 0       temas 1-2     temas 3-5       tema 8         tema 7
 
-✅ PHPUnit encontrado
-✅ Xdebug activo - Coverage disponible
-
-📦 Módulos a testear: User, Product, Invoice
-
-🔍 Ejecutando tests del módulo: User
-  📄 Archivos de test encontrados: 12
-  ✓ Tests passed (15 tests, 45 assertions)
-  
-═══════════════════════════════════════════════════════
-📊 RESUMEN DE EJECUCIÓN
-═══════════════════════════════════════════════════════
-
-┌─────────┬─────────┬──────────┐
-│ Módulo  │ Estado  │ Coverage │
-├─────────┼─────────┼──────────┤
-│ User    │ ✓ PASSED│ 87.5%    │
-│ Product │ ✓ PASSED│ 92.3%    │
-│ Invoice │ ✗ FAILED│ 65.2%    │
-└─────────┴─────────┴──────────┘
-
-Total: 3 | Passed: 2 | Failed: 1 | Skipped: 0
-
-📁 Reportes de coverage guardados en:
-   docs/test-reports/
-   • User: docs/test-reports/User/html/index.html
-   • Product: docs/test-reports/Product/html/index.html
+tema 6 (la vista) lo ejecuta Vitest, aparte
 ```
 
+El orden es de dependencia: cada pieza da por supuesto lo que comprobó la anterior. Si el andamiaje
+no está, el esquema falla por lo mismo; si el esquema no está, los permisos fallan por lo mismo; y el
+comportamiento por HTTP falla de treinta formas distintas por la misma causa única.
+
+Treinta fallos rojos de un solo problema no informan treinta veces mejor: informan **peor**, porque
+hay que leerlos todos para descubrir que eran el mismo. Por eso al primer fallo se para, y dice qué
+falló, qué cubría y **qué queda sin ejecutar**.
+
+**Antes de lanzar nada comprueba que el grupo esté entero.** Faltar el manifiesto no es «una prueba
+menos»: sin él ninguna de las otras puede derivar rutas ni permisos, y lo que saldría serían fallos
+que describen el síntoma y esconden la causa.
+
+**El tema 6 se nombra siempre**, también cuando todo pasa. Un contrato «en verde» que se saltó un
+tema sin decirlo es la peor clase de silencio.
+
+#### Qué tiene que traer tu proyecto para que el grupo corra
+
+El grupo generado se escribe **contra las tablas y contra el router**, no contra las clases de un
+paquete concreto — así sobrevive a que cambies de versión, o de paquete de permisos. A cambio da por
+supuestas cinco cosas, y las cinco las pone el proyecto, no el módulo:
+
+| Lo que hace falta | Por qué |
+|---|---|
+| `Tests\TestCase` | La base del grupo la extiende. Es la de Laravel de toda la vida |
+| `Modules\` en el autoload PSR-4 de Composer | Sin él las piezas no se cargan |
+| `users` y las tablas de permisos | `permissions` (con `description` y `module_id`), `modules`, `roles`, `model_has_permissions` y `role_has_permissions`. El seeder generado llena `description` y `module_id` **si existen** |
+| El alias del middleware de permiso, registrado | El que use tu proyecto: `permission`, `central-permission`, `tenant-permission`… El grupo lo lee de la propia ruta, así que reconoce cualquiera que termine en `permission` |
+| `APP_KEY` | El grupo `web` cifra la sesión: sin clave, la petición revienta **antes** de llegar al middleware de permiso, y el fallo no se parece en nada a su causa |
+
+Y una consecuencia del diseño de las migraciones: el trait `MigrationsList` declara sus rutas
+**relativas a la raíz del proyecto**, porque así las recibe `migrate --path`. El módulo tiene que
+vivir bajo esa raíz para que el seeder las encuentre.
+
+**Tres pruebas nacen saltadas, y es a propósito.** Las de validación —entrada inválida, edición
+inválida, y la de crear y volver a leer— se saltan mientras el FormRequest generado no declare
+reglas: sin `rules()` no hay nada que pueda fallar la validación, y una prueba que pasa porque no
+comprueba nada es peor que una que dice que no corrió. **Escribe tus reglas y corren solas.**
+
+> **Viene de `innodite:test-module`, que ya no existe.** El comando anterior trabajaba por módulo y
+> contexto leyendo `Modules/{Modulo}/Tests/test-config.json`. Ese archivo era el último manifiesto
+> JSON del paquete y se retiró junto con `innodite:test-sync`, que lo generaba: el contexto lo dice
+> ahora el comando (`--context`) y la forma del módulo la dice el modo. Un proyecto que aún tenga
+> esos archivos recibe un **aviso** al ejecutar `innodite:test` — no un error: el proyecto funciona
+> sin ellos, y puedes borrarlos cuando hayas comprobado que no te falta nada de ellos.
 ---
 
 ## 📁 Archivos generados por contexto
@@ -693,9 +502,13 @@ Modules/User/
 ├── Database/Migrations/Central/User/XXXX_create_users_table.php
 ├── Database/Seeders/Central/User/CentralUserSeeder.php
 ├── Database/Factories/Central/User/CentralUserFactory.php
-├── Tests/Feature/Central/CentralUserTest.php
-├── Tests/Unit/Central/CentralUserServiceTest.php
-├── Tests/Support/Central/CentralUserSupport.php
+├── Tests/Feature/Central/User/CentralUserContract.php
+├── Tests/Feature/Central/User/CentralUserTestCase.php
+├── Tests/Feature/Central/User/CentralUserScaffoldTest.php
+├── Tests/Feature/Central/User/CentralUserSchemaTest.php
+├── Tests/Feature/Central/User/CentralUserPermissionsTest.php
+├── Tests/Feature/Central/User/CentralUserDeploymentTest.php
+├── Tests/Feature/Central/User/CentralUserHttpTest.php
 ├── Resources/js/Pages/Central/CentralUserIndex.vue
 ├── Resources/js/Pages/Central/CentralUserCreate.vue
 ├── Resources/js/Pages/Central/CentralUserEdit.vue
@@ -726,8 +539,13 @@ Modules/User/
 ├── Database/Migrations/Shared/User/XXXX_create_users_table.php
 ├── Database/Seeders/Shared/User/SharedUserSeeder.php
 ├── Database/Factories/Shared/User/SharedUserFactory.php
-├── Tests/Feature/Shared/SharedUserTest.php
-├── Tests/Unit/Shared/SharedUserServiceTest.php
+├── Tests/Feature/Shared/User/SharedUserContract.php
+├── Tests/Feature/Shared/User/SharedUserTestCase.php
+├── Tests/Feature/Shared/User/SharedUserScaffoldTest.php
+├── Tests/Feature/Shared/User/SharedUserSchemaTest.php
+├── Tests/Feature/Shared/User/SharedUserPermissionsTest.php
+├── Tests/Feature/Shared/User/SharedUserDeploymentTest.php
+├── Tests/Feature/Shared/User/SharedUserHttpTest.php
 ├── Resources/js/Pages/Shared/SharedUserIndex.vue
 ├── Resources/js/Pages/Shared/SharedUserCreate.vue
 ├── Resources/js/Pages/Shared/SharedUserEdit.vue
@@ -750,8 +568,13 @@ Modules/User/
 ├── Database/Migrations/Tenant/Shared/User/XXXX_create_users_table.php
 ├── Database/Seeders/Tenant/Shared/User/TenantSharedUserSeeder.php
 ├── Database/Factories/Tenant/Shared/User/TenantSharedUserFactory.php
-├── Tests/Feature/Tenant/Shared/TenantSharedUserTest.php
-├── Tests/Unit/Tenant/Shared/TenantSharedUserServiceTest.php
+├── Tests/Feature/Tenant/Shared/User/TenantSharedUserContract.php
+├── Tests/Feature/Tenant/Shared/User/TenantSharedUserTestCase.php
+├── Tests/Feature/Tenant/Shared/User/TenantSharedUserScaffoldTest.php
+├── Tests/Feature/Tenant/Shared/User/TenantSharedUserSchemaTest.php
+├── Tests/Feature/Tenant/Shared/User/TenantSharedUserPermissionsTest.php
+├── Tests/Feature/Tenant/Shared/User/TenantSharedUserDeploymentTest.php
+├── Tests/Feature/Tenant/Shared/User/TenantSharedUserHttpTest.php
 ├── Resources/js/Pages/Tenant/Shared/TenantSharedUserIndex.vue
 ├── Resources/js/Pages/Tenant/Shared/TenantSharedUserCreate.vue
 ├── Resources/js/Pages/Tenant/Shared/TenantSharedUserEdit.vue
@@ -776,8 +599,13 @@ Modules/User/
 ├── Database/Migrations/Tenant/INNODITE/User/XXXX_create_users_table.php
 ├── Database/Seeders/Tenant/INNODITE/User/TenantINNODITEUserSeeder.php
 ├── Database/Factories/Tenant/INNODITE/User/TenantINNODITEUserFactory.php
-├── Tests/Feature/Tenant/INNODITE/TenantINNODITEUserTest.php
-├── Tests/Unit/Tenant/INNODITE/TenantINNODITEUserServiceTest.php
+├── Tests/Feature/Tenant/INNODITE/User/TenantINNODITEUserContract.php
+├── Tests/Feature/Tenant/INNODITE/User/TenantINNODITEUserTestCase.php
+├── Tests/Feature/Tenant/INNODITE/User/TenantINNODITEUserScaffoldTest.php
+├── Tests/Feature/Tenant/INNODITE/User/TenantINNODITEUserSchemaTest.php
+├── Tests/Feature/Tenant/INNODITE/User/TenantINNODITEUserPermissionsTest.php
+├── Tests/Feature/Tenant/INNODITE/User/TenantINNODITEUserDeploymentTest.php
+├── Tests/Feature/Tenant/INNODITE/User/TenantINNODITEUserHttpTest.php
 ├── Resources/js/Pages/Tenant/INNODITE/TenantINNODITEUserIndex.vue
 ├── Resources/js/Pages/Tenant/INNODITE/TenantINNODITEUserCreate.vue
 ├── Resources/js/Pages/Tenant/INNODITE/TenantINNODITEUserEdit.vue
@@ -1323,15 +1151,16 @@ Modules/
     │           └── User/
     │               └── CentralUserFactory.php
     ├── Tests/
-    │   ├── Feature/
-    │   │   └── Central/
-    │   │       └── CentralUserTest.php
-    │   ├── Unit/
-    │   │   └── Central/
-    │   │       └── CentralUserServiceTest.php
-    │   └── Support/
+    │   └── Feature/
     │       └── Central/
-    │           └── CentralUserSupport.php
+    │           └── User/
+    │               ├── CentralUserContract.php
+    │               ├── CentralUserTestCase.php
+    │               ├── CentralUserScaffoldTest.php
+    │               ├── CentralUserSchemaTest.php
+    │               ├── CentralUserPermissionsTest.php
+    │               ├── CentralUserDeploymentTest.php
+    │               └── CentralUserHttpTest.php
     ├── Resources/
     │   └── js/
     │       └── Pages/
@@ -1439,12 +1268,10 @@ Con `innodite:add-entity User Role --context=central`, se añade dentro de `Modu
 | `innodite:module-check` | Diagnóstico de configuración, permisos y conflictos |
 | `innodite:check-env` | Verifica integración frontend-backend (bridge Inertia) |
 | `innodite:publish-frontend` | Publica composables Vue 3 (`useModuleContext`, `usePermissions`) |
-| `innodite:migrate-plan` | Ejecuta migraciones/seeders por manifiesto y orden explícito |
+| `innodite:migrate-plan --context=` | Aplica las migraciones del contexto, en el orden de sus traits `MigrationsList` |
 | `innodite:migrate-one` | Ejecuta una migración puntual por coordenada |
-| `innodite:seed-one` | Ejecuta un seeder puntual por coordenada |
-| `innodite:migration-sync` | Escanea módulos y sincroniza faltantes en manifiestos |
-| `innodite:test-module` | Ejecuta tests de módulos con contexto y coverage (HTML, Text, Clover) |
-| `innodite:test-sync` | Sincroniza `Modules/{Modulo}/Tests/test-config.json` desde `contexts.json` |
+| `innodite:deploy {stage\|production}` | Levanta el proyecto: esquema, datos, permisos y webmaster |
+| `innodite:test` | Ejecuta el contrato de una subfuncionalidad, en cascada y con corte temprano |
 | `vendor:publish --tag=module-maker-config` | Publica `make-module.php` |
 | `vendor:publish --tag=module-maker-stubs` | Publica stubs contextuales personalizables |
 | `vendor:publish --tag=module-maker-contexts` | Publica `contexts.json` de ejemplo |
@@ -1484,10 +1311,14 @@ composer test:feature   # solo integración
 composer test:coverage  # con cobertura HTML en /coverage
 ```
 
-Los tests generados por `make-module` se ubican en:
-- `Modules/{Name}/Tests/Feature/{Context}/` — tests de integración HTTP
-- `Modules/{Name}/Tests/Unit/{Context}/` — tests unitarios del servicio
-- `Modules/{Name}/Tests/Support/{Context}/` — helpers y factories de test
+Los tests generados se ubican todos en `Modules/{Name}/Tests/Feature/{Context}/{SubFuncionalidad}/`,
+como un **grupo por subfuncionalidad**: un manifiesto (`{SubFunc}Contract.php`), su base
+(`{SubFunc}TestCase.php`) y las piezas de los nueve temas —`ScaffoldTest`, `SchemaTest`,
+`PermissionsTest`, `DeploymentTest` y `HttpTest`—. La del tema 6 la ejecuta Vitest y vive con el
+JavaScript, en `resources/js/__tests__/{Context}/{SubFuncionalidad}/`.
+
+Los emiten por igual `make-module` y `add-entity`: una subfuncionalidad nace con su grupo entero
+venga por donde venga.
 
 ---
 

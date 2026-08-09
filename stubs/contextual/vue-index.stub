@@ -1,22 +1,65 @@
 <script setup>
+/**
+ * La pantalla de {{{ subFeatureLabel }}} — y **la única** de esta subfuncionalidad.
+ *
+ * Crear, ver y editar ocurren en modales sobre esta misma tabla, no en pantallas aparte. Es lo que
+ * encaja con las rutas que el paquete genera: de las seis, solo `index` devuelve una pantalla; las
+ * otras cinco devuelven datos. Con pantallas separadas harían falta rutas y permisos que no existen
+ * —y esa es exactamente la grieta por la que antes se le pasaba a `route()` el nombre de un permiso,
+ * porque no había ningún nombre de ruta que pasarle.
+ *
+ * **Cómo se conecta esto con el resto del patrón**, que es lo que conviene leer una vez:
+ *
+ *     esta pantalla  →  pide `list`      →  la ruta exige su permiso
+ *                                        →  el Controller delega en el Service
+ *                                        →  el Service pregunta al Repository
+ *                                        →  y solo el Repository toca el modelo
+ *
+ * Los `can()` de abajo son permisos **de vista**, distintos de los que protegen cada ruta: ocultar un
+ * botón no protege el endpoint, y proteger el endpoint no limpia la pantalla. Se emiten los dos.
+ */
 import { ref, onMounted } from 'vue'
-import { router } from '@inertiajs/vue3'
 import { useModuleContext } from '@/Composables/useModuleContext'
 import { usePermissions } from '@/Composables/usePermissions'
+import { useAvisos } from '@/Composables/useAvisos'
+import InnoditeAviso from '@/Components/InnoditeAviso.vue'
+import {{{ vueComponentBase }}}Create from './{{{ vueComponentBase }}}Create.vue'
+import {{{ vueComponentBase }}}Edit from './{{{ vueComponentBase }}}Edit.vue'
+import {{{ vueComponentBase }}}Show from './{{{ vueComponentBase }}}Show.vue'
 
 const { contextRoute } = useModuleContext()
 const { can } = usePermissions()
+
+/**
+ * Los avisos y la confirmación, sin `alert()` ni `confirm()`.
+ *
+ * `error` se renombra al desestructurar porque abajo hay un `error` propio: el de «la tabla no
+ * cargó», que se queda escrito en la pantalla. Son dos cosas distintas —un fallo que impide ver los
+ * datos no es un mensaje que se desvanece a los seis segundos— y por eso conviven.
+ */
+const { error: avisarError, exito, confirmar, mensajeDeError } = useAvisos()
 
 const items   = ref([])
 const loading = ref(false)
 const meta    = ref({ current_page: 1, last_page: 1, total: 0 })
 const error   = ref(null)
 
+/** Qué modal está abierto y sobre qué registro. `null` = ninguno. */
+const modal = ref(null)
+const seleccionado = ref(null)
+
+/**
+ * El listado pide `list`, no `index`.
+ *
+ * Son dos rutas distintas a propósito, y confundirlas no da error: `index` devuelve la **pantalla**
+ * por Inertia, así que la petición respondía 200 con el HTML de la página y la tabla se quedaba
+ * vacía para siempre — que se lee igual que «todavía no hay datos».
+ */
 async function fetchItems(page = 1) {
     loading.value = true
     error.value   = null
     try {
-        const { data } = await axios.get(route(contextRoute('{{ entityPlural }}.index')), {
+        const { data } = await axios.get(route(contextRoute('{{{ routeBase }}}.list')), {
             params: { page }
         })
         items.value = data.data
@@ -27,32 +70,56 @@ async function fetchItems(page = 1) {
         }
     } catch (err) {
         error.value = err.response?.data?.message ?? 'Error al cargar los datos.'
-        console.error('[{{ vueComponentName }}]', err)
+        console.error('[{{{ vueComponentName }}}]', err)
     } finally {
         loading.value = false
     }
 }
 
 async function destroy(id) {
-    if (!confirm('¿Estás seguro de eliminar este registro?')) return
+    // La confirmación devuelve una promesa, así que la espera se lee igual que antes con `confirm()`
+    // — pero sin bloquear el navegador y con una ventana que sí se puede estilar y probar.
+    const confirmado = await confirmar('Esta acción no se puede deshacer.', {
+        titulo: 'Eliminar registro',
+        textoConfirmar: 'Eliminar',
+        peligrosa: true,
+    })
+
+    if (!confirmado) return
+
     try {
-        await axios.delete(route(contextRoute('{{ entityPlural }}.destroy'), { id }))
+        await axios.delete(route(contextRoute('{{{ routeBase }}}.destroy'), { id }))
+        exito('Registro eliminado.')
         await fetchItems(meta.value.current_page)
     } catch (err) {
-        alert(err.response?.data?.message ?? 'No se pudo eliminar el registro.')
+        avisarError(mensajeDeError(err, 'No se pudo eliminar el registro.'))
     }
 }
 
-function goToCreate() {
-    router.visit(route(contextRoute('{{ entityPlural }}.create')))
+function abrirCrear() {
+    seleccionado.value = null
+    modal.value = 'crear'
 }
 
-function goToEdit(id) {
-    router.visit(route(contextRoute('{{ entityPlural }}.edit'), { id }))
+function abrirEditar(id) {
+    seleccionado.value = id
+    modal.value = 'editar'
 }
 
-function goToShow(id) {
-    router.visit(route(contextRoute('{{ entityPlural }}.show'), { id }))
+function abrirDetalle(id) {
+    seleccionado.value = id
+    modal.value = 'ver'
+}
+
+function cerrarModal() {
+    modal.value = null
+    seleccionado.value = null
+}
+
+/** Tras guardar, el modal se cierra y la tabla se recarga en la página donde estaba. */
+async function alGuardar() {
+    cerrarModal()
+    await fetchItems(meta.value.current_page)
 }
 
 onMounted(() => fetchItems())
@@ -63,13 +130,14 @@ onMounted(() => fetchItems())
 
         <!-- Cabecera -->
         <div class="flex items-center justify-between mb-6">
-            <h1 class="text-2xl font-semibold text-gray-800">{{ entityLabel }}</h1>
+            <h1 class="text-2xl font-semibold text-gray-800">{{{ subFeatureLabel }}}</h1>
             <button
-                v-if="can('{{ entityPlural }}.create')"
-                @click="goToCreate"
+                v-if="can('{{{ permViewStore }}}')"
+                data-test="boton-crear"
+                @click="abrirCrear"
                 class="inline-flex items-center px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-lg hover:bg-blue-700 transition"
             >
-                + Nuevo {{ entityLabel }}
+                + Nuevo {{{ subFeatureLabel }}}
             </button>
         </div>
 
@@ -85,19 +153,32 @@ onMounted(() => fetchItems())
 
         <template v-else>
 
-            <!-- Tabla -->
+            <!--
+                Tabla.
+
+                TODO: Añade aquí las columnas de tu negocio. Cada una es una cabecera y su celda:
+
+                    <th class="px-4 py-3 text-left font-medium text-gray-600">Nombre</th>
+                    ...
+                    <td class="px-4 py-3 text-gray-800">{{ item.name }}</td>
+
+                Recuerda subir el `colspan` de la fila vacía al añadirlas. El paquete deja las
+                genéricas —el identificador y las fechas— porque son las únicas que existen en
+                cualquier subfuncionalidad; los campos del negocio los conoces tú.
+            -->
             <div class="overflow-x-auto rounded-lg border border-gray-200">
                 <table class="min-w-full divide-y divide-gray-200 text-sm">
                     <thead class="bg-gray-50">
                         <tr>
                             <th class="px-4 py-3 text-left font-medium text-gray-600">#</th>
                             <th class="px-4 py-3 text-left font-medium text-gray-600">ID</th>
+                            <th class="px-4 py-3 text-left font-medium text-gray-600">Creado</th>
                             <th class="px-4 py-3 text-right font-medium text-gray-600">Acciones</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-gray-100 bg-white">
                         <tr v-if="items.length === 0">
-                            <td colspan="3" class="px-4 py-8 text-center text-gray-400">
+                            <td colspan="4" class="px-4 py-8 text-center text-gray-400">
                                 No hay registros para mostrar.
                             </td>
                         </tr>
@@ -109,22 +190,30 @@ onMounted(() => fetchItems())
                             <td class="px-4 py-3 text-gray-500">
                                 {{ (meta.current_page - 1) * 15 + index + 1 }}
                             </td>
-                            <td
-                                class="px-4 py-3 text-blue-600 cursor-pointer hover:underline"
-                                @click="goToShow(item.id)"
-                            >
-                                {{ item.id }}
+                            <td class="px-4 py-3">
+                                <span
+                                    v-if="can('{{{ permViewShow }}}')"
+                                    data-test="enlace-ver"
+                                    class="text-blue-600 cursor-pointer hover:underline"
+                                    @click="abrirDetalle(item.id)"
+                                >
+                                    {{ item.id }}
+                                </span>
+                                <span v-else class="text-gray-500">{{ item.id }}</span>
                             </td>
+                            <td class="px-4 py-3 text-gray-500">{{ item.created_at }}</td>
                             <td class="px-4 py-3 text-right space-x-3">
                                 <button
-                                    v-if="can('{{ entityPlural }}.edit')"
-                                    @click="goToEdit(item.id)"
+                                    v-if="can('{{{ permViewUpdate }}}')"
+                                    data-test="boton-editar"
+                                    @click="abrirEditar(item.id)"
                                     class="text-blue-600 hover:underline text-xs"
                                 >
                                     Editar
                                 </button>
                                 <button
-                                    v-if="can('{{ entityPlural }}.delete')"
+                                    v-if="can('{{{ permViewDestroy }}}')"
+                                    data-test="boton-eliminar"
                                     @click="destroy(item.id)"
                                     class="text-red-500 hover:underline text-xs"
                                 >
@@ -155,5 +244,41 @@ onMounted(() => fetchItems())
             </div>
 
         </template>
+
+        <!--
+            Los tres modales, sobre esta misma pantalla.
+
+            Cada uno recibe el identificador y avisa cuando termina; el índice se encarga de cerrar y
+            de recargar la tabla. Así el estado de «qué registro estoy mirando» vive en un solo sitio.
+        -->
+        <{{{ vueComponentBase }}}Create
+            v-if="modal === 'crear'"
+            @guardado="alGuardar"
+            @cerrar="cerrarModal"
+        />
+
+        <{{{ vueComponentBase }}}Edit
+            v-if="modal === 'editar'"
+            :id="seleccionado"
+            @guardado="alGuardar"
+            @cerrar="cerrarModal"
+        />
+
+        <{{{ vueComponentBase }}}Show
+            v-if="modal === 'ver'"
+            :id="seleccionado"
+            @editar="abrirEditar"
+            @eliminado="alGuardar"
+            @cerrar="cerrarModal"
+        />
+
+        <!--
+            Los avisos, montados **una sola vez** y aquí.
+
+            El estado lo comparte `useAvisos`, así que los modales de arriba avisan por este mismo
+            componente. Montar uno dentro de cada modal duplicaría los mensajes, y además haría
+            desaparecer el aviso justo al cerrar el modal que lo lanzó — que es cuando hace falta.
+        -->
+        <InnoditeAviso />
     </div>
 </template>

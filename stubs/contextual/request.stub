@@ -2,17 +2,44 @@
 
 declare(strict_types=1);
 
-namespace {{ namespace }};
+namespace {{{ namespace }}};
 
 use Illuminate\Foundation\Http\FormRequest;
 
-class {{ requestName }} extends FormRequest
+/**
+ * Las reglas de entrada de la acción `{{{ accion }}}` — **la única capa que valida**.
+ *
+ * Si algo no cumple, el controlador ni se ejecuta: Laravel responde 422 con el detalle por campo,
+ * y quien llama sabe exactamente qué corregir. Por eso el controlador recibe esta clase en su firma
+ * y no un `Request` genérico — ahí `validated()` no existe.
+ *
+ * **Nace vacío a propósito.** El paquete conoce la forma de la subfuncionalidad, no las reglas de tu
+ * negocio; igual que el trait de datos canónicos de los seeders o el `payloadValido()` de las
+ * pruebas. Mientras `rules()` esté vacío, la prueba que comprueba el 422 **se salta diciendo qué
+ * falta**: no finge cobertura, deja una tarea pendiente visible.
+ *
+ * Hay dos —alta y edición— porque sus reglas casi nunca coinciden: el `unique` de un alta tiene que
+ * ignorarse a sí mismo al editar, y los campos obligatorios al crear suelen ser opcionales al
+ * actualizar. Un solo FormRequest obliga a preguntar por el método aquí dentro, que es donde la
+ * validación empieza a esconderse.
+ */
+class {{{ requestName }}} extends FormRequest
 {
+    /**
+     * Quién puede lanzar esta petición.
+     *
+     * Devuelve `true` porque el permiso ya se comprobó **antes**: cada ruta generada lleva su propio
+     * middleware de permiso, uno por acción y sin compartirlo con ninguna otra. Duplicar aquí esa
+     * comprobación crea una segunda puerta que el día que cambie una se queda desincronizada.
+     */
     public function authorize(): bool
     {
         return true;
     }
 
+    /**
+     * @return array<string, mixed>
+     */
     public function rules(): array
     {
         return [

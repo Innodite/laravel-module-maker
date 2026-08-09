@@ -2,7 +2,9 @@
 
 declare(strict_types=1);
 
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\File;
+use Innodite\LaravelModuleMaker\Support\PackageVersion;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Feature: innodite:make-module
@@ -12,7 +14,6 @@ it('genera un módulo con contexto central y crea la estructura de directorios',
     $this->artisan('innodite:make-module', [
         'name'        => 'User',
         '--context'   => 'central',
-        '--no-routes' => true,
     ])->assertSuccessful();
 
     $modulePath = $this->tempPath('Modules/User');
@@ -32,7 +33,6 @@ it('escribe una entrada en el log de auditoría tras la generación exitosa', fu
     $this->artisan('innodite:make-module', [
         'name'        => 'Product',
         '--context'   => 'central',
-        '--no-routes' => true,
     ])->assertSuccessful();
 
     $logPath = storage_path('logs/module_maker.log');
@@ -44,14 +44,16 @@ it('escribe una entrada en el log de auditoría tras la generación exitosa', fu
         ->and($lastEntry['event'])->toBe('module.created')
         ->and($lastEntry['module'])->toBe('Product')
         ->and($lastEntry['context_key'])->toBe('central')
-        ->and($lastEntry['version'])->toBe('3.0.0');
+        // La versión que quedó grabada es la instalada, no un literal. Esta línea decía '3.0.0' y
+        // era la segunda de las dos que sostenían el número escrito a mano: la prueba comparaba
+        // contra la misma constante equivocada, así que el defecto pasaba en verde por partida doble.
+        ->and($lastEntry['version'])->toBe(PackageVersion::current());
 });
 
 it('rechaza nombres que son palabras reservadas de PHP', function () {
     $this->artisan('innodite:make-module', [
         'name'        => 'class',
         '--context'   => 'central',
-        '--no-routes' => true,
     ])->assertFailed();
 });
 
@@ -59,12 +61,11 @@ it('rechaza nombres de módulo inválidos (no PascalCase)', function () {
     $this->artisan('innodite:make-module', [
         'name'        => '123invalid',
         '--context'   => 'central',
-        '--no-routes' => true,
     ])->assertFailed();
 });
 
 it('impide la creación de un módulo duplicado', function () {
-    $args = ['name' => 'Invoice', '--context' => 'central', '--no-routes' => true];
+    $args = ['name' => 'Invoice', '--context' => 'central'];
 
     $this->artisan('innodite:make-module', $args)->assertSuccessful();
     $this->artisan('innodite:make-module', $args)->assertFailed();
@@ -74,7 +75,6 @@ it('crea los archivos de documentación Docs/', function () {
     $this->artisan('innodite:make-module', [
         'name'        => 'Role',
         '--context'   => 'central',
-        '--no-routes' => true,
     ])->assertSuccessful();
 
     $docsPath = $this->tempPath('Modules/Role/Docs');
@@ -88,7 +88,6 @@ it('genera el ServiceProvider del módulo con namespace correcto', function () {
     $this->artisan('innodite:make-module', [
         'name'        => 'Permission',
         '--context'   => 'central',
-        '--no-routes' => true,
     ])->assertSuccessful();
 
     $providerFile = $this->tempPath('Modules/Permission/Providers/PermissionServiceProvider.php');
@@ -103,6 +102,33 @@ it('lee correctamente el contexts.json y valida el contexto', function () {
     $this->artisan('innodite:make-module', [
         'name'        => 'Tenant',
         '--context'   => 'invalid-context-xyz',
-        '--no-routes' => true,
     ])->assertFailed();
+});
+
+// ─── D9 · Sin contexto no se genera, y se dice cuáles hay ────────────────────────────────────
+
+it('en multitenant sin --context no genera nada: lo exige y lista el catálogo', function () {
+    // Antes caía en la selección interactiva, y sin nadie a quien preguntar esa selección devuelve
+    // **el primero del catálogo**: `central`. El módulo salía entero en el eje equivocado — rutas en
+    // web.php, protegidas con `central-permission`— para una subfuncionalidad pensada para tenants.
+    // Perfectamente escrito y completamente mal, que es la forma de defecto que no da la cara.
+    config()->set('make-module.mode', 'multitenant-per-tenant');
+
+    $codigo = Artisan::call('innodite:make-module', [
+        'name'             => 'Invoice',
+        '--no-interaction' => true,
+    ]);
+
+    $salida = Artisan::output();
+
+    expect($codigo)->not->toBe(
+        0,
+        "FALLA: generó un módulo sin saber su contexto.\n{$salida}"
+    );
+
+    expect($salida)->toContain('--context');
+    expect(File::isDirectory($this->tempPath('Modules/Invoice')))->toBeFalse(
+        'FALLA: dejó archivos escritos pese a no poder decidir el contexto. · FIX: se comprueba '
+        . 'ANTES de escribir nada; un módulo a medias hay que borrarlo a mano.'
+    );
 });

@@ -1,0 +1,225 @@
+<?php
+
+declare(strict_types=1);
+
+namespace {{{ namespace }}};
+
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
+{{{ strImport }}}
+/**
+ * Tema 7 — el comportamiento de {{{ subFeature }}} por HTTP: **el único sin techo**.
+ *
+ * Aquí es donde entra lo que el negocio exija, y por eso no tiene un número fijo de pruebas. Lo que
+ * sí tiene es un **borde**: ⛔ no se repite el 403 sin permiso, que ya está probado en
+ * `{{{ subFeature }}}PermissionsTest`. Repetirlo es la duplicación que infló las suites de este
+ * patrón antes de que existiera el contrato — sesenta y dos métodos redundantes en un solo proyecto.
+ *
+ * **Lo que el paquete puede escribir, y lo que no.** Nace con lo derivable: el listado responde, un
+ * registro inexistente no se devuelve, eliminar aplica borrado lógico. Lo que depende del negocio
+ * —el cuerpo válido de un alta, el campo que tiene que fallar la validación— **no puede inventarlo**:
+ * lo declara el desarrollador en `payloadValido()`, y hasta entonces esas pruebas **se saltan
+ * diciendo qué falta**. Un `assertTrue(true)` en su lugar sería cobertura fingida; un skip que
+ * explica el paso siguiente es una tarea pendiente visible.
+ */
+final class {{{ httpName }}} extends {{{ baseName }}}
+{
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->levantarSubfuncionalidad();
+    }
+
+    /**
+     * El cuerpo válido de un alta — **lo escribe el desarrollador**.
+     *
+     * Nace vacío y con su estructura, igual que el trait de datos canónicos de los seeders: el
+     * paquete conoce la forma de la subfuncionalidad, no las reglas de su negocio.
+     *
+     * @return array<string, mixed>
+     */
+    protected function payloadValido(): array
+    {
+        return [
+            // 'name' => 'Ejemplo',
+        ];
+    }
+
+    /**
+     * Qué prueba: que el listado responde y trae lo que la vista consume.
+     * Resultado esperado: 200 con un cuerpo JSON.
+     * Por qué existe: es la llamada que hace la pantalla al abrirse; si falla, no se ve un error de
+     *   permisos sino una tabla vacía, que se confunde con «todavía no hay datos».
+     */
+    public function test_el_listado_responde_lo_que_la_vista_necesita(): void
+    {
+        $respuesta = $this->llamarAccion('list');
+
+        $this->assertSame(
+            200,
+            $respuesta->getStatusCode(),
+            'FALLA: el listado no responde 200 a quien tiene su permiso. · FIX: revisa el service y '
+            . "el repository de la subfuncionalidad; el cuerpo devuelto fue:\n" . $respuesta->getContent()
+        );
+
+        $this->assertJson(
+            (string) $respuesta->getContent(),
+            'FALLA: el listado no devuelve JSON. · FIX: toda ruta con datos responde '
+            . 'response()->json(); Inertia se reserva para renderizar la vista.'
+        );
+    }
+
+    /**
+     * Qué prueba: que un alta sin datos válidos no se guarda.
+     * Resultado esperado: 422, con el error apuntando al campo.
+     * Por qué existe: la validación vive en el FormRequest, y un controlador que no la aplica acepta
+     *   cualquier cosa — el dato entra mal y el error aparece semanas después, al leerlo.
+     */
+    public function test_una_entrada_invalida_no_se_guarda(): void
+    {
+        $formRequest = {{{ contractName }}}::SCAFFOLD['form_request_store'];
+        $reglas      = (new $formRequest())->rules();
+
+        if ($reglas === []) {
+            $this->markTestSkipped(
+                'El FormRequest del alta todavía no declara reglas, así que no hay nada que pueda '
+                . 'fallar la validación. Escríbelas en su rules() y esta prueba corre sola.'
+            );
+        }
+
+        $respuesta = $this->llamarAccion('store', [], []);
+
+        $this->assertSame(
+            422,
+            $respuesta->getStatusCode(),
+            'FALLA: un alta sin datos no fue rechazada con 422. · FIX: comprueba que el controlador '
+            . 'recibe el FormRequest en su firma —no un Request genérico— y que sus reglas se aplican.'
+        );
+    }
+
+    /**
+     * Qué prueba: que una edición inválida tampoco se guarda.
+     * Resultado esperado: 422.
+     * Por qué existe: **son dos FormRequests, y hasta ahora solo uno estaba vigilado.** Las reglas de
+     *   una edición casi nunca son las del alta —el `unique` tiene que ignorarse a sí mismo, los
+     *   obligatorios al crear suelen ser opcionales al actualizar—, así que el de la edición es el
+     *   que más fácil se queda a medio escribir. Y sin nadie mirándolo, «a medio escribir» y
+     *   «terminado» se ven igual.
+     */
+    public function test_una_edicion_invalida_no_se_guarda(): void
+    {
+        $formRequest = {{{ contractName }}}::SCAFFOLD['form_request_update'];
+        $reglas      = (new $formRequest())->rules();
+
+        if ($reglas === []) {
+            $this->markTestSkipped(
+                'El FormRequest de la edición todavía no declara reglas. Escríbelas en su rules() y '
+                . 'esta prueba corre sola — no suelen ser las mismas que las del alta.'
+            );
+        }
+
+        $respuesta = $this->llamarAccion('update', ['id' => {{{ idInexistente }}}], []);
+
+        $this->assertSame(
+            422,
+            $respuesta->getStatusCode(),
+            'FALLA: una edición sin datos válidos no fue rechazada con 422. · FIX: `update()` recibe '
+            . 'su propio FormRequest, no el del alta ni un Request genérico.'
+        );
+    }
+
+    /**
+     * Qué prueba: que crear un registro devuelve lo creado, y que después se puede leer.
+     * Resultado esperado: 201 al crear, y el registro presente al consultarlo.
+     * Por qué existe: es el camino feliz completo, el que usa la pantalla todos los días.
+     */
+    public function test_crear_un_registro_y_volver_a_leerlo(): void
+    {
+        if ($this->payloadValido() === []) {
+            $this->markTestSkipped(
+                'Declara el cuerpo de un alta válida en payloadValido() —el paquete no conoce los '
+                . 'campos de tu negocio— y esta prueba corre sola.'
+            );
+        }
+
+        $creado = $this->llamarAccion('store', [], $this->payloadValido());
+
+        $this->assertSame(
+            201,
+            $creado->getStatusCode(),
+            'FALLA: crear un registro válido no devolvió 201. · FIX: el controlador responde '
+            . "response()->json(\$creado, 201). El cuerpo fue:\n" . $creado->getContent()
+        );
+
+        $this->assertGreaterThan(
+            0,
+            DB::connection({{{ contractName }}}::CONNECTION)
+                ->table((string) array_key_first({{{ contractName }}}::TABLES))
+                ->count(),
+            'FALLA: la respuesta dice que se creó y la tabla está vacía. · FIX: comprueba que el '
+            . 'repository persiste de verdad y que escribe en la conexión del manifiesto.'
+        );
+    }
+
+    /**
+     * Qué prueba: que pedir un registro que no existe no devuelve otro.
+     * Resultado esperado: cualquier cosa menos un 200 con datos.
+     * Por qué existe: es la forma mínima del aislamiento — si un identificador inventado devuelve
+     *   algo, el siguiente paso es recorrer la tabla ajena cambiando el número.
+     */
+    public function test_pedir_un_registro_que_no_existe_no_devuelve_otro(): void
+    {
+        $respuesta = $this->llamarAccion('show', ['id' => {{{ idInexistente }}}]);
+
+        $this->assertNotSame(
+            200,
+            $respuesta->getStatusCode(),
+            'FALLA: un identificador que no existe devolvió 200. · FIX: el repository tiene que '
+            . 'buscar por identificador exacto y devolver vacío si no hay nada; nunca el primero.'
+        );
+    }
+
+    /**
+     * Qué prueba: que eliminar aplica borrado lógico, no borrado real.
+     * Resultado esperado: la fila sigue en la tabla, con su marca de eliminación puesta.
+     * Por qué existe: sin borrado lógico, un clic equivocado es irreversible — y el registro se lo
+     *   lleva por delante todo lo que apuntaba a él.
+     */
+    public function test_eliminar_aplica_borrado_logico(): void
+    {
+        $tabla = (string) array_key_first({{{ contractName }}}::TABLES);
+
+        if (! Schema::connection({{{ contractName }}}::CONNECTION)->hasColumn($tabla, 'deleted_at')) {
+            $this->fail(
+                "FALLA: la tabla '{$tabla}' no tiene deleted_at. · FIX: toda tabla generada lleva "
+                . 'borrado lógico; añádelo en su migración.'
+            );
+        }
+
+        $id = {{{ idInexistente }}};
+
+        DB::connection({{{ contractName }}}::CONNECTION)->table($tabla)->insert([
+            'id'         => $id,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $this->llamarAccion('destroy', ['id' => $id]);
+
+        $fila = DB::connection({{{ contractName }}}::CONNECTION)->table($tabla)->where('id', $id)->first();
+
+        $this->assertNotNull(
+            $fila,
+            'FALLA: eliminar borró la fila de la base de datos. · FIX: el modelo usa SoftDeletes y el '
+            . 'repository llama a delete(), nunca a forceDelete().'
+        );
+
+        $this->assertNotNull(
+            $fila->deleted_at ?? null,
+            'FALLA: la fila sigue ahí pero sin marca de eliminación. · FIX: comprueba que el modelo '
+            . 'declara SoftDeletes; sin el trait, delete() borra de verdad.'
+        );
+    }
+{{{ pruebaDeAislamiento }}}
+}

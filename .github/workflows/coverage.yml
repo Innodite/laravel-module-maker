@@ -22,10 +22,11 @@ jobs:
       - name: Cache Composer dependencies
         uses: actions/cache@v4
         with:
-          path: |
-            ~/.composer/cache/files
-            vendor
-          key: ${{ runner.os }}-php-8.3-coverage-${{ hashFiles('**/composer.lock') }}
+          # Sin `vendor` en la caché: las pruebas que ejecutan `module-setup` publican stubs dentro
+          # del skeleton de Testbench, que vive ahí, y arrastrarlo entre corridas deja a la suite
+          # midiendo stubs viejos en vez de los del paquete (B19).
+          path: ~/.composer/cache/files
+          key: ${{ runner.os }}-php-8.3-coverage-${{ hashFiles('**/composer.json') }}
           restore-keys: |
             ${{ runner.os }}-php-8.3-coverage-
 

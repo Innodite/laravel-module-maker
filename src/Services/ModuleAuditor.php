@@ -4,10 +4,12 @@ declare(strict_types=1);
 
 namespace Innodite\LaravelModuleMaker\Services;
 
+use Innodite\LaravelModuleMaker\Support\Disk;
+use Innodite\LaravelModuleMaker\Support\PackageVersion;
 use Illuminate\Support\Facades\File;
 
 /**
- * ModuleAuditor — Sistema de Auditoría en NDJSON para ModuleMaker v3.0.0
+ * ModuleAuditor — el historial de lo que el generador ha creado en este proyecto.
  *
  * Cada operación exitosa del generador escribe una línea JSON en:
  *   storage/logs/module_maker.log
@@ -17,6 +19,12 @@ use Illuminate\Support\Facades\File;
  *
  * Este formato permite que herramientas de IA y monitoreo analicen el
  * historial de cambios sin necesidad de parsear texto plano.
+ *
+ * **El campo `version` dice qué versión del paquete generó esa línea**, y por eso se le pregunta a
+ * Composer en vez de escribirla a mano. Estaba escrita: `'3.0.0'`, un literal. Un proyecto que
+ * instalase la 4.2 y generase diez módulos obtenía diez líneas jurando que las hizo la 3.0.0 — y
+ * este archivo existe precisamente para responder «¿quién generó esto y cuándo?». Un historial que
+ * miente sobre su autor no es un historial, es ruido con formato JSON.
  */
 final class ModuleAuditor
 {
@@ -28,8 +36,10 @@ final class ModuleAuditor
      * Eventos disponibles:
      *   - module.created        → Módulo completo generado
      *   - module.components     → Componentes individuales añadidos
-     *   - routes.injected       → Rutas inyectadas en archivo del proyecto
      *   - module.rollback       → Rollback ejecutado tras error
+     *
+     * Había un cuarto, `routes.injected`, de cuando el generador escribía en el `routes/web.php`
+     * del proyecto. Esa vía se retiró: las rutas viven dentro del módulo y nadie las inyecta.
      *
      * @param string               $event  Identificador del evento
      * @param array<string, mixed> $data   Datos adicionales del evento
@@ -41,8 +51,8 @@ final class ModuleAuditor
                 [
                     'timestamp' => now()->toIso8601String(),
                     'event'     => $event,
-                    'package'   => 'innodite/laravel-module-maker',
-                    'version'   => '3.0.0',
+                    'package'   => PackageVersion::PACKAGE,
+                    'version'   => PackageVersion::current(),
                 ],
                 $data
             ),
@@ -57,10 +67,10 @@ final class ModuleAuditor
         $logDir  = dirname($logPath);
 
         if (!File::isDirectory($logDir)) {
-            File::makeDirectory($logDir, 0755, true);
+            Disk::makeDirectory($logDir, 0755, true);
         }
 
-        File::append($logPath, $entry . PHP_EOL);
+        Disk::append($logPath, $entry . PHP_EOL);
     }
 
     /**

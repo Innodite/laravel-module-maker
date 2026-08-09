@@ -1,0 +1,168 @@
+<?php
+
+declare(strict_types=1);
+
+namespace {{{ namespace }}};
+
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
+{{{ strImport }}}
+/**
+ * Tema 8 — el despliegue de {{{ subFeature }}}, **ejecutado**.
+ *
+ * **Esta es la pieza que justifica el contrato entero.** El objetivo de todas las demás es que el
+ * cierre de stage o el de producción levante sin errores; esta lo comprueba de la única forma que
+ * informa: **corriendo el mismo seeder que corre en el servidor** (R75). Nada simulado, ningún mock
+ * del despliegue — si el seeder no aplica sus migraciones, aquí se ve; si las aplica dos veces y
+ * duplica filas, aquí se ve; si borra lo que no debía, aquí se ve.
+ *
+ * **Cuatro pruebas, y ninguna sobra:**
+ *
+ *   1. **Levanta** — desde cero, la subfuncionalidad queda operativa.
+ *   2. **Es idempotente** — la segunda corrida deja exactamente el mismo estado. Un despliegue se
+ *      repite muchas más veces de las que se estrena.
+ *   3. **No destruye** — sin pedirlo expresamente, un dato que escribió un usuario sigue ahí. Es la
+ *      prueba que separa un despliegue de un accidente.
+ *   4. **Producción también levanta** — porque es un camino distinto del de stage, no el mismo con
+ *      otro nombre.
+ *
+ * ⛔ Este archivo **no** llama a `levantarSubfuncionalidad()` en su `setUp()`: cada prueba controla
+ * su propio despliegue, que es justamente lo que está midiendo.
+ */
+final class {{{ deploymentName }}} extends {{{ baseName }}}
+{
+    /**
+     * Qué prueba: que el cierre de stage deja la subfuncionalidad operativa desde cero.
+     * Resultado esperado: tablas del manifiesto creadas y permisos canónicos sembrados.
+     * Por qué existe: es la razón de ser del contrato — que el despliegue no falle en el servidor,
+     *   porque falló antes aquí.
+     */
+    public function test_el_cierre_de_stage_levanta_la_subfuncionalidad(): void
+    {
+        $this->seed({{{ contractName }}}::SCAFFOLD['stage_seeder']);
+        $this->seed({{{ contractName }}}::PERMISSION_SEEDER);
+
+        foreach (array_keys({{{ contractName }}}::TABLES) as $tabla) {
+            $this->assertTrue(
+                Schema::connection({{{ contractName }}}::CONNECTION)->hasTable($tabla),
+                "FALLA: tras el despliegue de stage no existe la tabla '{$tabla}'. · FIX: comprueba "
+                . 'que el seeder invoca runMigrations() y que su MigrationsList nombra la migración.'
+            );
+        }
+
+        $this->assertSame(
+            [],
+            $this->permisosQueFaltan(),
+            'FALLA: el despliegue de stage no dejó todos los permisos de la subfuncionalidad. · FIX: '
+            . 'ejecuta su seeder de permisos; sin ellos, sus pantallas no las abre nadie.'
+        );
+    }
+
+    /**
+     * Qué prueba: que desplegar dos veces deja el mismo estado.
+     * Resultado esperado: los mismos conteos, sin duplicados.
+     * Por qué existe: un despliegue se repite en cada entrega. Si la segunda corrida duplica filas,
+     *   el defecto aparece en producción y con datos dentro.
+     */
+    public function test_correrlo_dos_veces_deja_el_mismo_estado(): void
+    {
+        $this->seed({{{ contractName }}}::SCAFFOLD['stage_seeder']);
+        $this->seed({{{ contractName }}}::PERMISSION_SEEDER);
+
+        $primera = $this->conteos();
+
+        $this->seed({{{ contractName }}}::SCAFFOLD['stage_seeder']);
+        $this->seed({{{ contractName }}}::PERMISSION_SEEDER);
+
+        $this->assertSame(
+            $primera,
+            $this->conteos(),
+            'FALLA: la segunda corrida del despliegue cambió los conteos. · FIX: los datos canónicos '
+            . 'se insertan con updateOrInsert por su clave natural, nunca con insert a secas.'
+        );
+    }
+
+    /**
+     * Qué prueba: que un dato que no puso el seeder sobrevive a un despliegue normal.
+     * Resultado esperado: la fila sigue ahí después de volver a desplegar.
+     * Por qué existe: es la diferencia entre desplegar y perder los datos del cliente. El vaciado
+     *   existe, pero solo cuando alguien lo pide expresamente.
+     */
+    public function test_sin_pedirlo_no_se_pierde_un_dato_de_usuario(): void
+    {
+        $this->seed({{{ contractName }}}::SCAFFOLD['stage_seeder']);
+
+        $tabla = (string) array_key_first({{{ contractName }}}::TABLES);
+        $id    = {{{ idInexistente }}};
+
+        // Solo las columnas que el patrón garantiza. Si esta tabla tiene columnas obligatorias del
+        // negocio, complétalas aquí: lo que se está midiendo es que la fila sobreviva, no su forma.
+        DB::connection({{{ contractName }}}::CONNECTION)->table($tabla)->insert([
+            'id'         => $id,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+
+        $this->seed({{{ contractName }}}::SCAFFOLD['stage_seeder']);
+
+        $this->assertTrue(
+            DB::connection({{{ contractName }}}::CONNECTION)->table($tabla)->where('id', $id)->exists(),
+            "FALLA: el despliegue borró una fila de '{$tabla}' que no había puesto él. · FIX: el "
+            . 'vaciado va dentro de la rama destructiva, y esa solo se activa pidiéndolo con '
+            . 'SEEDER_DESTRUCTIVE.'
+        );
+    }
+
+    /**
+     * Qué prueba: que el cierre de producción también levanta la subfuncionalidad.
+     * Resultado esperado: tablas y permisos, igual que en stage.
+     * Por qué existe: producción es un camino distinto —no borra nada, ni puede—, así que probar
+     *   stage no dice nada de él. Y es el que se ejecuta donde importa.
+     */
+    public function test_el_cierre_de_produccion_levanta_la_subfuncionalidad(): void
+    {
+        $this->seed({{{ contractName }}}::SCAFFOLD['production_seeder']);
+        $this->seed({{{ contractName }}}::PERMISSION_SEEDER);
+
+        foreach (array_keys({{{ contractName }}}::TABLES) as $tabla) {
+            $this->assertTrue(
+                Schema::connection({{{ contractName }}}::CONNECTION)->hasTable($tabla),
+                "FALLA: tras el despliegue de producción no existe la tabla '{$tabla}'. · FIX: el "
+                . 'seeder de producción también aplica las migraciones; comprueba su MigrationsList.'
+            );
+        }
+
+        $this->assertSame(
+            [],
+            $this->permisosQueFaltan(),
+            'FALLA: el despliegue de producción no dejó todos los permisos. · FIX: los permisos van '
+            . 'en los dos entornos; en producción se actualizan, nunca se borran.'
+        );
+    }
+
+    // ── Apoyos ────────────────────────────────────────────────────────────────────────────────
+
+    /** Los permisos canónicos que no están en la base. @return array<int, string> */
+    private function permisosQueFaltan(): array
+    {
+        $existentes = DB::connection({{{ contractName }}}::CONNECTION)
+            ->table('permissions')
+            ->pluck('name')
+            ->all();
+
+        return array_values(array_diff($this->nombresDePermisos(), $existentes));
+    }
+
+    /** Cuántas filas hay en cada tabla del manifiesto, más los permisos. @return array<string, int> */
+    private function conteos(): array
+    {
+        $conexion = DB::connection({{{ contractName }}}::CONNECTION);
+        $conteos  = ['permissions' => $conexion->table('permissions')->count()];
+
+        foreach (array_keys({{{ contractName }}}::TABLES) as $tabla) {
+            $conteos[$tabla] = $conexion->table($tabla)->count();
+        }
+
+        return $conteos;
+    }
+}

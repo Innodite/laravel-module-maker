@@ -131,7 +131,7 @@ class InnoditeContextBridge
         Log::warning(
             '[InnoditeContextBridge] No se pueden resolver los permisos del usuario. '
             . 'Instala spatie/laravel-permission o implementa InnoditeUserPermissions en el modelo User. '
-            . 'Ejecuta: php artisan innodite:check-env',
+            . 'Ejecuta: php artisan innodite:doctor',
             [
                 'user_id' => $user->getKey(),
                 'model'   => get_class($user),

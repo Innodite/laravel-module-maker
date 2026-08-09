@@ -58,7 +58,6 @@ src/
   Services/
     MigrationPlanResolver.php       — resolveManifestPath(), loadPlan(), resolveMigrationCoordinate(), resolveSeederCoordinate()
     MigrationTargetService.php      — resolveExecutionConnection(), resolveTargetsForCoordinate(), ensureManifestPath()
-    RouteInjectionService.php       — inject() idempotente con marcadores
     ModuleAuditor.php               — NDJSON log en storage/logs/module_maker.log
     TestContextConfigService.php    — sync config tests por contexto
 
@@ -446,7 +445,7 @@ Cadena de resolución de permisos:
 ### 1. `innodite:make-module`
 
 ```bash
-php artisan innodite:make-module {name} {--context=} {--json} {--no-routes}
+php artisan innodite:make-module {name} {--context=} {--json}
                                         {--M|model} {--C|controller} {--S|service}
                                         {--R|repository} {--G|migration} {--Q|request}
 ```
@@ -455,7 +454,6 @@ php artisan innodite:make-module {name} {--context=} {--json} {--no-routes}
 - `name` — Nombre de la entidad en singular (se convierte a PascalCase)
 - `--context=` — Contexto explícito (central | shared | tenant_shared | id-del-tenant)
 - `--json` — Usa `module-maker-config/{module}.json` como fuente de config dinámica
-- `--no-routes` — Omite inyección de rutas
 - `-M/--model`, `-C/--controller`, `-S/--service`, `-R/--repository`, `-G/--migration`, `-Q/--request` — Solo genera ese componente
 
 **Modos:**
@@ -471,18 +469,14 @@ php artisan innodite:make-module User --context=shared -S -R
 
 # Desde JSON dinámico
 php artisan innodite:make-module User --json
-
-# Sin inyección de rutas
-php artisan innodite:make-module User --context=central --no-routes
 ```
 
 **Flujo:**
 1. Validar nombre (regex + palabras reservadas PHP/Laravel)
 2. Resolver contexto
 3. Generar estructura de archivos (ModuleGenerator)
-4. Inyectar rutas (RouteInjectionService) — salvo `--no-routes`
-5. Auditoría (ModuleAuditor)
-6. Rollback opcional si hay error
+4. Auditoría (ModuleAuditor)
+5. Rollback opcional si hay error
 
 ---
 
@@ -620,7 +614,7 @@ Requiere un nombre de módulo o la flag `--all`. Sin argumentos el comando falla
 ### 11. `innodite:add-entity`
 
 ```bash
-php artisan innodite:add-entity {module} {entity} {--context=} [-M] [-C] [-S] [-R] [-G] [-Q] [--no-routes]
+php artisan innodite:add-entity {module} {entity} {--context=} [-M] [-C] [-S] [-R] [-G] [-Q]
 ```
 
 Agrega una nueva entidad a un módulo **ya existente**, generando sus archivos en una subcarpeta propia dentro de cada capa del módulo.
@@ -634,9 +628,6 @@ php artisan innodite:add-entity UserManagement Role --context=central
 
 # Solo controller + service + repository para un tenant específico
 php artisan innodite:add-entity UserManagement Permission --context=energy-spain -C -S -R
-
-# Sin inyección de rutas
-php artisan innodite:add-entity UserManagement Module --context=tenant_shared -M -G --no-routes
 ```
 
 **Resultado para `UserManagement Role --context=central`:**
@@ -825,34 +816,43 @@ Log: storage/logs/module_maker.log
 
 **Entrada de ejemplo:**
 ```json
-{"timestamp":"2025-01-01T12:00:00+00:00","event":"module.created","package":"innodite/laravel-module-maker","version":"3.5.0","module":"User","context_key":"central","context_id":"central","functionality":"users","routes":true}
+{"timestamp":"2025-01-01T12:00:00+00:00","event":"module.created","package":"innodite/laravel-module-maker","version":"3.5.0","module":"User","context_key":"central","context_id":"central","functionality":"users"}
 ```
 
 ---
 
-## @ROUTES_INJECTION — RouteInjectionService
+## @ROUTES — dónde viven las rutas de un módulo
 
-**Inyecta bloques de rutas idempotentemente** (nunca duplica).
+**Las rutas se escriben solo dentro del módulo**, en `Modules/{Module}/Routes/` (`web.php`,
+`tenant.php`, `api.php`), y las carga el ServiceProvider del paquete. El generador **no toca ningún
+archivo de rutas del proyecto**.
 
-### Marcadores esperados en archivos de rutas
+Hasta la v3 escribía además un bloque en el `routes/web.php` del proyecto. Se retiró: declaraba
+`create` y `edit` —dos pantallas que la v4 no genera, porque el alta y la edición ocurren en un
+modal sobre el listado—, salía con el prefijo mal formado y sin un solo `permission:`. Instalar un
+módulo publicaba seis rutas sin proteger.
+
+### El marcador de cada sección
+
+Sobrevive en el archivo **generado** para que la siguiente subfuncionalidad se añada dentro del
+grupo que le da dominio y middleware, y no al final. La clave la decide `RouteMarkers`:
 
 ```php
-// web.php
+// Modules/{Module}/Routes/web.php
 // {{CENTRAL_ROUTES_END}}
 
-// tenant.php (shared)
+// Modules/{Module}/Routes/tenant.php (shared)
 // {{TENANT_SHARED_ROUTES_END}}
 
-// tenant.php (tenant específico, ej: energy-spain)
-// {{TENANT_ENERGY-SPAIN_ROUTES_END}}
+// Modules/{Module}/Routes/tenant.php (tenant específico, ej: energy-spain)
+// {{TENANT_ENERGY_SPAIN_ROUTES_END}}
 ```
 
-### Garantías
+### Las seis acciones, y su permiso cada una
 
-- **Idempotente:** detecta si el bloque ya existe antes de insertar
-- **Auto-import:** añade `use ControllerClass` si falta
-- **Middleware opcional:** omite `->middleware()` si `route_middleware` es `[]`
-- **Indentación:** respeta nivel de sangría del marcador
+Salen de `SubFeaturePermissions::routes()`, que es de donde las lee también el `PermissionsSeeder`:
+`index` (la pantalla) · `list` · `store` · `show` · `update` · `destroy`. Las cinco últimas
+devuelven datos. No hay `create` ni `edit`.
 
 ---
 

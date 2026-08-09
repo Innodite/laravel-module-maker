@@ -4,10 +4,13 @@ declare(strict_types=1);
 
 namespace Innodite\LaravelModuleMaker\Generators\Components;
 
+use Innodite\LaravelModuleMaker\Support\Disk;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Str;
 use Innodite\LaravelModuleMaker\Generators\Concerns\HasStubs;
+use Innodite\LaravelModuleMaker\Generators\Concerns\WritesGeneratedFiles;
 use Innodite\LaravelModuleMaker\Support\ContextResolver;
+use Innodite\LaravelModuleMaker\Support\ModuleMode;
 use Symfony\Component\Console\Output\OutputInterface;
 
 /**
@@ -22,12 +25,16 @@ use Symfony\Component\Console\Output\OutputInterface;
 abstract class AbstractComponentGenerator
 {
     use HasStubs;
+    use WritesGeneratedFiles;
 
     protected string $moduleName;
     protected string $modulePath;
     protected bool $isClean;
     protected array $componentConfig;
     protected ?OutputInterface $output = null;
+
+    /** Cache del modo: se consulta una vez por generador, no una por archivo. */
+    private ?ModuleMode $mode = null;
 
     /**
      * Cache de la configuración del contexto activo.
@@ -103,50 +110,120 @@ abstract class AbstractComponentGenerator
      */
     protected function getContext(): array
     {
-        if ($this->resolvedContext !== null) {
-            return $this->resolvedContext;
-        }
-
-        $contextKey = $this->componentConfig['context'] ?? null;
-        $contextId  = $this->componentConfig['context_id'] ?? null;
-
-        if ($contextKey === null) {
-            $this->resolvedContext = [];
-            return $this->resolvedContext;
-        }
-
-        try {
-            $this->resolvedContext = $contextId !== null
-                ? ContextResolver::resolveById($contextKey, $contextId)
-                : ContextResolver::resolve($contextKey);
-        } catch (\InvalidArgumentException) {
-            $this->resolvedContext = [];
-        }
-
-        return $this->resolvedContext;
+        return $this->resolvedContext ??= $this->resolveContextFor($this->componentConfig);
     }
 
     /**
-    * Retorna el prefijo de clase del contexto activo.
-    * Ej: 'Central', 'Shared', 'TenantShared', 'TenantAlpha'
-     * Retorna cadena vacía si no hay contexto definido (retrocompatibilidad).
+     * Resuelve la configuración de contexto de una configuración CUALQUIERA, no solo la propia.
      *
-     * @return string
+     * La necesita el generador que trabaja sobre varios componentes a la vez —el Provider, que
+     * registra los bindings de todas las subfuncionalidades del módulo—: sin esto tiene que armar
+     * los namespaces por su cuenta, que es exactamente lo que hacía y por lo que acabó importando
+     * clases que nadie escribe.
+     *
+     * @param  array<string, mixed>  $config
+     * @return array<string, mixed>
+     */
+    protected function resolveContextFor(array $config): array
+    {
+        // La cadena vacía es «sin contexto», no «un contexto llamado ''»: es lo que entrega el
+        // comando en single-app, donde no hay eje de contexto que resolver.
+        $contextKey = $config['context'] ?? null;
+        $contextKey = $contextKey ?: null;
+        $contextId  = $config['context_id'] ?? null;
+
+        if ($contextKey === null) {
+            return [];
+        }
+
+        try {
+            return $contextId !== null
+                ? ContextResolver::resolveById($contextKey, $contextId)
+                : ContextResolver::resolve($contextKey);
+        } catch (\InvalidArgumentException) {
+            return [];
+        }
+    }
+
+    /**
+     * El namespace de un componente de OTRA configuración, con las mismas reglas que buildNamespace().
+     *
+     * Mismo cálculo, distinta fuente: el contexto solo si el modo tiene eje, y la subfuncionalidad
+     * como último tramo. Que el Provider use esto en vez de concatenar por su cuenta es lo que
+     * garantiza que su `use` y el archivo que escribe el generador de esa capa digan lo mismo.
+     *
+     * @param  array<string, mixed>  $config
+     */
+    protected function namespaceForComponent(string $componentType, array $config, bool $contracts = false): string
+    {
+        $base  = "Modules\\{$this->moduleName}\\{$componentType}" . ($contracts ? '\\Contracts' : '');
+        $ctxNs = $this->mode()->hasContextAxis()
+            ? ($this->resolveContextFor($config)['namespace_path'] ?? '')
+            : '';
+        $sub   = $config['subFeature'] ?? '';
+
+        $ns = $ctxNs ? "{$base}\\{$ctxNs}" : $base;
+
+        return $sub ? "{$ns}\\{$sub}" : $ns;
+    }
+
+    /**
+     * El prefijo de clase de OTRA configuración — si el modo lo pide (C5 · R6).
+     *
+     * @param  array<string, mixed>  $config
+     */
+    protected function classPrefixFor(array $config): string
+    {
+        if (! $this->mode()->usesClassPrefix()) {
+            return '';
+        }
+
+        return $this->resolveContextFor($config)['class_prefix'] ?? '';
+    }
+
+    /**
+     * El modo del proyecto. Decide la FORMA de lo generado, no el contenido.
+     *
+     * @throws \Innodite\LaravelModuleMaker\Exceptions\ModeNotConfiguredException
+     */
+    protected function mode(): ModuleMode
+    {
+        return $this->mode ??= ModuleMode::current();
+    }
+
+    /**
+     * Prefijo de clase del contexto activo — **si el modo lo pide**.
+     *
+     * Antes se antepondía siempre, así que una aplicación sin un solo tenant generaba
+     * `CentralRoleController`: un prefijo que no desambigua nada, porque no hay nada de lo que
+     * distinguirlo (C5 · R6). El prefijo existe para separar contextos; sin eje de contexto es
+     * ruido pegado al nombre de cada clase de cada módulo.
+     *
+     * @return string  'Central', 'TenantShared', 'TenantAlpha'… o vacío en single-app
      */
     protected function getClassPrefix(): string
     {
+        if (! $this->mode()->usesClassPrefix()) {
+            return '';
+        }
+
         return $this->getContext()['class_prefix'] ?? '';
     }
 
     /**
-    * Retorna la subcarpeta del contexto dentro de cada tipo de componente.
-    * Ej: 'Central', 'Shared', 'Tenant/Shared', 'Tenant/Alpha'
-     * Retorna cadena vacía si no hay contexto definido.
+     * Subcarpeta del contexto — **si el modo tiene eje de contexto**.
      *
-     * @return string
+     * En single-app la subfuncionalidad va directa bajo la capa: `Models/Role/`, no
+     * `Models/Central/Role/` (R5).
+     *
+     * @return string  'Central', 'Tenant/Shared', 'Tenant/Alpha'… o vacío en single-app
      */
     protected function getContextFolder(): string
     {
+        if (! $this->mode()->hasContextAxis()) {
+            return '';
+        }
+
         return $this->getContext()['folder'] ?? '';
     }
 
@@ -158,19 +235,42 @@ abstract class AbstractComponentGenerator
      *
      * @return string
      */
-    protected function getEntityFolder(): string
+    protected function getSubFeatureFolder(): string
     {
-        return $this->componentConfig['entity'] ?? '';
+        return $this->componentConfig['subFeature'] ?? '';
     }
 
     /**
-    * Retorna el fragmento de namespace del contexto.
-    * Ej: 'Central', 'Shared', 'Tenant\\Shared', 'Tenant\\Alpha'
+     * El nombre de la subfuncionalidad para **componer clases**, no carpetas.
      *
-     * @return string
+     * Se diferencia de `getSubFeatureFolder()` en el caso vacío, y esa diferencia importa: una
+     * carpeta puede no existir —y entonces la capa se escribe un nivel más arriba—, pero una clase
+     * siempre tiene que llamarse de algo. Sin subfuncionalidad declarada, el nombre lo pone el
+     * módulo.
+     *
+     * Existe aquí porque lo necesitan los dos lados de la misma pareja: el generador que **escribe**
+     * los FormRequests y el que los **importa** en la firma del controlador. Cada uno resolviendo el
+     * caso vacío por su cuenta es la forma exacta en que dos nombres correctos dejan de coincidir.
+     */
+    protected function subFeatureName(): string
+    {
+        return $this->getSubFeatureFolder() ?: $this->moduleName;
+    }
+
+    /**
+     * Fragmento de namespace del contexto — **si el modo tiene eje de contexto**.
+     *
+     * Espeja a getContextFolder(): la carpeta y el namespace no pueden discrepar, o las clases
+     * generadas no se autocargan.
+     *
+     * @return string  'Central', 'Tenant\\Shared', 'Tenant\\Alpha'… o vacío en single-app
      */
     protected function getContextNamespacePath(): string
     {
+        if (! $this->mode()->hasContextAxis()) {
+            return '';
+        }
+
         return $this->getContext()['namespace_path'] ?? '';
     }
 
@@ -186,7 +286,7 @@ abstract class AbstractComponentGenerator
     {
         $base   = "Modules\\{$this->moduleName}\\{$componentType}";
         $ctxNs  = $this->getContextNamespacePath();
-        $entity = $this->getEntityFolder();
+        $entity = $this->getSubFeatureFolder();
 
         $ns = $ctxNs ? "{$base}\\{$ctxNs}" : $base;
 
@@ -205,7 +305,7 @@ abstract class AbstractComponentGenerator
     {
         $base   = "Modules\\{$this->moduleName}\\{$componentType}\\Contracts";
         $ctxNs  = $this->getContextNamespacePath();
-        $entity = $this->getEntityFolder();
+        $entity = $this->getSubFeatureFolder();
 
         $ns = $ctxNs ? "{$base}\\{$ctxNs}" : $base;
 
@@ -224,7 +324,7 @@ abstract class AbstractComponentGenerator
     {
         $base   = $this->getComponentBasePath() . "/{$componentType}";
         $folder = $this->getContextFolder();
-        $entity = $this->getEntityFolder();
+        $entity = $this->getSubFeatureFolder();
 
         $path = $folder ? "{$base}/{$folder}" : $base;
 
@@ -243,7 +343,7 @@ abstract class AbstractComponentGenerator
     {
         $base   = $this->getComponentBasePath() . "/{$componentType}/Contracts";
         $folder = $this->getContextFolder();
-        $entity = $this->getEntityFolder();
+        $entity = $this->getSubFeatureFolder();
 
         $path = $folder ? "{$base}/{$folder}" : $base;
 
@@ -276,6 +376,111 @@ abstract class AbstractComponentGenerator
             ?? Str::kebab(Str::plural(Str::snake($this->moduleName)));
     }
 
+    // ─── Lo que más de un generador necesita saber, decidido UNA vez ──────────
+
+    /**
+     * El prefijo del permiso: lo dice **el modo**, y el contexto solo puede afinarlo.
+     *
+     * Vive aquí y no en el generador de rutas porque lo necesitan **los dos lados de la misma
+     * pareja**: el que escribe el `->middleware()` de cada ruta y el que escribe el seeder que crea
+     * esos permisos. Calculado por separado, el día que uno cambie el otro seguirá emitiendo el
+     * nombre viejo — y el síntoma será un 403 a quien sí tiene el permiso, o una pantalla que no
+     * abre nadie.
+     *
+     * Antes se leía únicamente de `contexts.json`. Cuando ese archivo no declaraba
+     * `permission_prefix` —lo normal en un proyecto recién instalado— el prefijo llegaba **vacío** y
+     * las rutas exigían `invoices_index` en vez de `central_invoices_index`: un permiso que el
+     * seeder no crea. `ModuleMode::permissionPrefix()` responde exactamente esta pregunta desde la
+     * fase 1, con su prueba.
+     *
+     * @param  array<string, mixed>  $context  Contexto ya resuelto (vacío en single-app)
+     */
+    protected function resolvePermissionPrefix(array $context, ?string $contextKey, ?string $tenantId = null): string
+    {
+        $delContexto = $context['permission_prefix'] ?? '';
+
+        return $delContexto !== ''
+            ? $delContexto
+            : $this->mode()->permissionPrefix($contextKey, $tenantId);
+    }
+
+    /**
+     * El middleware que protege la ruta, con la misma regla: manda el modo.
+     *
+     * Un middleware vacío no deja la ruta desprotegida de forma visible: produce
+     * `->middleware(':invoices_index')`, con los dos puntos sueltos y el nombre vacío. Eso no es
+     * «sin permiso», es una ruta que revienta al resolverse — y solo en ejecución.
+     *
+     * @param  array<string, mixed>  $context  Contexto ya resuelto (vacío en single-app)
+     */
+    protected function resolvePermissionMiddleware(array $context, ?string $contextKey): string
+    {
+        $delContexto = $context['permission_middleware'] ?? '';
+
+        return $delContexto !== ''
+            ? $delContexto
+            : $this->mode()->permissionMiddleware($contextKey);
+    }
+
+    /**
+     * El prefijo del permiso de **esta** subfuncionalidad, con sus tres datos ya puestos.
+     *
+     * La forma corta de la pregunta anterior, para quien no está resolviendo contextos a mano.
+     */
+    protected function permissionPrefix(): string
+    {
+        $context = $this->getContext();
+
+        return $this->resolvePermissionPrefix(
+            $context,
+            ($this->componentConfig['context'] ?? '') ?: null,
+            $context['id'] ?? null,
+        );
+    }
+
+    /**
+     * La conexión de base de datos que declara esta subfuncionalidad, o `null` si no declara ninguna.
+     *
+     * Las tres respuestas del patrón, que el enum sabe dar desde la fase 1:
+     *
+     *   single-app          no declara: hay una sola base de datos, nada que conmutar
+     *   central             declara siempre `'central'`
+     *   tenant compartido   **no** declara — la conmuta el paquete de tenancy al inicializar el
+     *                       contexto, y nombrarla aquí ataría el módulo a un solo inquilino
+     *   tenant con lógica propia   declara la suya
+     *
+     * La necesitan el modelo (como propiedad `$connection`) y los tres seeders ejecutables (para
+     * `Schema::connection()`). Dos cálculos de esto es un modelo leyendo de una base y su seeder
+     * sembrando en otra.
+     */
+    protected function connectionKey(): ?string
+    {
+        $contextKey = ($this->componentConfig['context'] ?? '') ?: null;
+
+        if (! $this->mode()->declaresModelConnection($contextKey)) {
+            return null;
+        }
+
+        return $this->getContext()['connection_key'] ?? $contextKey;
+    }
+
+    /**
+     * El nombre de la tabla de esta subfuncionalidad.
+     *
+     * Lo usan la migración que la crea y los seeders que la validan y la vacían. Si divergen, el
+     * seeder valida una tabla que no existe mientras la real queda sin comprobar.
+     */
+    protected function tableName(?string $entidad = null): string
+    {
+        $declarada = $this->componentConfig['table'] ?? null;
+
+        if (is_string($declarada) && $declarada !== '') {
+            return $declarada;
+        }
+
+        return Str::snake(Str::plural($entidad ?: ($this->getSubFeatureFolder() ?: $this->moduleName)));
+    }
+
     // ─── Helpers de filesystem ────────────────────────────────────────────────
 
     /**
@@ -296,22 +501,11 @@ abstract class AbstractComponentGenerator
      */
     protected function ensureDirectoryExists(string $directoryPath): void
     {
-        File::ensureDirectoryExists($directoryPath);
+        Disk::ensureDirectory($directoryPath);
     }
 
-    /**
-     * Escribe el contenido en un archivo y muestra un mensaje de éxito en consola.
-     *
-     * @param  string  $filePath  Ruta absoluta del archivo a escribir
-     * @param  string  $content   Contenido a escribir
-     * @param  string  $message   Mensaje a mostrar en consola
-     * @return void
-     */
-    protected function putFile(string $filePath, string $content, string $message): void
-    {
-        File::put($filePath, $content);
-        $this->info("✅ {$message}");
-    }
+    // putFile() vive en WritesGeneratedFiles: la comparten también los cinco generadores que
+    // no heredan de esta clase, y el chequeo de salida tiene que alcanzarlos igual.
 
     // ─── Output ───────────────────────────────────────────────────────────────
 

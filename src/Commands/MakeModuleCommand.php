@@ -5,12 +5,16 @@ declare(strict_types=1);
 namespace Innodite\LaravelModuleMaker\Commands;
 
 use Illuminate\Console\Command;
+use Innodite\LaravelModuleMaker\Commands\Concerns\PrintsHeader;
+use Innodite\LaravelModuleMaker\Commands\Concerns\ReportsFailures;
+use Innodite\LaravelModuleMaker\Commands\Concerns\RehearsesChanges;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Str;
 use Innodite\LaravelModuleMaker\Generators\Components\ModuleGenerator;
 use Innodite\LaravelModuleMaker\Services\ModuleAuditor;
-use Innodite\LaravelModuleMaker\Services\RouteInjectionService;
+use Innodite\LaravelModuleMaker\Support\ContextOption;
 use Innodite\LaravelModuleMaker\Support\ContextResolver;
+use Innodite\LaravelModuleMaker\Support\ModuleMode;
 use Throwable;
 
 /**
@@ -29,28 +33,46 @@ use Throwable;
  *   4. Desde JSON de configuración dinámica:
  *        php artisan innodite:make-module User --json
  *
- *   5. Sin inyección de rutas:
- *        php artisan innodite:make-module User --context=central --no-routes
+ * Las rutas se escriben **solo** dentro del módulo, en Modules/{Module}/Routes/. El ServiceProvider
+ * del paquete las carga solo, así que el generador no toca ningún archivo del proyecto.
  */
 class MakeModuleCommand extends Command
 {
+    use RehearsesChanges;
+    use PrintsHeader;
+    use ReportsFailures;
+
     protected $signature = 'innodite:make-module
         {name                  : Nombre de la entidad en singular (se convierte a PascalCase)}
-        {--context=            : Contexto: central | shared | tenant_shared | nombre-del-tenant}
+        {--context=            : Contexto donde se genera, en multitenant: central | shared | tenant_shared | id del tenant}
         {--json                : Usa module-maker-config/{module}.json como fuente de configuración}
-        {--no-routes           : Omite la inyección de rutas en el proyecto}
         {--M|model             : Solo añade el modelo}
         {--C|controller        : Solo añade el controlador}
         {--S|service           : Solo añade el servicio e interface}
         {--R|repository        : Solo añade el repositorio e interface}
         {--G|migration         : Solo añade la migración contextualizada}
-        {--Q|request           : Solo añade el form request}';
+        {--Q|request           : Solo añade el form request}
+        {--dry-run             : Ensayo: enseña lo que haría, sin escribir nada}';
 
-    protected $description = 'Genera un módulo completo con inyección de rutas contextualizada.';
+    protected $description = 'Genera un módulo completo con sus rutas contextualizadas.';
 
     // ─── Entry point ──────────────────────────────────────────────────────────
 
     public function handle(): int
+    {
+        // El ensayo se enciende antes de nada y se apaga pase lo que pase: el interruptor es
+        // del proceso, así que dejarlo puesto convertiría el siguiente comando en un ensayo
+        // que nadie pidió.
+        $this->startRehearsal();
+
+        try {
+            return $this->ejecutar();
+        } finally {
+            $this->reportRehearsal();
+        }
+    }
+
+    private function ejecutar(): int
     {
         // ── Pre-flight: validar nombre ────────────────────────────────────────
         try {
@@ -61,6 +83,8 @@ class MakeModuleCommand extends Command
         }
 
         $modulePath = config('make-module.module_path') . "/{$moduleName}";
+
+        $this->cabecera("Módulo {$moduleName}");
 
         // ── Modo JSON ─────────────────────────────────────────────────────────
         if ($this->option('json')) {
@@ -74,9 +98,11 @@ class MakeModuleCommand extends Command
 
         // ── Módulo ya existe (modo completo) ──────────────────────────────────
         if (File::exists($modulePath)) {
-            $this->components->error(
-                "El módulo '{$moduleName}' ya existe en {$modulePath}."
-                . " Usa -M -C -S -R -G -Q para añadir componentes."
+            $this->fallo(
+                "el módulo '{$moduleName}' ya existe en {$modulePath}.",
+                "añádele lo que falte con innodite:add-entity {$moduleName} <Entidad>, o pide una "
+                . 'capa suelta con -M -C -S -R -G -Q.',
+                'Regenerarlo encima sobrescribiría lo que ya tiene escrito el proyecto.'
             );
             return Command::FAILURE;
         }
@@ -113,7 +139,11 @@ class MakeModuleCommand extends Command
         try {
             // ── Paso 1: Generar estructura de archivos (Fases 1 & 2) ──────────
             $this->components->task('Creando estructura de archivos', function () use (
-                $moduleName, $contextKey, $functionality, $contextId, &$filesGenerated
+                $moduleName,
+                $contextKey,
+                $functionality,
+                $contextId,
+                &$filesGenerated
             ) {
                 (new ModuleGenerator($moduleName, true, null, $this))
                     ->createCleanModuleWithContext($contextKey, $functionality, $contextId);
@@ -122,24 +152,11 @@ class MakeModuleCommand extends Command
                 return true;
             });
 
-            // ── Paso 2: Inyectar rutas en el proyecto (Fase 3) ────────────────
-            if (!$this->option('no-routes')) {
-                $this->components->task('Inyectando rutas en el proyecto', function () use (
-                    $contextKey, $moduleName, $contextId, $contextItem
-                ) {
-                    $controllerFqcn = $this->buildControllerFqcn($moduleName, $contextItem);
-
-                    (new RouteInjectionService($this))->inject(
-                        contextKey:     $contextKey,
-                        entityName:     $moduleName,
-                        contextId:      $contextId,
-                        controllerFqcn: $controllerFqcn,
-                        contextConfig:  $contextItem
-                    );
-
-                    return true;
-                });
-            }
+            // Aquí había un paso 2 que escribía las rutas **otra vez**, en el `routes/web.php` del
+            // proyecto. Era la vía de la v3, y declaraba `create` y `edit`: dos pantallas que la v4
+            // ya no genera, porque el alta y la edición ocurren en un modal sobre el listado. Las
+            // rutas buenas son las del módulo, con sus seis acciones reales y su permiso cada una,
+            // y el ServiceProvider del paquete ya las carga solo.
 
             $this->newLine();
             $this->displaySuccess($moduleName, $contextKey, $contextId);
@@ -150,14 +167,16 @@ class MakeModuleCommand extends Command
                 'context_key'   => $contextKey,
                 'context_id'    => $contextId,
                 'functionality' => $functionality,
-                'routes'        => !$this->option('no-routes'),
             ]);
 
             return Command::SUCCESS;
-
         } catch (Throwable $e) {
             $this->newLine();
-            $this->components->error("Error: {$e->getMessage()}");
+            $this->fallo(
+                $e->getMessage(),
+                'corrige lo anterior y vuelve a generar; abajo se ofrece deshacer lo escrito.',
+                'La generación se detuvo a medias: lo que quedó en disco no es un módulo completo.'
+            );
 
             // ── Rollback opcional si hay archivos generados ───────────────────
             if ($filesGenerated && File::exists($modulePath)) {
@@ -220,31 +239,16 @@ class MakeModuleCommand extends Command
 
         try {
             $this->components->task('Generando componentes', function () use (
-                $moduleName, $flags, $componentConfig
+                $moduleName,
+                $flags,
+                $componentConfig
             ) {
                 (new ModuleGenerator($moduleName, true, null, $this))
                     ->createIndividualComponents($flags, $componentConfig);
                 return true;
             });
 
-            // Inyectar rutas si se generó un controller
-            if (!$this->option('no-routes') && ($flags['controller'] ?? false)) {
-                $this->components->task('Inyectando rutas', function () use (
-                    $contextKey, $moduleName, $contextId, $contextItem
-                ) {
-                    (new RouteInjectionService($this))->inject(
-                        contextKey:     $contextKey,
-                        entityName:     $moduleName,
-                        contextId:      $contextId,
-                        controllerFqcn: $this->buildControllerFqcn($moduleName, $contextItem),
-                        contextConfig:  $contextItem
-                    );
-                    return true;
-                });
-            }
-
             return Command::SUCCESS;
-
         } catch (Throwable $e) {
             $this->components->error($e->getMessage());
             return Command::FAILURE;
@@ -265,15 +269,22 @@ class MakeModuleCommand extends Command
         }
 
         if (!File::exists($jsonPath)) {
-            $this->components->error("No se encontró archivo de configuración para '{$moduleName}'.");
-            $this->line("  Buscado en: <comment>{$jsonPath}</comment>");
+            $this->fallo(
+                "no hay archivo de configuración para '{$moduleName}'.",
+                "escríbelo en {$jsonPath}, o genera el módulo sin --json.",
+                'El modo --json toma de ahí la forma entera del módulo.'
+            );
             return Command::FAILURE;
         }
 
         $config = json_decode(File::get($jsonPath), true);
 
         if (json_last_error() !== JSON_ERROR_NONE) {
-            $this->components->error("JSON inválido en '{$jsonPath}': " . json_last_error_msg());
+            $this->fallo(
+                "el JSON de '{$jsonPath}' no se puede leer: " . json_last_error_msg() . '.',
+                'corrige el archivo y vuelve a lanzarlo.',
+                'No se genera nada a medias a partir de una configuración que no se entiende.'
+            );
             return Command::FAILURE;
         }
 
@@ -288,7 +299,6 @@ class MakeModuleCommand extends Command
             });
 
             return Command::SUCCESS;
-
         } catch (Throwable $e) {
             $this->components->error($e->getMessage());
             return Command::FAILURE;
@@ -334,17 +344,21 @@ class MakeModuleCommand extends Command
         $name = Str::studly($input);
 
         if (!preg_match('/^[A-Z][a-zA-Z0-9]+$/', $name)) {
-            throw new \InvalidArgumentException(
-                "'{$name}' no es un nombre de módulo válido. "
-                . "Usa letras y números en PascalCase (ej: User, InvoiceItem)."
-            );
+            throw new \InvalidArgumentException(self::mensajeDeFallo(
+                "'{$name}' no es un nombre de módulo válido.",
+                'usa letras y números en PascalCase — User, InvoiceItem.',
+                'El nombre acaba siendo clase, carpeta y espacio de nombres: lo que no sea un '
+                . 'identificador de PHP no llega a cargarse.'
+            ));
         }
 
         if (in_array(strtolower($name), self::RESERVED_NAMES, true)) {
-            throw new \InvalidArgumentException(
-                "'{$name}' es una palabra reservada de PHP o Laravel y no puede "
-                . "usarse como nombre de módulo. Usa un nombre específico del dominio (ej: UserAccount)."
-            );
+            throw new \InvalidArgumentException(self::mensajeDeFallo(
+                "'{$name}' es una palabra reservada de PHP o Laravel.",
+                'usa un nombre del dominio — UserAccount, InvoiceItem.',
+                'Una clase con ese nombre no se puede declarar, así que el módulo entero quedaría '
+                . 'sin cargar.'
+            ));
         }
 
         return $name;
@@ -364,8 +378,23 @@ class MakeModuleCommand extends Command
      */
     private function resolveContext(): array
     {
+        $mode        = ModuleMode::current();
         $allContexts = $this->loadContexts();
         $option      = trim($this->option('context') ?? '');
+
+        // ── Lo que el modo exige de --context, antes de resolver nada ──────────
+        // Las tres guardas viven en ContextOption porque `add-entity` necesita exactamente las
+        // mismas: cada comando llevaba su copia de esta resolución y las guardas se habían añadido
+        // solo a uno.
+        ContextOption::check($mode, $option, $allContexts, $this->input->isInteractive());
+
+        // En single-app no hay contexto que elegir. Antes se preguntaba siempre, así que una
+        // aplicación única se quedaba esperando que eligieran entre central y tenant — o tenía que
+        // declarar contextos falsos para pasar el diagnóstico (C2). No es que single-app estuviera
+        // «sin implementar»: estaba bloqueado.
+        if (! $mode->hasContextAxis()) {
+            return ['', []];
+        }
 
         // Sin opción → selección interactiva
         if ($option === '') {
@@ -375,24 +404,24 @@ class MakeModuleCommand extends Command
         // Coincidencia directa con clave de contexto
         if (isset($allContexts[$option])) {
             $item = $allContexts[$option];
-            
+
             if (!is_array($item)) {
                 throw new \InvalidArgumentException("Contexto '{$option}' tiene formato inválido.");
             }
-            
+
             // Detectar si es array asociativo (contexto único) vs array indexado (lista)
             $isAssociative = array_keys($item) !== range(0, count($item) - 1);
-            
+
             // Array asociativo → contexto único (central, shared, tenant_shared)
             if ($isAssociative) {
                 return [$option, $item];
             }
-            
+
             // Array indexado → múltiples variantes (ej. tenant)
             if (count($item) === 1) {
                 return [$option, $item[0]];
             }
-            
+
             // Múltiples variantes → preguntar cuál
             return $this->askVariant($option, $item);
         }
@@ -411,11 +440,11 @@ class MakeModuleCommand extends Command
             $allContexts['tenant'] ?? []
         ));
 
-        throw new \InvalidArgumentException(
-            "Contexto '{$option}' no encontrado en contexts.json.\n"
-            . "  Contextos disponibles: {$available}\n"
-            . "  Tenants disponibles:   {$tenants}"
-        );
+        throw new \InvalidArgumentException(self::mensajeDeFallo(
+            "el contexto '{$option}' no está en contexts.json.",
+            "usa uno de estos — contextos: {$available} · tenants: {$tenants}",
+            'El catálogo es la fuente: si el contexto que quieres no está, decláralo ahí primero.'
+        ));
     }
 
     /**
@@ -483,7 +512,7 @@ class MakeModuleCommand extends Command
 
     /**
      * Carga todos los contextos desde contexts.json.
-     * 
+     *
      * ARQUITECTURA HÍBRIDA:
      *   - central, shared, tenant_shared → objetos únicos (acceso directo)
      *   - tenant → array de objetos (múltiples instancias)
@@ -503,32 +532,6 @@ class MakeModuleCommand extends Command
     }
 
     // ─── Helpers de orquestación ──────────────────────────────────────────────
-
-    /**
-     * Construye el FQCN del controlador para el contexto dado.
-     * Con la nueva estructura de subfolder por entidad, el patrón es:
-     *   Modules\{Module}\Http\Controllers\{ContextNs}\{Entity}\{Prefix}{Entity}Controller
-     *
-     * En make-module, entity = module (son el mismo nombre).
-     * En add-entity, entity es diferente del module (se pasa explícitamente).
-     *
-     * @param  string  $moduleName   Nombre del módulo contenedor
-     * @param  array   $contextItem  Configuración del contexto
-     * @param  string|null  $entityName  Nombre de la entidad (por defecto igual a $moduleName)
-     */
-    private function buildControllerFqcn(string $moduleName, array $contextItem, ?string $entityName = null): string
-    {
-        $entity    = $entityName ?? $moduleName;
-        $prefix    = $contextItem['class_prefix']   ?? '';
-        $nsPath    = $contextItem['namespace_path'] ?? '';
-        $className = "{$prefix}{$entity}Controller";
-
-        $namespace = $nsPath
-            ? "Modules\\{$moduleName}\\Http\\Controllers\\{$nsPath}\\{$entity}"
-            : "Modules\\{$moduleName}\\Http\\Controllers\\{$entity}";
-
-        return "{$namespace}\\{$className}";
-    }
 
     /**
      * Derive la funcionalidad (prefijo de ruta) desde el nombre del módulo.
@@ -585,7 +588,6 @@ class MakeModuleCommand extends Command
                 ['Contexto',      $contextKey],
                 ['Variante',      $contextId],
                 ['Prefijo ruta',  $functionality],
-                ['Inyectar rutas', $this->option('no-routes') ? 'No' : 'Sí'],
             ]
         );
     }
@@ -598,9 +600,11 @@ class MakeModuleCommand extends Command
         $this->components->info("Módulo <comment>{$moduleName}</comment> generado exitosamente.");
         $this->newLine();
         $this->line("  Próximos pasos:");
-        $this->line("    1. Añade los marcadores en <comment>routes/web.php</comment> o <comment>routes/tenant.php</comment> si aún no los tienes.");
-        $this->line("    2. Registra el Service Provider en <comment>bootstrap/providers.php</comment> si usas Laravel 11+.");
-        $this->line("    3. Ejecuta <comment>php artisan migrate</comment> para crear las tablas.");
+        // El primer paso pedía añadir marcadores en el `routes/web.php` del proyecto, que era donde
+        // el generador inyectaba una segunda copia de las rutas. Ya no escribe ahí: las del módulo
+        // viven en Modules/{$moduleName}/Routes/ y las carga el ServiceProvider del paquete.
+        $this->line("    1. Registra el Service Provider en <comment>bootstrap/providers.php</comment> si usas Laravel 11+.");
+        $this->line("    2. Ejecuta <comment>php artisan migrate</comment> para crear las tablas.");
         $this->newLine();
     }
 }

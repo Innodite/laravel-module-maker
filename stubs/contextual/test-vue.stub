@@ -1,0 +1,119 @@
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+import { mount, flushPromises } from '@vue/test-utils';
+
+import { VIEW_ACTIONS } from './{{{ contractJsName }}}';
+import {{{ vueComponent }}} from '{{{ rutaAlComponente }}}';
+
+/**
+ * Tema 6 — la vista de {{{ subFeature }}}: **una acción que el usuario no puede usar no se dibuja**.
+ *
+ * Es el espejo de lo que el tema 5 prueba en el servidor. Allí el endpoint responde 403; aquí el
+ * botón directamente no aparece. Hacen falta los dos: ocultar el botón no protege el endpoint —
+ * quien sepa la URL entra igual—, y proteger el endpoint no limpia la pantalla — el usuario pulsa y
+ * recibe un error por algo que nunca debió ofrecérsele.
+ *
+ * **Recorre el manifiesto, no enumera.** Una acción nueva se declara ahí y esta prueba la cubre sin
+ * tocarse, igual que sus hermanas de PHP (R76).
+ *
+ * **Busca por `data-test`, no por el texto del botón.** Cambiar «Editar» por «Modificar» es un
+ * cambio de copy: no puede romper una prueba de permisos.
+ */
+
+/** Los permisos que el componente ve; el composable del proyecto se sustituye por este doble. */
+let permisosConcedidos = [];
+
+vi.mock('@/Composables/usePermissions', () => ({
+    usePermissions: () => ({
+        can: (permiso) => permisosConcedidos.includes(permiso),
+    }),
+}));
+
+vi.mock('@/Composables/useModuleContext', () => ({
+    useModuleContext: () => ({
+        contextRoute: (nombre) => `/${nombre}`,
+        moduleContext: '',
+    }),
+}));
+
+/**
+ * La respuesta que el listado espera de `list`: una página con **un registro**.
+ *
+ * Sin ella, tres de las cuatro acciones no existirían en el DOM por una razón que no tiene nada que
+ * ver con los permisos: «ver», «editar» y «eliminar» viven dentro de la fila, y una tabla vacía no
+ * tiene filas. La prueba fallaría diciendo «el permiso no llega a la vista» cuando lo que falta es
+ * un dato — que es la peor clase de fallo: el que señala al sitio equivocado.
+ */
+function paginaConUnRegistro() {
+    return {
+        data: {
+            data: [{
+                id:         '01JQ0000000000000000000000',
+                created_at: '2026-01-01 09:00:00',
+                updated_at: '2026-01-01 09:00:00',
+            }],
+            current_page: 1,
+            last_page:    1,
+            total:        1,
+        },
+    };
+}
+
+beforeEach(() => {
+    permisosConcedidos = [];
+    document.body.innerHTML = '';
+
+    // `axios` y `route` son globales del proyecto anfitrión —los pone Laravel, no un import—, así
+    // que en Vitest hay que ponerlos aquí. Si faltan, el componente monta igual: la petición revienta
+    // dentro del `try`, la tabla se queda vacía y otra vez desaparecen tres de las cuatro acciones.
+    globalThis.route = (nombre) => `/${nombre}`;
+    globalThis.axios = {
+        get:    vi.fn(() => Promise.resolve(paginaConUnRegistro())),
+        post:   vi.fn(() => Promise.resolve({ data: {} })),
+        put:    vi.fn(() => Promise.resolve({ data: {} })),
+        delete: vi.fn(() => Promise.resolve({ data: {} })),
+    };
+});
+
+/** Monta el listado con exactamente los permisos indicados, y espera a que llegue la primera página. */
+async function montarCon(permisos) {
+    permisosConcedidos = permisos;
+
+    const wrapper = mount({{{ vueComponent }}}, { attachTo: document.body });
+
+    // El listado pide sus datos en `onMounted`. Sin esta espera se comprueba el DOM de mitad del
+    // camino —el del «Cargando...»—, donde no hay ni tabla.
+    await flushPromises();
+
+    return wrapper;
+}
+
+describe('{{{ vueComponent }}} — las acciones exigen su permiso', () => {
+    it.each(Object.entries(VIEW_ACTIONS))(
+        'la acción %s no se ve sin su permiso',
+        async (accion, { permiso, ancla }) => {
+            const wrapper = await montarCon([]);
+
+            expect(
+                wrapper.find(`[data-test="${ancla}"]`).exists(),
+                `FALLA: la acción "${accion}" es visible sin el permiso "${permiso}". · FIX: `
+                + `envuélvela en v-if="can('${permiso}')" y comprueba que el permiso llega a la vista.`,
+            ).toBe(false);
+        },
+    );
+
+    it.each(Object.entries(VIEW_ACTIONS))(
+        'la acción %s se ve cuando su permiso está concedido',
+        async (accion, { permiso, ancla }) => {
+            // El otro sentido, y no sobra: un `v-if` con el permiso mal escrito oculta el botón a
+            // todo el mundo, incluido quien sí puede usarlo. La pantalla carga bien y simplemente no
+            // tiene botones — un fallo que nadie reporta como error.
+            const wrapper = await montarCon([permiso]);
+
+            expect(
+                wrapper.find(`[data-test="${ancla}"]`).exists(),
+                `FALLA: la acción "${accion}" no aparece ni con el permiso "${permiso}". · FIX: `
+                + 'compara el permiso del v-if con el que emite el seeder; suele ser un typo.',
+            ).toBe(true);
+        },
+    );
+});

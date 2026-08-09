@@ -1,0 +1,79 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Database\Seeders;
+
+use Illuminate\Database\Seeder;
+use Innodite\LaravelModuleMaker\Traits\DeploysProject;
+use Innodite\LaravelModuleMaker\Traits\ReportsSeederErrors;
+
+/**
+ * {{{ deployLabel }}} — levanta el proyecto entero, en el orden declarado.
+ *
+ *     php artisan innodite:deploy production{{{ contextOption }}}
+ *     php artisan innodite:deploy stage{{{ contextOption }}}
+ *
+ * Y desde el `DatabaseSeeder` del proyecto, como cualquier otro seeder:
+ *
+ *     $this->call({{{ seederName }}}::class);                              // producción
+ *     $this->call({{{ seederName }}}::class, false, ['piece' => 'Stage']); // stage
+ *
+ * **Es el único que ve la lista completa.** El orden de despliegue es del proyecto entero, pero cada
+ * maestro de módulo lee solo lo suyo: sin este seeder, levantar el proyecto es acordarse de llamarlos
+ * uno a uno y en el orden correcto — que es justo lo que la lista viene a evitar.
+ *
+ * **Qué hace, en tres pasos.** Primero el esquema y los datos —`Stage` o `Production`, según lo que se
+ * le pida—, después los permisos, que van siempre y en los dos casos, y por último el webmaster. Los
+ * dos primeros son dos recorridos de la misma lista porque son dos piezas distintas de cada
+ * subfuncionalidad, y porque los permisos tienen que existir aunque el despliegue de datos falle a
+ * medias. El webmaster va el último **porque recoge los permisos que los anteriores acaban de crear**.
+ *
+ * **No nombra a ningún maestro.** Los deriva de las carpetas declaradas más la pieza que se le pide,
+ * así que un despliegue de producción **no puede** invocar el maestro de stage — el que reconstruye
+ * desde cero. No es una comprobación que se pueda olvidar: es que lo otro no se puede escribir.
+ *
+ * **Al terminar cruza lo generado contra lo declarado**, y avisa de lo que nadie despliega. Ese
+ * desfase no rompe ningún archivo: deja una pantalla que no abre nadie porque su seeder de permisos
+ * no llegó a ejecutarse.
+ */
+class {{{ seederName }}} extends Seeder
+{
+    use DeploysProject;
+    use ReportsSeederErrors;
+
+    /**
+     * Las claves de `deploy` (config/make-module.php) que cubre este despliegue.
+     *
+     * {{{ contextsDoc }}}
+     *
+     * @var array<int, string>
+     */
+    protected array $contexts = {{{ contexts }}};
+
+    /**
+     * @param  string  $piece  'Production' (por defecto) o 'Stage'
+     */
+    public function run(string $piece = 'Production'): void
+    {
+        $this->say("\n🚀 {{{ seederName }}} — desplegando el proyecto ({$piece})\n");
+
+        // 1. Esquema y datos de cada módulo, en el orden declarado.
+        $this->runMasters($piece);
+
+        // 2. Los permisos, que van siempre: sin ellos las pantallas quedan sin abrir para nadie.
+        $this->say("\n🔐 Permisos\n");
+        $this->runMasters('Permissions');
+
+        // 3. El webmaster, DESPUÉS de los permisos: recoge todos los que acaban de crearse.
+        $this->safe(WebmasterSeeder::class, fn () => $this->call(WebmasterSeeder::class));
+
+        // 4. Lo que está generado y nadie despliega.
+        $this->reportCoverage();
+
+        // 5. Y solo entonces se falla, con todo lo que falló delante.
+        $this->reportErrors();
+
+        $this->say("\n✅ Proyecto desplegado ({$piece}).\n");
+    }
+}

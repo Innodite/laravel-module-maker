@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Innodite\LaravelModuleMaker\Support;
 
 use Illuminate\Support\Facades\File;
-use Innodite\LaravelModuleMaker\Exceptions\ConnectionNotConfiguredException;
 use Innodite\LaravelModuleMaker\Exceptions\ContextNotFoundException;
 
 /**
@@ -144,6 +143,38 @@ class ContextResolver
     }
 
     /**
+     * Retorna un contexto por su CARPETA — 'Central', 'Tenant/Shared', 'Tenant/Acme'.
+     *
+     * Existe porque la carpeta es el dato que llevan encima las cosas del proyecto: una coordenada
+     * de migración (`Invoice:Central/2026_…php`) nombra la carpeta, no el id. Buscar por id obligaba
+     * a derivarlo del nombre de un archivo, que fue exactamente de donde salía el contexto cuando lo
+     * decidía el manifiesto JSON.
+     *
+     * La comparación ignora mayúsculas y barras sobrantes: la carpeta se escribe `Tenant/Shared` en
+     * `contexts.json` y llega `tenant/shared` desde una coordenada normalizada.
+     *
+     * @return array<string, mixed>|null
+     */
+    public static function findByFolder(string $folder): ?array
+    {
+        $buscada = strtolower(trim(str_replace('\\', '/', $folder), '/'));
+
+        if ($buscada === '') {
+            return null;
+        }
+
+        foreach (self::allItems() as $item) {
+            $suya = strtolower(trim(str_replace('\\', '/', (string) ($item['folder'] ?? '')), '/'));
+
+            if ($suya !== '' && $suya === $buscada) {
+                return $item;
+            }
+        }
+
+        return null;
+    }
+
+    /**
      * Retorna un tenant por su ID. Alias de resolveById('tenant', $id).
      *
      * @param  string  $id  ID del tenant
@@ -211,60 +242,6 @@ class ContextResolver
     }
 
     /**
-     * Retorna los tenants específicos. Alias de allTenants().
-     *
-     * @return array<int, array<string, mixed>>
-     */
-    public static function getSpecificTenants(): array
-    {
-        return self::allTenants();
-    }
-
-    /**
-     * Retorna el archivo de rutas para un contexto dado.
-     *
-     * @param  string  $contextKey  Clave del contexto
-     * @return string|array<int, string>
-     */
-    public static function getRouteFile(string $contextKey): string|array
-    {
-        $item = self::resolve($contextKey);
-        return $item['route_file'] ?? 'web.php';
-    }
-
-    /**
-     * Valida que todas las conexiones definidas en contexts.json
-     * existen en config/database.php.
-     *
-     * @return array<string, string>  Array asociativo [context_id => error_message]
-     */
-    public static function validateConnections(): array
-    {
-        $errors = [];
-        $allContexts = self::allItems();
-        $connections = array_keys(config('database.connections', []));
-
-        foreach ($allContexts as $context) {
-            $id = $context['id'] ?? null;
-            $connectionKey = $context['connection_key'] ?? null;
-
-            if ($connectionKey === null || $connectionKey === '') {
-                continue;
-            }
-
-            if (!in_array($connectionKey, $connections, true)) {
-                $errors[$id] = sprintf(
-                    "El contexto '%s' define connection_key='%s' pero no existe en config/database.php",
-                    $id,
-                    $connectionKey
-                );
-            }
-        }
-
-        return $errors;
-    }
-
-    /**
      * Carga el archivo contexts.json.
      *
      * @return array<string, mixed>
@@ -276,7 +253,7 @@ class ContextResolver
         }
 
         $path = self::resolvePath();
-        
+
         if (!File::exists($path)) {
             throw new \RuntimeException("[ContextResolver] No se encontró contexts.json en: {$path}");
         }
@@ -310,38 +287,6 @@ class ContextResolver
         }
 
         return __DIR__ . '/../../stubs/contexts.json';
-    }
-
-    /**
-     * Valida que la connection_key de un contexto exista en config/database.php.
-     *
-     * Contextos sin connection_key (shared, tenant_shared) son ignorados.
-     *
-     * @param  string  $id  ID del contexto (ej: 'central', 'tenant-one')
-     * @return void
-     *
-     * @throws ConnectionNotConfiguredException Si la conexión no está registrada
-     */
-    public static function validateConnection(string $id): void
-    {
-        $context = self::find($id);
-
-        // Solo contextos con tenancy_strategy 'manual' requieren conexión explícita
-        if (($context['tenancy_strategy'] ?? null) !== 'manual') {
-            return;
-        }
-
-        $connectionKey = $context['connection_key'] ?? null;
-
-        if ($connectionKey === null || $connectionKey === '') {
-            return;
-        }
-
-        $connection = config("database.connections.{$connectionKey}");
-
-        if (!is_array($connection)) {
-            throw ConnectionNotConfiguredException::forContext($id, $connectionKey);
-        }
     }
 
     /**

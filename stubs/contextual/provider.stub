@@ -2,18 +2,18 @@
 
 declare(strict_types=1);
 
-namespace {{ namespace }};
+namespace {{{ namespace }}};
 
 use Illuminate\Support\ServiceProvider;
-{{ modelImports }}
-{{ importsMarker }}
+{{{ modelImports }}}
+{{{ importsMarker }}}
 
-class {{ providerName }} extends ServiceProvider
+class {{{ providerName }}} extends ServiceProvider
 {
     public function register(): void
     {
-        {{ modelBindings }}
-        {{ bindingsMarker }}
+        {{{ modelBindings }}}
+        {{{ bindingsMarker }}}
     }
 
     public function boot(): void

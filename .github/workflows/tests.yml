@@ -1,14 +1,110 @@
 name: Tests
 
+# El paquete declara soportar PHP 8.2+ y Laravel 11, 12 y 13. Hasta ahora el CI probaba UNA
+# combinación —PHP 8.3 con lo que resolviera composer—, así que las otras ocho eran una promesa sin
+# comprobar. Cada celda de esta matriz instala de verdad esa versión de Laravel y corre la suite.
+#
+# Y corre también en las ramas de trabajo, no solo en main: un fallo que aparece al abrir el PR
+# llega tarde, con el trabajo ya hecho.
+
 on:
   push:
-    branches: [main]
+    branches: [main, 'feat/**', 'fix/**']
   pull_request:
     branches: [main]
 
 jobs:
   pest:
     runs-on: ubuntu-latest
+
+    name: PHP ${{ matrix.php }} · Laravel ${{ matrix.laravel }}
+
+    strategy:
+      # Sin fail-fast: cuando algo se rompe en una versión concreta, lo que hay que saber es en
+      # cuáles pasa y en cuáles no. Cortar al primer rojo esconde justo ese dato.
+      fail-fast: false
+      matrix:
+        # Las celdas se declaran una a una en vez de por producto cartesiano, porque la version de
+        # Pest depende de la celda: **Pest 4 exige PHP 8.3**, y el paquete declara `php: ^8.2`. Con
+        # el producto cartesiano no habria forma de probar el minimo que se promete.
+        #
+        #   PHP 8.2  → Pest 3, que es el ultimo que corre ahi. Llega hasta Laravel 12.
+        #   PHP 8.3+ → Pest 4, que es el unico que llega a Laravel 13.
+        #
+        # No hay celda 8.2 x Laravel 13 porque no existe: testbench 11 —el unico que soporta
+        # Laravel 13— pide PHP 8.3.
+        include:
+          - { php: '8.2', laravel: '11', testbench: '^9.0',  pest: '^3.0' }
+          - { php: '8.2', laravel: '12', testbench: '^10.0', pest: '^3.0' }
+          - { php: '8.3', laravel: '11', testbench: '^9.0',  pest: '^4.0' }
+          - { php: '8.3', laravel: '12', testbench: '^10.0', pest: '^4.0' }
+          - { php: '8.3', laravel: '13', testbench: '^11.0', pest: '^4.0' }
+          - { php: '8.4', laravel: '11', testbench: '^9.0',  pest: '^4.0' }
+          - { php: '8.4', laravel: '12', testbench: '^10.0', pest: '^4.0' }
+          - { php: '8.4', laravel: '13', testbench: '^11.0', pest: '^4.0' }
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup PHP ${{ matrix.php }}
+        uses: shivammathur/setup-php@v2
+        with:
+          php-version: ${{ matrix.php }}
+          coverage: none
+          tools: composer:v2
+
+      - name: Cache Composer dependencies
+        uses: actions/cache@v4
+        with:
+          # `vendor` queda FUERA de la caché a propósito. El paquete resuelve los stubs dando
+          # prioridad al override del proyecto sobre el suyo, y las pruebas que ejecutan
+          # `module-setup` publican esos stubs dentro del skeleton de Testbench, que vive en
+          # `vendor`. Cachearlo arrastraría esa copia de una corrida a la siguiente y la suite
+          # acabaría probando stubs viejos — que es exactamente lo que pasó en local (B19).
+          path: ~/.composer/cache/files
+          key: ${{ runner.os }}-php-${{ matrix.php }}-laravel-${{ matrix.laravel }}-${{ hashFiles('**/composer.json') }}
+          restore-keys: |
+            ${{ runner.os }}-php-${{ matrix.php }}-laravel-${{ matrix.laravel }}-
+
+      # Laravel 11 esta fuera de soporte de seguridad: TODAS sus versiones arrastran avisos sin
+      # parchear, y Composer los bloquea de serie, asi que la celda ni siquiera llega a instalar.
+      # Se desactiva el bloqueo AQUI, solo en esas celdas y solo dentro del runner —el
+      # composer.json del repositorio no se toca—, porque el objetivo de esta celda es responder
+      # una pregunta concreta: **el paquete, ¿funciona sobre Laravel 11?**. Que la rama tenga
+      # vulnerabilidades es cierto y es informacion aparte, no un motivo para dejar de probarla
+      # mientras se declare soportada.
+      - name: Laravel 11 — permitir la instalación pese a sus avisos de seguridad
+        if: matrix.laravel == '11'
+        run: composer config policy.advisories.block false
+
+      - name: Fijar las versiones de esta celda
+        run: |
+          composer require --dev --no-interaction --no-update \
+            "orchestra/testbench:${{ matrix.testbench }}" \
+            "pestphp/pest:${{ matrix.pest }}" \
+            "pestphp/pest-plugin-laravel:${{ matrix.pest }}"
+
+      - name: Install dependencies
+        run: composer update --prefer-dist --no-interaction --no-progress
+
+      - name: Qué versión quedó instalada
+        # Con el autoloader cargado: `php -r` a secas no conoce Composer\InstalledVersions. Y se
+        # pregunta por laravel/framework, no por illuminate/support — este ultimo viene dentro del
+        # framework via `replace`, asi que no tiene version propia que informar.
+        run: |
+          php -r 'require "vendor/autoload.php";
+            printf("Laravel %s | Pest %s | PHP %s%s",
+              \Composer\InstalledVersions::getPrettyVersion("laravel/framework"),
+              \Composer\InstalledVersions::getPrettyVersion("pestphp/pest"),
+              PHP_VERSION, PHP_EOL);'
+
+      - name: Run test suite
+        run: ./vendor/bin/pest --no-coverage
+
+  lint:
+    runs-on: ubuntu-latest
+    name: Lint · PSR-12 y strict_types
 
     steps:
       - name: Checkout
@@ -21,18 +117,14 @@ jobs:
           coverage: none
           tools: composer:v2
 
-      - name: Cache Composer dependencies
-        uses: actions/cache@v4
-        with:
-          path: |
-            ~/.composer/cache/files
-            vendor
-          key: ${{ runner.os }}-php-8.3-composer-${{ hashFiles('**/composer.lock') }}
-          restore-keys: |
-            ${{ runner.os }}-php-8.3-composer-
-
       - name: Install dependencies
         run: composer install --no-interaction --prefer-dist --no-progress
 
-      - name: Run test suite
-        run: ./vendor/bin/pest --no-coverage
+      - name: PSR-12
+        run: composer lint
+
+      # `lint:strict` existía en composer.json y el CI no lo ejecutaba nunca (A2 · A6). Y tal como
+      # estaba escrito tampoco habría servido: imprimía la lista de archivos sin `declare` y salía
+      # con código 0, así que un CI que lo llamara habría dado verde igual. Ahora falla.
+      - name: strict_types en todo src/
+        run: composer lint:strict
