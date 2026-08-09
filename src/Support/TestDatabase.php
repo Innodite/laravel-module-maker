@@ -92,6 +92,22 @@ final class TestDatabase
     }
 
     /**
+     * Las variables que el `phpunit.xml` declara, para entregárselas al proceso que lanza la suite.
+     *
+     * **PHPUnit no las impone: un `<env>` sin `force="true"` respeta lo que ya haya en el entorno.**
+     * En un contenedor eso siempre pasa —la imagen exporta `DB_DATABASE` con la base real—, así que
+     * un proyecto que declara su base de pruebas como debe termina corriendo la suite contra los
+     * datos de verdad. Entregadas al subproceso, ganan, y sin pedirle a cada proyecto que repita
+     * `force="true"` en cada línea.
+     *
+     * @return array<string, string>
+     */
+    public static function variablesDeLaSuite(): array
+    {
+        return self::declaradoEnPhpunit();
+    }
+
+    /**
      * Las variables de entorno que el `phpunit.xml` del proyecto declara para la suite.
      *
      * @return array<string, string>
