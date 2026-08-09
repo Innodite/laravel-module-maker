@@ -140,14 +140,45 @@ enum ModuleMode: string
             return ! $this->hasContextAxis();
         }
 
-        return in_array($contextKey, $this->requiredContextKeys(), true);
+        return in_array($contextKey, $this->supportedContextKeys(), true);
     }
 
     /**
-     * Context keys that contexts.json must declare for this mode.
+     * Context keys this mode ACCEPTS in `--context`.
      *
-     * A single application has no tenants to declare, so demanding a 'tenant' key
-     * forces it to invent one to pass a diagnostic that does not apply to it.
+     * Wider than what the catalogue has to declare: a project may add contexts of its own, and
+     * generating into one that exists is not an error just because the diagnostic did not demand it.
+     *
+     * @return array<int, string>
+     */
+    public function supportedContextKeys(): array
+    {
+        return match ($this) {
+            self::SingleApp            => [],
+            self::MultitenantShared    => ['central', 'shared', 'tenant', 'tenant_shared'],
+            self::MultitenantPerTenant => ['central', 'shared', 'tenant_shared', 'tenant'],
+        };
+    }
+
+    /**
+     * Context keys that contexts.json must DECLARE for this mode.
+     *
+     * Not the same question as the one above, and answering both with one list is what made the
+     * diagnostic demand `shared` and `tenant_shared` from *both* multitenant modes — the message
+     * named the mode and then asked the same of either, so the distinction existed only on screen.
+     *
+     * What each mode actually needs:
+     *
+     *   · **shared tenants** — every tenant runs the SAME logic, each in its own database. There are
+     *     no named tenants, so the axis is the generic `tenant`, and that is the whole catalogue
+     *     besides `central`. Demanding `tenant_shared` here asks a project to declare a context for
+     *     logic split per tenant, which is precisely what this mode does not have.
+     *   · **logic per tenant** — each tenant has its own. `tenant_shared` is what they have in
+     *     common, and the named tenants come from the project's own catalogue: the package cannot
+     *     know how many there are or what they are called.
+     *
+     * A single application has no tenants to declare, so demanding a 'tenant' key would force it to
+     * invent one to pass a diagnostic that does not apply to it.
      *
      * @return array<int, string>
      */
@@ -155,8 +186,8 @@ enum ModuleMode: string
     {
         return match ($this) {
             self::SingleApp            => [],
-            self::MultitenantShared    => ['central', 'shared', 'tenant_shared'],
-            self::MultitenantPerTenant => ['central', 'shared', 'tenant_shared', 'tenant'],
+            self::MultitenantShared    => ['central', 'tenant'],
+            self::MultitenantPerTenant => ['central', 'tenant_shared'],
         };
     }
 

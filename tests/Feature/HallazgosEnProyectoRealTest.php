@@ -5,6 +5,7 @@ declare(strict_types=1);
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\File;
+use Innodite\LaravelModuleMaker\Support\ModuleMode;
 use Innodite\LaravelModuleMaker\Support\TestDatabase;
 
 /**
@@ -238,5 +239,35 @@ it('el ensayo no dice que escribió lo que no escribió', function () {
 
     expect(str_contains($salida, '(ensayo)'))->toBeTrue(
         "FALLA: el ensayo no marca sus líneas como tales.\n{$salida}"
+    );
+});
+
+it('cada modo multitenant exige SU catálogo, no el mismo para los dos', function () {
+    // El diagnóstico pedía `shared` y `tenant_shared` a los dos modos: el mensaje nombraba el modo y
+    // luego exigía lo mismo de cualquiera, así que la distinción existía solo en pantalla. Y a un
+    // proyecto de tenants iguales —misma lógica, una base por tenant— le reclamaba un contexto para
+    // lógica repartida por tenant, que es justo lo que ese modo NO tiene.
+    expect(ModuleMode::MultitenantShared->requiredContextKeys())
+        ->toBe(['central', 'tenant']);
+
+    expect(ModuleMode::MultitenantPerTenant->requiredContextKeys())
+        ->toBe(['central', 'tenant_shared']);
+
+    expect(ModuleMode::MultitenantShared->requiredContextKeys())
+        ->not->toBe(ModuleMode::MultitenantPerTenant->requiredContextKeys());
+
+    expect(ModuleMode::SingleApp->requiredContextKeys())->toBe([]);
+});
+
+it('lo que se admite en --context es más ancho que lo que hay que declarar', function () {
+    // Son dos preguntas distintas, y responderlas con una sola lista es lo que cruzó los catálogos.
+    // Generar en un contexto que el proyecto declaró no es un error porque el diagnóstico no lo
+    // exigiera.
+    expect(ModuleMode::MultitenantShared->supportsContext('tenant'))->toBeTrue();
+    expect(ModuleMode::MultitenantShared->supportsContext('central'))->toBeTrue();
+    expect(ModuleMode::MultitenantPerTenant->supportsContext('tenant_shared'))->toBeTrue();
+
+    expect(ModuleMode::SingleApp->supportsContext('central'))->toBeFalse(
+        'FALLA: una aplicación única no tiene eje de contexto.'
     );
 });
