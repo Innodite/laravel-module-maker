@@ -336,8 +336,10 @@ class SetupModuleMakerCommand extends Command
                 return;
             }
 
-            if ($porBandera && $this->input->isInteractive()
-                && ! $this->confirm("  El .env dice '{$valorActual}'. ¿Cambiarlo a '{$valor}'?", true)) {
+            if (
+                $porBandera && $this->input->isInteractive()
+                && ! $this->confirm("  El .env dice '{$valorActual}'. ¿Cambiarlo a '{$valor}'?", true)
+            ) {
                 $this->warn("  El {$queEs} se queda como estaba.");
 
                 return;
