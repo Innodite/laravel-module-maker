@@ -595,3 +595,20 @@ it('con tenants iguales avisa si no sabe entrar en el contexto', function () {
         "FALLA: el aviso no dice cuál es la consecuencia —escribir en la base central—.\n\n{$salida}"
     );
 });
+
+it('la migración generada no revienta si la tabla ya está', function () {
+    // La guarda es lo que hace idempotente al despliegue, y el despliegue se relanza: tras un fallo
+    // a medias, al entrar un cliente nuevo, o al volver a generar el módulo —que escribe una
+    // migración con fecha nueva, y esa fecha no está en `migrations` aunque la tabla de negocio ya
+    // exista—. Sin ella, el segundo intento muere con «table already exists» y se lleva por delante
+    // todo lo que venía detrás en el orden de despliegue.
+    $stub = File::get(dirname(__DIR__, 2) . '/stubs/contextual/migration.stub');
+
+    expect($stub)->toContain("if (Schema::hasTable('{{{ tableName }}}')) {");
+
+    // Y la guarda va ANTES del create, no envolviéndolo a medias.
+    expect(strpos($stub, 'hasTable'))->toBeLessThan(
+        strpos($stub, 'Schema::create'),
+        'FALLA: la comprobación tiene que decidir antes de crear.'
+    );
+});

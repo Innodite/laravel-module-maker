@@ -142,11 +142,45 @@ class {{{ seederName }}} extends Seeder
                 $valores['module_id'] = $moduleId;
             }
 
-            DB::connection($this->connection)->table('permissions')->updateOrInsert(
-                ['name' => $permiso['name'], 'guard_name' => $this->guard],
-                $valores + ['created_at' => $ahora],
+            $llave = ['name' => $permiso['name'], 'guard_name' => $this->guard];
+
+            // Insertar y actualizar se escriben por separado, y no con `updateOrInsert`, porque la
+            // clave solo puede viajar en el insert: entregada como valor, un permiso que ya existía
+            // vería cambiar su `id` en cada despliegue — y con él, cada asignación a un rol.
+            if (DB::connection($this->connection)->table('permissions')->where($llave)->exists()) {
+                DB::connection($this->connection)->table('permissions')->where($llave)->update($valores);
+
+                continue;
+            }
+
+            DB::connection($this->connection)->table('permissions')->insert(
+                $llave + $valores + ['created_at' => $ahora] + $this->claveNueva('permissions'),
             );
         }
+    }
+
+    /**
+     * La clave primaria a entregar al insertar en `$tabla`, o nada si la tabla la rellena sola.
+     *
+     * **Las tablas de permisos son del proyecto, no del paquete**, y su clave puede ser
+     * autoincremental o de texto (ULID/UUID): las dos formas son legítimas y ninguna se puede
+     * suponer. Solo una columna entera se rellena sola; con una de texto, insertar sin `id` devuelve
+     * «Field 'id' doesn't have a default value» y detiene el despliegue entero.
+     *
+     * ⛔ Se mira el esquema y no el modo declarado en la configuración: ese modo describe las tablas
+     * que genera el paquete, y estas no lo son.
+     *
+     * @return array<string, string>
+     */
+    private function claveNueva(string $tabla): array
+    {
+        $schema = Schema::connection($this->connection);
+
+        if (! $schema->hasColumn($tabla, 'id') || $this->autoIncrementa($schema->getColumnType($tabla, 'id'))) {
+            return [];
+        }
+
+        return ['id' => (string) Str::ulid()];
     }
 
     /**

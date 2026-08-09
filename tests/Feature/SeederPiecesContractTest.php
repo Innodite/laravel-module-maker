@@ -234,6 +234,16 @@ it('el de permisos entrega la clave del módulo cuando la tabla no la rellena so
         ->and($contenido)->toContain("\$fila['id'] = (string) Str::ulid();")
         ->and($contenido)->toContain('use Illuminate\\Support\\Str;');
 
+    // Y no solo `modules`: la tabla de permisos es del proyecto por el mismo motivo, y fue la
+    // siguiente en detener el despliegue una vez resuelta la primera.
+    expect($contenido)->toContain("\$this->claveNueva('permissions')");
+
+    // La clave viaja SOLO en el insert. Como valor de un `updateOrInsert`, un permiso que ya
+    // existía vería cambiar su `id` en cada despliegue, y con él cada asignación a un rol.
+    expect(str_contains($contenido, "table('permissions')->updateOrInsert("))->toBeFalse(
+        'Con la clave entre los valores, un permiso existente cambia de id en cada despliegue.'
+    );
+
     // Y el valor leído se devuelve tal cual. `(int)` sobre un ULID da 0, y ese 0 acabaría escrito
     // como el módulo de cada permiso: todos agrupados bajo un módulo que no existe.
     expect(str_contains($contenido, '(int) $id'))->toBeFalse(
