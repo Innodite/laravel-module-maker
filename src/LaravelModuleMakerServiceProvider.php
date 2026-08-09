@@ -25,6 +25,29 @@ use Illuminate\Support\Str;
 
 class LaravelModuleMakerServiceProvider extends ServiceProvider
 {
+    /**
+     * The commands this package registers.
+     *
+     * A constant and not a literal inside `register()` because the diagnostic needs the same list to
+     * answer a question the developer cannot answer alone: whether a command of the host project is
+     * shadowing one of these. Two lists would drift, and the drift would show up as a check that
+     * quietly stops covering whatever was added last.
+     *
+     * @var array<int, class-string<\Illuminate\Console\Command>>
+     */
+    public const COMANDOS = [
+        MakeModuleCommand::class,
+        AddEntityCommand::class,
+        MigrateOneCommand::class,
+        MigratePlanCommand::class,
+        DeployCommand::class,
+        DoctorCommand::class,
+        CreateTestDatabaseCommand::class,
+        SetupModuleMakerCommand::class,
+        PublishFrontendCommand::class,
+        TestCommand::class,
+    ];
+
     public function register(): void
     {
         $this->mergeConfigFrom(
@@ -54,18 +77,7 @@ class LaravelModuleMakerServiceProvider extends ServiceProvider
     public function boot(): void
     {
         if ($this->app->runningInConsole()) {
-            $this->commands([
-                MakeModuleCommand::class,
-                AddEntityCommand::class,
-                MigrateOneCommand::class,
-                MigratePlanCommand::class,
-                DeployCommand::class,
-                DoctorCommand::class,
-                CreateTestDatabaseCommand::class,
-                SetupModuleMakerCommand::class,
-                PublishFrontendCommand::class,
-                TestCommand::class,
-            ]);
+            $this->commands(self::COMANDOS);
 
             // ── Publicar configuración ────────────────────────────────────────
             $this->publishes([

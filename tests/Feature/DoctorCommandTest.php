@@ -75,8 +75,16 @@ it('la cabecera dice la versión que corre, no una escrita a mano', function () 
 
     expect(PackageVersion::current())->not->toBe('3.0.0');
 
-    expect(str_contains($salida, 'v' . PackageVersion::current()))->toBeTrue(
+    expect(str_contains($salida, PackageVersion::current()))->toBeTrue(
         "FALLA: la cabecera no declara la versión instalada.\n{$salida}"
+    );
+
+    // Y la dice UNA vez. Composer devuelve la etiqueta tal cual se publicó —`v4.0.0-beta.1`, con su
+    // v—, así que anteponer otra daba `vv4.0.0-beta.1` en los nueve comandos. Esta línea, y su gemela
+    // en FirmaCoherenteTest, fijaban el prefijo a mano y por eso el defecto salió verde hasta que se
+    // instaló en un proyecto real.
+    expect(str_contains($salida, 'vv'))->toBeFalse(
+        "FALLA: la cabecera dice la v dos veces.\n{$salida}"
     );
 
     expect(str_contains($salida, 'v3.0.0'))->toBeFalse(

@@ -52,8 +52,13 @@ it('los diez se presentan igual, y con la versión que corre', function () {
             . "cabecera('<qué hace esta corrida>') al entrar.\n{$salida}"
         );
 
-        expect(str_contains($salida, 'v' . PackageVersion::current()))->toBeTrue(
+        expect(str_contains($salida, PackageVersion::current()))->toBeTrue(
             "FALLA: la cabecera de {$nombre} no dice la versión instalada.\n{$salida}"
+        );
+
+        expect(str_contains($salida, 'vv'))->toBeFalse(
+            "FALLA: la cabecera de {$nombre} dice la v dos veces — Composer ya devuelve la etiqueta "
+            . "con su v.\n{$salida}"
         );
     }
 });

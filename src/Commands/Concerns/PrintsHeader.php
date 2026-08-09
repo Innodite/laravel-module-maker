@@ -29,10 +29,17 @@ trait PrintsHeader
      */
     private function cabecera(string $queHace): void
     {
+        $version = PackageVersion::current();
+
+        // La `v` la pone quien imprime, y solo si falta. Composer devuelve la etiqueta tal cual se
+        // publicó —`v4.0.0-beta.1`, con su v—, así que anteponer otra daba `vv4.0.0-beta.1` en la
+        // cabecera de los nueve comandos. Con `dev-main` o `sin determinar` no se antepone nada.
+        $prefijo = preg_match('/^\d/', $version) === 1 ? 'v' : '';
+
         $this->newLine();
         $this->line(
             "  <fg=blue;options=bold>Innodite ModuleMaker — {$queHace}</>"
-            . '  <fg=gray>v' . PackageVersion::current() . '</>'
+            . "  <fg=gray>{$prefijo}{$version}</>"
         );
         $this->newLine();
     }

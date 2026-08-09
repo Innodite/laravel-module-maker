@@ -45,7 +45,8 @@ final class GeneratedFileRejectedException extends RuntimeException
             "No se escribió '" . basename($path) . "': lleva placeholders en el formato de la v3 → {$list}\n" .
             "Ruta: {$path}\n" .
             "Desde la v4 el delimitador es {{{ clave }}} — la doble llave colisiona con Vue.\n" .
-            'Si el stub es tuyo (publicado con `innodite:stubs publish`), pásalo a triple llave.'
+            'Si el stub es tuyo, está en module-maker-config/stubs/contextual/: pásalo a triple llave, '
+            . 'o borra esa carpeta para volver a los del paquete.'
         );
     }
 

@@ -31,10 +31,103 @@ final class TestDatabase
     /** La conexión que se registra al vuelo para mirar la base real. Nunca se persiste. */
     public const CONEXION_REAL = 'innodite_real';
 
+    /** La conexión que se registra al vuelo cuando la suite declara su base en phpunit.xml. */
+    public const CONEXION_SUITE = 'innodite_suite';
+
     /** Nombre de la base a la que apunta una conexión. */
     public static function nombreDe(string $conexion): string
     {
         return (string) Config::get("database.connections.{$conexion}.database", '');
+    }
+
+    /**
+     * La conexión contra la que va a correr **la suite**, que no es la de la aplicación.
+     *
+     * Este comando se ejecuta por `artisan`, fuera de PHPUnit, así que `database.default` responde
+     * por la aplicación: la base REAL. Preguntarle a él si la suite corre contra una base de pruebas
+     * es preguntarle al sitio equivocado — y la respuesta hacía que un proyecto **correctamente
+     * configurado** no pudiera lanzar su contrato: kapitalizando declara `DB_CONNECTION=mysql_test`
+     * en su `phpunit.xml`, hace lo correcto, y aun así se le denegaba la ejecución.
+     *
+     * Quien sabe la respuesta es el `phpunit.xml` del proyecto, que es donde se declara el entorno de
+     * la suite. Se leen sus dos variables y mandan en este orden:
+     *
+     *   · `DB_CONNECTION` — la conexión que usará la suite.
+     *   · `DB_DATABASE`   — la base concreta, si la fija aparte (Interconectados apunta la conexión
+     *     `central` a `interconectados_test`; sin esta línea se leería la central real).
+     *
+     * Cuando la base declarada no coincide con la de la conexión, se registra {@see CONEXION_SUITE}
+     * al vuelo —copia de la conexión declarada con la base correcta— para que todo lo que venga
+     * después (¿está?, ¿tiene la forma real?, el clonado) opere sobre algo coherente.
+     *
+     * Sin `phpunit.xml`, o sin esas variables, se responde con la conexión de la aplicación: el
+     * comportamiento anterior.
+     */
+    public static function laDeLaSuite(): string
+    {
+        $conexion = (string) Config::get('database.default');
+
+        $declarado = self::declaradoEnPhpunit();
+
+        if (($declarado['DB_CONNECTION'] ?? '') !== '') {
+            $conexion = $declarado['DB_CONNECTION'];
+        }
+
+        $base = $declarado['DB_DATABASE'] ?? '';
+
+        if ($base === '' || $base === self::nombreDe($conexion)) {
+            return $conexion;
+        }
+
+        $plantilla = Config::get("database.connections.{$conexion}");
+
+        if (! is_array($plantilla)) {
+            return $conexion;
+        }
+
+        $plantilla['database'] = $base;
+        Config::set('database.connections.' . self::CONEXION_SUITE, $plantilla);
+
+        return self::CONEXION_SUITE;
+    }
+
+    /**
+     * Las variables de entorno que el `phpunit.xml` del proyecto declara para la suite.
+     *
+     * @return array<string, string>
+     */
+    private static function declaradoEnPhpunit(): array
+    {
+        $raiz = function_exists('base_path') ? base_path() : getcwd();
+
+        foreach (['phpunit.xml', 'phpunit.xml.dist'] as $archivo) {
+            $ruta = rtrim((string) $raiz, '/\\') . DIRECTORY_SEPARATOR . $archivo;
+
+            if (! is_file($ruta)) {
+                continue;
+            }
+
+            $xml = @simplexml_load_file($ruta);
+
+            if ($xml === false || ! isset($xml->php->env)) {
+                return [];
+            }
+
+            $variables = [];
+
+            foreach ($xml->php->env as $env) {
+                $nombre = (string) ($env['name'] ?? '');
+
+                if ($nombre !== '') {
+                    $variables[$nombre] = (string) ($env['value'] ?? '');
+                }
+            }
+
+            // El primero que exista manda: `phpunit.xml` gana a `phpunit.xml.dist`, como en PHPUnit.
+            return $variables;
+        }
+
+        return [];
     }
 
     /**
