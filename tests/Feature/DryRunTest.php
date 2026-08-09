@@ -126,8 +126,7 @@ it('la opción está en los que escriben o tocan una base, y en ninguno más', f
     ];
 
     $sinEnsayo = [
-        'innodite:module-check',     // diagnostica
-        'innodite:check-env',        // diagnostica
+        'innodite:doctor',           // diagnostica — los dos que había se fusionaron aquí
         'innodite:test',             // ejecuta pruebas, no escribe el proyecto
     ];
 

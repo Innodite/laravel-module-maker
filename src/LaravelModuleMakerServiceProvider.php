@@ -9,12 +9,11 @@ use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Database\Eloquent\Factories\Factory;
 use Innodite\LaravelModuleMaker\Commands\AddEntityCommand;
-use Innodite\LaravelModuleMaker\Commands\CheckEnvCommand;
 use Innodite\LaravelModuleMaker\Commands\DeployCommand;
+use Innodite\LaravelModuleMaker\Commands\DoctorCommand;
 use Innodite\LaravelModuleMaker\Commands\MakeModuleCommand;
 use Innodite\LaravelModuleMaker\Commands\MigrateOneCommand;
 use Innodite\LaravelModuleMaker\Commands\MigratePlanCommand;
-use Innodite\LaravelModuleMaker\Commands\ModuleCheckCommand;
 use Innodite\LaravelModuleMaker\Commands\PublishFrontendCommand;
 use Innodite\LaravelModuleMaker\Commands\SetupModuleMakerCommand;
 use Innodite\LaravelModuleMaker\Commands\TestCommand;
@@ -49,10 +48,9 @@ class LaravelModuleMakerServiceProvider extends ServiceProvider
                 MigrateOneCommand::class,
                 MigratePlanCommand::class,
                 DeployCommand::class,
-                ModuleCheckCommand::class,
+                DoctorCommand::class,
                 SetupModuleMakerCommand::class,
                 PublishFrontendCommand::class,
-                CheckEnvCommand::class,
                 TestCommand::class,
             ]);
 

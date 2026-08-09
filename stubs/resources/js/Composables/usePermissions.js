@@ -13,7 +13,7 @@ import { useModuleContext } from './useModuleContext'
  * tiene cualquiera de las dos variantes.
  *
  * Requisito: `HandleInertiaRequests` debe compartir `auth.permissions`
- * como un array plano de strings. Ejecuta `php artisan innodite:check-env`
+ * como un array plano de strings. Ejecuta `php artisan innodite:doctor`
  * para verificar el contrato de datos.
  *
  * Uso:
@@ -39,7 +39,7 @@ export function usePermissions() {
                 console.warn(
                     '[InnoditeContextBridge] auth.permissions no está disponible en las props de Inertia.\n' +
                     'Verifica que HandleInertiaRequests comparte el nodo auth.permissions como array.\n' +
-                    'Ejecuta: php artisan innodite:check-env'
+                    'Ejecuta: php artisan innodite:doctor'
                 )
             }
             return []

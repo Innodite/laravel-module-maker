@@ -147,7 +147,7 @@ class PublishFrontendCommand extends Command
             $this->line('  <fg=gray>  })</>');
             $this->newLine();
             $this->line('  <fg=white;options=bold>2.</> Ejecuta el diagnóstico para verificar el contrato de datos:');
-            $this->line('     <comment>php artisan innodite:check-env</comment>');
+            $this->line('     <comment>php artisan innodite:doctor</comment>');
             $this->newLine();
         }
 
