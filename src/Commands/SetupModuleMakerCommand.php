@@ -8,6 +8,7 @@ use Illuminate\Console\Command;
 use Illuminate\Support\Facades\File;
 use Innodite\LaravelModuleMaker\Generators\Components\ProjectSeederGenerator;
 use Innodite\LaravelModuleMaker\Support\ModuleMode;
+use Innodite\LaravelModuleMaker\Support\TenancyPackage;
 
 /**
  * Comando de instalación del paquete v3.0.0.
@@ -24,7 +25,8 @@ use Innodite\LaravelModuleMaker\Support\ModuleMode;
 class SetupModuleMakerCommand extends Command
 {
     protected $signature = 'innodite:module-setup
-        {--mode= : Modo del proyecto: single-app | multitenant-shared | multitenant-per-tenant}';
+        {--mode= : Modo del proyecto: single-app | multitenant-shared | multitenant-per-tenant}
+        {--tenancy= : Paquete de tenencia del proyecto (solo multitenant): stancl | none}';
 
     protected $description = 'Configura el paquete: elige el modo del proyecto y crea module-maker-config/ en el project root.';
 
@@ -38,6 +40,12 @@ class SetupModuleMakerCommand extends Command
         // de configuración. Y va primero porque decide la forma de todo lo demás: si se pregunta al
         // final, lo que ya se generó nació con la estructura de otro modo.
         $mode = $this->configureMode();
+
+        // ── El paquete de tenencia, si el modo lo pide ────────────────────────
+        // Va inmediatamente después del modo y por el mismo motivo: decide la envoltura de cada
+        // archivo de rutas que se genere, y preguntarlo más tarde deja escritas las rutas de los
+        // primeros módulos sin ella.
+        $this->configureTenancyPackage($mode);
 
         // ── Carpeta de módulos ────────────────────────────────────────────────
         // Las rutas salen de la configuración, no de base_path(): son las MISMAS que leen los
@@ -138,6 +146,82 @@ class SetupModuleMakerCommand extends Command
             ?? ModuleMode::tryFrom((string) array_search($respuesta, $etiquetas, true));
     }
 
+    // ─── El paquete de tenencia del proyecto ──────────────────────────────────
+
+    /**
+     * Pregunta con qué paquete de tenencia corre el proyecto — solo si el modo tiene tenants.
+     *
+     * En una aplicación única no se pregunta porque no hay nada que envolver: ni dominios centrales
+     * que separar ni tenant que identificar. Preguntarlo igual sería pedir una decisión que no
+     * cambia un solo archivo generado.
+     */
+    private function configureTenancyPackage(?ModuleMode $mode): void
+    {
+        if ($mode === null || ! $mode->hasContextAxis()) {
+            return;
+        }
+
+        $elegido = $this->resolveTenancyPackage();
+
+        if ($elegido === null) {
+            // Sin elegir NO se bloquea la instalación, y ahí está la diferencia con el modo: el modo
+            // decide la forma de cada archivo y no tiene respuesta correcta, mientras que aquí la
+            // ausencia tiene una salida honesta —escribir las rutas sin envoltura, con la nota que
+            // dice dónde va—. El proyecto arranca y el hueco queda a la vista.
+            $this->warn('  Sin paquete de tenencia declarado, las rutas generadas saldrán sin envoltura.');
+            $this->line('  Cada archivo dirá dónde va y qué haría stancl. Para declararlo: '
+                . '<comment>--tenancy=stancl</comment>');
+
+            return;
+        }
+
+        $this->line("  Paquete de tenencia: <comment>{$elegido->label()}</comment>");
+
+        $this->persistEnvKey('MODULE_MAKER_TENANCY_PACKAGE', $elegido->value, 'paquete de tenencia');
+    }
+
+    /** @return TenancyPackage|null  null si no se pudo determinar y no hay con quién hablar */
+    private function resolveTenancyPackage(): ?TenancyPackage
+    {
+        $opcion = trim((string) $this->option('tenancy'));
+
+        if ($opcion !== '') {
+            $elegido = TenancyPackage::tryFrom($opcion);
+
+            if ($elegido === null) {
+                $this->error("FALLA: el paquete de tenencia '{$opcion}' todavía no está soportado.");
+                $this->line('  · FIX: usa uno de estos — '
+                    . implode(' · ', array_column(TenancyPackage::cases(), 'value'))
+                    . '. Con «none» las rutas salen sin envoltura y el archivo dice dónde va.');
+
+                return null;
+            }
+
+            return $elegido;
+        }
+
+        if (! $this->input->isInteractive()) {
+            return null;
+        }
+
+        $etiquetas = [];
+
+        foreach (TenancyPackage::cases() as $caso) {
+            $etiquetas[$caso->value] = $caso->label();
+        }
+
+        $this->line('  ¿Con qué paquete de tenencia corre el proyecto? Decide la envoltura de las '
+            . 'rutas generadas.');
+
+        $respuesta = $this->choice('  Paquete de tenencia', $etiquetas, null, null, false);
+
+        // choice() devuelve la etiqueta cuando las claves son strings; se recupera el valor.
+        return TenancyPackage::tryFrom($respuesta)
+            ?? TenancyPackage::tryFrom((string) array_search($respuesta, $etiquetas, true));
+    }
+
+    // ─── Escritura en el .env ─────────────────────────────────────────────────
+
     /**
      * Escribe el modo en el `.env`, y si no puede lo dice — nunca anuncia un éxito que no ocurrió.
      *
@@ -146,11 +230,27 @@ class SetupModuleMakerCommand extends Command
      */
     private function persistMode(ModuleMode $mode): void
     {
+        $this->persistEnvKey('MODULE_MAKER_MODE', $mode->value, 'modo');
+    }
+
+    /**
+     * Deja una clave escrita en el `.env` del proyecto, o dice exactamente qué línea añadir.
+     *
+     * Es el mismo procedimiento para las dos decisiones que se toman al instalar —el modo y el
+     * paquete de tenencia—, y por eso está escrito una vez: dos copias del mismo trámite acaban
+     * respondiendo distinto al `.env` que ya declaraba otra cosa, que es justo el caso delicado.
+     *
+     * @param  string  $clave  Nombre de la variable de entorno
+     * @param  string  $valor  Valor a dejar escrito
+     * @param  string  $queEs  Cómo se llama en los mensajes ('modo', 'paquete de tenencia')
+     */
+    private function persistEnvKey(string $clave, string $valor, string $queEs): void
+    {
         $envPath = base_path('.env');
-        $linea   = 'MODULE_MAKER_MODE=' . $mode->value;
+        $linea   = "{$clave}={$valor}";
 
         if (! File::exists($envPath)) {
-            $this->warn('  No hay .env en la raíz del proyecto, así que el modo no se ha escrito.');
+            $this->warn("  No hay .env en la raíz del proyecto, así que el {$queEs} no se ha escrito.");
             $this->line("  Añade esta línea a tu .env:  <comment>{$linea}</comment>");
 
             return;
@@ -158,29 +258,29 @@ class SetupModuleMakerCommand extends Command
 
         $contenido = File::get($envPath);
 
-        if (preg_match('/^MODULE_MAKER_MODE=(.*)$/m', $contenido, $actual) === 1) {
+        if (preg_match("/^{$clave}=(.*)$/m", $contenido, $actual) === 1) {
             $valorActual = trim($actual[1]);
 
-            if ($valorActual === $mode->value) {
-                $this->line('  El .env ya declaraba ese modo: no se toca nada.');
+            if ($valorActual === $valor) {
+                $this->line("  El .env ya declaraba ese {$queEs}: no se toca nada.");
 
                 return;
             }
 
-            if (! $this->confirm("  El .env dice '{$valorActual}'. ¿Cambiarlo a '{$mode->value}'?", false)) {
-                $this->warn('  El modo se queda como estaba.');
+            if (! $this->confirm("  El .env dice '{$valorActual}'. ¿Cambiarlo a '{$valor}'?", false)) {
+                $this->warn("  El {$queEs} se queda como estaba.");
 
                 return;
             }
 
-            File::put($envPath, preg_replace('/^MODULE_MAKER_MODE=.*$/m', $linea, $contenido));
+            File::put($envPath, preg_replace("/^{$clave}=.*$/m", $linea, $contenido));
             $this->info("  ✅ .env actualizado: {$linea}");
 
             return;
         }
 
         File::put($envPath, rtrim($contenido, "\n") . "\n\n{$linea}\n");
-        $this->info("  ✅ Modo escrito en .env: {$linea}");
+        $this->info("  ✅ Escrito en .env: {$linea}");
     }
 
     /**

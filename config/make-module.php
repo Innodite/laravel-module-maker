@@ -47,6 +47,35 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | El paquete de tenencia del proyecto — solo aplica en los modos multitenant
+    |--------------------------------------------------------------------------
+    |
+    |   'stancl'  stancl/tenancy v3.10 — el único soportado hoy
+    |   'none'    Ninguno soportado: la envoltura de las rutas la escribes tú
+    |
+    | Las rutas generadas de un proyecto multitenant necesitan envoltura: la aplicación
+    | central se sirve en los dominios centrales, y una ruta de tenant tiene que
+    | identificar a su tenant antes que nada. Esa envoltura no es genérica — está escrita
+    | en el vocabulario del paquete de tenencia que use el proyecto—, así que el proyecto
+    | la declara, igual que declara el modo. Ningún comando la adivina mirando el vendor.
+    |
+    | Con cualquier otro valor —o sin declarar— el paquete NO envuelve: escribe el archivo
+    | de rutas con un comentario que dice dónde va la envoltura y qué haría stancl. La
+    | asimetría es deliberada y por eso el valor por defecto es 'none' y no 'stancl':
+    | escribir una envoltura de stancl en un proyecto que no lo tiene produce un archivo de
+    | rutas que referencia clases inexistentes y la aplicación deja de arrancar; dejarla
+    | fuera deja una nota visible en un archivo que sigue siendo válido.
+    |
+    | Se elige AL INSTALAR, junto al modo, y solo se pregunta en multitenant: una
+    | aplicación única no tiene tenants que identificar ni dominios centrales que separar.
+    |
+    */
+    'tenancy' => [
+        'package' => env('MODULE_MAKER_TENANCY_PACKAGE', 'none'),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Ruta raíz de todos los módulos del proyecto
     |--------------------------------------------------------------------------
     */

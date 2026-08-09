@@ -9,6 +9,7 @@ use Innodite\LaravelModuleMaker\Support\ContextResolver;
 use Innodite\LaravelModuleMaker\Support\RouteMarkers;
 use Innodite\LaravelModuleMaker\Support\ModuleMode;
 use Innodite\LaravelModuleMaker\Support\SubFeaturePermissions;
+use Innodite\LaravelModuleMaker\Support\TenancyPackage;
 
 /**
  * Genera el archivo de rutas del módulo respetando la convención de contextos.
@@ -83,6 +84,24 @@ class RouteGenerator extends AbstractComponentGenerator
         if (! $this->mode()->hasContextAxis()) {
             $this->generateSingleAppRoutes();
             return;
+        }
+
+        // Un paquete de tenencia declarado y desconocido se dice en voz alta, una vez. Ausente
+        // significa «no elegí» y el archivo ya lleva la nota; declarado y no soportado significa
+        // «elegí y no me hiciste caso», y eso sin aviso deja al desarrollador buscando por qué sus
+        // rutas salen sin envoltura cuando él declaró una.
+        $noSoportado = TenancyPackage::unsupportedValue();
+
+        if ($noSoportado !== null) {
+            $this->warn(
+                "⚠️  FALLA: el paquete de tenencia '{$noSoportado}' todavía no está soportado, así "
+                . 'que las rutas salen sin envoltura.'
+            );
+            $this->warn(
+                '   · FIX: escríbela tú donde el archivo generado lo indica, o declara '
+                . "'stancl' en `tenancy.package` de config/make-module.php si tu proyecto usa "
+                . 'stancl/tenancy.'
+            );
         }
 
         $context = $this->getContext();
@@ -191,6 +210,14 @@ class RouteGenerator extends AbstractComponentGenerator
         $nombre   = ($esTenant ? $context['tenant_route_name'] ?? null : $context['web_route_name'] ?? null)
             ?? $context['route_name'] ?? 'shared.';
 
+        // En `tenant.php` la envoltura ES middleware, así que se suma a la lista del contexto en vez
+        // de anidar otro grupo. `shared` escribe en los dos archivos y solo aquí la necesita: el
+        // mismo bloque, servido en el dominio de un cliente, tiene que identificar al tenant antes
+        // de tocar una sola tabla.
+        if ($esTenant) {
+            $middleware = $this->conMiddlewareDeTenencia($middleware);
+        }
+
         $bloque = $this->buildRouteBlock(
             routePrefix:     $prefijo . '-' . $functionality,
             routeName:       $nombre . $functionality . '.',
@@ -205,7 +232,7 @@ class RouteGenerator extends AbstractComponentGenerator
         // lado lo componía por su cuenta y no coincidían.
         $marcador = RouteMarkers::key($contextKey, $archivo, (string) ($context['id'] ?? ''));
 
-        $contenido = $this->buildSharedFileContent($controllerFqcn, $bloque, $middleware, $marcador);
+        $contenido = $this->buildSharedFileContent($controllerFqcn, $bloque, $middleware, $marcador, $archivo);
         $this->writeOrAppend("{$routesDir}/{$archivo}", $contenido, $marcador, $bloque, $controllerFqcn);
     }
 
@@ -213,46 +240,85 @@ class RouteGenerator extends AbstractComponentGenerator
      * Construye el contenido de archivo de rutas para contexto Shared.
      * Si route_middleware está vacío, omite el ->middleware() (hereda del grupo padre).
      *
+     * La envoltura del archivo la decide el **paquete de tenencia declarado**, no este generador:
+     * `web.php` se sirve en los dominios centrales y `tenant.php` identifica a su tenant, y las dos
+     * formas están escritas en el vocabulario de ese paquete. Sin uno soportado no se inventa una
+     * envoltura genérica: se escribe el archivo con la nota que dice dónde va y qué haría stancl.
+     *
      * @param  string  $controllerFqcn  FQCN del controlador
      * @param  string  $block           Bloque de rutas CRUD
      * @param  array   $middleware      Array de middlewares (vacío = sin wrapper)
      * @param  string  $markerKey       Clave del marcador sin llaves
+     * @param  string  $archivo         Archivo de rutas destino: 'web.php' o 'tenant.php'
      * @return string
      */
-    private function buildSharedFileContent(string $controllerFqcn, string $block, array $middleware, string $markerKey): string
-    {
+    private function buildSharedFileContent(
+        string $controllerFqcn,
+        string $block,
+        array $middleware,
+        string $markerKey,
+        string $archivo
+    ): string {
         $marker = "// {{{$markerKey}}}";
 
         if (empty($middleware)) {
             // Sin middleware wrapper — hereda seguridad del grupo padre
-            return <<<PHP
-            <?php
-
-            declare(strict_types=1);
-
-            use Illuminate\Support\Facades\Route;
-            use {$controllerFqcn};
-
+            $cuerpo = <<<PHP
             {$block}
                 {$marker}
             PHP;
+        } else {
+            $mw = $this->buildMiddlewareArray($middleware);
+
+            $cuerpo = <<<PHP
+            Route::middleware({$mw})->group(function () {
+
+            {$block}
+                {$marker}
+            });
+            PHP;
         }
 
-        $mw = $this->buildMiddlewareArray($middleware);
-        return <<<PHP
-        <?php
+        return $this->buildFileHeader($controllerFqcn, $archivo)
+            . $this->envolverSegunTenencia($cuerpo, $archivo);
+    }
 
-        declare(strict_types=1);
+    // ─── La envoltura que decide el paquete de tenencia ──────────────────────
 
-        use Illuminate\Support\Facades\Route;
-        use {$controllerFqcn};
+    /**
+     * Añade a la lista los middleware que identifican al tenant, sin duplicar los que ya estén.
+     *
+     * @param  array<int, string>  $middleware  Los que declara el contexto
+     * @return array<int, string>
+     */
+    private function conMiddlewareDeTenencia(array $middleware): array
+    {
+        return array_values(array_unique(
+            array_merge($middleware, TenancyPackage::current()->tenantMiddleware())
+        ));
+    }
 
-        Route::middleware({$mw})->group(function () {
+    /**
+     * Envuelve el cuerpo del archivo, o deja escrito dónde va la envoltura que falta.
+     *
+     * Solo `web.php` se envuelve aquí. En `tenant.php` la envoltura es middleware y ya viajó en la
+     * lista —anidar además un grupo sería el mismo dato escrito dos veces—, así que lo único que
+     * puede faltarle es la nota.
+     *
+     * @param  string  $cuerpo   El bloque de rutas con su marcador, ya montado
+     * @param  string  $archivo  'web.php' o 'tenant.php'
+     */
+    private function envolverSegunTenencia(string $cuerpo, string $archivo): string
+    {
+        $tenencia = TenancyPackage::current();
 
-        {$block}
-            {$marker}
-        });
-        PHP;
+        if (! $tenencia->wrapsRoutes()) {
+            return $tenencia->missingWrapperNote($archivo) . "\n\n" . $cuerpo;
+        }
+
+        return $archivo === 'web.php'
+            ? $tenencia->wrapCentralRoutes($cuerpo)
+            : $cuerpo;
     }
 
     /**
@@ -272,7 +338,7 @@ class RouteGenerator extends AbstractComponentGenerator
         $permPrefix      = $this->resolvePermissionPrefix($context, $this->componentConfig['context'] ?? null, $context['id'] ?? null);
         $permMiddleware  = $this->resolvePermissionMiddleware($context, $this->componentConfig['context'] ?? null);
         $permKey         = SubFeaturePermissions::key($functionality);
-        $middlewareLista = $context['route_middleware'] ?? [];
+        $middlewareLista = $this->conMiddlewareDeTenencia($context['route_middleware'] ?? []);
         $label           = $context['id'] ?? $context['label'] ?? $classPrefix;
         $separator       = str_repeat('─', 74);
 
@@ -315,11 +381,17 @@ class RouteGenerator extends AbstractComponentGenerator
             PHP;
         }
 
+        // La identificación del tenant ya viaja en la lista de middleware cuando hay un paquete
+        // soportado. Cuando no lo hay, el archivo dice dónde va y qué haría stancl — porque un
+        // bloque de rutas de tenant sin identificar es el defecto que no se ve: responde igual, y
+        // contra la base que estuviera conectada.
+        $section = $this->envolverSegunTenencia($section, 'tenant.php');
+
         // La cabecera solo viaja en el contenido del archivo **nuevo**: si el archivo ya existe,
         // `writeOrAppend()` inserta el bloque en el marcador y añade el `use` que falte.
         $this->writeOrAppend(
             "{$routesDir}/tenant.php",
-            $this->buildFileHeader($controllerFqcn) . $section,
+            $this->buildFileHeader($controllerFqcn, 'tenant.php') . $section,
             "{$markerKey}_END",
             $block,
             $controllerFqcn
@@ -450,7 +522,15 @@ class RouteGenerator extends AbstractComponentGenerator
             return '[]';
         }
 
-        $items = array_map(fn ($m) => "    '{$m}'", $middleware);
+        // Una entrada que ya es expresión PHP —`InitializeTenancyByDomain::class`— se escribe tal
+        // cual. Entrecomillarla la convertiría en el alias literal «InitializeTenancyByDomain::class»,
+        // que ningún kernel resuelve: la ruta fallaría al registrarse, y solo en el proyecto del
+        // usuario.
+        $items = array_map(
+            static fn (string $m): string => str_ends_with($m, '::class') ? "    {$m}" : "    '{$m}'",
+            $middleware
+        );
+
         return "[\n" . implode(",\n", $items) . ",\n]";
     }
 
@@ -462,15 +542,25 @@ class RouteGenerator extends AbstractComponentGenerator
      * bloque— y la entregaba tal cual como contenido de un archivo nuevo. Lo que salía era un `.php`
      * sin apertura, sin `use` y sin una sola ruta que Laravel pudiera registrar.
      */
-    private function buildFileHeader(string $controllerFqcn): string
+    private function buildFileHeader(string $controllerFqcn, string $archivo): string
     {
+        // Los `use` de la tenencia van aquí y no en la envoltura porque los escribe quien sabe qué
+        // archivo se está creando: un `InitializeTenancyByDomain::class` sin su import es una clase
+        // inexistente en ese espacio de nombres, y el archivo entero deja de registrar rutas.
+        $imports = [$controllerFqcn, ...TenancyPackage::current()->routeImports($archivo)];
+
+        $lineas = implode("\n", array_map(
+            static fn (string $fqcn): string => "use {$fqcn};",
+            $imports
+        ));
+
         return <<<PHP
         <?php
 
         declare(strict_types=1);
 
         use Illuminate\Support\Facades\Route;
-        use {$controllerFqcn};
+        {$lineas}
 
 
         PHP;

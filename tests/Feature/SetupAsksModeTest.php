@@ -82,6 +82,55 @@ it('sin modo y sin poder preguntar, no sigue adelante en silencio', function () 
     );
 });
 
+// ─── Y con el modo, el paquete de tenencia ───────────────────────────────────────────────────
+//
+// Misma razón que el modo: decide la forma de lo que se genera —la envoltura de cada archivo de
+// rutas— y por eso se elige al instalar. La diferencia es a quién se le pregunta: solo a los modos
+// que tienen tenants.
+
+it('en multitenant escribe también el paquete de tenencia en el .env', function () {
+    $env = base_path('.env');
+    File::put($env, "APP_NAME=Testbench\nAPP_ENV=testing\n");
+
+    Artisan::call('innodite:module-setup', [
+        '--mode'           => 'multitenant-shared',
+        '--tenancy'        => 'stancl',
+        '--no-interaction' => true,
+    ]);
+
+    expect(File::get($env))->toContain('MODULE_MAKER_TENANCY_PACKAGE=stancl');
+
+    File::delete($env);
+});
+
+it('en single-app no pregunta el paquete de tenencia ni lo escribe', function () {
+    // No hay dominios centrales que separar ni tenant que identificar: la respuesta no cambiaría un
+    // solo archivo generado, y pedirla es pedir una decisión que no decide nada.
+    $env = base_path('.env');
+    File::put($env, "APP_NAME=Testbench\nAPP_ENV=testing\n");
+
+    Artisan::call('innodite:module-setup', ['--mode' => 'single-app', '--no-interaction' => true]);
+
+    expect(File::get($env))->not->toContain('MODULE_MAKER_TENANCY_PACKAGE');
+
+    File::delete($env);
+});
+
+it('rechaza un paquete de tenencia que no soporta, y dice cuáles hay', function () {
+    Artisan::call('innodite:module-setup', [
+        '--mode'           => 'multitenant-shared',
+        '--tenancy'        => 'tenancy-for-laravel',
+        '--no-interaction' => true,
+    ]);
+
+    $salida = Artisan::output();
+
+    expect($salida)->toContain('stancl');
+    expect(str_contains($salida, 'FIX:'))->toBeTrue(
+        'R30: el mensaje trae el error y cómo corregirlo, no solo el rechazo.'
+    );
+});
+
 it('los tres modos que ofrece el instalador son los tres del enum', function () {
     // Si alguien añade un cuarto modo al enum y no aparece en el instalador, el proyecto no podría
     // elegirlo al instalar — que es el único momento en que la norma permite elegirlo.

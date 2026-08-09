@@ -173,6 +173,114 @@ it('el archivo de rutas de un tenant es PHP de verdad, no un bloque suelto', fun
     );
 });
 
+// ─── La envoltura de tenencia: la declara el proyecto, no la adivina el paquete ──────────────
+//
+// Un archivo de rutas de un proyecto multitenant necesita envoltura, y esa envoltura está escrita
+// en el vocabulario del paquete de tenencia que use el proyecto: la central se sirve en sus
+// dominios, y una ruta de tenant identifica a su tenant antes de tocar una tabla. El paquete no lo
+// deduce mirando el vendor — lo declara la configuración, que es la regla 5 un nivel más abajo.
+
+it('con stancl, las rutas de la central se sirven solo en los dominios centrales', function () {
+    config()->set('make-module.tenancy.package', 'stancl');
+
+    $rutas = soloCodigo(
+        $this->generateModule('Invoice', ModuleMode::MultitenantPerTenant, 'central')
+            ->contents('Routes/web.php')
+    );
+
+    expect(str_contains($rutas, "config('tenancy.central_domains')"))->toBeTrue(
+        'FALLA: las rutas de la central no se limitan a los dominios centrales. · FIX: envuélvelas '
+        . "en un foreach sobre config('tenancy.central_domains') con Route::domain(); sin eso "
+        . "responden también en el dominio de cada cliente.\nEl archivo dice:\n" . $rutas
+    );
+
+    expect(str_contains($rutas, 'Route::domain($dominio)'))->toBeTrue(
+        'FALLA: el grupo no ata las rutas a un dominio. · FIX: recorrer los dominios sin usarlos '
+        . 'deja la envoltura decorativa.'
+    );
+});
+
+it('con stancl, las rutas de un tenant lo identifican antes de responder', function () {
+    config()->set('make-module.tenancy.package', 'stancl');
+
+    $rutas = $this->generateModule('Meter', ModuleMode::MultitenantPerTenant, 'tenant-one')
+        ->contents('Routes/tenant.php');
+
+    $codigo = soloCodigo($rutas);
+
+    foreach (['InitializeTenancyByDomain::class', 'PreventAccessFromCentralDomains::class'] as $mw) {
+        expect(str_contains($codigo, $mw))->toBeTrue(
+            "FALLA: el bloque del tenant no exige '{$mw}'. · FIX: sin identificación, la ruta "
+            . 'responde en cualquier dominio y contra la base que estuviera conectada — que es el '
+            . "aislamiento que el modo entero existe para dar.\nEl archivo dice:\n" . $rutas
+        );
+    }
+
+    expect(str_contains($codigo, 'use Stancl\\Tenancy\\Middleware\\InitializeTenancyByDomain;'))->toBeTrue(
+        'FALLA: el middleware se usa como clase y el archivo no lo importa. · FIX: un `::class` sin '
+        . "su `use` nombra una clase inexistente en ese espacio de nombres.\nEl archivo dice:\n" . $rutas
+    );
+
+    expect(str_contains($codigo, "'InitializeTenancyByDomain::class'"))->toBeFalse(
+        'FALLA: el middleware salió entrecomillado. · FIX: entre comillas es un alias literal que '
+        . 'ningún kernel resuelve, y la ruta falla al registrarse en el proyecto del usuario.'
+    );
+});
+
+it('sin paquete de tenencia declarado no se inventa envoltura: el archivo dice dónde va', function () {
+    // D8: con cualquier valor distinto de los soportados el paquete NO envuelve y deja el hueco
+    // señalado. Y por eso `none` es el valor por defecto y no `stancl`: escribir la envoltura de
+    // stancl en un proyecto que no lo tiene produce un archivo que referencia clases inexistentes y
+    // la aplicación deja de arrancar. Dejarla fuera deja una nota en un archivo que sigue siendo
+    // válido — un fallo ruidoso y recuperable en vez de uno que lo tumba todo.
+    config()->set('make-module.tenancy.package', 'none');
+
+    $rutas = $this->generateModule('Invoice', ModuleMode::MultitenantPerTenant, 'central')
+        ->contents('Routes/web.php');
+
+    expect(str_contains(soloCodigo($rutas), 'central_domains'))->toBeFalse(
+        'FALLA: se escribió una envoltura de stancl en un proyecto que no lo declara. · FIX: sin '
+        . 'paquete soportado la envoltura la escribe el desarrollador.'
+    );
+
+    expect(str_contains($rutas, 'FALTA LA ENVOLTURA'))->toBeTrue(
+        'FALLA: el archivo sale sin envoltura y sin decirlo. · FIX: el hueco se señala en el propio '
+        . "archivo, con qué haría stancl; en silencio nadie lo descubre.\nEl archivo dice:\n" . $rutas
+    );
+});
+
+it('un paquete de tenencia declarado y desconocido no se ignora en silencio', function () {
+    // Ausente significa «no elegí»; desconocido significa «elegí y no me hiciste caso». El segundo
+    // se dice en voz alta: si no, el desarrollador declara su paquete y se queda buscando por qué
+    // sus rutas salen sin envoltura.
+    config()->set('make-module.tenancy.package', 'tenancy-for-laravel');
+
+    $modulo = $this->generateModule('Invoice', ModuleMode::MultitenantPerTenant, 'central');
+
+    expect(str_contains($modulo->output(), 'tenancy-for-laravel'))->toBeTrue(
+        'FALLA: el paquete declarado no se reconoce y el comando no lo dice. · FIX: R30 — el aviso '
+        . "nombra el valor y dice cómo corregirlo.\nLa salida dice:\n" . $modulo->output()
+    );
+
+    expect(str_contains($modulo->contents('Routes/web.php'), 'tenancy-for-laravel'))->toBeTrue(
+        'FALLA: el archivo generado no dice por qué le falta la envoltura. · FIX: la nota nombra el '
+        . 'paquete declarado, que es lo que conecta el hueco con la decisión que lo dejó ahí.'
+    );
+});
+
+it('en single-app no hay envoltura de tenencia que declarar', function () {
+    // La otra cara de la regla: aquí no hay dominios centrales que separar ni tenant que
+    // identificar, así que declarar stancl no puede cambiar un solo archivo generado.
+    config()->set('make-module.tenancy.package', 'stancl');
+
+    $rutas = $this->generateModule('Invoice', ModuleMode::SingleApp)
+        ->contents('Routes/web.php');
+
+    expect($rutas)->not->toContain('central_domains');
+    expect($rutas)->not->toContain('InitializeTenancyByDomain');
+    expect($rutas)->not->toContain('FALTA LA ENVOLTURA');
+});
+
 it('en multitenant las rutas llevan el prefijo y el middleware de su contexto', function () {
     $rutas = $this->generateModule('Invoice', ModuleMode::MultitenantPerTenant, 'central')
         ->contents('Routes/web.php');
