@@ -324,7 +324,20 @@ class SetupModuleMakerCommand extends Command
                 return;
             }
 
-            if (! $this->confirm("  El .env dice '{$valorActual}'. ¿Cambiarlo a '{$valor}'?", false)) {
+            // Si el valor llegó por bandera, el usuario ya decidió: preguntar otra vez solo tiene
+            // sentido cuando hay alguien delante. Sin terminal —CI, scripts, --no-interaction— la
+            // respuesta silenciosa era «no», así que el modo pedido con --mode se ignoraba y el
+            // comando terminaba anunciando «Configuración completa» de todas formas.
+            $porBandera = $this->option('mode') !== null || $this->option('tenancy') !== null;
+
+            if (! $porBandera && ! $this->confirm("  El .env dice '{$valorActual}'. ¿Cambiarlo a '{$valor}'?", false)) {
+                $this->warn("  El {$queEs} se queda como estaba.");
+
+                return;
+            }
+
+            if ($porBandera && $this->input->isInteractive()
+                && ! $this->confirm("  El .env dice '{$valorActual}'. ¿Cambiarlo a '{$valor}'?", true)) {
                 $this->warn("  El {$queEs} se queda como estaba.");
 
                 return;
