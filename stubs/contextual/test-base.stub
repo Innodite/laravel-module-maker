@@ -33,7 +33,7 @@ abstract class {{{ baseName }}} extends TestCase
 {
     /** El guard de las rutas generadas: el `web` de la sesión. */
     protected string $guard = 'web';
-
+{{{ sinIdentificacionDeTenant }}}
     // ── Las rutas y su permiso ────────────────────────────────────────────────────────────────
 
     /**

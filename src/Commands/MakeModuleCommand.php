@@ -11,7 +11,7 @@ use Innodite\LaravelModuleMaker\Commands\Concerns\RehearsesChanges;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Str;
 use Innodite\LaravelModuleMaker\Generators\Components\ModuleGenerator;
-use Innodite\LaravelModuleMaker\Services\ModuleAuditor;
+use Innodite\LaravelModuleMaker\Services\EventLog;
 use Innodite\LaravelModuleMaker\Support\ContextOption;
 use Innodite\LaravelModuleMaker\Support\ContextResolver;
 use Innodite\LaravelModuleMaker\Support\ModuleMode;
@@ -162,7 +162,7 @@ class MakeModuleCommand extends Command
             $this->displaySuccess($moduleName, $contextKey, $contextId);
 
             // ── Auditoría ─────────────────────────────────────────────────────
-            ModuleAuditor::log('module.created', [
+            EventLog::log('module.created', [
                 'module'        => $moduleName,
                 'context_key'   => $contextKey,
                 'context_id'    => $contextId,
@@ -172,17 +172,26 @@ class MakeModuleCommand extends Command
             return Command::SUCCESS;
         } catch (Throwable $e) {
             $this->newLine();
+            $hayRestos = File::exists($modulePath);
+
             $this->fallo(
                 $e->getMessage(),
-                'corrige lo anterior y vuelve a generar; abajo se ofrece deshacer lo escrito.',
+                $hayRestos
+                    ? "corrige lo anterior y vuelve a generar. Lo que quedó a medias está en "
+                      . "{$modulePath}: abajo se ofrece borrarlo, y sin terminal interactiva hay "
+                      . 'que borrarlo a mano.'
+                    : 'corrige lo anterior y vuelve a generar.',
                 'La generación se detuvo a medias: lo que quedó en disco no es un módulo completo.'
             );
 
-            // ── Rollback opcional si hay archivos generados ───────────────────
-            if ($filesGenerated && File::exists($modulePath)) {
+            // El rollback se ofrece por lo que hay EN DISCO, no por si se llegó a generar algún
+            // componente. Cuando el fallo salta en el primer stub, `$filesGenerated` sigue en false
+            // y la carpeta del módulo ya existe con su estructura y sus Docs dentro — que es
+            // exactamente el caso que dejó dos módulos a medias en un proyecto real.
+            if ($hayRestos) {
                 if ($this->confirm("¿Deseas eliminar los archivos generados en '{$modulePath}'? (Rollback)")) {
                     $this->performRollback($modulePath);
-                    ModuleAuditor::log('module.rollback', [
+                    EventLog::log('module.rollback', [
                         'module'      => $moduleName,
                         'context_key' => $contextKey ?? 'unknown',
                         'reason'      => $e->getMessage(),
@@ -603,8 +612,16 @@ class MakeModuleCommand extends Command
         // El primer paso pedía añadir marcadores en el `routes/web.php` del proyecto, que era donde
         // el generador inyectaba una segunda copia de las rutas. Ya no escribe ahí: las del módulo
         // viven en Modules/{$moduleName}/Routes/ y las carga el ServiceProvider del paquete.
-        $this->line("    1. Registra el Service Provider en <comment>bootstrap/providers.php</comment> si usas Laravel 11+.");
-        $this->line("    2. Ejecuta <comment>php artisan migrate</comment> para crear las tablas.");
+        // Ninguno de los dos pasos que decía antes era cierto en la v4:
+        //   · El ServiceProvider del módulo NO hay que registrarlo a mano — lo registra el del
+        //     paquete al arrancar, y en los dos proyectos reales `bootstrap/providers.php` no
+        //     nombra ni uno solo.
+        //   · `php artisan migrate` a secas es justo lo que el patrón prohíbe (R22): ejecuta todo
+        //     lo pendiente del proyecto, no la migración de este módulo. Para eso está `deploy`,
+        //     que además pone permisos y datos canónicos en el orden declarado.
+        $this->line("    1. Revisa la migración generada y ajusta sus columnas al negocio.");
+        $this->line("    2. Despliega el módulo: <comment>php artisan innodite:deploy stage</comment>");
+        $this->line("       (o una sola migración con <comment>innodite:migrate-one</comment>).");
         $this->newLine();
     }
 }

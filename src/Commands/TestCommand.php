@@ -130,7 +130,10 @@ class TestCommand extends Command
      */
     protected function prepararLaBase(): bool
     {
-        $conexion = (string) config('database.default');
+        // La conexión de la SUITE, no la de la aplicación: este comando corre por artisan, fuera de
+        // PHPUnit, así que `database.default` responde por la app —la base real— y con eso se le
+        // denegaba la ejecución a un proyecto correctamente configurado (ver TestDatabase::laDeLaSuite).
+        $conexion = TestDatabase::laDeLaSuite();
         $nombre   = TestDatabase::nombreDe($conexion);
 
         if (! $this->baseClonable()) {
@@ -168,7 +171,7 @@ class TestCommand extends Command
      */
     protected function baseClonable(): bool
     {
-        $nombre = TestDatabase::nombreDe((string) config('database.default'));
+        $nombre = TestDatabase::nombreDe(TestDatabase::laDeLaSuite());
 
         return $nombre !== '' && $nombre !== ':memory:';
     }
@@ -179,7 +182,7 @@ class TestCommand extends Command
         $this->components->twoColumnDetail('Base de pruebas', "<fg=yellow>se reclona {$motivo}</>");
 
         $codigo = $this->call('innodite:crear-bd-test', [
-            '--connection' => TestDatabase::registrarReal((string) config('database.default')),
+            '--connection' => TestDatabase::registrarReal(TestDatabase::laDeLaSuite()),
             '--force'      => true,
         ]);
 
@@ -261,7 +264,8 @@ class TestCommand extends Command
 
         $this->fallo(
             'al grupo le faltan ' . count($faltan) . " pieza(s):\n    " . implode("\n    ", $faltan),
-            'complétalas con /ajustar-pruebas, o regenera la subfuncionalidad.',
+            'regenera la subfuncionalidad con innodite:add-entity, o escribe las piezas que faltan '
+            . 'tomando como modelo las que ya están.',
             'No se ejecuta nada: sin el manifiesto las demás no pueden derivar rutas ni permisos, y '
             . 'lo que saldría serían fallos que describen el síntoma y esconden la causa.'
         );

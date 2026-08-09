@@ -48,7 +48,7 @@ class DeployOrderInjectionService
             $this->avisar(
                 "La configuración del paquete no está publicada, así que '{$path}' no se añadió al "
                 . "orden de despliegue.\n"
-                . "   Publícala con: php artisan vendor:publish --tag=make-module-config\n"
+                . "   Publícala con: php artisan vendor:publish --tag=module-maker-config\n"
                 . '   y añade la línea a mano en `deploy`.'
             );
 

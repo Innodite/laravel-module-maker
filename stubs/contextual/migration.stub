@@ -10,6 +10,17 @@ return new class extends Migration
 {
     public function up(): void
     {
+        // La guarda es la que hace idempotente al despliegue, y no sobra nunca.
+        //
+        // El despliegue se relanza: tras un fallo a medias, al entrar un cliente nuevo, o al volver
+        // a generar el módulo —que escribe una migración con fecha nueva, y esa fecha no está en la
+        // tabla `migrations` aunque la tabla de negocio ya exista—. Sin la guarda, ese segundo
+        // intento muere con «table already exists» y se lleva por delante todo lo que venía detrás
+        // en el orden de despliegue.
+        if (Schema::hasTable('{{{ tableName }}}')) {
+            return;
+        }
+
         Schema::create('{{{ tableName }}}', function (Blueprint $table) {
             {{{ columns }}}
         });

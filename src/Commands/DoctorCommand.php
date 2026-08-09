@@ -8,9 +8,11 @@ use Illuminate\Console\Command;
 use Illuminate\Support\Facades\File;
 use Innodite\LaravelModuleMaker\Commands\Concerns\PrintsHeader;
 use Innodite\LaravelModuleMaker\Contracts\ProveedorDeCriterio;
+use Innodite\LaravelModuleMaker\LaravelModuleMakerServiceProvider;
 use Innodite\LaravelModuleMaker\Commands\Concerns\ReportsFailures;
-use Innodite\LaravelModuleMaker\Services\ModuleAuditor;
+use Innodite\LaravelModuleMaker\Services\EventLog;
 use Innodite\LaravelModuleMaker\Support\ModuleMode;
+use Innodite\LaravelModuleMaker\Support\StubPlaceholder;
 use Throwable;
 
 /**
@@ -96,6 +98,10 @@ class DoctorCommand extends Command
         $ok = $this->comprobarPermisosDeEscritura() && $ok;
         $this->newLine();
         $ok = $this->comprobarColisiones() && $ok;
+        $this->newLine();
+        $ok = $this->comprobarConfigPublicada() && $ok;
+        $this->newLine();
+        $ok = $this->comprobarStubsPublicados() && $ok;
         $this->newLine();
         $this->mostrarLogDeEventos();
         $this->newLine();
@@ -367,13 +373,28 @@ class DoctorCommand extends Command
             $colisiones = array_merge($colisiones, $this->migracionesDuplicadas($directorio, $nombre));
         }
 
-        if ($colisiones !== []) {
-            $this->fallo(
-                "hay " . count($colisiones) . " colisión(es):\n    " . implode("\n    ", $colisiones),
-                'renombra uno de los dos — el módulo en contexts.json, o el archivo de migración.',
-                'Dos piezas que resuelven al mismo sitio se pisan lo generado, y gana la última que '
-                . 'corra.'
-            );
+        $tapados = $this->comandosTapadosPorElProyecto();
+
+        if ($colisiones !== [] || $tapados !== []) {
+            if ($colisiones !== []) {
+                $this->fallo(
+                    "hay " . count($colisiones) . " colisión(es):\n    " . implode("\n    ", $colisiones),
+                    'renombra uno de los dos — el módulo en contexts.json, o el archivo de migración.',
+                    'Dos piezas que resuelven al mismo sitio se pisan lo generado, y gana la última que '
+                    . 'corra.'
+                );
+            }
+
+            if ($tapados !== []) {
+                $this->fallo(
+                    count($tapados) . " comando(s) del paquete están tapados por otros del proyecto:\n    "
+                    . implode("\n    ", $tapados),
+                    'borra el comando del proyecto y usa el del paquete, o renombra el tuyo. '
+                    . 'Comprueba cuál gana con php artisan help <comando>.',
+                    'Los dos se llaman igual y gana el del proyecto: se ejecuta uno creyendo usar el otro, '
+                    . 'con otras opciones y otro comportamiento.'
+                );
+            }
 
             return false;
         }
@@ -383,14 +404,79 @@ class DoctorCommand extends Command
             '<fg=green>OK — ' . count($directorios) . ' módulo(s), sin colisiones</>'
         );
 
+        $this->components->twoColumnDetail('Comandos', '<fg=green>OK — ninguno tapado</>');
+
         return true;
     }
 
     /**
-     * Two migrations of the same table inside one module.
+     * Package commands shadowed by a command of the host project with the same name.
+     *
+     * Laravel resolves one name to one class, and the project's own commands win. The developer then
+     * runs `innodite:crear-bd-test` believing they are running the package's, and they are not: they
+     * get another set of options and another behaviour, with nothing on screen saying so.
+     *
+     * It is not hypothetical. Both projects that upgraded to v4 carried their own copy of that very
+     * command from the v3 days — one of them declaring `--dry-run` in the package's signature while
+     * the shadowing command had never heard of it, which is how this was found: an option that the
+     * documentation promised and Laravel swore did not exist.
+     *
+     * @return array<int, string>
+     */
+    private function comandosTapadosPorElProyecto(): array
+    {
+        $tapados = [];
+
+        foreach (LaravelModuleMakerServiceProvider::COMANDOS as $clase) {
+            $nombre = $this->nombreDeclaradoPor($clase);
+
+            if ($nombre === '') {
+                continue;
+            }
+
+            $registrado = $this->getApplication()?->all()[$nombre] ?? null;
+
+            if ($registrado === null || $registrado::class === $clase) {
+                continue;
+            }
+
+            // Solo cuenta si el nombre es de los que el paquete declara. Un comando propio del
+            // proyecto que use el prefijo `innodite:` para algo que el paquete no tiene —una
+            // comprobación suya, un mantenimiento— no tapa nada y no es asunto de este diagnóstico.
+            $tapados[] = "{$nombre} → lo resuelve " . $registrado::class;
+        }
+
+        return $tapados;
+    }
+
+    /**
+     * The command name a class declares, read without instantiating it.
+     *
+     * Reflection on the default value of `$signature` keeps this from depending on constructors: the
+     * diagnostic must be able to ask about a command it is not going to run.
+     */
+    private function nombreDeclaradoPor(string $clase): string
+    {
+        try {
+            $firma = (new \ReflectionClass($clase))->getDefaultProperties()['signature'] ?? '';
+        } catch (Throwable) {
+            return '';
+        }
+
+        return is_string($firma) ? trim(strtok(trim($firma), " \n\r\t") ?: '') : '';
+    }
+
+    /**
+     * Two migrations of the same table inside one module AND one context.
      *
      * The timestamp prefix is stripped before comparing, and it comes in two lengths: the standard six
      * digits and the microsecond variant the generator writes when it creates several in one second.
+     *
+     * The context is part of the key on purpose. The same table living in `Central/` and in `Tenant/`
+     * is not a collision — it is what multitenancy requires: the central database has its `users` and
+     * so does every tenant, and both migrations are named alike because they describe the same table
+     * in different databases. Comparing names alone flagged four legitimate pairs in a real project
+     * and, being a stage-1 error, cut the whole diagnostic before it reached the host contract.
      *
      * @return array<int, string>
      */
@@ -416,14 +502,137 @@ class DoctorCommand extends Command
                 continue;
             }
 
-            if (in_array($nombre, $encontradas, true)) {
-                $duplicadas[] = "{$modulo} → migración duplicada: {$nombre}";
+            $contexto = $this->contextoDeLaMigracion($carpeta, $archivo->getPathname());
+            $clave    = "{$contexto}\0{$nombre}";
+
+            if (in_array($clave, $encontradas, true)) {
+                $donde        = $contexto === '' ? '' : " en {$contexto}";
+                $duplicadas[] = "{$modulo} → migración duplicada{$donde}: {$nombre}";
             }
 
-            $encontradas[] = $nombre;
+            $encontradas[] = $clave;
         }
 
         return $duplicadas;
+    }
+
+    /**
+     * The context a migration belongs to: the first folder under `Database/Migrations`.
+     *
+     * `Database/Migrations/Central/RolesPermissions/…` → `Central`. In single-app the migrations hang
+     * straight off the subfeature and there is no context to separate, so this returns an empty string
+     * and the comparison falls back to the plain name — which is the previous behaviour.
+     */
+    private function contextoDeLaMigracion(string $carpeta, string $rutaAbsoluta): string
+    {
+        $relativa = ltrim(str_replace($carpeta, '', $rutaAbsoluta), DIRECTORY_SEPARATOR . '/');
+        $partes   = explode('/', str_replace('\\', '/', $relativa));
+
+        // One part means the file hangs off the root: no context, no subfeature.
+        return count($partes) > 1 ? $partes[0] : '';
+    }
+
+    /**
+     * Published stubs still written in the v3 format — the one thing that stops a v3 project cold.
+     *
+     * A project that ran `module-setup` under v3 has `module-maker-config/stubs/contextual/` filled
+     * with `{{ key }}` placeholders. v4 delimits with `{{{ key }}}` —the double brace collides with
+     * Vue— and the installer does not overwrite published stubs, on purpose: they may carry the
+     * project's own edits.
+     *
+     * The result, before this check existed, was the worst possible order of events: the diagnostic
+     * passed green, generation started, folders and docs were written, and it died on the first
+     * stub — leaving half a module on disk. Both real projects that upgraded hit it.
+     *
+     * Here it costs one line and lands before anything is written.
+     */
+    /**
+     * The published configuration, without which generating registers nothing.
+     *
+     * **It is a failure, not a note.** The generator writes the module either way and the diagnostic
+     * used to pass, so the project looked healthy — but `deploy` lives in this file, and with no file
+     * there is nowhere to declare the new subfeature. What is left is a module fully written on disk
+     * that no deployment ever runs: its tables are never created and its permissions never exist, so
+     * the screen it generated opens for nobody. The generator says so as it writes, in one line among
+     * forty, and that line is read once.
+     */
+    private function comprobarConfigPublicada(): bool
+    {
+        $this->line('  <fg=cyan;options=bold>5. Configuración publicada</>');
+
+        if (File::exists(config_path('make-module.php'))) {
+            $this->components->twoColumnDetail(
+                'config/make-module.php',
+                '<fg=green>OK — publicada</>'
+            );
+
+            return true;
+        }
+
+        $this->fallo(
+            'config/make-module.php no está publicada.',
+            'publícala con: php artisan vendor:publish --tag=module-maker-config',
+            'El orden de despliegue (`deploy`) vive en ese archivo: sin él, generar un módulo no lo '
+            . 'declara en ningún sitio y el despliegue nunca lo levanta.'
+        );
+
+        return false;
+    }
+
+    private function comprobarStubsPublicados(): bool
+    {
+        $this->line('  <fg=cyan;options=bold>6. Stubs publicados</>');
+
+        $carpeta = rtrim((string) config('make-module.config_path'), '/\\') . '/stubs/contextual';
+
+        if (! File::isDirectory($carpeta)) {
+            $this->components->twoColumnDetail(
+                'stubs/contextual/',
+                '<fg=gray>Sin publicar — se usan los del paquete</>'
+            );
+
+            return true;
+        }
+
+        $legacy = [];
+
+        foreach (File::allFiles($carpeta) as $archivo) {
+            $contenido = (string) File::get($archivo->getPathname());
+
+            // Formato v3 = tiene placeholders de doble llave y ninguno de triple. La segunda mitad
+            // es la que evita el falso positivo en los stubs Vue, donde `{{ }}` es interpolación
+            // legítima: los de la v4 traen además sus `{{{ }}}`.
+            if (
+                str_contains($contenido, StubPlaceholder::OPEN)
+                || preg_match(StubPlaceholder::legacyPattern(), $contenido) !== 1
+            ) {
+                continue;
+            }
+
+            $legacy[] = $archivo->getFilename();
+        }
+
+        if ($legacy !== []) {
+            $muestra = implode(', ', array_slice($legacy, 0, 5));
+            $resto   = count($legacy) > 5 ? ' y ' . (count($legacy) - 5) . ' más' : '';
+
+            $this->fallo(
+                count($legacy) . ' stub(s) publicados siguen en el formato de la v3: ' . $muestra . $resto,
+                'pásalos a triple llave ({{{ clave }}}), o borra ' . $carpeta
+                . ' para volver a los del paquete y republicar solo los que personalices.',
+                'Con ellos la generación arranca, escribe carpetas y docs, y muere en el primer stub: '
+                . 'lo que queda en disco no es un módulo completo.'
+            );
+
+            return false;
+        }
+
+        $this->components->twoColumnDetail(
+            'stubs/contextual/',
+            '<fg=green>OK — ' . count(File::allFiles($carpeta)) . ' stub(s), formato v4</>'
+        );
+
+        return true;
     }
 
     /**
@@ -435,9 +644,9 @@ class DoctorCommand extends Command
      */
     private function mostrarLogDeEventos(): void
     {
-        $this->line('  <fg=cyan;options=bold>5. Log de eventos</>');
+        $this->line('  <fg=cyan;options=bold>7. Log de eventos</>');
 
-        $entradas = ModuleAuditor::readLog();
+        $entradas = EventLog::readLog();
 
         if ($entradas === []) {
             $this->components->twoColumnDetail(
@@ -448,7 +657,7 @@ class DoctorCommand extends Command
             return;
         }
 
-        $this->components->twoColumnDetail('module_maker.log', '<fg=green>' . ModuleAuditor::logPath() . '</>');
+        $this->components->twoColumnDetail('module_maker.log', '<fg=green>' . EventLog::logPath() . '</>');
         $this->newLine();
         $this->line('  <fg=gray>Últimas 5 operaciones:</>');
 

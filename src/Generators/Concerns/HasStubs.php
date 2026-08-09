@@ -53,7 +53,7 @@ trait HasStubs
                 "El archivo stub '{$stubFile}' no se encuentra.\n" .
                 "Buscado en: {$stubPath}\n" .
                 "Ese es un stub del paquete, no del proyecto: reinstala con 'composer reinstall innodite/laravel-module-maker'.\n" .
-                "Si lo que querías era personalizarlo, publícalo con 'php artisan innodite:stubs publish {$stubFile}'."
+                "Si querías personalizarlo, cópialo a module-maker-config/stubs/contextual/{$stubFile} y edítalo allí."
             );
         }
 

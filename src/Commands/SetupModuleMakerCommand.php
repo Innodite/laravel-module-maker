@@ -120,7 +120,7 @@ class SetupModuleMakerCommand extends Command
         $this->modifyDatabaseSeeder($desplegadores);
 
         $this->newLine();
-        $this->info("Configuración completa.");
+        $this->hecho("Configuración completa.");
         $this->line("  → Edita <comment>module-maker-config/contexts.json</comment> con los contextos de tu proyecto.");
         $this->line("  → Personaliza stubs en <comment>module-maker-config/stubs/contextual/</comment>.");
         $this->line("  → Ejecuta: <comment>php artisan innodite:make-module NombreModulo SubFuncionalidad</comment>");
@@ -324,20 +324,33 @@ class SetupModuleMakerCommand extends Command
                 return;
             }
 
-            if (! $this->confirm("  El .env dice '{$valorActual}'. ¿Cambiarlo a '{$valor}'?", false)) {
+            // Si el valor llegó por bandera, el usuario ya decidió: preguntar otra vez solo tiene
+            // sentido cuando hay alguien delante. Sin terminal —CI, scripts, --no-interaction— la
+            // respuesta silenciosa era «no», así que el modo pedido con --mode se ignoraba y el
+            // comando terminaba anunciando «Configuración completa» de todas formas.
+            $porBandera = $this->option('mode') !== null || $this->option('tenancy') !== null;
+
+            if (! $porBandera && ! $this->confirm("  El .env dice '{$valorActual}'. ¿Cambiarlo a '{$valor}'?", false)) {
+                $this->warn("  El {$queEs} se queda como estaba.");
+
+                return;
+            }
+
+            if ($porBandera && $this->input->isInteractive()
+                && ! $this->confirm("  El .env dice '{$valorActual}'. ¿Cambiarlo a '{$valor}'?", true)) {
                 $this->warn("  El {$queEs} se queda como estaba.");
 
                 return;
             }
 
             Disk::put($envPath, preg_replace("/^{$clave}=.*$/m", $linea, $contenido));
-            $this->info("  ✅ .env actualizado: {$linea}");
+            $this->hecho("  ✅ .env actualizado: {$linea}");
 
             return;
         }
 
         Disk::put($envPath, rtrim($contenido, "\n") . "\n\n{$linea}\n");
-        $this->info("  ✅ Escrito en .env: {$linea}");
+        $this->hecho("  ✅ Escrito en .env: {$linea}");
     }
 
     /**
@@ -375,7 +388,7 @@ class SetupModuleMakerCommand extends Command
         }
 
         Disk::copyDirectory($packageStubsPath, $destPath);
-        $this->info("✅ Stubs publicados en: module-maker-config/stubs/contextual/");
+        $this->hecho("✅ Stubs publicados en: module-maker-config/stubs/contextual/");
     }
 
     /**
@@ -401,7 +414,7 @@ class SetupModuleMakerCommand extends Command
         }
 
         Disk::copy($source, $destination);
-        $this->info("✅ contexts.json publicado en: module-maker-config/contexts.json");
+        $this->hecho("✅ contexts.json publicado en: module-maker-config/contexts.json");
         $this->line("   Edita este archivo para configurar los contextos (Central, Shared, Tenants).");
     }
 
@@ -495,7 +508,7 @@ class SetupModuleMakerCommand extends Command
 
         Disk::put($seederPath, str_replace($anclaje, $reemplazo, $seederContent));
 
-        $this->info("✅ DatabaseSeeder.php llama ahora a {$principal}.");
+        $this->hecho("✅ DatabaseSeeder.php llama ahora a {$principal}.");
     }
 
     /**
@@ -511,7 +524,27 @@ class SetupModuleMakerCommand extends Command
             $this->line("   <comment>{$label}</comment> ya existe.");
         } else {
             Disk::makeDirectory($path, 0755, true);
-            $this->info("✅ Carpeta creada: {$label}");
+            $this->hecho("✅ Carpeta creada: {$label}");
         }
+    }
+
+    /**
+     * Un hecho consumado, o lo que sería si esto no fuese un ensayo.
+     *
+     * El instalador imprimía «✅ Escrito en .env», «✅ Seeder creado» y «Configuración completa»
+     * también con `--dry-run` puesto, y solo al final aclaraba que no había tocado nada. Un resumen
+     * honesto detrás de doce líneas que afirman lo contrario no repara nada: quien lee las primeras
+     * ya se lo creyó. Es la misma familia de defecto que esta fase estuvo cerrando — una pieza
+     * afirmando algo que no es cierto.
+     */
+    private function hecho(string $mensaje): void
+    {
+        if ((bool) $this->option('dry-run')) {
+            $this->line("  <fg=gray>· (ensayo) {$mensaje}</>");
+
+            return;
+        }
+
+        $this->info($mensaje);
     }
 }

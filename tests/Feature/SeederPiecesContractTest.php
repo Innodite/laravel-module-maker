@@ -219,3 +219,34 @@ it('el de permisos no revienta donde no hay tabla de permisos', function () {
         'Se escribe contra las tablas, no contra las clases de un paquete que puede no estar.'
     );
 });
+
+it('el de permisos entrega la clave del módulo cuando la tabla no la rellena sola', function () {
+    // Aquí se detenía el despliegue entero, y en el primer módulo que se desplegara: una columna de
+    // texto no tiene valor por defecto, así que insertar sin `id` devuelve «Field 'id' doesn't have
+    // a default value». El seeder de permisos es de los primeros en correr, de modo que el proyecto
+    // no llegaba a crear una sola tabla.
+    //
+    // `modules` es del proyecto, no del paquete: se mira su esquema, no el modo declarado en la
+    // configuración —que describe las tablas que el paquete genera, y esta no lo es—.
+    $contenido = renderizarStub('permissions-seeder.stub', ['seederName' => 'InvoiceInvoicePermissionsSeeder']);
+
+    expect($contenido)->toContain("getColumnType('modules', 'id')")
+        ->and($contenido)->toContain("\$fila['id'] = (string) Str::ulid();")
+        ->and($contenido)->toContain('use Illuminate\\Support\\Str;');
+
+    // Y no solo `modules`: la tabla de permisos es del proyecto por el mismo motivo, y fue la
+    // siguiente en detener el despliegue una vez resuelta la primera.
+    expect($contenido)->toContain("\$this->claveNueva('permissions')");
+
+    // La clave viaja SOLO en el insert. Como valor de un `updateOrInsert`, un permiso que ya
+    // existía vería cambiar su `id` en cada despliegue, y con él cada asignación a un rol.
+    expect(str_contains($contenido, "table('permissions')->updateOrInsert("))->toBeFalse(
+        'Con la clave entre los valores, un permiso existente cambia de id en cada despliegue.'
+    );
+
+    // Y el valor leído se devuelve tal cual. `(int)` sobre un ULID da 0, y ese 0 acabaría escrito
+    // como el módulo de cada permiso: todos agrupados bajo un módulo que no existe.
+    expect(str_contains($contenido, '(int) $id'))->toBeFalse(
+        'Un ULID casteado a entero es 0, y ese 0 acaba escrito en cada permiso.'
+    );
+});

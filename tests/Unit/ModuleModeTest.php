@@ -84,14 +84,19 @@ it('un tenant solo se nombra si tiene lógica propia', function () {
 });
 
 it('las claves de contexto exigidas dependen del modo, no de una lista fija', function () {
+    // Cada modo exige SU catálogo. Antes los dos exigían el mismo —`central, shared, tenant_shared`—
+    // y el mensaje se limitaba a nombrar el modo, así que la distinción existía solo en pantalla: a
+    // un proyecto de tenants iguales se le reclamaba un contexto para lógica repartida por tenant,
+    // que es exactamente lo que ese modo no tiene.
     expect(ModuleMode::MultitenantShared->requiredContextKeys())->toBe(
-        ['central', 'shared', 'tenant_shared'],
-        'Con tenants iguales no hay tenants NOMBRADOS que declarar: la clave "tenant" sobra. '
-        . 'Revisa el match() de ModuleMode::requiredContextKeys().'
+        ['central', 'tenant'],
+        'Con tenants iguales la lógica es una y cada tenant tiene su base: el eje es el `tenant` '
+        . 'genérico, y no hay `tenant_shared` que declarar.'
     );
     expect(ModuleMode::MultitenantPerTenant->requiredContextKeys())->toBe(
-        ['central', 'shared', 'tenant_shared', 'tenant'],
-        'Con lógica por tenant, cada tenant nombrado se declara en contexts.json.'
+        ['central', 'tenant_shared'],
+        'Con lógica por tenant, `tenant_shared` es lo que comparten; los tenants NOMBRADOS salen del '
+        . 'catálogo del proyecto, que el paquete no puede conocer.'
     );
 });
 

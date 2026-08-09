@@ -98,9 +98,13 @@ it('el modo rechaza un contexto que no le corresponde', function () {
     );
     expect(ModuleMode::SingleApp->supportsContext(null))->toBeTrue();
 
-    expect(ModuleMode::MultitenantShared->supportsContext('tenant'))->toBeFalse(
-        'En el modo de tenants iguales no hay tenants nombrados: generar para uno produce justo lo '
-        . 'que ese modo existe para evitar — una copia por tenant de lógica idéntica.'
+    // El `tenant` genérico SÍ se admite en tenants iguales: es el eje del modo —misma lógica, una
+    // base por tenant— y es como lo declaran los proyectos reales. Lo que ese modo no tiene son
+    // tenants NOMBRADOS: generar para uno produciría la copia por tenant que existe para evitar.
+    expect(ModuleMode::MultitenantShared->supportsContext('tenant'))->toBeTrue();
+
+    expect(ModuleMode::MultitenantShared->supportsContext('tenant_acme'))->toBeFalse(
+        'Un tenant nombrado no cabe en el modo de tenants iguales.'
     );
     expect(ModuleMode::MultitenantShared->supportsContext('tenant_shared'))->toBeTrue();
     expect(ModuleMode::MultitenantPerTenant->supportsContext('tenant'))->toBeTrue();

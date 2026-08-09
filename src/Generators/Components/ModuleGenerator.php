@@ -130,7 +130,7 @@ class ModuleGenerator
         $this->createContextSubfolders('Tests/Unit');
 
         if ($this->command) {
-            $this->command->info("✅ Estructura de carpetas v3.0.0 creada para el módulo '{$this->moduleName}'.");
+            $this->command->info("✅ Estructura de carpetas creada para el módulo '{$this->moduleName}'.");
         }
     }
 
@@ -274,7 +274,10 @@ class ModuleGenerator
         // módulo completo. Retirada: el ServiceProvider del paquete carga Modules/*/Routes/ solo.
 
         if ($this->command) {
-            $this->command->info("✅ Módulo '{$this->moduleName}' creado (contexto: {$contextKey} / {$contextId}).");
+            $donde = $contextKey === '' && $contextId === ''
+                ? ''
+                : " (contexto: {$contextKey} / {$contextId})";
+            $this->command->info("✅ Módulo '{$this->moduleName}' creado{$donde}.");
         }
     }
 

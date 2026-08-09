@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Innodite\LaravelModuleMaker\Services;
 
+use Innodite\LaravelModuleMaker\Support\TestDatabase;
 use Symfony\Component\Process\Process;
 
 /**
@@ -33,7 +34,13 @@ class PhpunitRunner
             $comando[] = $filtro;
         }
 
-        $proceso = new Process($comando, base_path());
+        // Las variables del `phpunit.xml` viajan al subproceso, y no se dejan a PHPUnit.
+        //
+        // Un `<env>` sin `force="true"` respeta lo que ya haya en el entorno, y en un contenedor
+        // siempre hay algo: la imagen exporta `DB_DATABASE` con la base real. Un proyecto que
+        // declara su base de pruebas como debe acababa corriendo la suite contra los datos de
+        // verdad — y solo se enteraba porque la guarda de la prueba generada lo detiene.
+        $proceso = new Process($comando, base_path(), TestDatabase::variablesDeLaSuite() + ['APP_ENV' => 'testing']);
 
         // Sin límite de tiempo: el tema 8 despliega de verdad —migraciones, seeders y permisos— y en
         // un módulo grande eso pasa del minuto. Un corte por tiempo se leería como un fallo de la

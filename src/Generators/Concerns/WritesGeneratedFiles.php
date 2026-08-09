@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Innodite\LaravelModuleMaker\Generators\Concerns;
 
 use Innodite\LaravelModuleMaker\Support\Disk;
+use Innodite\LaravelModuleMaker\Support\DryRun;
 use Illuminate\Support\Facades\File;
 use Innodite\LaravelModuleMaker\Support\GeneratedFileCheck;
 
@@ -36,8 +37,20 @@ trait WritesGeneratedFiles
         Disk::put($filePath, $content);
 
         // Los generadores sueltos no tienen consola: escriben igual, en silencio.
-        if ($message !== '' && method_exists($this, 'info')) {
-            $this->info("✅ {$message}");
+        if ($message === '' || ! method_exists($this, 'info')) {
+            return;
         }
+
+        // En ensayo `Disk::put` no escribe — y aun así el mensaje decía «✅ … creado». El resumen
+        // final aclaraba que no se había tocado nada, pero llegaba detrás de veinte líneas que
+        // afirmaban lo contrario, y quien lee las primeras ya se lo creyó. Un ensayo que habla en
+        // pasado no es un ensayo: es un informe falso.
+        if (DryRun::active() && method_exists($this, 'line')) {
+            $this->line("  <fg=gray>· (ensayo) {$message}</>");
+
+            return;
+        }
+
+        $this->info("✅ {$message}");
     }
 }

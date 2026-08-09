@@ -13,6 +13,7 @@ use Innodite\LaravelModuleMaker\Exceptions\ModeNotConfiguredException;
 use Innodite\LaravelModuleMaker\Support\DryRun;
 use Innodite\LaravelModuleMaker\Support\ModuleMode;
 use Innodite\LaravelModuleMaker\Support\SeederNames;
+use Innodite\LaravelModuleMaker\Support\TenancyPackage;
 use Throwable;
 
 /**
@@ -41,6 +42,8 @@ class DeployCommand extends Command
     protected $signature = 'innodite:deploy
         {environment : Qué se despliega: stage | production}
         {--context= : Contexto contra el que se despliega, en multitenant: central | tenant}
+        {--tenant= : Qué tenant se despliega, por su clave. Una ejecución por tenant}
+        {--all : Despliega TODOS los tenants, uno tras otro}
         {--force : Despliega sin pedir confirmación, aunque el modo destructivo esté activo}
         {--dry-run : Ensayo: enseña qué desplegaría y contra qué conexión, sin tocar la base}';
 
@@ -105,7 +108,173 @@ class DeployCommand extends Command
             return self::FAILURE;
         }
 
+        // Cuando los tenants comparten funcionalidad, el despliegue se ejecuta DENTRO del contexto
+        // de cada uno, no contra una conexión.
+        //
+        // Es la otra cara de por qué esos seeders no declaran conexión: el paquete de tenencia
+        // conmuta la conexión por defecto al inicializar el contexto, y en HTTP eso lo hace el
+        // middleware de identificación. En consola no hay middleware que lo haga, así que hasta aquí
+        // el seeder corría contra la base por defecto —la central— creyendo que escribía en la del
+        // cliente, y sin un solo aviso.
+        //
+        // ⛔ No aplica cuando cada tenant tiene su propia lógica: ahí la estructura es distinta por
+        // cliente, el contexto declara su `connection_key` y el seeder generado la lleva escrita. El
+        // destino ya está resuelto en el archivo, y entrar en el contexto no añade nada.
+        if ($contexto === 'tenant' && ! $mode->requiresTenantConnectionKey()) {
+            return $this->deployTenants($fqcn, $pieza);
+        }
+
         return $this->runProjectSeeder($fqcn, $pieza);
+    }
+
+    /**
+     * Despliega el contexto de tenant una vez por cada tenant pedido, dentro de su contexto.
+     *
+     * **Sin valor por defecto, como el resto del comando.** `--tenant=` despliega uno y `--all` los
+     * despliega todos; sin ninguno de los dos no se arranca. Adivinar «el primero» o «todos» son las
+     * dos formas de llenar la base que no era, que es justo lo que este comando existe para evitar.
+     */
+    private function deployTenants(string $fqcn, string $pieza): int
+    {
+        // Primero lo que decide quien lanza el comando, y solo después lo que depende del entorno:
+        // a quien se olvidó de elegir tenant no se le contesta hablándole de la configuración.
+        if (! $this->eleccionDeTenantValida()) {
+            return self::FAILURE;
+        }
+
+        $tenancy = TenancyPackage::current();
+
+        if (! $tenancy->initialisesContext()) {
+            $this->fallo(
+                "el proyecto no declara un paquete de tenencia que el generador sepa inicializar "
+                . "(hoy: {$tenancy->label()}).",
+                'declara `tenancy_package` en config/make-module.php, o despliega cada tenant desde '
+                . 'tu propio comando envolviendo el seeder en el contexto del cliente.',
+                'Sin inicializar el contexto, el seeder escribe en la base por defecto —la central— '
+                . 'creyendo que escribe en la del cliente.'
+            );
+
+            return self::FAILURE;
+        }
+
+        $tenants = $this->tenantsPedidos();
+
+        if ($tenants === false) {
+            return self::FAILURE;
+        }
+
+        if ($tenants === []) {
+            $this->components->warn(
+                'No hay ningún tenant que desplegar: la tabla de tenants está vacía.'
+            );
+
+            return self::SUCCESS;
+        }
+
+        $salida = self::SUCCESS;
+
+        foreach ($tenants as $tenant) {
+            $clave = (string) $tenant->getTenantKey();
+
+            if (DryRun::active()) {
+                DryRun::record("ejecutaría  {$fqcn} · pieza {$pieza} · tenant {$clave}");
+
+                continue;
+            }
+
+            $this->components->info("Tenant {$clave}");
+
+            tenancy()->initialize($tenant);
+
+            try {
+                // Un tenant que falla no cancela a los demás: cada base es independiente, y
+                // detenerse en el tercero de doce deja nueve sin desplegar por un fallo ajeno.
+                // El código de salida recuerda que algo falló, y el seeder ya listó qué.
+                if ($this->runProjectSeeder($fqcn, $pieza) !== self::SUCCESS) {
+                    $salida = self::FAILURE;
+                }
+            } finally {
+                tenancy()->end();
+            }
+        }
+
+        return $salida;
+    }
+
+    /**
+     * ¿Quedó dicho contra qué tenants se despliega?
+     *
+     * **Sin valor por defecto, como el resto del comando.** Adivinar «el primero» o «todos» son las
+     * dos formas de llenar la base que no era, que es justo lo que este comando existe para evitar.
+     */
+    private function eleccionDeTenantValida(): bool
+    {
+        $pedido = trim((string) $this->option('tenant'));
+        $todos  = (bool) $this->option('all');
+
+        if ($pedido !== '' && $todos) {
+            $this->fallo(
+                '--tenant y --all piden cosas distintas.',
+                'usa --tenant=<clave> para uno, o --all para todos.',
+                'Con los dos puestos no hay forma de saber cuál gana.'
+            );
+
+            return false;
+        }
+
+        if ($pedido === '' && ! $todos) {
+            $this->fallo(
+                'falta elegir el tenant: aquí hay una base por cliente.',
+                '--tenant=<clave> despliega uno · --all los despliega todos.',
+                'Una ejecución por tenant: sin elegir, el despliegue iría a la base por defecto.'
+            );
+
+            return false;
+        }
+
+        return true;
+    }
+
+    /**
+     * Los tenants que hay que desplegar, o `false` si lo pedido no se puede resolver.
+     *
+     * @return array<int, object>|false
+     */
+    private function tenantsPedidos(): array|false
+    {
+        $pedido = trim((string) $this->option('tenant'));
+        $todos  = (bool) $this->option('all');
+
+        /** @var class-string $modelo */
+        $modelo = (string) config('tenancy.tenant_model');
+
+        if ($modelo === '' || ! class_exists($modelo)) {
+            $this->fallo(
+                'no encuentro el modelo de tenant del proyecto.',
+                'declara `tenant_model` en config/tenancy.php.',
+                'Es de donde se sacan las claves de los clientes a desplegar.'
+            );
+
+            return false;
+        }
+
+        if ($todos) {
+            return $modelo::all()->all();
+        }
+
+        $tenant = $modelo::find($pedido);
+
+        if ($tenant === null) {
+            $this->fallo(
+                "no existe el tenant '{$pedido}'.",
+                'lista los que hay y vuelve a lanzarlo con una clave que exista.',
+                'Se busca por la clave de tenant que declara el propio modelo.'
+            );
+
+            return false;
+        }
+
+        return [$tenant];
     }
 
     /**

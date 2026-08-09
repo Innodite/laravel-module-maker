@@ -69,6 +69,22 @@ enum TenancyPackage: string
     }
 
     /**
+     * Can the package enter a tenant's context from the console?
+     *
+     * The counterpart of {@see self::wrapsRoutes()} for everything that runs without a request.
+     * Over HTTP the identification middleware enters the context; a deploy, a queued job or a
+     * scheduled command have no middleware, so entering it is on whoever runs them.
+     *
+     * ⛔ This is why it is a separate question and not `wrapsRoutes()` reused: a project could
+     * one day declare a package that identifies tenants by route but exposes no console API, and
+     * answering the wrong question there would deploy every tenant into the central database.
+     */
+    public function initialisesContext(): bool
+    {
+        return $this === self::Stancl && function_exists('tenancy');
+    }
+
+    /**
      * Middleware that identifies the tenant, for every block written into `tenant.php`.
      *
      * Identification by domain. stancl also ships `BySubdomain` and `ByDomainOrSubdomain`;

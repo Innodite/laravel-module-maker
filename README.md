@@ -7,7 +7,27 @@
 [![Laravel](https://img.shields.io/badge/Laravel-11%2B%20%7C%2012-FF2D20?logo=laravel&logoColor=white)](https://laravel.com/)
 [![License](https://img.shields.io/github/license/Innodite/laravel-module-maker?color=green)](LICENSE)
 
-**v3.5.3** — Generador de módulos Laravel con arquitectura de contextos dinámicos (Central, Shared, Tenant) para proyectos multi-tenant. Genera backend completo, inyecta rutas y crea vistas Vue 3 listas para usar — todo con un solo comando. Soporta múltiples entidades por módulo con subcarpeta aislada por entidad (`{Tipo}/{Contexto}/{Entidad}/`).
+**v4.0** — Generador de módulos Laravel con arquitectura de contextos dinámicos (Central, Shared, Tenant) para proyectos multi-tenant. Genera backend completo, inyecta rutas y crea vistas Vue 3 listas para usar — todo con un solo comando. Soporta múltiples entidades por módulo con subcarpeta aislada por entidad (`{Tipo}/{Contexto}/{Entidad}/`).
+
+## 🔀 ¿Vienes de la v3?
+
+**La v4 es una major y cambia lo que generan los comandos que ya usabas**: los nombres de varios de
+ellos, el juego de stubs, y añade una decisión —el modo del proyecto— que antes se adivinaba. Nada de
+eso ocurre solo al actualizar el paquete.
+
+👉 **[Guía de migración de la v3 a la v4](docs/migracion-v3-a-v4.md)** — diez pasos, y cada uno dice
+cómo se nota si te lo saltas.
+
+Si no quieres migrar todavía, la v3 sigue instalable: fija `"innodite/laravel-module-maker": "^3.6"`.
+
+Y en cualquier caso, el primer comando después de actualizar es el diagnóstico, que es el mapa de
+esa guía:
+
+```bash
+php artisan innodite:doctor
+```
+
+---
 
 ## ⚠️ Versiones Deprecadas
 
@@ -26,6 +46,7 @@ Versión mínima recomendada para uso nuevo:
 
 ## 📋 Tabla de Contenidos
 
+- [¿Vienes de la v3?](#-vienes-de-la-v3)
 - [Requisitos](#-requisitos)
 - [Instalación](#-instalación)
 - [Tabla comparativa de contextos](#-tabla-comparativa-de-contextos)
@@ -48,9 +69,11 @@ Versión mínima recomendada para uso nuevo:
 - [Changelog](#-changelog)
 - [Licencia](#-licencia)
 
-**Nuevos en v3.5.x:**
-- [Subcarpeta por entidad](#-subcarpeta-por-entidad-r05) — patrón `{Tipo}/{Contexto}/{Entidad}/`
-- [`innodite:add-entity`](#-innoditeadd-entity--agregar-entidad-a-módulo-existente) — nuevo comando para módulos multi-entidad
+**Nuevos en la v4:**
+- [Guía de migración desde la v3](docs/migracion-v3-a-v4.md) — el salto, paso a paso
+- [`innodite:doctor`](#-innoditedoctor--diagnóstico-en-cascada) — el diagnóstico en cascada, que sustituye a `module-check` y `check-env`
+- [`innodite:deploy`](#-innoditedeploy--desplegar-el-proyecto) — levanta el proyecto entero en el orden declarado
+- [`innodite:crear-bd-test`](#-pruebas) — clona el esquema real en la base `_test`, sin una sola fila
 
 ---
 
@@ -283,32 +306,40 @@ Crea la estructura de configuración del paquete en la raíz del proyecto. Debe 
 
 ---
 
-### `innodite:module-check` — Diagnóstico de entorno
+### `innodite:doctor` — Diagnóstico, en cascada
 
 ```bash
-php artisan innodite:module-check
+php artisan innodite:doctor
 ```
 
-Verifica el entorno del proyecto e informa sobre:
+Recorre tres etapas, y **cada fallo trae en su propia línea qué hacer**.
 
-1. `contexts.json` — validez, estructura y claves requeridas
-2. Permisos de escritura en `Modules/`, `routes/`, `storage/logs/`
-3. Colisiones de nombres entre módulos y ServiceProviders
-4. Últimas 5 entradas del log de auditoría
+**Etapa 1 · El entorno del generador**
 
----
+1. El modo del proyecto — sin él, los comandos no generan
+2. `contexts.json` — validez, estructura y el catálogo que exige ese modo
+3. Permisos de escritura en `Modules/` y `storage/logs/`
+4. Colisiones de nombres entre módulos, y comandos del proyecto que tapen a los del paquete
+5. `config/make-module.php` publicada — el orden de despliegue vive ahí
+6. Stubs publicados — detecta los que siguen en el formato de la v3
+7. Últimas entradas del log de eventos
 
-### `innodite:check-env` — Contrato de Datos Frontend-Backend
-
-```bash
-php artisan innodite:check-env
-```
+**Etapa 2 · El contrato del proyecto anfitrión**
 
 Verifica el bridge Inertia y, si algo falta, imprime el **bloque de código exacto** a copiar:
 
 1. Modelo User — `HasRoles` (Spatie) o `InnoditeUserPermissions`
 2. `HandleInertiaRequests` — `auth.permissions` compartido
-3. `InnoditeContextBridge` — registrado en el stack web
+3. `InnoditeContextBridge` — registrado en el grupo web
+
+**Etapa 3 · Lo que dice el criterio**
+
+Consulta al proveedor de reglas configurado y lista sus hallazgos.
+
+> **Viene de `innodite:module-check` y de `innodite:check-env`, que ya no existen.** Eran dos
+> comandos útiles cuyos nombres no decían lo que hacían, y que había que acordarse de lanzar por
+> separado: uno miraba el entorno y el otro el contrato, cuando lo que se quiere saber es una sola
+> cosa —si este proyecto puede generar y si lo generado va a encontrar su sitio—.
 
 ---
 
@@ -1265,8 +1296,8 @@ Con `innodite:add-entity User Role --context=central`, se añade dentro de `Modu
 | `innodite:make-module {Name}` | Genera módulo completo con backend, vistas Vue y rutas |
 | `innodite:add-entity {Module} {Entity}` | Agrega una entidad a un módulo existente |
 | `innodite:module-setup` | Inicializa configuración del paquete en el proyecto |
-| `innodite:module-check` | Diagnóstico de configuración, permisos y conflictos |
-| `innodite:check-env` | Verifica integración frontend-backend (bridge Inertia) |
+| `innodite:doctor` | Diagnóstico en cascada: entorno del generador, contrato del proyecto y criterio |
+| `innodite:crear-bd-test` | Clona el esquema real en la base `_test`, sin una sola fila |
 | `innodite:publish-frontend` | Publica composables Vue 3 (`useModuleContext`, `usePermissions`) |
 | `innodite:migrate-plan --context=` | Aplica las migraciones del contexto, en el orden de sus traits `MigrationsList` |
 | `innodite:migrate-one` | Ejecuta una migración puntual por coordenada |

@@ -7,6 +7,7 @@ namespace {{{ namespace }}};
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Str;
 use Innodite\LaravelModuleMaker\Traits\ReportsSeederErrors;
 
 /**
@@ -141,11 +142,45 @@ class {{{ seederName }}} extends Seeder
                 $valores['module_id'] = $moduleId;
             }
 
-            DB::connection($this->connection)->table('permissions')->updateOrInsert(
-                ['name' => $permiso['name'], 'guard_name' => $this->guard],
-                $valores + ['created_at' => $ahora],
+            $llave = ['name' => $permiso['name'], 'guard_name' => $this->guard];
+
+            // Insertar y actualizar se escriben por separado, y no con `updateOrInsert`, porque la
+            // clave solo puede viajar en el insert: entregada como valor, un permiso que ya existía
+            // vería cambiar su `id` en cada despliegue — y con él, cada asignación a un rol.
+            if (DB::connection($this->connection)->table('permissions')->where($llave)->exists()) {
+                DB::connection($this->connection)->table('permissions')->where($llave)->update($valores);
+
+                continue;
+            }
+
+            DB::connection($this->connection)->table('permissions')->insert(
+                $llave + $valores + ['created_at' => $ahora] + $this->claveNueva('permissions'),
             );
         }
+    }
+
+    /**
+     * La clave primaria a entregar al insertar en `$tabla`, o nada si la tabla la rellena sola.
+     *
+     * **Las tablas de permisos son del proyecto, no del paquete**, y su clave puede ser
+     * autoincremental o de texto (ULID/UUID): las dos formas son legítimas y ninguna se puede
+     * suponer. Solo una columna entera se rellena sola; con una de texto, insertar sin `id` devuelve
+     * «Field 'id' doesn't have a default value» y detiene el despliegue entero.
+     *
+     * ⛔ Se mira el esquema y no el modo declarado en la configuración: ese modo describe las tablas
+     * que genera el paquete, y estas no lo son.
+     *
+     * @return array<string, string>
+     */
+    private function claveNueva(string $tabla): array
+    {
+        $schema = Schema::connection($this->connection);
+
+        if (! $schema->hasColumn($tabla, 'id') || $this->autoIncrementa($schema->getColumnType($tabla, 'id'))) {
+            return [];
+        }
+
+        return ['id' => (string) Str::ulid()];
     }
 
     /**
@@ -154,22 +189,44 @@ class {{{ seederName }}} extends Seeder
      * Es lo que convierte una lista plana de doscientas claves en un bloque por funcionalidad con
      * una pestaña por subfuncionalidad (R21).
      */
-    protected function resolveModuleId(): ?int
+    protected function resolveModuleId(): int|string|null
     {
-        if (! Schema::connection($this->connection)->hasTable('modules')) {
+        $schema = Schema::connection($this->connection);
+
+        if (! $schema->hasTable('modules')) {
             return null;
         }
 
         $db = DB::connection($this->connection);
+        $ya = $db->table('modules')->where('name', $this->moduleLabel)->value('id');
 
-        $db->table('modules')->updateOrInsert(
-            ['name' => $this->moduleLabel],
-            ['updated_at' => now(), 'created_at' => now()],
-        );
+        if ($ya !== null) {
+            $db->table('modules')->where('name', $this->moduleLabel)->update(['updated_at' => now()]);
 
-        $id = $db->table('modules')->where('name', $this->moduleLabel)->value('id');
+            return $ya;
+        }
 
-        return $id === null ? null : (int) $id;
+        $fila = ['name' => $this->moduleLabel, 'updated_at' => now(), 'created_at' => now()];
+
+        // `modules` es una tabla DEL PROYECTO, no del paquete: su clave puede ser autoincremental o
+        // un identificador de texto (ULID/UUID), y las dos formas son legítimas. Por eso se mira el
+        // esquema y no el modo declarado en la configuración —que describe las tablas que genera el
+        // paquete, no esta—. Solo una columna entera se rellena sola: con una de texto, insertar sin
+        // `id` devuelve «Field 'id' doesn't have a default value» y detiene el despliegue entero en
+        // el primer módulo, antes de crear una sola tabla.
+        if (! $this->autoIncrementa($schema->getColumnType('modules', 'id'))) {
+            $fila['id'] = (string) Str::ulid();
+        }
+
+        $db->table('modules')->insert($fila);
+
+        return $fila['id'] ?? $db->table('modules')->where('name', $this->moduleLabel)->value('id');
+    }
+
+    /** ¿La columna se rellena sola? Solo las enteras lo hacen. */
+    private function autoIncrementa(string $tipo): bool
+    {
+        return in_array(strtolower($tipo), ['int', 'integer', 'bigint', 'mediumint', 'smallint'], true);
     }
 
     /**
