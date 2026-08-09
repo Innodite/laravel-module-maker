@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Innodite\LaravelModuleMaker\Services;
 
+use Innodite\LaravelModuleMaker\Support\Disk;
 use Illuminate\Support\Facades\File;
 
 /**
@@ -57,10 +58,10 @@ final class ModuleAuditor
         $logDir  = dirname($logPath);
 
         if (!File::isDirectory($logDir)) {
-            File::makeDirectory($logDir, 0755, true);
+            Disk::makeDirectory($logDir, 0755, true);
         }
 
-        File::append($logPath, $entry . PHP_EOL);
+        Disk::append($logPath, $entry . PHP_EOL);
     }
 
     /**

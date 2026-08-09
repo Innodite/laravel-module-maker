@@ -57,8 +57,8 @@ enum TenancyPackage: string
         return self::tryFrom($declarado)
             ?? throw new \InvalidArgumentException(
                 "FALLA: el paquete de tenencia '{$declarado}' no está soportado. · FIX: usa "
-                .self::valoresValidos().' en config/make-module.php. Con «none» las rutas se '
-                .'generan sin envoltura y el archivo dice dónde va la tuya.'
+                . self::valoresValidos() . ' en config/make-module.php. Con «none» las rutas se '
+                . 'generan sin envoltura y el archivo dice dónde va la tuya.'
             );
     }
 
@@ -184,7 +184,7 @@ enum TenancyPackage: string
     /** The supported values, as the error message lists them. */
     private static function valoresValidos(): string
     {
-        return "'".implode("' o '", array_column(self::cases(), 'value'))."'";
+        return "'" . implode("' o '", array_column(self::cases(), 'value')) . "'";
     }
 
     /** The raw declared value, trimmed; empty string when absent or not a string. */
@@ -201,7 +201,7 @@ enum TenancyPackage: string
         $relleno = str_repeat(' ', $espacios);
 
         return implode("\n", array_map(
-            static fn (string $linea): string => $linea === '' ? '' : $relleno.$linea,
+            static fn (string $linea): string => $linea === '' ? '' : $relleno . $linea,
             explode("\n", $texto)
         ));
     }

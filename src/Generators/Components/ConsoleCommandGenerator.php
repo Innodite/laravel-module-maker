@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Innodite\LaravelModuleMaker\Generators\Components;
 
+use Innodite\LaravelModuleMaker\Support\Disk;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Str;
 use Innodite\LaravelModuleMaker\Generators\Concerns\HasStubs;
@@ -73,7 +74,7 @@ class ConsoleCommandGenerator
         $content = $this->getStubContent('console-command.stub', true, $placeholders);
 
         $dir = $this->modulePath . '/Console/Commands/' . $contextFolder;
-        File::ensureDirectoryExists($dir);
+        Disk::ensureDirectory($dir);
         $this->putFile(
             $dir . '/' . $className . $commandSuffix . '.php',
             $content,

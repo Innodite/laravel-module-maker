@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Innodite\LaravelModuleMaker\Generators\Concerns;
 
+use Innodite\LaravelModuleMaker\Support\Disk;
 use Illuminate\Support\Facades\File;
 use Innodite\LaravelModuleMaker\Support\GeneratedFileCheck;
 
@@ -32,7 +33,7 @@ trait WritesGeneratedFiles
     {
         GeneratedFileCheck::assertWritable($filePath, $content);
 
-        File::put($filePath, $content);
+        Disk::put($filePath, $content);
 
         // Los generadores sueltos no tienen consola: escriben igual, en silencio.
         if ($message !== '' && method_exists($this, 'info')) {

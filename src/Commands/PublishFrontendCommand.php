@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace Innodite\LaravelModuleMaker\Commands;
 
+use Innodite\LaravelModuleMaker\Support\Disk;
 use Illuminate\Console\Command;
+use Innodite\LaravelModuleMaker\Commands\Concerns\RehearsesChanges;
 use Illuminate\Support\Facades\File;
 
 /**
@@ -28,8 +30,11 @@ use Illuminate\Support\Facades\File;
  */
 class PublishFrontendCommand extends Command
 {
+    use RehearsesChanges;
+
     protected $signature = 'innodite:publish-frontend
-        {--force : Sobreescribir archivos existentes sin confirmación}';
+        {--force : Sobreescribir archivos existentes sin confirmación}
+        {--dry-run : Ensayo: enseña lo que publicaría, sin escribir nada}';
 
     protected $description = 'Publica los Composables y Componentes Vue 3 del bridge Innodite en resources/js/.';
 
@@ -37,6 +42,20 @@ class PublishFrontendCommand extends Command
     private const GRUPOS = ['Composables', 'Components'];
 
     public function handle(): int
+    {
+        // El ensayo se enciende antes de nada y se apaga pase lo que pase: el interruptor es
+        // del proceso, así que dejarlo puesto convertiría el siguiente comando en un ensayo
+        // que nadie pidió.
+        $this->startRehearsal();
+
+        try {
+            return $this->ejecutar();
+        } finally {
+            $this->reportRehearsal();
+        }
+    }
+
+    private function ejecutar(): int
     {
         $this->newLine();
         $this->line('  <fg=blue;options=bold>Innodite ModuleMaker — Publicación de Frontend</>');
@@ -72,7 +91,7 @@ class PublishFrontendCommand extends Command
             }
 
             if (!File::isDirectory($destinoPath)) {
-                File::makeDirectory($destinoPath, 0755, true);
+                Disk::makeDirectory($destinoPath, 0755, true);
                 $this->components->twoColumnDetail('Directorio creado', $destinoPath);
             }
 
@@ -91,7 +110,7 @@ class PublishFrontendCommand extends Command
                     continue;
                 }
 
-                File::copy($stub->getPathname(), $dest);
+                Disk::copy($stub->getPathname(), $dest);
                 $this->components->twoColumnDetail($filename, '<fg=green>Publicado</>');
                 $published++;
             }

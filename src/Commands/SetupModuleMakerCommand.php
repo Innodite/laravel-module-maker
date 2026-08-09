@@ -4,7 +4,9 @@ declare(strict_types=1);
 
 namespace Innodite\LaravelModuleMaker\Commands;
 
+use Innodite\LaravelModuleMaker\Support\Disk;
 use Illuminate\Console\Command;
+use Innodite\LaravelModuleMaker\Commands\Concerns\RehearsesChanges;
 use Illuminate\Support\Facades\File;
 use Innodite\LaravelModuleMaker\Generators\Components\ProjectSeederGenerator;
 use Innodite\LaravelModuleMaker\Support\ModuleMode;
@@ -24,13 +26,30 @@ use Innodite\LaravelModuleMaker\Support\TenancyPackage;
  */
 class SetupModuleMakerCommand extends Command
 {
+    use RehearsesChanges;
+
     protected $signature = 'innodite:module-setup
         {--mode= : Modo del proyecto: single-app | multitenant-shared | multitenant-per-tenant}
-        {--tenancy= : Paquete de tenencia del proyecto (solo multitenant): stancl | none}';
+        {--tenancy= : Paquete de tenencia del proyecto (solo multitenant): stancl | none}
+        {--dry-run : Ensayo: enseña lo que instalaría, sin escribir nada}';
 
     protected $description = 'Configura el paquete: elige el modo del proyecto y crea module-maker-config/ en el project root.';
 
     public function handle(): void
+    {
+        // El ensayo se enciende antes de nada y se apaga pase lo que pase: el interruptor es
+        // del proceso, así que dejarlo puesto convertiría el siguiente comando en un ensayo
+        // que nadie pidió.
+        $this->startRehearsal();
+
+        try {
+            $this->ejecutar();
+        } finally {
+            $this->reportRehearsal();
+        }
+    }
+
+    private function ejecutar(): void
     {
         $this->info("Iniciando configuración de laravel-module-maker...");
         $this->newLine();
@@ -286,13 +305,13 @@ class SetupModuleMakerCommand extends Command
                 return;
             }
 
-            File::put($envPath, preg_replace("/^{$clave}=.*$/m", $linea, $contenido));
+            Disk::put($envPath, preg_replace("/^{$clave}=.*$/m", $linea, $contenido));
             $this->info("  ✅ .env actualizado: {$linea}");
 
             return;
         }
 
-        File::put($envPath, rtrim($contenido, "\n") . "\n\n{$linea}\n");
+        Disk::put($envPath, rtrim($contenido, "\n") . "\n\n{$linea}\n");
         $this->info("  ✅ Escrito en .env: {$linea}");
     }
 
@@ -321,7 +340,7 @@ class SetupModuleMakerCommand extends Command
 
         if (!File::isDirectory($packageStubsPath)) {
             $this->warn("   No se encontró stubs/contextual/ en el paquete. Creando carpeta vacía...");
-            File::makeDirectory($destPath, 0755, true, true);
+            Disk::makeDirectory($destPath, 0755, true, true);
             return;
         }
 
@@ -330,7 +349,7 @@ class SetupModuleMakerCommand extends Command
             return;
         }
 
-        File::copyDirectory($packageStubsPath, $destPath);
+        Disk::copyDirectory($packageStubsPath, $destPath);
         $this->info("✅ Stubs publicados en: module-maker-config/stubs/contextual/");
     }
 
@@ -356,7 +375,7 @@ class SetupModuleMakerCommand extends Command
             return;
         }
 
-        File::copy($source, $destination);
+        Disk::copy($source, $destination);
         $this->info("✅ contexts.json publicado en: module-maker-config/contexts.json");
         $this->line("   Edita este archivo para configurar los contextos (Central, Shared, Tenants).");
     }
@@ -449,7 +468,7 @@ class SetupModuleMakerCommand extends Command
             return;
         }
 
-        File::put($seederPath, str_replace($anclaje, $reemplazo, $seederContent));
+        Disk::put($seederPath, str_replace($anclaje, $reemplazo, $seederContent));
 
         $this->info("✅ DatabaseSeeder.php llama ahora a {$principal}.");
     }
@@ -466,7 +485,7 @@ class SetupModuleMakerCommand extends Command
         if (File::exists($path)) {
             $this->line("   <comment>{$label}</comment> ya existe.");
         } else {
-            File::makeDirectory($path, 0755, true);
+            Disk::makeDirectory($path, 0755, true);
             $this->info("✅ Carpeta creada: {$label}");
         }
     }

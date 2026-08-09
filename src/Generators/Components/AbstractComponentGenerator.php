@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Innodite\LaravelModuleMaker\Generators\Components;
 
+use Innodite\LaravelModuleMaker\Support\Disk;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Str;
 use Innodite\LaravelModuleMaker\Generators\Concerns\HasStubs;
@@ -500,7 +501,7 @@ abstract class AbstractComponentGenerator
      */
     protected function ensureDirectoryExists(string $directoryPath): void
     {
-        File::ensureDirectoryExists($directoryPath);
+        Disk::ensureDirectory($directoryPath);
     }
 
     // putFile() vive en WritesGeneratedFiles: la comparten también los cinco generadores que

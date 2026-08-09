@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Innodite\LaravelModuleMaker\Generators\Components;
 
+use Innodite\LaravelModuleMaker\Support\Disk;
 use Illuminate\Support\Facades\File;
 use Innodite\LaravelModuleMaker\Generators\Concerns\HasStubs;
 use Innodite\LaravelModuleMaker\Generators\Concerns\WritesGeneratedFiles;
@@ -63,7 +64,7 @@ class JobGenerator
         $content = $this->getStubContent('job.stub', true, $placeholders);
 
         $dir = $this->modulePath . '/Jobs/' . $contextFolder;
-        File::ensureDirectoryExists($dir);
+        Disk::ensureDirectory($dir);
         $this->putFile(
             $dir . '/' . $className . $jobSuffix . '.php',
             $content,

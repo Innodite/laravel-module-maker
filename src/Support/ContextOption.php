@@ -47,9 +47,9 @@ final class ContextOption
             if ($option !== '') {
                 throw new InvalidArgumentException(
                     "El modo '{$mode->value}' no tiene contextos: no pases --context={$option}.\n"
-                    ."  En una aplicación única la subfuncionalidad va directa bajo la capa\n"
-                    ."  (Models/Role/), sin Central/ ni Tenant/ y sin prefijo de clase.\n"
-                    .'  Si este proyecto sí tiene tenants, cambia make-module.mode en la configuración.'
+                    . "  En una aplicación única la subfuncionalidad va directa bajo la capa\n"
+                    . "  (Models/Role/), sin Central/ ni Tenant/ y sin prefijo de clase.\n"
+                    . '  Si este proyecto sí tiene tenants, cambia make-module.mode en la configuración.'
                 );
             }
 
@@ -59,19 +59,19 @@ final class ContextOption
         if ($option === '' && ! $canAsk) {
             throw new InvalidArgumentException(
                 "FALLA: el modo '{$mode->value}' exige --context y no se pasó ninguno.\n"
-                .'  · FIX: pásalo — '.self::catalogo($allContexts)."\n"
-                .'  Asumir uno escribe el módulo entero en el eje equivocado: las rutas en el archivo'
-                ." que no es\n  y protegidas con el permiso de otro contexto. El archivo sale"
-                .' perfecto y completamente mal.'
+                . '  · FIX: pásalo — ' . self::catalogo($allContexts) . "\n"
+                . '  Asumir uno escribe el módulo entero en el eje equivocado: las rutas en el archivo'
+                . " que no es\n  y protegidas con el permiso de otro contexto. El archivo sale"
+                . ' perfecto y completamente mal.'
             );
         }
 
         if ($option !== '' && isset($allContexts[$option]) && ! $mode->supportsContext($option)) {
             throw new InvalidArgumentException(
                 "El contexto '{$option}' existe en contexts.json pero no corresponde al modo '{$mode->value}'.\n"
-                .'  Contextos de este modo: '.implode(', ', $mode->requiredContextKeys())."\n"
-                .'  Generar para un tenant nombrado en el modo de tenants iguales produce justo lo que'
-                .' ese modo evita: una copia por tenant de lógica idéntica.'
+                . '  Contextos de este modo: ' . implode(', ', $mode->requiredContextKeys()) . "\n"
+                . '  Generar para un tenant nombrado en el modo de tenants iguales produce justo lo que'
+                . ' ese modo evita: una copia por tenant de lógica idéntica.'
             );
         }
     }
@@ -92,6 +92,6 @@ final class ContextOption
 
         return $tenants === []
             ? "contextos: {$claves}"
-            : "contextos: {$claves} · tenants: ".implode(', ', $tenants);
+            : "contextos: {$claves} · tenants: " . implode(', ', $tenants);
     }
 }

@@ -52,15 +52,15 @@ enum PrimaryKeyMode: string
         if (! is_string($configured)) {
             throw new \InvalidArgumentException(
                 'FALLA: make-module.primary_key debe ser una cadena. · FIX: usa '
-                .self::valoresValidos().' en config/make-module.php.'
+                . self::valoresValidos() . ' en config/make-module.php.'
             );
         }
 
         return self::tryFrom($configured)
             ?? throw new \InvalidArgumentException(
                 "FALLA: clave primaria '{$configured}' desconocida. · FIX: usa "
-                .self::valoresValidos().' en config/make-module.php, o quita la clave para '
-                .'quedarte con ULID, que es lo que exige el patrón.'
+                . self::valoresValidos() . ' en config/make-module.php, o quita la clave para '
+                . 'quedarte con ULID, que es lo que exige el patrón.'
             );
     }
 
@@ -122,6 +122,6 @@ enum PrimaryKeyMode: string
 
     private static function valoresValidos(): string
     {
-        return "'".implode("' o '", array_column(self::cases(), 'value'))."'";
+        return "'" . implode("' o '", array_column(self::cases(), 'value')) . "'";
     }
 }

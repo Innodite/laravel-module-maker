@@ -5,8 +5,10 @@ declare(strict_types=1);
 namespace Innodite\LaravelModuleMaker\Commands;
 
 use Illuminate\Console\Command;
+use Innodite\LaravelModuleMaker\Commands\Concerns\RehearsesChanges;
 use Illuminate\Database\Seeder;
 use Innodite\LaravelModuleMaker\Exceptions\ModeNotConfiguredException;
+use Innodite\LaravelModuleMaker\Support\DryRun;
 use Innodite\LaravelModuleMaker\Support\ModuleMode;
 use Innodite\LaravelModuleMaker\Support\SeederNames;
 use Throwable;
@@ -30,10 +32,13 @@ use Throwable;
  */
 class DeployCommand extends Command
 {
+    use RehearsesChanges;
+
     protected $signature = 'innodite:deploy
         {entorno : Qué se despliega: stage | production}
         {--context= : Qué despliegue, en multitenant: central | tenant}
-        {--force : No pedir confirmación aunque el modo destructivo esté activo}';
+        {--force : No pedir confirmación aunque el modo destructivo esté activo}
+        {--dry-run : Ensayo: enseña qué desplegaría y contra qué conexión, sin tocar la base}';
 
     protected $description = 'Despliega el proyecto entero —esquema, datos y permisos— en el orden declarado.';
 
@@ -41,6 +46,20 @@ class DeployCommand extends Command
     private const DESPLIEGUES = ['central', 'tenant'];
 
     public function handle(): int
+    {
+        // El ensayo se enciende antes de nada y se apaga pase lo que pase: el interruptor es
+        // del proceso, así que dejarlo puesto convertiría el siguiente comando en un ensayo
+        // que nadie pidió.
+        $this->startRehearsal();
+
+        try {
+            return $this->ejecutar();
+        } finally {
+            $this->reportRehearsal();
+        }
+    }
+
+    private function ejecutar(): int
     {
         try {
             $mode = ModuleMode::current();
@@ -193,6 +212,18 @@ class DeployCommand extends Command
      */
     private function runProjectSeeder(string $fqcn, string $pieza): int
     {
+        // En ensayo se enseña QUÉ se ejecutaría, y no se ejecuta.
+        //
+        // Es el comando donde más falta hace y el único de los cinco que no tenía la opción: los
+        // otros cuatro escriben archivos, que se pueden borrar; este corre un seeder contra una base
+        // real, y `stage` con el modo destructivo puesto reconstruye tablas desde cero. Un
+        // despliegue lanzado contra la base equivocada no se deshace leyendo el error.
+        if (DryRun::active()) {
+            DryRun::record("ejecutaría  {$fqcn} · pieza {$pieza}");
+
+            return self::SUCCESS;
+        }
+
         /** @var Seeder $seeder */
         $seeder = $this->laravel->make($fqcn);
 

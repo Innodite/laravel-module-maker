@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Innodite\LaravelModuleMaker\Services;
 
+use Innodite\LaravelModuleMaker\Support\Disk;
 use Illuminate\Support\Facades\File;
 
 /**
@@ -63,7 +64,7 @@ class DeployOrderInjectionService
         $marcador = $this->marcadorDe($contextKey);
 
         if ($this->lineaDelMarcador($contenido, $marcador) !== null) {
-            File::put($archivo, $this->insertarAntesDe($contenido, $marcador, $path));
+            Disk::put($archivo, $this->insertarAntesDe($contenido, $marcador, $path));
 
             $this->avisar("Añadida al orden de despliegue: '{$path}'.", 'info');
 
@@ -73,7 +74,7 @@ class DeployOrderInjectionService
         if ($contextKey !== null && $this->lineaDelMarcador($contenido, self::MARCADOR_GENERAL) !== null) {
             // El contexto todavía no tiene su lista: se crea entera, con su marcador dentro, para
             // que la siguiente subfuncionalidad de ese contexto ya la encuentre.
-            File::put($archivo, $this->crearListaDeContexto($contenido, $contextKey, $path));
+            Disk::put($archivo, $this->crearListaDeContexto($contenido, $contextKey, $path));
 
             $this->avisar("Añadida al orden de despliegue: '{$path}' (contexto '{$contextKey}').", 'info');
 

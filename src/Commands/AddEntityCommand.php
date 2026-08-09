@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Innodite\LaravelModuleMaker\Commands;
 
 use Illuminate\Console\Command;
+use Innodite\LaravelModuleMaker\Commands\Concerns\RehearsesChanges;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Str;
 use Innodite\LaravelModuleMaker\Generators\Components\ModuleGenerator;
@@ -32,6 +33,8 @@ use Throwable;
  */
 class AddEntityCommand extends Command
 {
+    use RehearsesChanges;
+
     protected $signature = 'innodite:add-entity
         {module                : Nombre del módulo existente (ej: UserManagement)}
         {entity                : Nombre de la nueva entidad en singular (ej: Role)}
@@ -42,11 +45,26 @@ class AddEntityCommand extends Command
         {--S|service           : Solo añade el servicio e interface}
         {--R|repository        : Solo añade el repositorio e interface}
         {--G|migration         : Solo añade la migración contextualizada}
-        {--Q|request           : Solo añade el form request}';
+        {--Q|request           : Solo añade el form request}
+        {--dry-run             : Ensayo: enseña lo que haría, sin escribir nada}';
 
     protected $description = 'Agrega una nueva entidad a un módulo existente con su propia subcarpeta.';
 
     public function handle(): int
+    {
+        // El ensayo se enciende antes de nada y se apaga pase lo que pase: el interruptor es
+        // del proceso, así que dejarlo puesto convertiría el siguiente comando en un ensayo
+        // que nadie pidió.
+        $this->startRehearsal();
+
+        try {
+            return $this->ejecutar();
+        } finally {
+            $this->reportRehearsal();
+        }
+    }
+
+    private function ejecutar(): int
     {
         $moduleName = Str::studly($this->argument('module'));
         $entityName = Str::studly($this->argument('entity'));

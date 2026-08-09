@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Innodite\LaravelModuleMaker\Generators\Components;
 
+use Innodite\LaravelModuleMaker\Support\Disk;
 use Illuminate\Support\Facades\File;
 use Innodite\LaravelModuleMaker\Generators\Concerns\HasStubs;
 use Innodite\LaravelModuleMaker\Generators\Concerns\WritesGeneratedFiles;
@@ -55,7 +56,7 @@ class ProjectSeederGenerator
     {
         $destino = database_path('seeders');
 
-        File::ensureDirectoryExists($destino);
+        Disk::ensureDirectory($destino);
 
         $escritos = [];
 

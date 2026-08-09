@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Innodite\LaravelModuleMaker\Services;
 
+use Innodite\LaravelModuleMaker\Support\Disk;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Str;
 use Innodite\LaravelModuleMaker\Support\GeneratedFileCheck;
@@ -169,7 +170,7 @@ class RouteInjectionService
         // marcador sobrevive al chequeo porque no lleva espacios interiores — ver StubPlaceholder.
         GeneratedFileCheck::assertWritable($filePath, $content);
 
-        File::put($filePath, $content);
+        Disk::put($filePath, $content);
         $this->info("✅ Rutas de '{$entityName}' inyectadas en routes/{$routeFile} [{$marker}]");
     }
 

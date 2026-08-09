@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Innodite\LaravelModuleMaker\Generators\Components;
 
+use Innodite\LaravelModuleMaker\Support\Disk;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Str;
 use Innodite\LaravelModuleMaker\Generators\Components\ConsoleCommandGenerator;
@@ -70,7 +71,7 @@ class ModuleGenerator
     public function createFolders(): void
     {
         // ── Docs (sin segregación de contexto) ───────────────────────────────
-        File::ensureDirectoryExists("{$this->modulePath}/Docs");
+        Disk::ensureDirectory("{$this->modulePath}/Docs");
 
         // ── Database ─────────────────────────────────────────────────────────
         foreach (['Factories', 'Migrations', 'Seeders'] as $sub) {
@@ -84,13 +85,13 @@ class ModuleGenerator
         foreach (['Controllers', 'Requests'] as $sub) {
             $this->createContextSubfolders("Http/{$sub}");
         }
-        File::ensureDirectoryExists("{$this->modulePath}/Http/Middleware");
+        Disk::ensureDirectory("{$this->modulePath}/Http/Middleware");
 
         // ── Models ───────────────────────────────────────────────────────────
         $this->createContextSubfolders('Models');
 
         // ── Providers ────────────────────────────────────────────────────────
-        File::ensureDirectoryExists("{$this->modulePath}/Providers");
+        Disk::ensureDirectory("{$this->modulePath}/Providers");
 
         // ── Repositories: implementaciones + Contracts ────────────────────────
         $this->createContextSubfolders('Repositories');
@@ -100,7 +101,7 @@ class ModuleGenerator
         $this->createContextSubfolders('resources/js/Pages');
 
         // ── Routes (raíz del módulo, sin subcarpetas de contexto) ─────────────
-        File::ensureDirectoryExists("{$this->modulePath}/Routes");
+        Disk::ensureDirectory("{$this->modulePath}/Routes");
 
         // ── Services: implementaciones + Contracts ────────────────────────────
         $this->createContextSubfolders('Services');
@@ -149,7 +150,7 @@ class ModuleGenerator
     public function createDocs(): void
     {
         $docsPath = "{$this->modulePath}/Docs";
-        File::ensureDirectoryExists($docsPath);
+        Disk::ensureDirectory($docsPath);
 
         $date = now()->format('Y-m-d');
 
@@ -162,7 +163,7 @@ class ModuleGenerator
         foreach ($files as $filename => $content) {
             $filePath = "{$docsPath}/{$filename}";
             if (!File::exists($filePath)) {
-                File::put($filePath, $content);
+                Disk::put($filePath, $content);
             }
         }
 
@@ -456,14 +457,14 @@ class ModuleGenerator
     private function createContextSubfolders(string $componentType): void
     {
         $base = "{$this->modulePath}/{$componentType}";
-        File::ensureDirectoryExists($base);
+        Disk::ensureDirectory($base);
 
         if (! ModuleMode::current()->hasContextAxis()) {
             return;
         }
 
         foreach (self::BASE_CONTEXT_FOLDERS as $folder) {
-            File::ensureDirectoryExists("{$base}/{$folder}");
+            Disk::ensureDirectory("{$base}/{$folder}");
         }
     }
 
@@ -484,13 +485,13 @@ class ModuleGenerator
         $base = "{$this->modulePath}/Database/Seeders";
 
         if (! ModuleMode::current()->hasContextAxis()) {
-            File::ensureDirectoryExists("{$base}/" . SeederNames::MASTER_FOLDER);
+            Disk::ensureDirectory("{$base}/" . SeederNames::MASTER_FOLDER);
 
             return;
         }
 
         foreach (self::BASE_CONTEXT_FOLDERS as $folder) {
-            File::ensureDirectoryExists("{$base}/{$folder}/" . SeederNames::MASTER_FOLDER);
+            Disk::ensureDirectory("{$base}/{$folder}/" . SeederNames::MASTER_FOLDER);
         }
     }
 }

@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Innodite\LaravelModuleMaker\Generators\Components;
 
+use Innodite\LaravelModuleMaker\Support\Disk;
 use Illuminate\Support\Facades\File;
 use Innodite\LaravelModuleMaker\Generators\Concerns\HasStubs;
 use Innodite\LaravelModuleMaker\Generators\Concerns\WritesGeneratedFiles;
@@ -56,7 +57,7 @@ class ExceptionGenerator
         $content = $this->getStubContent('exception.stub', true, $placeholders);
 
         $dir = $this->modulePath . '/Exceptions/' . $contextFolder;
-        File::ensureDirectoryExists($dir);
+        Disk::ensureDirectory($dir);
         $this->putFile(
             $dir . '/' . $className . 'NotFoundException.php',
             $content,
