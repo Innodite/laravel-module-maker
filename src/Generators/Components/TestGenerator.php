@@ -11,6 +11,7 @@ use Innodite\LaravelModuleMaker\Support\PrimaryKeyMode;
 use Innodite\LaravelModuleMaker\Support\RequestNames;
 use Innodite\LaravelModuleMaker\Support\SeederNames;
 use Innodite\LaravelModuleMaker\Support\SubFeaturePermissions;
+use Innodite\LaravelModuleMaker\Support\TenancyPackage;
 use Innodite\LaravelModuleMaker\Support\TestNames;
 
 class TestGenerator extends AbstractComponentGenerator
@@ -118,8 +119,63 @@ class TestGenerator extends AbstractComponentGenerator
     protected function writeBase(): void
     {
         $this->escribirPiezaDelGrupo('test-base.stub', 'TestCase', 'Base de pruebas', [
-            'routePrefix' => $this->routeNamePrefix(),
+            'routePrefix'               => $this->routeNamePrefix(),
+            'sinIdentificacionDeTenant' => $this->sinIdentificacionDeTenant(),
         ]);
+    }
+
+    /**
+     * En una subfuncionalidad de tenant, la suite corre **sin la identificación por dominio**.
+     *
+     * La ruta generada la lleva —y debe llevarla: es lo que impide servir a un cliente desde el
+     * dominio de otro—, pero en la suite no hay dominio de tenant que valga. Sin esto, cada petición
+     * muere en `PreventAccessFromCentralDomains` con un 404 donde la prueba espera un 403, y el
+     * contrato entero se cae en la puerta de los permisos sin haber llegado a probarla.
+     *
+     * ⛔ **Y no se prueba menos por ello.** Lo que este contrato mide es la puerta del permiso y el
+     * comportamiento del negocio; quién es el tenant y cómo se le reconoce es infraestructura del
+     * proyecto, montada una vez y probada aparte. Mezclarlas obligaría a levantar un cliente con su
+     * base de datos en cada corrida para acabar comprobando lo mismo.
+     */
+    private function sinIdentificacionDeTenant(): string
+    {
+        $contexto = $this->mode()->hasContextAxis()
+            ? (string) ($this->componentConfig['context'] ?? '')
+            : '';
+
+        if ($contexto === '' || ! str_contains($contexto, 'tenant')) {
+            return '';
+        }
+
+        $middlewares = TenancyPackage::current()->routeImports('tenant.php');
+
+        if ($middlewares === []) {
+            return '';
+        }
+
+        $lista = '';
+
+        foreach ($middlewares as $clase) {
+            $lista .= "            \\{$clase}::class,\n";
+        }
+
+        return "\n"
+            . "    /**\n"
+            . "     * La identificación del tenant se aparta: en la suite no hay dominio de cliente.\n"
+            . "     *\n"
+            . "     * La ruta la lleva, y debe llevarla —es lo que impide servir a un cliente desde el\n"
+            . "     * dominio de otro—, pero aquí cada petición moriría con un 404 donde se espera un 403.\n"
+            . "     * Lo que este contrato mide es la puerta del permiso; quién es el tenant y cómo se le\n"
+            . "     * reconoce es infraestructura del proyecto, montada una vez y probada aparte.\n"
+            . "     */\n"
+            . "    protected function setUp(): void\n"
+            . "    {\n"
+            . "        parent::setUp();\n"
+            . "\n"
+            . "        \$this->withoutMiddleware([\n"
+            . $lista
+            . "        ]);\n"
+            . "    }\n";
     }
 
     /**

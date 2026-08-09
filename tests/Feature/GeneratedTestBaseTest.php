@@ -140,3 +140,33 @@ it('el módulo entero sigue coherente con la base dentro', function (ModuleMode 
     'single-app'  => [ModuleMode::SingleApp, null],
     'multitenant' => [ModuleMode::MultitenantPerTenant, 'central'],
 ]);
+
+it('la base de un tenant aparta la identificación por dominio', function () {
+    // Sin esto el contrato entero se cae en la puerta de los permisos: la ruta de tenant lleva la
+    // identificación por dominio —y debe llevarla—, pero en la suite no hay dominio de cliente, así
+    // que cada petición muere con un 404 donde la prueba espera un 403. Lo que este contrato mide es
+    // la puerta del permiso; quién es el tenant es infraestructura del proyecto, probada aparte.
+    config()->set('make-module.tenancy.package', 'stancl');
+
+    $modulo = $this->generateModule('Invoice', ModuleMode::MultitenantPerTenant, 'tenant-one');
+
+    $base = $modulo->contents('Tests/Feature/Tenant/TenantOne/Invoice/TenantOneInvoiceTestCase.php');
+
+    expect($base)->toContain('protected function setUp(): void')
+        ->and($base)->toContain('$this->withoutMiddleware([')
+        ->and($base)->toContain('PreventAccessFromCentralDomains::class');
+});
+
+it('la base de la aplicación central no aparta nada', function () {
+    // La central no tiene identificación de tenant que apartar, y un `withoutMiddleware` de más es
+    // una puerta abierta en la prueba que nadie pidió.
+    config()->set('make-module.tenancy.package', 'stancl');
+
+    $modulo = $this->generateModule('Invoice', ModuleMode::MultitenantPerTenant, 'central');
+
+    $base = $modulo->contents('Tests/Feature/Central/Invoice/CentralInvoiceTestCase.php');
+
+    expect(str_contains($base, 'withoutMiddleware'))->toBeFalse(
+        'FALLA: la base de la central aparta middlewares que allí no estorban.'
+    );
+});
