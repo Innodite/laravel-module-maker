@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Innodite\LaravelModuleMaker\Commands;
 
 use Illuminate\Console\Command;
+use Innodite\LaravelModuleMaker\Commands\Concerns\PrintsHeader;
 use Innodite\LaravelModuleMaker\Commands\Concerns\ReportsFailures;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Str;
@@ -39,12 +40,13 @@ use Throwable;
  */
 class TestCommand extends Command
 {
+    use PrintsHeader;
     use ReportsFailures;
 
     protected $signature = 'innodite:test
         {module      : Módulo al que pertenece (ej: Invoice)}
         {subfeature  : Subfuncionalidad cuyo contrato se ejecuta (ej: Payment)}
-        {--context=  : Contexto donde vive, en multitenant: central | tenant-uno | …}
+        {--context=  : Contexto donde vive, en multitenant: central | shared | tenant_shared | id del tenant}
         {--filter=   : Patrón de PHPUnit, para acotar dentro de una pieza}
         {--continuar : Ejecuta el grupo entero aunque una pieza falle, sin corte temprano}';
 
@@ -55,9 +57,7 @@ class TestCommand extends Command
         $modulo     = Str::studly((string) $this->argument('module'));
         $subFuncion = Str::studly((string) $this->argument('subfeature'));
 
-        $this->newLine();
-        $this->line("  <fg=blue;options=bold>Innodite ModuleMaker — Contrato de {$modulo}/{$subFuncion}</>");
-        $this->newLine();
+        $this->cabecera("Contrato de {$modulo}/{$subFuncion}");
 
         // El último manifiesto JSON del paquete se retiró en esta fase. Un proyecto que actualice lo
         // sigue teniendo en disco, con sus contextos dentro y con toda la pinta de seguir mandando.

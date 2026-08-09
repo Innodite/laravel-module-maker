@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Innodite\LaravelModuleMaker\Commands;
 
 use Illuminate\Console\Command;
+use Innodite\LaravelModuleMaker\Commands\Concerns\PrintsHeader;
 use Innodite\LaravelModuleMaker\Commands\Concerns\ReportsFailures;
 use Innodite\LaravelModuleMaker\Commands\Concerns\RehearsesChanges;
 use Illuminate\Database\Seeder;
@@ -34,12 +35,13 @@ use Throwable;
 class DeployCommand extends Command
 {
     use RehearsesChanges;
+    use PrintsHeader;
     use ReportsFailures;
 
     protected $signature = 'innodite:deploy
-        {entorno : Qué se despliega: stage | production}
-        {--context= : Qué despliegue, en multitenant: central | tenant}
-        {--force : No pedir confirmación aunque el modo destructivo esté activo}
+        {environment : Qué se despliega: stage | production}
+        {--context= : Contexto contra el que se despliega, en multitenant: central | tenant}
+        {--force : Despliega sin pedir confirmación, aunque el modo destructivo esté activo}
         {--dry-run : Ensayo: enseña qué desplegaría y contra qué conexión, sin tocar la base}';
 
     protected $description = 'Despliega el proyecto entero —esquema, datos y permisos— en el orden declarado.';
@@ -63,6 +65,8 @@ class DeployCommand extends Command
 
     private function ejecutar(): int
     {
+        $this->cabecera('Despliegue — ' . strtolower(trim((string) $this->argument('environment'))));
+
         try {
             $mode = ModuleMode::current();
         } catch (ModeNotConfiguredException $e) {
@@ -112,7 +116,7 @@ class DeployCommand extends Command
      */
     private function resolvePiece(): ?string
     {
-        $entorno = strtolower(trim((string) $this->argument('entorno')));
+        $entorno = strtolower(trim((string) $this->argument('environment')));
 
         $piezas = ['stage' => 'Stage', 'production' => 'Production'];
 

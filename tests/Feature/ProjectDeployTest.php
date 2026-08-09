@@ -359,14 +359,14 @@ it('avisa también de lo declarado que nadie generó', function () {
 // ── El comando ──────────────────────────────────────────────────────────────────────────────
 
 it('rechaza un entorno que no es stage ni production', function () {
-    Artisan::call('innodite:deploy', ['entorno' => 'preprod', '--no-interaction' => true]);
+    Artisan::call('innodite:deploy', ['environment' => 'preprod', '--no-interaction' => true]);
 
     expect(Artisan::output())->toContain('stage | production');
 });
 
 it('en multitenant exige el contexto, y dice cuáles hay', function () {
     // Son dos bases de datos distintas: desplegar el contexto equivocado llena la que no era.
-    $salida = Artisan::call('innodite:deploy', ['entorno' => 'production', '--no-interaction' => true]);
+    $salida = Artisan::call('innodite:deploy', ['environment' => 'production', '--no-interaction' => true]);
 
     expect($salida)->toBe(1);
     expect(Artisan::output())->toContain('--context=central');
@@ -376,7 +376,7 @@ it('en una aplicación única rechaza el contexto, en vez de ignorarlo', functio
     $this->withMode(ModuleMode::SingleApp);
 
     Artisan::call('innodite:deploy', [
-        'entorno'          => 'production',
+        'environment'      => 'production',
         '--context'        => 'central',
         '--no-interaction' => true,
     ]);
@@ -396,7 +396,7 @@ it('el comando arranca de verdad el seeder del proyecto', function () {
 
     config()->set('make-module.deploy', []);
 
-    Artisan::call('innodite:deploy', ['entorno' => 'stage', '--no-interaction' => true]);
+    Artisan::call('innodite:deploy', ['environment' => 'stage', '--no-interaction' => true]);
 
     expect(Artisan::output())->toContain('desplegando el proyecto (Stage)');
 });
@@ -420,7 +420,7 @@ it('con el orden vacío, el despliegue termina en verde', function () {
 
     config()->set('make-module.deploy', []);
 
-    expect(Artisan::call('innodite:deploy', ['entorno' => 'stage', '--no-interaction' => true]))->toBe(
+    expect(Artisan::call('innodite:deploy', ['environment' => 'stage', '--no-interaction' => true]))->toBe(
         0,
         'FALLA: desplegar un proyecto sin nada declarado termina en error. · FIX: no desplegar nada '
         . 'no es un fallo, es un proyecto recién instalado; el despliegue debe avisar y salir en '

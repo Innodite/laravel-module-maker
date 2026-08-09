@@ -199,7 +199,7 @@ afterAll(function (): void {
  */
 function desplegar(string $entorno = 'stage'): int
 {
-    return Artisan::call('innodite:deploy', ['entorno' => $entorno, '--no-interaction' => true]);
+    return Artisan::call('innodite:deploy', ['environment' => $entorno, '--no-interaction' => true]);
 }
 
 /** El montaje común: modo, tablas del proyecto anfitrión, módulo generado y piezas cargadas. */
@@ -229,7 +229,7 @@ it('un módulo generado levanta entero con un solo comando', function () {
 
     prepararDespliegue($modulo, 'Deploy');
 
-    $salida = Artisan::call('innodite:deploy', ['entorno' => 'stage', '--no-interaction' => true]);
+    $salida = Artisan::call('innodite:deploy', ['environment' => 'stage', '--no-interaction' => true]);
 
     expect($salida)->toBe(
         0,
@@ -452,7 +452,7 @@ function desplegarContexto(string $contexto, string $entorno = 'stage'): array
 
     $codigo = Artisan::call(
         'innodite:deploy',
-        ['entorno' => $entorno, '--context' => $contexto, '--no-interaction' => true],
+        ['environment' => $entorno, '--context' => $contexto, '--no-interaction' => true],
         $buffer,
     );
 

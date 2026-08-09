@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Innodite\LaravelModuleMaker\Commands;
 
 use Illuminate\Console\Command;
+use Innodite\LaravelModuleMaker\Commands\Concerns\PrintsHeader;
 use Innodite\LaravelModuleMaker\Commands\Concerns\ReportsFailures;
 use Innodite\LaravelModuleMaker\Services\MigrationPlanResolver;
 use Innodite\LaravelModuleMaker\Services\MigrationTargetService;
@@ -28,13 +29,14 @@ use Throwable;
  */
 class MigrateOneCommand extends Command
 {
+    use PrintsHeader;
     use ReportsFailures;
 
     protected $signature = 'innodite:migrate-one
         {coordinate : Coordenada de la migración: Modulo:Contexto/archivo.php}
         {--context= : Fuerza el contexto de ejecución en vez de derivarlo de la coordenada}
-        {--yes : Confirma automáticamente la ejecución}
-        {--dry-run : Muestra lo que haría sin ejecutar}';
+        {--force : Aplica sin pedir confirmación}
+        {--dry-run : Ensayo: enseña qué migración aplicaría y contra qué conexión, sin tocar la base}';
 
     protected $description = 'Ejecuta una migración específica, contra la base de datos de su contexto.';
 
@@ -45,9 +47,7 @@ class MigrateOneCommand extends Command
         $coordenada = trim((string) $this->argument('coordinate'));
         $dryRun     = (bool) $this->option('dry-run');
 
-        $this->newLine();
-        $this->line('  <fg=blue;options=bold>Innodite ModuleMaker — Migrate One</>');
-        $this->newLine();
+        $this->cabecera('Una migración');
 
         LegacyManifests::notice($this);
 
@@ -120,14 +120,14 @@ class MigrateOneCommand extends Command
 
     private function confirmar(string $conexion): bool
     {
-        if ((bool) $this->option('yes')) {
+        if ((bool) $this->option('force')) {
             return true;
         }
 
         if (! $this->input instanceof InputInterface || ! $this->input->isInteractive()) {
             $this->fallo(
                 'no hay consola con la que confirmar esta migración.',
-                'pásale --yes si quieres ejecutarla sin preguntar.',
+                'pásale --force si quieres aplicarla sin preguntar.',
                 'Una migración aplicada contra la conexión equivocada no se deshace leyendo el log.'
             );
 

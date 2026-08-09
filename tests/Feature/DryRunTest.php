@@ -94,7 +94,7 @@ it('el despliegue en ensayo dice qué correría y no toca la base', function () 
     cargarSeederDelProyecto('InnoditeDeploySeeder');
 
     Artisan::call('innodite:deploy', [
-        'entorno'          => 'production',
+        'environment'      => 'production',
         '--dry-run'        => true,
         '--no-interaction' => true,
     ]);

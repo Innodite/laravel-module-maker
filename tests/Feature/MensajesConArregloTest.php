@@ -46,8 +46,8 @@ it('el fallo de cada comando trae el arreglo, no solo el diagnóstico', function
         . "orden, un comando o un valor.\nLa salida dice:\n{$salida}"
     );
 })->with([
-    ['el entorno de despliegue inválido', 'innodite:deploy', ['entorno' => 'preprod']],
-    ['el despliegue sin contexto', 'innodite:deploy', ['entorno' => 'production']],
+    ['el entorno de despliegue inválido', 'innodite:deploy', ['environment' => 'preprod']],
+    ['el despliegue sin contexto', 'innodite:deploy', ['environment' => 'production']],
     ['el módulo que no existe', 'innodite:add-entity', ['module' => 'Fantasma', 'entity' => 'Cosa']],
     ['el nombre de módulo reservado', 'innodite:make-module', ['name' => 'class']],
     ['el plan de migración sin contexto', 'innodite:migrate-plan', []],
@@ -59,7 +59,7 @@ it('el FIX dice qué hacer, no repite el fallo con otras palabras', function () 
     // exista». Aquí se comprueba que el arreglo nombra algo accionable — el catálogo real.
     config()->set('make-module.mode', ModuleMode::MultitenantPerTenant->value);
 
-    $salida = salidaDelFallo('innodite:deploy', ['entorno' => 'production']);
+    $salida = salidaDelFallo('innodite:deploy', ['environment' => 'production']);
 
     expect(str_contains($salida, '--context=central'))->toBeTrue(
         "FALLA: el FIX no dice qué escribir.\n{$salida}"

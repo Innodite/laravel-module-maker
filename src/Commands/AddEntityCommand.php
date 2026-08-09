@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Innodite\LaravelModuleMaker\Commands;
 
 use Illuminate\Console\Command;
+use Innodite\LaravelModuleMaker\Commands\Concerns\PrintsHeader;
 use Innodite\LaravelModuleMaker\Commands\Concerns\ReportsFailures;
 use Innodite\LaravelModuleMaker\Commands\Concerns\RehearsesChanges;
 use Illuminate\Support\Facades\File;
@@ -35,12 +36,13 @@ use Throwable;
 class AddEntityCommand extends Command
 {
     use RehearsesChanges;
+    use PrintsHeader;
     use ReportsFailures;
 
     protected $signature = 'innodite:add-entity
         {module                : Nombre del módulo existente (ej: UserManagement)}
         {entity                : Nombre de la nueva entidad en singular (ej: Role)}
-        {--context=            : Contexto: central | shared | tenant_shared | nombre-del-tenant}
+        {--context=            : Contexto donde se genera, en multitenant: central | shared | tenant_shared | id del tenant}
         {--no-routes           : Omite la inyección de rutas en el proyecto}
         {--M|model             : Solo añade el modelo}
         {--C|controller        : Solo añade el controlador}
@@ -72,9 +74,7 @@ class AddEntityCommand extends Command
         $entityName = Str::studly($this->argument('entity'));
         $modulePath = config('make-module.module_path') . "/{$moduleName}";
 
-        $this->newLine();
-        $this->line("  <fg=blue;options=bold>Innodite ModuleMaker — Add Entity v1.0.0</>");
-        $this->newLine();
+        $this->cabecera("Entidad {$entityName} en {$moduleName}");
 
         // ── Verificar que el módulo existe ────────────────────────────────────
         if (!File::isDirectory($modulePath)) {

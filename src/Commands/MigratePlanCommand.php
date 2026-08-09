@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Innodite\LaravelModuleMaker\Commands;
 
 use Illuminate\Console\Command;
+use Innodite\LaravelModuleMaker\Commands\Concerns\PrintsHeader;
 use Innodite\LaravelModuleMaker\Commands\Concerns\ReportsFailures;
 use Innodite\LaravelModuleMaker\Services\MigrationPlanResolver;
 use Innodite\LaravelModuleMaker\Services\MigrationTargetService;
@@ -27,11 +28,12 @@ use Throwable;
  */
 class MigratePlanCommand extends Command
 {
+    use PrintsHeader;
     use ReportsFailures;
 
     protected $signature = 'innodite:migrate-plan
-        {--context= : Contexto contra el que ejecutar: central | shared | tenant_shared | id del tenant}
-        {--dry-run : Muestra el plan sin ejecutar nada}';
+        {--context= : Contexto contra el que se ejecuta, en multitenant: central | shared | tenant_shared | id del tenant}
+        {--dry-run : Ensayo: enseña el plan y contra qué conexión iría, sin tocar la base}';
 
     protected $description = 'Aplica las migraciones del proyecto en el orden que declaran sus traits MigrationsList.';
 
@@ -42,9 +44,7 @@ class MigratePlanCommand extends Command
         $dryRun   = (bool) $this->option('dry-run');
         $contexto = trim((string) $this->option('context'));
 
-        $this->newLine();
-        $this->line('  <fg=blue;options=bold>Innodite ModuleMaker — Migrate Plan</>');
-        $this->newLine();
+        $this->cabecera('Plan de migraciones');
 
         LegacyManifests::notice($this);
 

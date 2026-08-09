@@ -6,6 +6,7 @@ namespace Innodite\LaravelModuleMaker\Commands;
 
 use Innodite\LaravelModuleMaker\Support\Disk;
 use Illuminate\Console\Command;
+use Innodite\LaravelModuleMaker\Commands\Concerns\PrintsHeader;
 use Innodite\LaravelModuleMaker\Commands\Concerns\ReportsFailures;
 use Innodite\LaravelModuleMaker\Commands\Concerns\RehearsesChanges;
 use Illuminate\Support\Facades\File;
@@ -28,6 +29,7 @@ use Innodite\LaravelModuleMaker\Support\TenancyPackage;
 class SetupModuleMakerCommand extends Command
 {
     use RehearsesChanges;
+    use PrintsHeader;
     use ReportsFailures;
 
     protected $signature = 'innodite:module-setup
@@ -37,7 +39,7 @@ class SetupModuleMakerCommand extends Command
 
     protected $description = 'Configura el paquete: elige el modo del proyecto y crea module-maker-config/ en el project root.';
 
-    public function handle(): void
+    public function handle(): int
     {
         // El ensayo se enciende antes de nada y se apaga pase lo que pase: el interruptor es
         // del proceso, así que dejarlo puesto convertiría el siguiente comando en un ensayo
@@ -45,22 +47,37 @@ class SetupModuleMakerCommand extends Command
         $this->startRehearsal();
 
         try {
-            $this->ejecutar();
+            return $this->ejecutar();
         } finally {
             $this->reportRehearsal();
         }
     }
 
-    private function ejecutar(): void
+    /**
+     * Devuelve código de salida, como los otros ocho.
+     *
+     * Devolvía `void`, y en consola eso significa «éxito» siempre: `innodite:module-setup && …`
+     * encadenaba lo siguiente aunque la instalación se hubiera detenido por falta de modo o de
+     * paquete de tenencia. Un instalador que no puede fallar es un instalador en el que no se puede
+     * confiar dentro de un script.
+     */
+    private function ejecutar(): int
     {
-        $this->info("Iniciando configuración de laravel-module-maker...");
-        $this->newLine();
+        $this->cabecera('Instalación en el proyecto');
 
         // ── El modo, lo primero ───────────────────────────────────────────────
         // La norma dice que el modo se ELIGE AL INSTALAR, no que se teclee después en un archivo
         // de configuración. Y va primero porque decide la forma de todo lo demás: si se pregunta al
         // final, lo que ya se generó nació con la estructura de otro modo.
         $mode = $this->configureMode();
+
+        // Y sin modo se para aquí. Antes seguía adelante: creaba las carpetas, publicaba los stubs y
+        // terminaba anunciando «Configuración completa» sobre un proyecto que no había elegido modo
+        // —justo lo que la regla 5 prohíbe—. Ahora el código de salida lo dice también, que es lo
+        // único que lee un script.
+        if ($mode === null) {
+            return self::FAILURE;
+        }
 
         // ── El paquete de tenencia, si el modo lo pide ────────────────────────
         // Va inmediatamente después del modo y por el mismo motivo: decide la envoltura de cada
@@ -72,7 +89,7 @@ class SetupModuleMakerCommand extends Command
         // después— apuesta a que el usuario lea la documentación antes de generar su primer módulo.
         // No la lee: genera, ve archivos escritos y sigue.
         if (! $this->configureTenancyPackage($mode)) {
-            return;
+            return self::FAILURE;
         }
 
         // ── Carpeta de módulos ────────────────────────────────────────────────
@@ -107,6 +124,8 @@ class SetupModuleMakerCommand extends Command
         $this->line("  → Edita <comment>module-maker-config/contexts.json</comment> con los contextos de tu proyecto.");
         $this->line("  → Personaliza stubs en <comment>module-maker-config/stubs/contextual/</comment>.");
         $this->line("  → Ejecuta: <comment>php artisan innodite:make-module NombreModulo SubFuncionalidad</comment>");
+
+        return self::SUCCESS;
     }
 
     // ─── El modo del proyecto ─────────────────────────────────────────────────

@@ -26,7 +26,7 @@ it('deriva el contexto y la conexión de la propia coordenada', function () {
 
     $this->artisan('innodite:migrate-one', [
         'coordinate' => 'Probe:Central/2026_01_01_000001_crea_cosas.php',
-        '--yes'      => true,
+        '--force'    => true,
         '--dry-run'  => true,
     ])
         ->expectsOutputToContain('Contexto:      central')
@@ -38,7 +38,7 @@ it('deriva el contexto y la conexión de la propia coordenada', function () {
 it('una coordenada que no apunta a ningún archivo se rechaza diciendo dónde se buscó', function () {
     $this->artisan('innodite:migrate-one', [
         'coordinate' => 'Probe:Central/no_existe.php',
-        '--yes'      => true,
+        '--force'    => true,
         '--dry-run'  => true,
     ])
         ->expectsOutputToContain('Coordenada inválida')
@@ -52,7 +52,7 @@ it('el contexto se puede forzar, y entonces manda sobre el de la coordenada', fu
     $this->artisan('innodite:migrate-one', [
         'coordinate' => 'Probe:Central/2026_01_01_000001_crea_cosas.php',
         '--context'  => 'tenant-one',
-        '--yes'      => true,
+        '--force'    => true,
         '--dry-run'  => true,
     ])
         ->expectsOutputToContain('Conexión:      tenant_one')
@@ -99,7 +99,7 @@ it('aplica de verdad la migración, y no solo dice que la aplicaría', function 
 
     $this->artisan('innodite:migrate-one', [
         'coordinate' => 'Probe:Central/2026_01_01_000001_crea_cosas.php',
-        '--yes'      => true,
+        '--force'    => true,
     ])->assertSuccessful();
 
     expect(Schema::connection('central')->hasTable('cosas'))->toBeTrue(

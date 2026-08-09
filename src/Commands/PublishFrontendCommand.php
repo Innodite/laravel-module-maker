@@ -6,6 +6,7 @@ namespace Innodite\LaravelModuleMaker\Commands;
 
 use Innodite\LaravelModuleMaker\Support\Disk;
 use Illuminate\Console\Command;
+use Innodite\LaravelModuleMaker\Commands\Concerns\PrintsHeader;
 use Innodite\LaravelModuleMaker\Commands\Concerns\ReportsFailures;
 use Innodite\LaravelModuleMaker\Commands\Concerns\RehearsesChanges;
 use Illuminate\Support\Facades\File;
@@ -32,10 +33,11 @@ use Illuminate\Support\Facades\File;
 class PublishFrontendCommand extends Command
 {
     use RehearsesChanges;
+    use PrintsHeader;
     use ReportsFailures;
 
     protected $signature = 'innodite:publish-frontend
-        {--force : Sobreescribir archivos existentes sin confirmación}
+        {--force : Publica sin pedir confirmación, sobreescribiendo lo que ya exista}
         {--dry-run : Ensayo: enseña lo que publicaría, sin escribir nada}';
 
     protected $description = 'Publica los Composables y Componentes Vue 3 del bridge Innodite en resources/js/.';
@@ -59,9 +61,7 @@ class PublishFrontendCommand extends Command
 
     private function ejecutar(): int
     {
-        $this->newLine();
-        $this->line('  <fg=blue;options=bold>Innodite ModuleMaker — Publicación de Frontend</>');
-        $this->newLine();
+        $this->cabecera('Publicación del frontend');
 
         // ── Pre-flight: resources/js/ existe ─────────────────────────────────
         $jsPath = resource_path('js');

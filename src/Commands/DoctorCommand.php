@@ -6,10 +6,10 @@ namespace Innodite\LaravelModuleMaker\Commands;
 
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\File;
+use Innodite\LaravelModuleMaker\Commands\Concerns\PrintsHeader;
 use Innodite\LaravelModuleMaker\Commands\Concerns\ReportsFailures;
 use Innodite\LaravelModuleMaker\Services\ModuleAuditor;
 use Innodite\LaravelModuleMaker\Support\ModuleMode;
-use Innodite\LaravelModuleMaker\Support\PackageVersion;
 use Throwable;
 
 /**
@@ -45,6 +45,7 @@ use Throwable;
  */
 class DoctorCommand extends Command
 {
+    use PrintsHeader;
     use ReportsFailures;
 
     protected $signature = 'innodite:doctor
@@ -64,7 +65,7 @@ class DoctorCommand extends Command
 
     public function handle(): int
     {
-        $this->cabecera();
+        $this->cabecera('Diagnóstico del proyecto');
 
         $entornoOk = $this->entornoDelGenerador();
 
@@ -77,25 +78,6 @@ class DoctorCommand extends Command
         $contratoOk = $this->contratoDelProyecto();
 
         return $this->cerrar($entornoOk && $contratoOk);
-    }
-
-    // ─── La cabecera ──────────────────────────────────────────────────────────
-
-    /**
-     * The header states the version it is actually running.
-     *
-     * It used to say `v3.0.0`, typed by hand in three places, while the package shipped 3.6. The first
-     * line of a diagnostic is what gets copied into the bug report, so a stale literal there sends
-     * everybody to the wrong tag. Now it asks Composer — see {@see PackageVersion}.
-     */
-    private function cabecera(): void
-    {
-        $this->newLine();
-        $this->line(
-            '  <fg=blue;options=bold>Innodite ModuleMaker — Diagnóstico del proyecto</>'
-            . '  <fg=gray>v' . PackageVersion::current() . '</>'
-        );
-        $this->newLine();
     }
 
     // ─── Etapa 1 · El entorno del generador ───────────────────────────────────

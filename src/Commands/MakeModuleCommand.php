@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Innodite\LaravelModuleMaker\Commands;
 
 use Illuminate\Console\Command;
+use Innodite\LaravelModuleMaker\Commands\Concerns\PrintsHeader;
 use Innodite\LaravelModuleMaker\Commands\Concerns\ReportsFailures;
 use Innodite\LaravelModuleMaker\Commands\Concerns\RehearsesChanges;
 use Illuminate\Support\Facades\File;
@@ -39,11 +40,12 @@ use Throwable;
 class MakeModuleCommand extends Command
 {
     use RehearsesChanges;
+    use PrintsHeader;
     use ReportsFailures;
 
     protected $signature = 'innodite:make-module
         {name                  : Nombre de la entidad en singular (se convierte a PascalCase)}
-        {--context=            : Contexto: central | shared | tenant_shared | nombre-del-tenant}
+        {--context=            : Contexto donde se genera, en multitenant: central | shared | tenant_shared | id del tenant}
         {--json                : Usa module-maker-config/{module}.json como fuente de configuración}
         {--no-routes           : Omite la inyección de rutas en el proyecto}
         {--M|model             : Solo añade el modelo}
@@ -83,6 +85,8 @@ class MakeModuleCommand extends Command
         }
 
         $modulePath = config('make-module.module_path') . "/{$moduleName}";
+
+        $this->cabecera("Módulo {$moduleName}");
 
         // ── Modo JSON ─────────────────────────────────────────────────────────
         if ($this->option('json')) {
