@@ -18,7 +18,9 @@ use Innodite\LaravelModuleMaker\Commands\MigratePlanCommand;
 use Innodite\LaravelModuleMaker\Commands\PublishFrontendCommand;
 use Innodite\LaravelModuleMaker\Commands\SetupModuleMakerCommand;
 use Innodite\LaravelModuleMaker\Commands\TestCommand;
+use Innodite\LaravelModuleMaker\Contracts\ProveedorDeCriterio;
 use Innodite\LaravelModuleMaker\Middleware\InnoditeContextBridge;
+use Innodite\LaravelModuleMaker\Services\Criterio\CriterioLocal;
 use Illuminate\Support\Str;
 
 class LaravelModuleMakerServiceProvider extends ServiceProvider
@@ -32,6 +34,15 @@ class LaravelModuleMakerServiceProvider extends ServiceProvider
 
         // Alias del middleware para uso en rutas: Route::middleware('innodite.bridge')
         $this->app['router']->aliasMiddleware('innodite.bridge', InnoditeContextBridge::class);
+
+        // El enchufe del criterio. Quien pregunta pide la INTERFAZ; qué implementación llega lo dice
+        // la configuración. Es lo que hace que conectar el criterio remoto sea cambiar una clave en
+        // vez de tocar los comandos que preguntan.
+        $this->app->bind(ProveedorDeCriterio::class, function ($app) {
+            $clase = config('make-module.criterio.proveedor', CriterioLocal::class);
+
+            return $app->make(is_string($clase) && class_exists($clase) ? $clase : CriterioLocal::class);
+        });
 
         // Aquí vivía el singleton `innodite.module_seeder` (B27). Construía un InnoditeModuleSeeder
         // y le llamaba a setModuleSeeders() — un método que esa clase nunca tuvo—, así que resolverlo

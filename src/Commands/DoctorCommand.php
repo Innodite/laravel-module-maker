@@ -7,6 +7,7 @@ namespace Innodite\LaravelModuleMaker\Commands;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\File;
 use Innodite\LaravelModuleMaker\Commands\Concerns\PrintsHeader;
+use Innodite\LaravelModuleMaker\Contracts\ProveedorDeCriterio;
 use Innodite\LaravelModuleMaker\Commands\Concerns\ReportsFailures;
 use Innodite\LaravelModuleMaker\Services\ModuleAuditor;
 use Innodite\LaravelModuleMaker\Support\ModuleMode;
@@ -76,8 +77,9 @@ class DoctorCommand extends Command
         }
 
         $contratoOk = $this->contratoDelProyecto();
+        $criterioOk = $this->loQueDiceElCriterio();
 
-        return $this->cerrar($entornoOk && $contratoOk);
+        return $this->cerrar($entornoOk && $contratoOk && $criterioOk);
     }
 
     // ─── Etapa 1 · El entorno del generador ───────────────────────────────────
@@ -675,6 +677,64 @@ class DoctorCommand extends Command
                 . "],"
             );
         }
+
+        return false;
+    }
+
+    // ─── Etapa 3 · Lo que dice el criterio ────────────────────────────────────
+
+    /**
+     * Le pregunta al criterio, sea quien sea.
+     *
+     * Las dos etapas anteriores comprueban **hechos**: que el archivo esté, que la carpeta se pueda
+     * escribir, que el trait esté puesto. De eso sabe el paquete. Esta pregunta es distinta: es sobre
+     * lo que *debería* ser, y de eso sabe el criterio — que vive fuera (regla 4).
+     *
+     * Con el proveedor por defecto la respuesta es vacía y aquí solo se ve una línea diciendo cuál
+     * está conectado. Eso es lo correcto, y también es lo que hace que el enchufe **no sea código
+     * muerto**: el día que se configure `CriterioRemoto`, sus hallazgos aparecen en este diagnóstico
+     * sin tocar una línea de este comando.
+     */
+    private function loQueDiceElCriterio(): bool
+    {
+        $criterio = app(ProveedorDeCriterio::class);
+
+        $this->line('  <fg=blue;options=bold>Etapa 3 · Lo que dice el criterio</>');
+        $this->newLine();
+
+        $this->components->twoColumnDetail('Proveedor', "<fg=green>{$criterio->nombre()}</>");
+
+        if (! $criterio->disponible()) {
+            $this->components->warn(
+                'El criterio no responde. Lo de arriba sigue siendo válido: son hechos del proyecto, '
+                . 'no opiniones.'
+            );
+            $this->newLine();
+
+            return true;   // que el criterio no conteste no convierte en inválido el diagnóstico
+        }
+
+        $hallazgos = $criterio->revisar('proyecto', [
+            'modo'    => $this->modo?->value,
+            'modulos' => $this->rutaDeModulos(),
+        ]);
+
+        if ($hallazgos === []) {
+            $this->components->twoColumnDetail('Hallazgos', '<fg=gray>ninguno</>');
+            $this->newLine();
+
+            return true;
+        }
+
+        foreach ($hallazgos as $hallazgo) {
+            $this->fallo(
+                (string) ($hallazgo['mensaje'] ?? 'hallazgo sin descripción.'),
+                (string) ($hallazgo['arreglo'] ?? 'consulta la regla ' . ($hallazgo['regla'] ?? '')),
+                'Regla ' . ($hallazgo['regla'] ?? '—') . '.'
+            );
+        }
+
+        $this->newLine();
 
         return false;
     }

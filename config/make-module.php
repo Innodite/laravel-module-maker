@@ -82,6 +82,29 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | De dónde salen las reglas — el criterio
+    |--------------------------------------------------------------------------
+    |
+    | Este paquete reparte MECÁNICA: estructura, generación, migraciones, despliegue
+    | y ejecución del contrato de pruebas. El CRITERIO —qué reglas debe cumplir un
+    | módulo, qué es un hallazgo, qué se recomienda corregir— no viaja dentro: vive en
+    | el servidor de Innodite y se consume por API con token.
+    |
+    | El valor por defecto, CriterioLocal, responde vacío a todo. No es una
+    | implementación a medias: es la correcta para un paquete público. Escribir las
+    | reglas aquí «hasta que exista el remoto» sería publicarlas, y lo que se publica
+    | una vez ya está publicado.
+    |
+    | Cuando exista CriterioRemoto se cambia esta clase, y ningún comando se entera.
+    | Esa es toda la fase 2 del producto: una línea de configuración.
+    |
+    */
+    'criterio' => [
+        'proveedor' => Innodite\LaravelModuleMaker\Services\Criterio\CriterioLocal::class,
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Ruta raíz de todos los módulos del proyecto
     |--------------------------------------------------------------------------
     */
