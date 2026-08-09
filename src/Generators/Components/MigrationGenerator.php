@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Innodite\LaravelModuleMaker\Generators\Components;
 
 use Illuminate\Support\Str;
+use Innodite\LaravelModuleMaker\Support\PrimaryKeyMode;
 use Innodite\LaravelModuleMaker\Support\SeederNames;
 use Illuminate\Support\Facades\File;
 use Innodite\LaravelModuleMaker\Generators\Concerns\HasStubs;
@@ -274,8 +275,10 @@ class MigrationGenerator extends AbstractComponentGenerator
     {
         $schemaLines = [];
 
-        // La clave primaria es ULID (R10). El autoincremental es enumerable: con un `id` en la URL
-        // se recorre la tabla entera probando números, y en un multitenant eso cruza inquilinos.
+        // La clave primaria la decide la CONFIGURACIÓN, con ULID por defecto (R10) — el
+        // autoincremental es enumerable: con un `id` en la URL se recorre la tabla entera probando
+        // números, y en un multitenant eso cruza inquilinos. Quien lo prefiera lo declara al
+        // instalar, de forma explícita y una sola vez.
         //
         // Y la pone **el generador, no el stub**. Hasta ahora la escribían los dos —el stub traía
         // `$table->id();` fijo y esta línea inyectaba otro— y la migración salía con la columna
@@ -292,7 +295,7 @@ class MigrationGenerator extends AbstractComponentGenerator
         }
 
         if (! $declaraPropiaClave) {
-            $schemaLines[] = "\$table->ulid('id')->primary();";
+            $schemaLines[] = PrimaryKeyMode::current()->primaryKeyColumn();
         }
 
         foreach ($attributes as $attribute) {
@@ -578,15 +581,18 @@ class MigrationGenerator extends AbstractComponentGenerator
     }
 
     /**
-     * Clave foránea — `foreignUlid`, para que apunte a la clave que las tablas llevan de verdad.
+     * Clave foránea — del mismo tipo que la clave primaria que apunta.
      *
      * Si la PK es ULID (R10) y la FK sigue siendo `foreignId` —un entero—, la restricción no se
-     * puede crear: los tipos no casan. Es el mismo par que la clave primaria, un escalón más abajo.
+     * puede crear: los tipos no casan. Es el mismo par que la clave primaria, un escalón más abajo,
+     * y por eso lo decide la MISMA pieza: dos sitios eligiendo por separado es exactamente cómo
+     * dejan de coincidir.
      */
     protected function foreignIdColumn(array $attribute): string
     {
         $name = $attribute['name'];
-        $definition = "\$table->foreignUlid('{$name}')";
+        $metodo = PrimaryKeyMode::current()->foreignKeyMethod();
+        $definition = "\$table->{$metodo}('{$name}')";
 
         if (isset($attribute['on']) && isset($attribute['constrained']) && $attribute['constrained']) {
             $definition .= "->constrained('{$attribute['on']}')";

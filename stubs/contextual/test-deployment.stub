@@ -6,8 +6,7 @@ namespace {{{ namespace }}};
 
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
-use Illuminate\Support\Str;
-
+{{{ strImport }}}
 /**
  * Tema 8 — el despliegue de {{{ subFeature }}}, **ejecutado**.
  *
@@ -94,7 +93,7 @@ final class {{{ deploymentName }}} extends {{{ baseName }}}
         $this->seed({{{ contractName }}}::SCAFFOLD['stage_seeder']);
 
         $tabla = (string) array_key_first({{{ contractName }}}::TABLES);
-        $id    = (string) Str::ulid();
+        $id    = {{{ idInexistente }}};
 
         // Solo las columnas que el patrón garantiza. Si esta tabla tiene columnas obligatorias del
         // negocio, complétalas aquí: lo que se está midiendo es que la fila sobreviva, no su forma.

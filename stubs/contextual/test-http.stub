@@ -6,8 +6,7 @@ namespace {{{ namespace }}};
 
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
-use Illuminate\Support\Str;
-
+{{{ strImport }}}
 /**
  * Tema 7 — el comportamiento de {{{ subFeature }}} por HTTP: **el único sin techo**.
  *
@@ -120,7 +119,7 @@ final class {{{ httpName }}} extends {{{ baseName }}}
             );
         }
 
-        $respuesta = $this->llamarAccion('update', ['id' => (string) Str::ulid()], []);
+        $respuesta = $this->llamarAccion('update', ['id' => {{{ idInexistente }}}], []);
 
         $this->assertSame(
             422,
@@ -171,7 +170,7 @@ final class {{{ httpName }}} extends {{{ baseName }}}
      */
     public function test_pedir_un_registro_que_no_existe_no_devuelve_otro(): void
     {
-        $respuesta = $this->llamarAccion('show', ['id' => (string) Str::ulid()]);
+        $respuesta = $this->llamarAccion('show', ['id' => {{{ idInexistente }}}]);
 
         $this->assertNotSame(
             200,
@@ -198,7 +197,7 @@ final class {{{ httpName }}} extends {{{ baseName }}}
             );
         }
 
-        $id = (string) Str::ulid();
+        $id = {{{ idInexistente }}};
 
         DB::connection({{{ contractName }}}::CONNECTION)->table($tabla)->insert([
             'id'         => $id,

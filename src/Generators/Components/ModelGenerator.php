@@ -6,6 +6,7 @@ namespace Innodite\LaravelModuleMaker\Generators\Components;
 
 use Illuminate\Support\Str;
 use Innodite\LaravelModuleMaker\Generators\Concerns\HasStubs;
+use Innodite\LaravelModuleMaker\Support\PrimaryKeyMode;
 use InvalidArgumentException;
 
 class ModelGenerator extends AbstractComponentGenerator
@@ -108,6 +109,12 @@ class ModelGenerator extends AbstractComponentGenerator
             // chequeo de salida lo daba por bueno— y roto al ejecutar.
             'imports'    => $useStatements,
             'relations'  => $relationsMethods,
+            // El trait de ULID sigue a la clave primaria que la configuración declara. Un modelo con
+            // `HasUlids` sobre una tabla autoincremental genera la clave en PHP y se la manda a una
+            // columna que la ignora: el registro se guarda con el id que asigna la base y el que el
+            // modelo cree tener no existe. Sintaxis válida, y roto solo al leer lo recién escrito.
+            'ulidImport' => $this->ulidImport(),
+            'ulidTrait'  => $this->ulidTrait(),
         ]);
 
         $this->putFile("{$modelDirectoryPath}/{$className}.php", $stubContent, "Modelo '{$className}' creado en Modules/{$this->moduleName}/Models");
@@ -193,6 +200,27 @@ class ModelGenerator extends AbstractComponentGenerator
         }
 
         return "protected \$connection = '{$connection}';\n\n    ";
+    }
+
+    /**
+     * El `use` de `HasUlids`, solo si la clave primaria es ULID.
+     *
+     * Se emite con su salto de línea incluido: un import que no se escribe no puede dejar una línea
+     * en blanco donde antes había una declaración.
+     */
+    protected function ulidImport(): string
+    {
+        return PrimaryKeyMode::current()->needsUlidTrait()
+            ? "use Illuminate\\Database\\Eloquent\\Concerns\\HasUlids;\n"
+            : '';
+    }
+
+    /** El `use HasUlids;` dentro de la clase, con su indentación, o nada. */
+    protected function ulidTrait(): string
+    {
+        return PrimaryKeyMode::current()->needsUlidTrait()
+            ? "    use HasUlids;\n"
+            : '';
     }
 
      /**

@@ -24,6 +24,29 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Clave primaria de las tablas generadas
+    |--------------------------------------------------------------------------
+    |
+    |   'ulid'        ULID — lo que exige el patrón, y el valor por defecto
+    |   'increments'  Entero autoincremental — el de Laravel, si lo prefieres
+    |
+    | A diferencia del modo, esta clave SÍ tiene valor por defecto: los tres modos son
+    | igual de legítimos y adivinar uno produce una estructura equivocada, pero aquí hay
+    | una respuesta correcta —el patrón pide ULID— y quien no diga nada la recibe.
+    |
+    | El ULID no es enumerable: con un entero en la URL se recorre la tabla probando
+    | números, y en un multitenant eso cruza inquilinos.
+    |
+    | ⛔ Se elige AL INSTALAR y no se cambia después. Con tablas ya creadas, las foráneas
+    | nuevas saldrían de un tipo que no puede referenciar a las claves existentes y la
+    | restricción no llega a crearse. Cambiarla es una migración de datos de tu proyecto,
+    | no un ajuste de configuración.
+    |
+    */
+    'primary_key' => env('MODULE_MAKER_PRIMARY_KEY', 'ulid'),
+
+    /*
+    |--------------------------------------------------------------------------
     | Ruta raíz de todos los módulos del proyecto
     |--------------------------------------------------------------------------
     */

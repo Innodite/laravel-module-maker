@@ -7,6 +7,7 @@ namespace Innodite\LaravelModuleMaker\Generators\Components;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\File;
 use Innodite\LaravelModuleMaker\Generators\Concerns\HasStubs;
+use Innodite\LaravelModuleMaker\Support\PrimaryKeyMode;
 use Innodite\LaravelModuleMaker\Support\RequestNames;
 use Innodite\LaravelModuleMaker\Support\SeederNames;
 use Innodite\LaravelModuleMaker\Support\SubFeaturePermissions;
@@ -354,6 +355,15 @@ PHP;
             'permissionsName' => TestNames::piece($prefijo, $subFeature, 'PermissionsTest'),
             'deploymentName'  => TestNames::piece($prefijo, $subFeature, 'DeploymentTest'),
             'httpName'        => TestNames::piece($prefijo, $subFeature, 'HttpTest'),
+            // Cómo se fabrica un identificador que NO existe, para las pruebas que exigen un 404.
+            // Sale de la misma pieza que decide la clave primaria, y esa es su razón de ser: un ULID
+            // literal contra una tabla autoincremental no afirma nada útil, y el grupo generado
+            // fallaría en el proyecto que eligió el otro modo — con el fallo pareciendo un defecto
+            // de la funcionalidad. Es la cuarta pregunta de la clave, la que se olvida.
+            'idInexistente'   => PrimaryKeyMode::current()->nonExistentIdExpression(),
+            'strImport'       => PrimaryKeyMode::current()->needsStrImport()
+                ? "use Illuminate\\Support\\Str;\n"
+                : '',
         ];
 
         $this->putFile(
