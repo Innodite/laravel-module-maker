@@ -139,5 +139,10 @@ it('un modo desconocido falla nombrando el valor mal escrito', function () {
     }
 
     expect($message)->not->toBeNull('Un modo inválido no puede resolverse inventando otro.');
-    expect($message)->toContain("El modo 'lo-que-sea' no existe");
+    expect($message)->toContain("el modo 'lo-que-sea' no existe");
+
+    // R30: nombrar el valor mal escrito no basta — el mensaje trae también qué escribir en su lugar.
+    expect(str_contains($message, 'FIX:'))->toBeTrue(
+        "FALLA: el error nombra el valor y no dice cómo corregirlo.\nDice:\n{$message}"
+    );
 });

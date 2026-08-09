@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Innodite\LaravelModuleMaker\Commands;
 
 use Illuminate\Console\Command;
+use Innodite\LaravelModuleMaker\Commands\Concerns\ReportsFailures;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Str;
 use Innodite\LaravelModuleMaker\Services\PhpunitRunner;
@@ -38,6 +39,8 @@ use Throwable;
  */
 class TestCommand extends Command
 {
+    use ReportsFailures;
+
     protected $signature = 'innodite:test
         {module      : Módulo al que pertenece (ej: Invoice)}
         {subfeature  : Subfuncionalidad cuyo contrato se ejecuta (ej: Payment)}
@@ -73,10 +76,10 @@ class TestCommand extends Command
         $grupo = $this->carpetaDelGrupo($modulo, $carpetaContexto, $subFuncion);
 
         if (! File::isDirectory($grupo)) {
-            $this->components->error(
-                "No hay grupo de pruebas en {$grupo}.\n"
-                . "  El grupo lo escribe el generador al crear la subfuncionalidad. Si el módulo es\n"
-                . '  anterior a esta versión, regenera la subfuncionalidad o créala con innodite:add-entity.'
+            $this->fallo(
+                "no hay grupo de pruebas en {$grupo}.",
+                "créalo con innodite:add-entity, o regenera la subfuncionalidad.",
+                'El grupo lo escribe el generador: si el módulo es anterior a esta versión, nació sin él.'
             );
 
             return self::FAILURE;
@@ -152,11 +155,11 @@ class TestCommand extends Command
             return true;
         }
 
-        $this->components->error(
-            "Al grupo le faltan " . count($faltan) . " pieza(s):\n"
-            . '    ' . implode("\n    ", $faltan) . "\n"
-            . "  No se ejecuta nada: sin el manifiesto las demás no pueden derivar rutas ni permisos,\n"
-            . '  y lo que saldría serían fallos que describen el síntoma y esconden la causa.'
+        $this->fallo(
+            'al grupo le faltan ' . count($faltan) . " pieza(s):\n    " . implode("\n    ", $faltan),
+            'complétalas con /ajustar-pruebas, o regenera la subfuncionalidad.',
+            'No se ejecuta nada: sin el manifiesto las demás no pueden derivar rutas ni permisos, y '
+            . 'lo que saldría serían fallos que describen el síntoma y esconden la causa.'
         );
 
         return false;
@@ -206,7 +209,13 @@ class TestCommand extends Command
         $this->recordarElTemaSeis($prefijo, $subFuncion);
 
         if ($fallidas !== []) {
-            $this->components->error(count($fallidas) . ' de ' . $ejecutadas . ' piezas fallaron.');
+            $this->fallo(
+                count($fallidas) . ' de ' . $ejecutadas . ' piezas fallaron.',
+                'clasifica el rojo antes de depurar: ¿base sucia (re-clona y repite solo esa pieza)? '
+                . '¿intermitente (repítela 3 veces)? Solo si no es ninguna de las dos, es un defecto.',
+                'Empezar por el código convierte una base contaminada en horas de depuración sobre '
+                . 'código correcto.'
+            );
 
             return self::FAILURE;
         }

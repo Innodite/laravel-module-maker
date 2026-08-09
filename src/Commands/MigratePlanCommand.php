@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Innodite\LaravelModuleMaker\Commands;
 
 use Illuminate\Console\Command;
+use Innodite\LaravelModuleMaker\Commands\Concerns\ReportsFailures;
 use Innodite\LaravelModuleMaker\Services\MigrationPlanResolver;
 use Innodite\LaravelModuleMaker\Services\MigrationTargetService;
 use Innodite\LaravelModuleMaker\Support\LegacyManifests;
@@ -26,6 +27,8 @@ use Throwable;
  */
 class MigratePlanCommand extends Command
 {
+    use ReportsFailures;
+
     protected $signature = 'innodite:migrate-plan
         {--context= : Contexto contra el que ejecutar: central | shared | tenant_shared | id del tenant}
         {--dry-run : Muestra el plan sin ejecutar nada}';
@@ -46,9 +49,11 @@ class MigratePlanCommand extends Command
         LegacyManifests::notice($this);
 
         if ($contexto === '') {
-            $this->components->error(
-                "Falta --context: dice contra qué base de datos se ejecuta.\n"
-                . '  Ejemplos: --context=central · --context=tenant_shared · --context=acme'
+            $this->fallo(
+                'falta --context: es lo que dice contra qué base de datos se ejecuta.',
+                'pásalo — --context=central · --context=tenant_shared · --context=acme',
+                'Sin él no hay forma de saber qué base recibe el plan, y aplicarlo en la que no era '
+                . 'no se deshace solo.'
             );
 
             return self::FAILURE;
@@ -131,7 +136,12 @@ class MigratePlanCommand extends Command
             ]);
 
             if ($codigo !== self::SUCCESS) {
-                $this->components->error("Falló la migración: {$migracion}");
+                $this->fallo(
+                    "falló la migración {$migracion}.",
+                    'corrígela y vuelve a lanzar el plan: las anteriores ya están aplicadas y son '
+                    . 'idempotentes.',
+                    'El plan se detiene aquí para no dejar la base a medio migrar sin avisar.'
+                );
 
                 return self::FAILURE;
             }

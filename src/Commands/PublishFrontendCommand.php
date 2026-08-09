@@ -6,6 +6,7 @@ namespace Innodite\LaravelModuleMaker\Commands;
 
 use Innodite\LaravelModuleMaker\Support\Disk;
 use Illuminate\Console\Command;
+use Innodite\LaravelModuleMaker\Commands\Concerns\ReportsFailures;
 use Innodite\LaravelModuleMaker\Commands\Concerns\RehearsesChanges;
 use Illuminate\Support\Facades\File;
 
@@ -31,6 +32,7 @@ use Illuminate\Support\Facades\File;
 class PublishFrontendCommand extends Command
 {
     use RehearsesChanges;
+    use ReportsFailures;
 
     protected $signature = 'innodite:publish-frontend
         {--force : Sobreescribir archivos existentes sin confirmación}
@@ -65,11 +67,12 @@ class PublishFrontendCommand extends Command
         $jsPath = resource_path('js');
 
         if (!File::isDirectory($jsPath)) {
-            $this->components->error("No se encontró resources/js/.");
-            $this->newLine();
-            $this->line('  ¿Está configurado el frontend? Opciones:');
-            $this->line('    <comment>php artisan breeze:install vue</comment>');
-            $this->line('    <comment>composer require inertiajs/inertia-laravel</comment>');
+            $this->fallo(
+                'no existe resources/js/ en este proyecto.',
+                'monta el frontend antes — php artisan breeze:install vue · o bien '
+                . 'composer require inertiajs/inertia-laravel',
+                'El bridge se publica DENTRO de resources/js: sin esa carpeta no hay dónde ponerlo.'
+            );
             return self::FAILURE;
         }
 
@@ -86,7 +89,11 @@ class PublishFrontendCommand extends Command
             $destinoPath = resource_path("js/{$grupo}");
 
             if (!File::isDirectory($stubsPath)) {
-                $this->components->error("Directorio de stubs no encontrado: {$stubsPath}");
+                $this->fallo(
+                    "no está la carpeta de stubs del paquete: {$stubsPath}",
+                    'reinstala el paquete — composer reinstall innodite/laravel-module-maker',
+                    'Esa carpeta viaja dentro del paquete: si falta, la instalación quedó a medias.'
+                );
                 return self::FAILURE;
             }
 

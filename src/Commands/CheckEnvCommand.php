@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Innodite\LaravelModuleMaker\Commands;
 
 use Illuminate\Console\Command;
+use Innodite\LaravelModuleMaker\Commands\Concerns\ReportsFailures;
 use Illuminate\Support\Facades\File;
 
 /**
@@ -23,6 +24,8 @@ use Illuminate\Support\Facades\File;
  */
 class CheckEnvCommand extends Command
 {
+    use ReportsFailures;
+
     protected $signature = 'innodite:check-env';
 
     protected $description = 'Verifica el "Contrato de Datos" del bridge Frontend-Backend de Innodite.';
@@ -60,7 +63,12 @@ class CheckEnvCommand extends Command
         $userFile = $this->findUserModel();
 
         if ($userFile === null) {
-            $this->components->error('No se encontró el modelo User en app/Models/User.php, app/User.php ni en Modules/*/Models/.');
+            $this->fallo(
+                'no se encontró el modelo User en app/Models/User.php, app/User.php ni en Modules/*/Models/.',
+                'apunta el diagnóstico al proyecto correcto, o crea el modelo User de Laravel.',
+                'Sin User no hay a quién asignarle roles, y los permisos que genera el paquete no '
+                . 'protegen nada.'
+            );
             return false;
         }
 
@@ -79,7 +87,12 @@ class CheckEnvCommand extends Command
         }
 
         // Ninguna opción encontrada
-        $this->components->error('El modelo User no tiene soporte de permisos compatible con Innodite.');
+        $this->fallo(
+            'el modelo User no tiene soporte de permisos compatible con Innodite.',
+            'instala Spatie Permission y añádele el trait HasRoles — abajo va el bloque exacto.',
+            'Cada ruta generada exige un permiso por nombre: sin quien los resuelva, la pantalla '
+            . 'responde 403 a todo el mundo.'
+        );
         $this->newLine();
         $this->line('  <fg=yellow>Opción A — Instala Spatie Permission (recomendado):</>');
         $this->displayCodeBlock("composer require spatie/laravel-permission\nphp artisan vendor:publish --provider=\"Spatie\\Permission\\PermissionServiceProvider\"");
@@ -130,7 +143,12 @@ class CheckEnvCommand extends Command
         if (str_contains($content, 'auth.permissions') || str_contains($content, "'permissions'")) {
             $this->components->twoColumnDetail('auth.permissions', '<fg=green>OK — encontrado</>');
         } else {
-            $this->components->error('auth.permissions no está siendo compartido.');
+            $this->fallo(
+                'auth.permissions no se comparte con el frontend.',
+                'añádelo al share() de HandleInertiaRequests — abajo va el bloque exacto.',
+                'Es el defecto B24: la pantalla generada carga perfecta y SIN UN SOLO BOTÓN, porque '
+                . 'no sabe qué puede hacer el usuario.'
+            );
             $this->newLine();
             $this->line('  <fg=yellow>Añade esto al método share() de HandleInertiaRequests:</>');
             $this->displayCodeBlock(

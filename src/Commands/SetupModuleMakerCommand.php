@@ -6,6 +6,7 @@ namespace Innodite\LaravelModuleMaker\Commands;
 
 use Innodite\LaravelModuleMaker\Support\Disk;
 use Illuminate\Console\Command;
+use Innodite\LaravelModuleMaker\Commands\Concerns\ReportsFailures;
 use Innodite\LaravelModuleMaker\Commands\Concerns\RehearsesChanges;
 use Illuminate\Support\Facades\File;
 use Innodite\LaravelModuleMaker\Generators\Components\ProjectSeederGenerator;
@@ -27,6 +28,7 @@ use Innodite\LaravelModuleMaker\Support\TenancyPackage;
 class SetupModuleMakerCommand extends Command
 {
     use RehearsesChanges;
+    use ReportsFailures;
 
     protected $signature = 'innodite:module-setup
         {--mode= : Modo del proyecto: single-app | multitenant-shared | multitenant-per-tenant}
@@ -144,8 +146,12 @@ class SetupModuleMakerCommand extends Command
             $elegido = ModuleMode::tryFrom($opcion);
 
             if ($elegido === null) {
-                $this->error("El modo '{$opcion}' no existe. Son: "
-                    . implode(' · ', array_column(ModuleMode::cases(), 'value')));
+                $this->fallo(
+                    "el modo '{$opcion}' no existe.",
+                    'usa uno de estos — '
+                    . implode(' · ', array_column(ModuleMode::cases(), 'value')),
+                    'El modo decide la forma de cada archivo que se genere después.'
+                );
 
                 return null;
             }

@@ -21,8 +21,9 @@ final class ModeNotConfiguredException extends RuntimeException
     public static function missing(): self
     {
         return new self(
-            "No has elegido el modo del proyecto, y de él depende la forma de todo lo que se genera.\n\n"
-            . "  Ejecuta:  php artisan innodite:module-setup\n"
+            "FALLA: no has elegido el modo del proyecto, y de él depende la forma de todo lo que "
+            . "se genera.\n"
+            . "  · FIX: ejecuta php artisan innodite:module-setup\n"
             . "  O define 'mode' en config/make-module.php con uno de estos valores:\n\n"
             . "    single-app              Aplicación única, sin tenancy\n"
             . "    multitenant-shared      Todos los tenants comparten funcionalidad\n"
@@ -36,8 +37,8 @@ final class ModeNotConfiguredException extends RuntimeException
     public static function invalid(string $given, array $valid): self
     {
         return new self(
-            "El modo '{$given}' no existe.\n\n"
-            . "  Valores válidos para 'mode' en config/make-module.php:\n"
+            "FALLA: el modo '{$given}' no existe.\n"
+            . "  · FIX: usa uno de estos en 'mode' de config/make-module.php:\n"
             . '    ' . implode("\n    ", $valid) . "\n"
         );
     }

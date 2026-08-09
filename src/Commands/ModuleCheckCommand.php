@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Innodite\LaravelModuleMaker\Commands;
 
 use Illuminate\Console\Command;
+use Innodite\LaravelModuleMaker\Commands\Concerns\ReportsFailures;
 use Illuminate\Support\Facades\File;
 use Innodite\LaravelModuleMaker\Services\ModuleAuditor;
 use Innodite\LaravelModuleMaker\Support\ModuleMode;
@@ -22,6 +23,8 @@ use Innodite\LaravelModuleMaker\Support\ModuleMode;
  */
 class ModuleCheckCommand extends Command
 {
+    use ReportsFailures;
+
     protected $signature = 'innodite:module-check';
 
     protected $description = 'Diagnóstico de integridad del entorno ModuleMaker v3.0.0.';
@@ -63,7 +66,12 @@ class ModuleCheckCommand extends Command
         $path = config('make-module.contexts_path');
 
         if (!File::exists($path)) {
-            $this->components->error("contexts.json no encontrado en: {$path}");
+            $this->fallo(
+                "no está contexts.json en {$path}.",
+                'publícalo con php artisan innodite:module-setup, o apunta contexts_path a donde lo '
+                . 'tengas.',
+                'Es el catálogo del que sale cada contexto: sin él no se puede generar nada.'
+            );
             $this->line("     Ejecuta: <comment>php artisan innodite:module-setup</comment>");
             return false;
         }
@@ -72,12 +80,21 @@ class ModuleCheckCommand extends Command
         $data    = json_decode($content, true);
 
         if (json_last_error() !== JSON_ERROR_NONE) {
-            $this->components->error('contexts.json contiene JSON inválido: ' . json_last_error_msg());
+            $this->fallo(
+                'contexts.json no se puede leer: ' . json_last_error_msg() . '.',
+                'corrige el archivo — una coma de más al final de una lista es la causa habitual.',
+                'Mientras no se entienda, ningún comando puede resolver un contexto.'
+            );
             return false;
         }
 
         if (!isset($data['contexts']) || !is_array($data['contexts'])) {
-            $this->components->error('contexts.json no tiene la clave raíz "contexts" (array).');
+            $this->fallo(
+                'contexts.json no tiene la clave raíz "contexts".',
+                'envuelve los contextos en {"contexts": { … }} — compáralo con el que publica '
+                . 'innodite:module-setup.',
+                'Sin esa clave el archivo es válido como JSON y vacío como catálogo.'
+            );
             return false;
         }
 
@@ -250,7 +267,12 @@ class ModuleCheckCommand extends Command
 
         if (!empty($collisions)) {
             foreach ($collisions as $c) {
-                $this->components->error("Colisión detectada: {$c}");
+                $this->fallo(
+                    "colisión: {$c}",
+                    'renombra uno de los dos en contexts.json.',
+                    'Dos contextos que resuelven al mismo sitio se pisan los archivos generados, y '
+                    . 'gana el último que corra.'
+                );
             }
             return false;
         }

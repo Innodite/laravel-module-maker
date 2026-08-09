@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Innodite\LaravelModuleMaker\Commands;
 
 use Illuminate\Console\Command;
+use Innodite\LaravelModuleMaker\Commands\Concerns\ReportsFailures;
 use Innodite\LaravelModuleMaker\Commands\Concerns\RehearsesChanges;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Str;
@@ -34,6 +35,7 @@ use Throwable;
 class AddEntityCommand extends Command
 {
     use RehearsesChanges;
+    use ReportsFailures;
 
     protected $signature = 'innodite:add-entity
         {module                : Nombre del módulo existente (ej: UserManagement)}
@@ -76,8 +78,11 @@ class AddEntityCommand extends Command
 
         // ── Verificar que el módulo existe ────────────────────────────────────
         if (!File::isDirectory($modulePath)) {
-            $this->components->error("El módulo '{$moduleName}' no existe en {$modulePath}.");
-            $this->line("  Crea el módulo primero con: <comment>php artisan innodite:make-module {$moduleName}</comment>");
+            $this->fallo(
+                "el módulo '{$moduleName}' no existe en {$modulePath}.",
+                "créalo primero — php artisan innodite:make-module {$moduleName}",
+                'Este comando añade subfuncionalidades a un módulo que ya está; no crea el módulo.'
+            );
             return self::FAILURE;
         }
 

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Innodite\LaravelModuleMaker\Commands;
 
 use Illuminate\Console\Command;
+use Innodite\LaravelModuleMaker\Commands\Concerns\ReportsFailures;
 use Innodite\LaravelModuleMaker\Commands\Concerns\RehearsesChanges;
 use Illuminate\Database\Seeder;
 use Innodite\LaravelModuleMaker\Exceptions\ModeNotConfiguredException;
@@ -33,6 +34,7 @@ use Throwable;
 class DeployCommand extends Command
 {
     use RehearsesChanges;
+    use ReportsFailures;
 
     protected $signature = 'innodite:deploy
         {entorno : Qué se despliega: stage | production}
@@ -85,10 +87,11 @@ class DeployCommand extends Command
         $fqcn  = "Database\\Seeders\\{$clase}";
 
         if (! class_exists($fqcn)) {
-            $this->components->error(
-                "No existe {$fqcn}.\n"
-                . "  El seeder de despliegue es del proyecto y lo escribe el instalador:\n"
-                . '    php artisan innodite:module-setup'
+            $this->fallo(
+                "no existe {$fqcn}.",
+                'lánzalo con el instalador — php artisan innodite:module-setup',
+                'El seeder de despliegue es del proyecto, no del paquete: lo escribe el instalador y '
+                . 'luego lo amplías tú.'
             );
 
             return self::FAILURE;
@@ -114,10 +117,11 @@ class DeployCommand extends Command
         $piezas = ['stage' => 'Stage', 'production' => 'Production'];
 
         if (! isset($piezas[$entorno])) {
-            $this->components->error(
-                "'{$entorno}' no es un entorno de despliegue. Son: stage | production.\n"
-                . '  stage       reconstruye desde cero si se le pide con SEEDER_DESTRUCTIVE=true' . "\n"
-                . '  production  solo actualiza, y nunca borra nada'
+            $this->fallo(
+                "'{$entorno}' no es un entorno de despliegue.",
+                'usa stage | production, escrito entero.',
+                'stage reconstruye desde cero si se le pide con SEEDER_DESTRUCTIVE=true · '
+                . 'production solo actualiza, y nunca borra nada.'
             );
 
             return null;
@@ -137,9 +141,10 @@ class DeployCommand extends Command
 
         if (! $mode->hasContextAxis()) {
             if ($opcion !== '') {
-                $this->components->error(
-                    "El modo '{$mode->value}' no tiene contextos: no pases --context={$opcion}.\n"
-                    . '  Hay un solo despliegue, y se lanza sin más: php artisan innodite:deploy production'
+                $this->fallo(
+                    "el modo '{$mode->value}' no tiene contextos: no pases --context={$opcion}.",
+                    'lánzalo sin más — php artisan innodite:deploy production',
+                    'En una aplicación única hay un solo despliegue y una sola base.'
                 );
 
                 return false;
@@ -149,20 +154,22 @@ class DeployCommand extends Command
         }
 
         if ($opcion === '') {
-            $this->components->error(
-                "Falta --context: en {$mode->value} hay dos despliegues, contra dos bases de datos.\n"
-                . '  --context=central   la aplicación central' . "\n"
-                . '  --context=tenant    un tenant (una ejecución por tenant)'
+            $this->fallo(
+                "falta --context: en {$mode->value} hay dos despliegues, contra dos bases distintas.",
+                '--context=central (la aplicación central) · --context=tenant (un tenant, una '
+                . 'ejecución por tenant).',
+                'Desplegar el contexto equivocado llena la base que no era.'
             );
 
             return false;
         }
 
         if (! in_array($opcion, self::DESPLIEGUES, true)) {
-            $this->components->error(
-                "'{$opcion}' no es un despliegue. Son: " . implode(' | ', self::DESPLIEGUES) . ".\n"
-                . '  No es la clave del orden de despliegue, sino la base de datos que se llena: el '
-                . "despliegue de tenant cubre 'tenant', 'tenant_shared' y 'shared'."
+            $this->fallo(
+                "'{$opcion}' no es un despliegue.",
+                'usa ' . implode(' | ', self::DESPLIEGUES) . '.',
+                'No es la clave del orden de despliegue, sino la base que se llena: el despliegue de '
+                . "tenant cubre 'tenant', 'tenant_shared' y 'shared'."
             );
 
             return false;
@@ -191,8 +198,10 @@ class DeployCommand extends Command
             . 'canónicos y los permisos se recrearán.';
 
         if (! $this->input->isInteractive()) {
-            $this->components->error(
-                $aviso . "\n  Sin consola con la que confirmar, hace falta --force."
+            $this->fallo(
+                $aviso,
+                'pásale --force si de verdad quieres ejecutarlo sin confirmar.',
+                'No hay consola con la que preguntar, y esto borra.'
             );
 
             return false;
@@ -234,7 +243,11 @@ class DeployCommand extends Command
         } catch (Throwable $e) {
             // El seeder ya listó cada fallo con su archivo:línea al cerrar; aquí solo se traduce a
             // un código de salida, para que quien lo automatizó se entere.
-            $this->components->error($e->getMessage());
+            $this->fallo(
+                $e->getMessage(),
+                'corrige lo que listó el seeder arriba y vuelve a lanzar el despliegue.',
+                'El despliegue se detuvo: parte del orden declarado puede haberse aplicado ya.'
+            );
 
             return self::FAILURE;
         }

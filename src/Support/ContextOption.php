@@ -46,10 +46,12 @@ final class ContextOption
         if (! $mode->hasContextAxis()) {
             if ($option !== '') {
                 throw new InvalidArgumentException(
-                    "El modo '{$mode->value}' no tiene contextos: no pases --context={$option}.\n"
-                    . "  En una aplicación única la subfuncionalidad va directa bajo la capa\n"
-                    . "  (Models/Role/), sin Central/ ni Tenant/ y sin prefijo de clase.\n"
-                    . '  Si este proyecto sí tiene tenants, cambia make-module.mode en la configuración.'
+                    "FALLA: el modo '{$mode->value}' no tiene contextos: no pases "
+                    . "--context={$option}.\n"
+                    . "  · FIX: lánzalo sin --context; y si este proyecto sí tiene tenants, cambia "
+                    . "make-module.mode en la configuración.\n"
+                    . '  En una aplicación única la subfuncionalidad va directa bajo la capa '
+                    . '(Models/Role/), sin Central/ ni Tenant/ y sin prefijo de clase.'
                 );
             }
 
@@ -68,8 +70,10 @@ final class ContextOption
 
         if ($option !== '' && isset($allContexts[$option]) && ! $mode->supportsContext($option)) {
             throw new InvalidArgumentException(
-                "El contexto '{$option}' existe en contexts.json pero no corresponde al modo '{$mode->value}'.\n"
-                . '  Contextos de este modo: ' . implode(', ', $mode->requiredContextKeys()) . "\n"
+                "FALLA: el contexto '{$option}' existe en contexts.json pero no corresponde al modo "
+                . "'{$mode->value}'.\n"
+                . '  · FIX: usa uno de los de este modo — ' . implode(', ', $mode->requiredContextKeys())
+                . ".\n"
                 . '  Generar para un tenant nombrado en el modo de tenants iguales produce justo lo que'
                 . ' ese modo evita: una copia por tenant de lógica idéntica.'
             );

@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Innodite\LaravelModuleMaker\Commands;
 
 use Illuminate\Console\Command;
+use Innodite\LaravelModuleMaker\Commands\Concerns\ReportsFailures;
 use Innodite\LaravelModuleMaker\Services\MigrationPlanResolver;
 use Innodite\LaravelModuleMaker\Services\MigrationTargetService;
 use Innodite\LaravelModuleMaker\Support\LegacyManifests;
@@ -27,6 +28,8 @@ use Throwable;
  */
 class MigrateOneCommand extends Command
 {
+    use ReportsFailures;
+
     protected $signature = 'innodite:migrate-one
         {coordinate : Coordenada de la migración: Modulo:Contexto/archivo.php}
         {--context= : Fuerza el contexto de ejecución en vez de derivarlo de la coordenada}
@@ -122,7 +125,11 @@ class MigrateOneCommand extends Command
         }
 
         if (! $this->input instanceof InputInterface || ! $this->input->isInteractive()) {
-            $this->components->error('Este comando requiere confirmación interactiva. Usa --yes si deseas omitirla.');
+            $this->fallo(
+                'no hay consola con la que confirmar esta migración.',
+                'pásale --yes si quieres ejecutarla sin preguntar.',
+                'Una migración aplicada contra la conexión equivocada no se deshace leyendo el log.'
+            );
 
             return false;
         }

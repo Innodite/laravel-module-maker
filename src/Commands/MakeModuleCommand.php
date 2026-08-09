@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Innodite\LaravelModuleMaker\Commands;
 
 use Illuminate\Console\Command;
+use Innodite\LaravelModuleMaker\Commands\Concerns\ReportsFailures;
 use Innodite\LaravelModuleMaker\Commands\Concerns\RehearsesChanges;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Str;
@@ -38,6 +39,7 @@ use Throwable;
 class MakeModuleCommand extends Command
 {
     use RehearsesChanges;
+    use ReportsFailures;
 
     protected $signature = 'innodite:make-module
         {name                  : Nombre de la entidad en singular (se convierte a PascalCase)}
@@ -94,9 +96,11 @@ class MakeModuleCommand extends Command
 
         // ── Módulo ya existe (modo completo) ──────────────────────────────────
         if (File::exists($modulePath)) {
-            $this->components->error(
-                "El módulo '{$moduleName}' ya existe en {$modulePath}."
-                . " Usa -M -C -S -R -G -Q para añadir componentes."
+            $this->fallo(
+                "el módulo '{$moduleName}' ya existe en {$modulePath}.",
+                "añádele lo que falte con innodite:add-entity {$moduleName} <Entidad>, o pide una "
+                . 'capa suelta con -M -C -S -R -G -Q.',
+                'Regenerarlo encima sobrescribiría lo que ya tiene escrito el proyecto.'
             );
             return Command::FAILURE;
         }
@@ -183,7 +187,11 @@ class MakeModuleCommand extends Command
             return Command::SUCCESS;
         } catch (Throwable $e) {
             $this->newLine();
-            $this->components->error("Error: {$e->getMessage()}");
+            $this->fallo(
+                $e->getMessage(),
+                'corrige lo anterior y vuelve a generar; abajo se ofrece deshacer lo escrito.',
+                'La generación se detuvo a medias: lo que quedó en disco no es un módulo completo.'
+            );
 
             // ── Rollback opcional si hay archivos generados ───────────────────
             if ($filesGenerated && File::exists($modulePath)) {
@@ -295,15 +303,22 @@ class MakeModuleCommand extends Command
         }
 
         if (!File::exists($jsonPath)) {
-            $this->components->error("No se encontró archivo de configuración para '{$moduleName}'.");
-            $this->line("  Buscado en: <comment>{$jsonPath}</comment>");
+            $this->fallo(
+                "no hay archivo de configuración para '{$moduleName}'.",
+                "escríbelo en {$jsonPath}, o genera el módulo sin --json.",
+                'El modo --json toma de ahí la forma entera del módulo.'
+            );
             return Command::FAILURE;
         }
 
         $config = json_decode(File::get($jsonPath), true);
 
         if (json_last_error() !== JSON_ERROR_NONE) {
-            $this->components->error("JSON inválido en '{$jsonPath}': " . json_last_error_msg());
+            $this->fallo(
+                "el JSON de '{$jsonPath}' no se puede leer: " . json_last_error_msg() . '.',
+                'corrige el archivo y vuelve a lanzarlo.',
+                'No se genera nada a medias a partir de una configuración que no se entiende.'
+            );
             return Command::FAILURE;
         }
 
@@ -363,17 +378,21 @@ class MakeModuleCommand extends Command
         $name = Str::studly($input);
 
         if (!preg_match('/^[A-Z][a-zA-Z0-9]+$/', $name)) {
-            throw new \InvalidArgumentException(
-                "'{$name}' no es un nombre de módulo válido. "
-                . "Usa letras y números en PascalCase (ej: User, InvoiceItem)."
-            );
+            throw new \InvalidArgumentException(self::mensajeDeFallo(
+                "'{$name}' no es un nombre de módulo válido.",
+                'usa letras y números en PascalCase — User, InvoiceItem.',
+                'El nombre acaba siendo clase, carpeta y espacio de nombres: lo que no sea un '
+                . 'identificador de PHP no llega a cargarse.'
+            ));
         }
 
         if (in_array(strtolower($name), self::RESERVED_NAMES, true)) {
-            throw new \InvalidArgumentException(
-                "'{$name}' es una palabra reservada de PHP o Laravel y no puede "
-                . "usarse como nombre de módulo. Usa un nombre específico del dominio (ej: UserAccount)."
-            );
+            throw new \InvalidArgumentException(self::mensajeDeFallo(
+                "'{$name}' es una palabra reservada de PHP o Laravel.",
+                'usa un nombre del dominio — UserAccount, InvoiceItem.',
+                'Una clase con ese nombre no se puede declarar, así que el módulo entero quedaría '
+                . 'sin cargar.'
+            ));
         }
 
         return $name;
@@ -455,11 +474,11 @@ class MakeModuleCommand extends Command
             $allContexts['tenant'] ?? []
         ));
 
-        throw new \InvalidArgumentException(
-            "Contexto '{$option}' no encontrado en contexts.json.\n"
-            . "  Contextos disponibles: {$available}\n"
-            . "  Tenants disponibles:   {$tenants}"
-        );
+        throw new \InvalidArgumentException(self::mensajeDeFallo(
+            "el contexto '{$option}' no está en contexts.json.",
+            "usa uno de estos — contextos: {$available} · tenants: {$tenants}",
+            'El catálogo es la fuente: si el contexto que quieres no está, decláralo ahí primero.'
+        ));
     }
 
     /**
