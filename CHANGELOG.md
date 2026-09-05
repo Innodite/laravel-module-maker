@@ -4,7 +4,7 @@ Todo cambio que afecte a quien usa el paquete. El formato sigue
 [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y las versiones,
 [SemVer](https://semver.org/lang/es/).
 
-## [Sin publicar] — v4
+## [4.1.0] — 05/09/2026
 
 ### Retirado
 
@@ -34,6 +34,28 @@ Todo cambio que afecte a quien usa el paquete. El formato sigue
 
 - **[Cómo se ejecutan las migraciones](docs/como-se-ejecutan-las-migraciones.md)** — quién decide el
   orden, por qué son dos niveles y qué no hacer.
+- **Este archivo.** El README lo enlazaba desde hacía tiempo y no existía.
+- **Bloque de soporte en `composer.json`** — dónde reportar un fallo, dónde está el código y dónde
+  el manual. Quien llegaba desde el directorio de paquetes no lo tenía.
+
+### Corregido
+
+- **Los distintivos del README anunciaban requisitos que no son.** Decían PHP 8.3 y Laravel 11-12,
+  cuando el paquete acepta **PHP 8.2** y **Laravel 11, 12 y 13** — y la integración continua ya
+  probaba en 8.2. Si descartaste el paquete por su versión de PHP, vuelve a mirar.
+
+### Retirado del repositorio
+
+- Siete archivos de andamiaje interno que no le sirven a quien instala el paquete: notas de trabajo,
+  un histórico de desarrollo y un archivo de instrucciones para herramientas de asistencia. **No
+  afecta al código**: nada de lo retirado se cargaba en tiempo de ejecución.
+
+### Por qué 4.1 y no 5.0
+
+Lo que el generador **produce** no cambia: los mismos comandos escriben exactamente los mismos
+archivos. ⚠️ Pero el comando retirado **devuelve error donde antes devolvía éxito**, y eso rompe un
+guion de despliegue que lo invoque — a propósito, para que no siga adelante creyendo que no hay
+migraciones que aplicar. Si lo tienes en un guion, cámbialo antes de actualizar.
 
 ---
 

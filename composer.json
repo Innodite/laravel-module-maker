@@ -14,6 +14,11 @@
         "artisan"
     ],
     "homepage": "https://github.com/innodite/laravel-module-maker",
+    "support": {
+        "issues": "https://github.com/Innodite/laravel-module-maker/issues",
+        "source": "https://github.com/Innodite/laravel-module-maker",
+        "docs": "https://github.com/Innodite/laravel-module-maker/blob/main/README.md"
+    },
     "authors": [
         {
             "name": "Anthony Filgueira",
