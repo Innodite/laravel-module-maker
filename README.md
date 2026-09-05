@@ -992,6 +992,46 @@ php artisan vendor:publish --tag=module-maker-stubs
 
 Copia las 4 carpetas de stubs a `module-maker-config/stubs/contextual/` en tu proyecto. A partir de ese momento, el generador usará tus stubs en lugar de los del paquete.
 
+### Stubs aportados por otro paquete instalado
+
+Un paquete instalado puede aportar sus propios stubs, y el generador los usará sin que haya que
+configurar nada. El contrato es una ruta: cualquier paquete que traiga
+
+```
+vendor/<quien-sea>/<paquete>/stubs/module-maker/contextual/<nombre>.stub
+```
+
+participa en la resolución. Sirve para generar contra una biblioteca de interfaz concreta —su tabla,
+sus formularios— en vez de contra las plantillas genéricas del paquete.
+
+**Orden de resolución**, de lo más específico a lo más genérico:
+
+| # | Dónde | Quién manda |
+|---|---|---|
+| 1 | `module-maker-config/stubs/contextual/{Contexto}/` | El proyecto, para un contexto |
+| 2 | `module-maker-config/stubs/contextual/` | El proyecto |
+| 3 | `vendor/*/*/stubs/module-maker/contextual/` | Un paquete instalado |
+| 4 | Los del propio `laravel-module-maker` | El paquete |
+
+El proyecto siempre gana: es el único que puede tener la última palabra sobre su propio código. Si
+dos paquetes aportan el mismo stub, gana el primero por orden alfabético y `make-module` lo dice al
+terminar, junto con el nombre de quién aportó qué.
+
+### `provider-boot.stub` — el punto de enganche del módulo
+
+Es un stub **opcional**: no existe en el paquete y solo se usa si el proyecto o un paquete instalado
+lo aportan. Su contenido se escribe dentro del `boot()` del ServiceProvider del módulo generado, y
+sin él ese `boot()` sale vacío.
+
+Está pensado para enganchar el módulo en el menú de la aplicación, que es lo que el generador no
+puede escribir por su cuenta: la línea que lo hace depende de cómo se declare un menú en cada
+proyecto. Recibe dos variables:
+
+| Variable | Qué trae | Ejemplo |
+|---|---|---|
+| `{{{ moduleName }}}` | El nombre del módulo | `Invoice` |
+| `{{{ functionality }}}` | La funcionalidad, como la nombran sus rutas | `invoices` |
+
 ### Variables disponibles en los stubs
 
 | Variable | Descripción | Ejemplo |

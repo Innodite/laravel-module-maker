@@ -69,6 +69,48 @@ class ProviderGenerator extends AbstractComponentGenerator
         }
     }
 
+
+    /**
+     * El cuerpo del `boot()` del módulo — vacío salvo que alguien tenga algo que poner ahí.
+     *
+     * **Qué problema resuelve.** Un módulo recién generado no aparece en ningún menú, así que nadie
+     * puede llegar a él más que escribiendo su dirección. Engancharlo es una línea; el problema es
+     * que esa línea se escribe en el vocabulario del menú **del proyecto**, y este paquete no lo
+     * conoce ni puede conocerlo — es público, y ese vocabulario no lo es.
+     *
+     * Las dos salidas evidentes fallan. Escribir el enganche a lo que se suponga que hay produce un
+     * proveedor que llama a una clase inexistente, y eso **revienta en el arranque**: no es un
+     * módulo que no se ve, es la aplicación entera que no responde, incluido el `artisan` con el que
+     * se arreglaría. Dejarlo comentado como ejemplo no rompe nada, pero publica igualmente el nombre
+     * de esa clase en un repositorio abierto.
+     *
+     * Así que el paquete no escribe nada y **abre el hueco**: si el proyecto —o una biblioteca
+     * instalada— aporta un `provider-boot.stub`, su contenido entra aquí. Si no lo aporta nadie, que
+     * es el caso normal, el `boot()` sale vacío y el módulo funciona exactamente igual.
+     *
+     * @return string  El cuerpo, ya con sus placeholders resueltos
+     */
+    private function buildBootBody(): string
+    {
+        $aportado = $this->getOptionalStubContent('provider-boot.stub', [
+            'moduleName'    => $this->moduleName,
+            'functionality' => $this->getFunctionality(),
+        ], $this->componentConfig['context'] ?? null);
+
+        if ($aportado === null) {
+            return '//';
+        }
+
+        // El stub aportado se escribe sin sangrar; aquí dentro va a dos niveles.
+        $lineas = explode("\n", trim($aportado));
+
+        return implode("\n", array_map(
+            fn (string $linea, int $i) => $i === 0 || trim($linea) === '' ? $linea : '        ' . $linea,
+            $lineas,
+            array_keys($lineas)
+        ));
+    }
+
     // ─── Creación inicial ─────────────────────────────────────────────────────
 
     /**
@@ -88,6 +130,7 @@ class ProviderGenerator extends AbstractComponentGenerator
             'modelBindings'  => rtrim($bindings),
             'importsMarker'  => self::IMPORTS_MARKER,
             'bindingsMarker' => self::BINDINGS_MARKER,
+            'bootBody'       => $this->buildBootBody(),
         ]);
 
         $this->putFile(
