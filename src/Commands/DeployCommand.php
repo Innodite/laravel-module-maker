@@ -5,6 +5,7 @@ declare(strict_types=1);
 namespace Innodite\LaravelModuleMaker\Commands;
 
 use Illuminate\Console\Command;
+use Illuminate\Support\Facades\Schema;
 use Innodite\LaravelModuleMaker\Commands\Concerns\PrintsHeader;
 use Innodite\LaravelModuleMaker\Commands\Concerns\ReportsFailures;
 use Innodite\LaravelModuleMaker\Commands\Concerns\RehearsesChanges;
@@ -79,6 +80,10 @@ class DeployCommand extends Command
         $pieza = $this->resolvePiece();
 
         if ($pieza === null) {
+            return self::FAILURE;
+        }
+
+        if (! $this->tablasDelEsqueletoPresentes()) {
             return self::FAILURE;
         }
 
@@ -341,6 +346,56 @@ class DeployCommand extends Command
         }
 
         return $opcion;
+    }
+
+    /**
+     * ¿Están las tablas del esqueleto de Laravel que este proyecto va a usar al desplegar?
+     *
+     * **Medido instalando en un Laravel limpio:** el despliegue terminaba con once errores seguidos,
+     * todos por lo mismo — no existía la tabla `cache`, que el paquete de permisos toca al vaciar su
+     * caché—. Once mensajes en los que el primero, que es el único que importa, queda arriba y fuera
+     * de la pantalla.
+     *
+     * ⛔ **No las crea.** Son del esqueleto de Laravel, no del generador: aplicarlas por su cuenta
+     * sería tocar migraciones ajenas en la base de datos de otro. Lo que hace es **no empezar**, y
+     * decir con qué orden se arreglan.
+     *
+     * **Y solo exige lo que este proyecto declara usar**, no una lista fija: `cache` si su caché es
+     * de base de datos y `jobs` si su cola lo es. Un proyecto con la caché en Redis no necesita esa
+     * tabla, y reclamársela sería un falso positivo que se aprende a ignorar.
+     */
+    private function tablasDelEsqueletoPresentes(): bool
+    {
+        $necesarias = [];
+
+        if (config('cache.default') === 'database') {
+            $necesarias['cache'] = 'la caché de este proyecto es de base de datos, y los permisos la vacían al sembrar';
+        }
+
+        if (config('queue.default') === 'database') {
+            $necesarias['jobs'] = 'la cola de este proyecto es de base de datos';
+        }
+
+        $faltan = [];
+
+        foreach ($necesarias as $tabla => $porque) {
+            if (! Schema::hasTable($tabla)) {
+                $faltan[] = "{$tabla} ({$porque})";
+            }
+        }
+
+        if ($faltan === []) {
+            return true;
+        }
+
+        $this->fallo(
+            'faltan tablas del esqueleto de Laravel: ' . implode(' · ', $faltan) . '.',
+            'aplícalas antes — php artisan migrate',
+            'El despliegue siembra datos y permisos; sin esas tablas falla en cadena y el primer '
+            . 'error, que es el único que importa, queda fuera de la pantalla.'
+        );
+
+        return false;
     }
 
     /**

@@ -87,27 +87,27 @@ it('si falta el seeder de despliegue del proyecto, el mensaje dice quién lo esc
         ->and($mensaje)->toContain('es del proyecto, no del paquete');
 });
 
-it('si el contexto del cliente ya está abierto, no se exige el paquete de tenencia', function () {
-    // ⭐ La decisión P6 en una prueba. Con el contexto abierto para ESTE tenant, el arranque no
-    // necesita abrir nada, así que no tiene por qué reclamar un paquete que sepa hacerlo — y sobre
-    // todo, no lo cerrará al terminar, que es lo que dejaría sin contexto a quien nos llamó.
+it('si el contexto del cliente ya está abierto, no se toca ni se cierra', function () {
+    // ⭐ La decisión P6. Con el contexto abierto para ESTE tenant, el arranque no abre nada — y sobre
+    // todo no lo cierra al terminar, que es lo que dejaría sin contexto a quien nos llamó, porque el
+    // anfitrión llama desde dentro de un `$tenant->run(...)`.
     //
-    // Se comprueba por QUÉ FALLA: si se saltó la comprobación de tenencia, el siguiente obstáculo
-    // es el seeder del proyecto, que en el paquete no existe. Si no se la hubiera saltado, el
-    // mensaje hablaría de tenencia.
+    // Se comprueba sobre los pasos del contexto y no sobre la excepción: si el seeder de despliegue
+    // del proyecto existe —lo escribe el instalador, y otras pruebas de la suite lo ejecutan—, aquí
+    // no hay excepción ninguna. Los pasos, en cambio, dicen lo mismo en los dos casos.
     $tenant   = new TenantDeMentira('acme');
     $contexto = new ContextoDeMentira(usable: false, abierto: $tenant);
 
     try {
         (new TenantBootstrapper($this->app, null, $contexto))->bootstrap($tenant, 'production');
     } catch (TenantBootstrapFailedException $e) {
+        // La única parada legítima aquí es que falte el seeder del proyecto. Si hablara de tenencia,
+        // sería que NO se respetó el contexto abierto.
         expect($e->getMessage())->toContain('seeder de despliegue')
             ->and($e->getMessage())->not->toContain('paquete de tenencia');
-
-        return;
     }
 
-    $this->fail('Sin el seeder del proyecto no puede haber llegado a desplegar.');
+    expect($contexto->pasos)->toBe([], 'Un contexto que ya estaba abierto no se abre ni se cierra.');
 });
 
 it('sin contexto abierto y sin tenencia usable, no se levanta nada', function () {

@@ -128,20 +128,60 @@ class WebmasterSeeder extends Seeder
         return true;
     }
 
-    /** El rol, creado si no está. Si ya está, se respeta tal cual. */
-    protected function ensureRole(): int
+    /**
+     * El rol, creado si no está. Si ya está, se respeta tal cual.
+     *
+     * **Devuelve el id tal como venga: entero o cadena.** Antes lo convertía con `(int)`, y ese cast
+     * es el fallo más caro de este archivo: sobre un identificador tipo ULID devuelve **0 sin lanzar
+     * nada**, así que el despliegue repartía todos los permisos a un rol inexistente y terminaba en
+     * verde. Los demás choques al menos se quejaban.
+     */
+    protected function ensureRole(): int|string
     {
-        $db = DB::connection($this->connection);
+        $db       = DB::connection($this->connection);
+        $criterio = ['name' => $this->roleName(), 'guard_name' => $this->guard];
 
-        $db->table('roles')->updateOrInsert(
-            ['name' => $this->roleName(), 'guard_name' => $this->guard],
-            ['updated_at' => now(), 'created_at' => now()],
-        );
+        $existente = $db->table('roles')->where($criterio)->value('id');
 
-        return (int) $db->table('roles')
-            ->where('name', $this->roleName())
-            ->where('guard_name', $this->guard)
-            ->value('id');
+        if ($existente !== null) {
+            $db->table('roles')->where($criterio)->update(['updated_at' => now()]);
+
+            return $existente;
+        }
+
+        // El id se pone aquí y no en un `updateOrInsert`: solo hace falta al INSERTAR, y esa
+        // distinción el atajo no la tiene.
+        $valores = $criterio + ['created_at' => now(), 'updated_at' => now()];
+
+        if ($this->idLoPoneQuienInserta('roles')) {
+            $valores['id'] = (string) Str::ulid();
+        }
+
+        $db->table('roles')->insert($valores);
+
+        return $db->table('roles')->where($criterio)->value('id');
+    }
+
+    /**
+     * ¿Esta tabla espera que el id lo traiga quien inserta?
+     *
+     * **Se lo pregunta al esquema, no a una opción de configuración.** Con una opción, funciona
+     * hasta el día en que alguien instala el proyecto y no se acuerda de moverla; preguntando, sirve
+     * con las dos formas y nadie tiene que acordarse de nada.
+     *
+     * ⛔ Y se pregunta con `getColumns()`, que responde igual en mysql, mariadb, sqlite y postgres.
+     * `SHOW COLUMNS … Extra` contesta lo mismo y **solo en MySQL**: en un archivo que se genera para
+     * cualquier proyecto, eso es cambiar un fallo por otro con distinta cara.
+     */
+    protected function idLoPoneQuienInserta(string $tabla): bool
+    {
+        foreach (Schema::connection($this->connection)->getColumns($tabla) as $columna) {
+            if (($columna['name'] ?? '') === 'id') {
+                return ! ($columna['auto_increment'] ?? false);
+            }
+        }
+
+        return false;
     }
 
     /**
@@ -151,7 +191,7 @@ class WebmasterSeeder extends Seeder
      * corra es lo que el webmaster tendrá. Los que ya estaban asignados no se tocan; los que se
      * borraron se van solos con su fila.
      */
-    protected function syncAllPermissions(int $rolId): void
+    protected function syncAllPermissions(int|string $rolId): void
     {
         $db = DB::connection($this->connection);
 
@@ -172,11 +212,11 @@ class WebmasterSeeder extends Seeder
             ->pluck('permission_id')
             ->all();
 
-        $faltan = $todos->reject(fn (int $id): bool => in_array($id, $yaTiene, true))->values();
+        $faltan = $todos->reject(fn (int|string $id): bool => in_array($id, $yaTiene, true))->values();
 
         if ($faltan->isNotEmpty()) {
             $db->table('role_has_permissions')->insert(
-                $faltan->map(fn (int $id): array => ['role_id' => $rolId, 'permission_id' => $id])->all()
+                $faltan->map(fn (int|string $id): array => ['role_id' => $rolId, 'permission_id' => $id])->all()
             );
         }
 
@@ -190,7 +230,7 @@ class WebmasterSeeder extends Seeder
      * que reescribe la contraseña del administrador lo deja fuera de su propia aplicación, y eso
      * ocurriría en cada despliegue de producción.
      */
-    protected function ensureUser(int $rolId): void
+    protected function ensureUser(int|string $rolId): void
     {
         $schema = Schema::connection($this->connection);
 
@@ -238,6 +278,10 @@ class WebmasterSeeder extends Seeder
 
         if ($schema->hasColumn('users', 'email_verified_at')) {
             $valores['email_verified_at'] = now();
+        }
+
+        if ($this->idLoPoneQuienInserta('users')) {
+            $valores['id'] = (string) Str::ulid();
         }
 
         $db->table('users')->insert($valores);

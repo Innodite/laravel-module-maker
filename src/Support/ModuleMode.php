@@ -40,6 +40,25 @@ enum ModuleMode: string
      *
      * @throws ModeNotConfiguredException When the mode is absent or unknown
      */
+    /**
+     * ¿Hay modo elegido en este proyecto?
+     *
+     * La misma pregunta que `current()`, respondida sin excepción, para quien solo necesita saber si
+     * el paquete está configurado — el aviso de primera instalación, por ejemplo. Vive aquí y no en
+     * quien pregunta porque el modo es lo que decide si el paquete puede hacer algo: sin él, ningún
+     * comando genera nada.
+     */
+    public static function isConfigured(): bool
+    {
+        try {
+            self::current();
+
+            return true;
+        } catch (\Throwable) {
+            return false;
+        }
+    }
+
     public static function current(): self
     {
         $configured = config('make-module.mode');

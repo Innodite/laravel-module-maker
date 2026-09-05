@@ -160,3 +160,40 @@ it('los tres modos que ofrece el instalador son los tres del enum', function () 
         'multitenant-per-tenant',
     ]);
 });
+
+// ── Lo que hace falta para poder EMPEZAR en un proyecto limpio ─────────────────────────────────
+
+it('el instalador publica config/make-module.php, que es donde se declara el orden', function () {
+    // Medido instalando en un Laravel limpio: el despliegue manda «añádelas a `deploy` en
+    // config/make-module.php» y ese archivo no existía en el proyecto. Estaba declarado en
+    // `publishes()`, es decir, solo llegaba con un `vendor:publish` que nadie ejecuta — y hay que
+    // saber que existe para ejecutarlo.
+    //
+    // El modo y el paquete de tenencia viven en el .env, así que el paquete arrancaba sin esto; el
+    // orden de despliegue es un array y no cabe en una variable de entorno.
+    $destino = config_path('make-module.php');
+
+    if (File::exists($destino)) {
+        File::delete($destino);
+    }
+
+    Artisan::call('innodite:module-setup', ['--mode' => 'single-app', '--no-interaction' => true]);
+
+    expect(File::exists($destino))->toBeTrue(
+        'FALLA: sin config/make-module.php no hay dónde declarar el orden de despliegue. · '
+        . 'FIX: el instalador tiene que publicarlo.'
+    );
+    expect(File::get($destino))->toContain("'deploy'");
+});
+
+it('no pisa la configuración que el proyecto ya tenía', function () {
+    // Dentro vive el orden de despliegue, que crece con cada subfuncionalidad: reinstalar no puede
+    // llevárselo por delante.
+    $destino = config_path('make-module.php');
+    File::ensureDirectoryExists(dirname($destino));
+    File::put($destino, "<?php return ['deploy' => ['Lo/Mio']];");
+
+    Artisan::call('innodite:module-setup', ['--mode' => 'single-app', '--no-interaction' => true]);
+
+    expect(File::get($destino))->toContain('Lo/Mio');
+});

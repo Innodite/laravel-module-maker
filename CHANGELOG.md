@@ -41,6 +41,30 @@ Todo cambio que afecte a quien usa el paquete. El formato sigue
   cada cliente a través del contrato. Si usas otro paquete de tenencia, ahí está el punto donde
   engancharlo.
 
+### Corregido
+
+- **El webmaster ya no asume que los identificadores son enteros.** Si tus tablas `roles`,
+  `permissions` o `users` usan ULID —`char(26)`—, el seeder que escribe el instalador funcionaba mal
+  en cuatro sitios, y **el peor no daba ningún error**: convertía el id del rol a entero, obtenía
+  `0`, repartía todos los permisos a un rol inexistente y terminaba en verde.
+
+  Ahora le pregunta al esquema si esa tabla espera que el id lo traiga quien inserta, y solo entonces
+  lo genera. Sirve con las dos formas, sin ningún ajuste que mover.
+
+- **`innodite:module-setup` publica `config/make-module.php`.** Antes solo llegaba con
+  `vendor:publish`, y ahí es donde se declara el **orden de despliegue** — que no cabe en el `.env`.
+  El propio despliegue te mandaba a un archivo que no existía en tu proyecto. ⛔ No pisa el que ya
+  tengas.
+
+- **El aviso «Primera instalación detectada» se calla cuando toca.** Miraba si existía la carpeta
+  `module-maker-config/`, que no es la misma pregunta: seguía saliendo en cada comando después de
+  instalar con éxito. Ahora mira si hay **modo elegido**, que es lo que el instalador deja hecho.
+
+- **`innodite:deploy` no empieza si falta una tabla del esqueleto que tu proyecto va a usar** —
+  `cache` si tu caché es de base de datos, `jobs` si tu cola lo es—. Antes fallaba en cadena y el
+  primer error, el único que importaba, quedaba fuera de la pantalla. ⛔ No las crea: son de Laravel,
+  no del generador; te dice que ejecutes `php artisan migrate`.
+
 ### Cambiado
 
 - `innodite:deploy --context=tenant`, cuando **algunos** tenants fallan, ahora dice **cuántos y

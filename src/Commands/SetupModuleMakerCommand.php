@@ -104,6 +104,9 @@ class SetupModuleMakerCommand extends Command
         $configPath = config('make-module.config_path');
         $this->ensureDirectory($configPath, "module-maker-config/");
 
+        // ── config/make-module.php ────────────────────────────────────────────
+        $this->publishPackageConfig();
+
         // ── Stubs ─────────────────────────────────────────────────────────────
         $this->publishStubs($configPath);
 
@@ -369,6 +372,33 @@ class SetupModuleMakerCommand extends Command
      * @param  string  $configPath  Ruta a module-maker-config/ en el project root
      * @return void
      */
+    /**
+     * Publica `config/make-module.php` en el proyecto, si todavía no está.
+     *
+     * **Lo publica el instalador y no un `vendor:publish` que nadie ejecuta.** El modo y el paquete
+     * de tenencia viven en el `.env`, así que el paquete arranca sin este archivo — pero el **orden
+     * de despliegue** es un array y no cabe en una variable de entorno. Sin él, el propio despliegue
+     * manda «añádelas a `deploy` en config/make-module.php» y ese archivo no existe en ninguna
+     * parte: hay que ir a buscarlo a `vendor/` y copiarlo a mano, sabiendo que está ahí.
+     *
+     * ⛔ No sobreescribe. Dentro está el orden de despliegue del proyecto, que crece con cada
+     * subfuncionalidad: reinstalar no puede llevárselo.
+     */
+    protected function publishPackageConfig(): void
+    {
+        $destino = config_path('make-module.php');
+
+        if (File::exists($destino)) {
+            $this->warn('   config/make-module.php ya existe. No se sobreescribió.');
+
+            return;
+        }
+
+        Disk::copy(dirname(__DIR__, 2) . '/config/make-module.php', $destino);
+        $this->hecho('✅ Configuración publicada en: config/make-module.php');
+        $this->line('   Ahí declaras el <comment>orden de despliegue</comment> de las subfuncionalidades.');
+    }
+
     protected function publishStubs(string $configPath): void
     {
         $packageStubsPath = dirname(__DIR__, 2) . '/stubs/contextual';
