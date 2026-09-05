@@ -25,4 +25,8 @@ interface {{{ serviceInterfaceName }}}
     public function create(array $data): mixed;
     public function update(string $id, array $data): mixed;
     public function delete(string $id): bool;
+
+    public function restore(string $id): bool;
+
+    public function forceDelete(string $id): bool;
 }

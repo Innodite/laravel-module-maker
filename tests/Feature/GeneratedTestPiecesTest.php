@@ -267,7 +267,7 @@ it('la vista lleva el ancla que la prueba busca', function () {
 
     preg_match_all("/ancla: '([^']+)'/", $manifiesto, $anclas);
 
-    expect($anclas[1])->toHaveCount(4, 'Las cuatro acciones de la vista, ni una menos.');
+    expect($anclas[1])->toHaveCount(5, 'Las cinco acciones de la vista, ni una menos.');
 
     foreach ($anclas[1] as $ancla) {
         expect(str_contains($vista, "data-test=\"{$ancla}\""))->toBeTrue(

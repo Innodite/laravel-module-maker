@@ -147,6 +147,7 @@ class VueGenerator extends AbstractComponentGenerator
             'permViewShow'    => $elementos['enlace-ver'],
             'permViewUpdate'  => $elementos['boton-editar'],
             'permViewDestroy' => $elementos['boton-eliminar'],
+            'permViewRestore' => $elementos['boton-restaurar'],
         ];
     }
 

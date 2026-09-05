@@ -73,4 +73,23 @@ class {{{ controllerName }}} extends Controller
         $this->{{{ serviceInstance }}}->delete($id);
         return response()->json(null, 204);
     }
+
+    /**
+     * Devuelve a la vida un registro eliminado.
+     *
+     * Lleva **su propio permiso**: quien puede eliminar no tiene por qué poder deshacerlo, y sobre
+     * todo al revés — restaurar es la acción que se le da a quien limpia los errores de otros.
+     */
+    public function restore(string $id): JsonResponse
+    {
+        return response()->json(['restored' => $this->{{{ serviceInstance }}}->restore($id)]);
+    }
+
+    /** Lo borra de la base de datos. Sin vuelta atrás, y con el permiso más restringido de los ocho. */
+    public function forceDestroy(string $id): JsonResponse
+    {
+        $this->{{{ serviceInstance }}}->forceDelete($id);
+
+        return response()->json(null, 204);
+    }
 }

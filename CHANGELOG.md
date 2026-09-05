@@ -36,6 +36,30 @@ Todo cambio que afecte a quien usa el paquete. El formato sigue
 - **`Services\DeploymentRunner`** y **`Support\DeploymentResult`**, que es lo que hace posible lo
   anterior: el despliegue deja de vivir dentro del comando y pasa a decir **hasta dónde llegó**.
 
+- **`innodite:deploy --module=<Módulo>`** levanta **un módulo suelto** por sus maestros: el de la
+  pieza que pidas y el de sus permisos. Sirve para desarrollo, para reparar un módulo concreto y
+  para el alta de un tenant. Los maestros se resuelven del **orden de despliegue**, que es donde está
+  escrito en qué contexto vive cada subfuncionalidad.
+
+- **El borrado lógico, completo.** Hasta ahora el modelo generado traía `SoftDeletes` y la migración
+  su columna, y ahí se acababa: **no había forma de deshacer un borrado** sin escribirla a mano en
+  cuatro capas. Los módulos que generes a partir de ahora traen:
+
+  | | |
+  |---|---|
+  | Rutas | `PATCH /{id}/restore` y `DELETE /{id}/force`, cada una con **su permiso** |
+  | Repository | `findTrashed()`, `restore()`, `forceDelete()` |
+  | Service | `restore()` y `forceDelete()`, que es donde va la cascada si la hay |
+  | Vista | Botón **Restaurar**, visible solo en lo eliminado y con su propio permiso de vista |
+
+  ⚠️ **Un módulo nuevo pasa de 6 rutas y 10 permisos a 8 y 13.** A los módulos que ya tienes no les
+  pasa nada —`make-module` se niega sobre un módulo existente—, pero si mantienes a mano una lista
+  de permisos, verás tres más por subfuncionalidad.
+
+  ⛔ El **borrado definitivo** no lleva botón en la vista generada: existe como ruta con el permiso
+  más restringido de los ocho. Un botón irreversible en la tabla principal, sin una papelera de por
+  medio, es una trampa; dónde ponerlo lo decide tu proyecto.
+
 - **`Contracts\TenantContext`**, con `Services\Tenancy\StanclTenantContext` detrás. El paquete ya no
   llama a la orden global `tenancy()` desde su código de despliegue: entra y sale del contexto de
   cada cliente a través del contrato. Si usas otro paquete de tenencia, ahí está el punto donde

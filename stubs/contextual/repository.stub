@@ -40,4 +40,36 @@ class {{{ repositoryName }}} implements {{{ repositoryInterfaceName }}}
     {
         return (bool) {{{ modelName }}}::destroy($id);
     }
+
+    /**
+     * Uno cualquiera, **también si está eliminado**.
+     *
+     * Restaurar y borrar del todo necesitan encontrar lo que el buscador normal ya no ve: sin esto,
+     * la única forma de recuperar algo borrado por error es entrar a la base de datos a mano.
+     */
+    public function findTrashed(string $id): mixed
+    {
+        return {{{ modelName }}}::withTrashed()->find($id);
+    }
+
+    /** Devuelve a la vida un registro eliminado. `false` si no existe o no estaba eliminado. */
+    public function restore(string $id): bool
+    {
+        ${{{ modelNameLowerCase }}} = {{{ modelName }}}::onlyTrashed()->find($id);
+
+        return ${{{ modelNameLowerCase }}} !== null && (bool) ${{{ modelNameLowerCase }}}->restore();
+    }
+
+    /**
+     * Lo borra de la base de datos. **Sin vuelta atrás.**
+     *
+     * ⛔ Aquí no se decide si se puede: eso es del Service, que es quien conoce lo que cuelga de este
+     * registro. El repositorio solo sabe borrar.
+     */
+    public function forceDelete(string $id): bool
+    {
+        ${{{ modelNameLowerCase }}} = {{{ modelName }}}::withTrashed()->find($id);
+
+        return ${{{ modelNameLowerCase }}} !== null && (bool) ${{{ modelNameLowerCase }}}->forceDelete();
+    }
 }

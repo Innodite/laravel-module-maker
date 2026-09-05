@@ -199,7 +199,7 @@ it('el de permisos lleva dentro los diez permisos de la fuente única, con su de
 
     $esperados = SubFeaturePermissions::permissions('', 'invoice', 'Invoice', 'Invoice');
 
-    expect($esperados)->toHaveCount(10);
+    expect($esperados)->toHaveCount(13);
 
     foreach ($esperados as $permiso) {
         expect($contenido)->toContain("'{$permiso['name']}'");
