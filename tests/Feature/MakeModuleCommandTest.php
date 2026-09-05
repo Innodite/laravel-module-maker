@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\File;
+use Innodite\LaravelModuleMaker\Support\ModuleMode;
 use Innodite\LaravelModuleMaker\Support\PackageVersion;
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -131,4 +132,23 @@ it('en multitenant sin --context no genera nada: lo exige y lista el catálogo',
         'FALLA: dejó archivos escritos pese a no poder decidir el contexto. · FIX: se comprueba '
         . 'ANTES de escribir nada; un módulo a medias hay que borrarlo a mano.'
     );
+});
+
+// ── Que el módulo cargue de verdad ─────────────────────────────────────────────────────────────
+
+it('avisa cuando el módulo generado todavía no va a cargar', function () {
+    // ⚠️ El fallo que esto evita no da ningún error: el proveedor del paquete registra el del módulo
+    // dentro de un `class_exists()`, así que si la clase no resuelve —autoload sin `Modules\`, o sin
+    // `dump-autoload` después de generar— no se registra, sus rutas no se cargan y la aplicación
+    // sigue respondiendo 200. Se persigue durante horas una ruta que «no existe».
+    config()->set('make-module.mode', ModuleMode::SingleApp->value);
+
+    Artisan::call('innodite:make-module', ['name' => 'Invoice', '--no-interaction' => true]);
+
+    $salida = Artisan::output();
+
+    expect($salida)->toContain('todavía NO carga')
+        ->and($salida)->toContain('FIX:')
+        ->and($salida)->toContain('composer dump-autoload')
+        ->and($salida)->toContain('sus rutas sencillamente no existen');
 });

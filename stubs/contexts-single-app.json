@@ -1,0 +1,5 @@
+{
+    "_readme": "Plantilla de contextos para una aplicación ÚNICA. No hay eje de contexto: una sola base de datos, un solo juego de clases, sin prefijos. Se deja declarada y vacía a propósito — así el proyecto ve que el archivo existe y que aquí no hay nada que configurar, en vez de encontrarse contextos de multiinquilino que no le corresponden.",
+
+    "contexts": {}
+}

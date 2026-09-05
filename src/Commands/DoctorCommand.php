@@ -370,6 +370,15 @@ class DoctorCommand extends Command
                 $colisiones[] = "{$nombre} (namespace incorrecto en su ServiceProvider)";
             }
 
+            // ⚠️ Que el archivo esté no significa que el módulo cargue. El paquete registra cada
+            // proveedor dentro de un `class_exists()`, así que una clase que no resuelve —autoload
+            // sin `Modules\`, o sin `dump-autoload` tras generar— se salta **en silencio**: la
+            // aplicación responde 200 y sus rutas no existen. Es justo lo que un diagnóstico existe
+            // para no dejar pasar.
+            if (File::exists($proveedor) && ! class_exists("Modules\\{$nombre}\\Providers\\{$nombre}ServiceProvider")) {
+                $colisiones[] = "{$nombre} (su ServiceProvider existe pero NO carga: falta composer dump-autoload, o el namespace Modules\\ no está en el autoload del proyecto)";
+            }
+
             $colisiones = array_merge($colisiones, $this->migracionesDuplicadas($directorio, $nombre));
         }
 

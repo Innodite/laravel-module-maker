@@ -42,7 +42,7 @@ const saving  = ref(false)
 async function fetchItem() {
     loading.value = true
     try {
-        const { data } = await axios.get(
+        const { data } = await window.axios.get(
             route(contextRoute('{{{ routeBase }}}.show'), { id: props.id })
         )
         form.value = { ...data }
@@ -62,7 +62,7 @@ async function submit() {
     errors.value = {}
 
     try {
-        await axios.put(
+        await window.axios.put(
             route(contextRoute('{{{ routeBase }}}.update'), { id: props.id }),
             form.value
         )
