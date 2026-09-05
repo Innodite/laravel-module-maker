@@ -4,6 +4,46 @@ Todo cambio que afecte a quien usa el paquete. El formato sigue
 [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y las versiones,
 [SemVer](https://semver.org/lang/es/).
 
+## [Sin publicar]
+
+### Añadido
+
+- **Levantar un tenant recién creado desde tu propio código**, sin pasar por la consola:
+
+  ```php
+  use Innodite\LaravelModuleMaker\Services\TenantBootstrapper;
+
+  $resultado = (new TenantBootstrapper($this->app))->bootstrap($tenant, 'production');
+
+  if (! $resultado->successful()) {
+      // Sabes QUÉ quedó aplicado, así que puedes deshacer el alta con criterio.
+      $this->revertir($tenant, $resultado->applied());
+  }
+  ```
+
+  Entra en el contexto del cliente, ejecuta el despliegue **en el orden que declaras** y devuelve un
+  resultado con lo aplicado y lo fallido. Si ya estás dentro del contexto de ese tenant, lo respeta y
+  no lo cierra al terminar.
+
+  **Para qué.** Hasta ahora un tenant solo se levantaba con `innodite:deploy … --tenant=<clave>`, es
+  decir, por consola y sobre uno que ya existía. Un alta de autoservicio ocurre dentro de una
+  petición, sobre una base que acaba de nacer, y desde ahí no había a quién llamar.
+
+  ⛔ **No devuelve «bien» cuando no puede levantar.** Si falta el orden de despliegue, si no está el
+  seeder del proyecto o si la tenencia no se puede inicializar, **lanza**. Un alta que sale correcta
+  con la base vacía no se descubre al desplegar: se descubre cuando el cliente entra.
+
+- **`Services\DeploymentRunner`** y **`Support\DeploymentResult`**, que es lo que hace posible lo
+  anterior: el despliegue deja de vivir dentro del comando y pasa a decir **hasta dónde llegó**.
+
+### Cambiado
+
+- `innodite:deploy --context=tenant`, cuando **algunos** tenants fallan, ahora dice **cuántos y
+  cuáles**, y que a los demás no hace falta volver. Antes terminaba en error sin más detalle.
+
+- `innodite:migrate-one` acompaña sus tres fallos —la coordenada que no resuelve, la conexión del
+  contexto y la base inexistente— con el arreglo. Antes imprimía la excepción cruda.
+
 ## [4.1.0] — 05/09/2026
 
 ### Retirado
