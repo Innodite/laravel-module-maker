@@ -55,7 +55,8 @@
             "providers": [
                 "Innodite\\LaravelModuleMaker\\LaravelModuleMakerServiceProvider"
             ]
-        }
+        },
+        "innodite-docs": "docs/fichas.json"
     },
     "config": {
         "sort-packages": true,

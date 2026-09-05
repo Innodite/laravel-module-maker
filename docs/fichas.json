@@ -1,0 +1,12 @@
+{
+  "pages": [
+    { "slug": "instalacion",             "locale": "es", "title": "1 · Instalación",                  "file": "es/instalacion.md",             "position": 1 },
+    { "slug": "elegir-el-modo",          "locale": "es", "title": "2 · Elegir el modo del proyecto",   "file": "es/elegir-el-modo.md",          "position": 2 },
+    { "slug": "los-comandos",            "locale": "es", "title": "3 · Los comandos",                  "file": "es/los-comandos.md",            "position": 3 },
+    { "slug": "crear-un-modulo",         "locale": "es", "title": "4 · Crear un módulo",               "file": "es/crear-un-modulo.md",         "position": 4 },
+    { "slug": "desplegar",               "locale": "es", "title": "5 · Desplegar",                     "file": "es/desplegar.md",               "position": 5 },
+    { "slug": "las-pruebas",             "locale": "es", "title": "6 · Las pruebas",                   "file": "es/las-pruebas.md",             "position": 6 },
+    { "slug": "personalizar-lo-generado","locale": "es", "title": "7 · Personalizar lo generado",      "file": "es/personalizar-lo-generado.md","position": 7 },
+    { "slug": "cuando-no-usarlo",        "locale": "es", "title": "8 · Cuándo NO usarlo",              "file": "es/cuando-no-usarlo.md",        "position": 8 }
+  ]
+}
