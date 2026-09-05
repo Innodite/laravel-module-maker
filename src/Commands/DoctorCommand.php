@@ -13,6 +13,7 @@ use Innodite\LaravelModuleMaker\Commands\Concerns\ReportsFailures;
 use Innodite\LaravelModuleMaker\Services\EventLog;
 use Innodite\LaravelModuleMaker\Support\ModuleMode;
 use Innodite\LaravelModuleMaker\Support\StubPlaceholder;
+use Innodite\LaravelModuleMaker\Support\Ziggy;
 use Throwable;
 
 /**
@@ -61,6 +62,7 @@ class DoctorCommand extends Command
         'El modelo User resuelve permisos (Spatie HasRoles o InnoditeUserPermissions)',
         'HandleInertiaRequests comparte auth.permissions y auth.context',
         'InnoditeContextBridge está registrado en el grupo web',
+        'Ziggy está instalado y el layout publica el mapa con @routes',
     ];
 
     /** Resolved once: every check that depends on the mode reads it from here. */
@@ -368,6 +370,15 @@ class DoctorCommand extends Command
 
             if (File::exists($proveedor) && ! str_contains(File::get($proveedor), "namespace Modules\\{$nombre}\\Providers")) {
                 $colisiones[] = "{$nombre} (namespace incorrecto en su ServiceProvider)";
+            }
+
+            // ⚠️ Que el archivo esté no significa que el módulo cargue. El paquete registra cada
+            // proveedor dentro de un `class_exists()`, así que una clase que no resuelve —autoload
+            // sin `Modules\`, o sin `dump-autoload` tras generar— se salta **en silencio**: la
+            // aplicación responde 200 y sus rutas no existen. Es justo lo que un diagnóstico existe
+            // para no dejar pasar.
+            if (File::exists($proveedor) && ! class_exists("Modules\\{$nombre}\\Providers\\{$nombre}ServiceProvider")) {
+                $colisiones[] = "{$nombre} (su ServiceProvider existe pero NO carga: falta composer dump-autoload, o el namespace Modules\\ no está en el autoload del proyecto)";
             }
 
             $colisiones = array_merge($colisiones, $this->migracionesDuplicadas($directorio, $nombre));
@@ -684,6 +695,8 @@ class DoctorCommand extends Command
         $this->newLine();
         $ok = $this->comprobarBridgeRegistrado() && $ok;
         $this->newLine();
+        $ok = $this->comprobarZiggy() && $ok;
+        $this->newLine();
 
         return $ok;
     }
@@ -888,6 +901,59 @@ class DoctorCommand extends Command
         }
 
         return false;
+    }
+
+    /**
+     * Ziggy y su directiva — lo que hace que la vista generada encuentre sus rutas.
+     *
+     * ⚠️ **El fallo que esto evita no deja rastro en el servidor.** Las vistas piden sus rutas por
+     * el nombre, que es lo correcto; pero el nombre lo resuelve `route()`, que la pone Ziggy en el
+     * navegador. Sin Ziggy —o con Ziggy y sin `@routes` en el layout— la pantalla muere al montarse
+     * con un `route is not defined` que no nombra ni al módulo ni al paquete. En los registros del
+     * servidor no aparece absolutamente nada: la petición respondió 200.
+     *
+     * Las dos mitades se comprueban por separado porque fallan igual y se arreglan distinto.
+     */
+    private function comprobarZiggy(): bool
+    {
+        $this->line('  <fg=cyan;options=bold>4. Ziggy, que es quien resuelve las rutas de la vista</>');
+
+        if (! Ziggy::instalado()) {
+            $this->fallo(
+                'Ziggy no está instalado, y las vistas generadas piden sus rutas por el nombre.',
+                'instálalo y publica el mapa en el layout — el bloque va abajo.',
+                'Sin él la pantalla muere al abrirse con «route is not defined», y el servidor '
+                . 'no registra ningún error porque la petición respondió 200.'
+            );
+
+            $this->newLine();
+            $this->line('  <fg=yellow>Instalar:</>');
+            $this->bloqueDeCodigo('composer require tightenco/ziggy');
+            $this->line('  <fg=yellow>Y en el layout Blade, dentro de &lt;head&gt;:</>');
+            $this->bloqueDeCodigo('@routes');
+
+            return false;
+        }
+
+        $layout = Ziggy::layoutConDirectiva();
+
+        if ($layout === null) {
+            $this->fallo(
+                'Ziggy está instalado, pero ningún layout Blade publica el mapa con @routes.',
+                'añade <comment>@routes</comment> en el &lt;head&gt; del layout que sirve las páginas.',
+                'Instalarlo no basta: la directiva es la que escribe el mapa y la función route() '
+                . 'en la página. Sin ella el síntoma es idéntico al de no tenerlo instalado.'
+            );
+
+            return false;
+        }
+
+        $this->components->twoColumnDetail(
+            'Ziggy',
+            "<fg=green>OK — instalado, y @routes en {$layout}</>"
+        );
+
+        return true;
     }
 
     // ─── Etapa 3 · Lo que dice el criterio ────────────────────────────────────

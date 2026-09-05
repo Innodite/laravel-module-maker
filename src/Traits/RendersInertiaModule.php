@@ -7,6 +7,7 @@ namespace Innodite\LaravelModuleMaker\Traits;
 use Inertia\Inertia;
 use Inertia\Response as InertiaResponse;
 use Innodite\LaravelModuleMaker\Support\ContextResolver;
+use Innodite\LaravelModuleMaker\Support\ModuleMode;
 
 /**
  * Trait de resolución explícita de vistas Inertia basada en la convención de nombres.
@@ -56,17 +57,18 @@ trait RendersInertiaModule
 
         $baseFolder = $this->resolveBaseFolder($filename);
 
-        $relativePath = $subfolder
-            ? "{$baseFolder}/{$subfolder}/{$filename}"
-            : "{$baseFolder}/{$filename}";
+        $relativePath = implode('/', array_filter([$baseFolder, $subfolder, $filename]));
 
-        $absolutePath = base_path("Modules/{$module}/resources/js/Pages/{$relativePath}.vue");
+        // ⛔ De la configuración, no de `base_path('Modules')` fijo: es donde el generador escribe
+        // de verdad, y en un proyecto que haya movido sus módulos las dos rutas dejan de coincidir.
+        $raizDeModulos = config('make-module.module_path') ?: base_path('Modules');
+        $absolutePath  = "{$raizDeModulos}/{$module}/resources/js/Pages/{$relativePath}.vue";
 
         if (! file_exists($absolutePath)) {
             throw new \RuntimeException(
                 "[RendersInertiaModule] Archivo no encontrado: {$filename}.vue (módulo: {$module})\n\n" .
                 "Ruta esperada según convención de nombres:\n" .
-                "  Modules/{$module}/resources/js/Pages/{$relativePath}.vue\n\n" .
+                "  {$absolutePath}\n\n" .
                 "Verifica que:\n" .
                 "  1. El archivo existe en la ruta indicada\n" .
                 "  2. El prefijo del nombre coincide con la carpeta donde está el archivo\n"
@@ -88,6 +90,15 @@ trait RendersInertiaModule
      */
     private function resolveBaseFolder(string $filename): string
     {
+        // ⭐ En una aplicación única no hay contextos, así que no hay prefijo que exigir — y
+        // exigirlo era hacer que NINGUNA pantalla abriera: las vistas se llaman `InvoiceIndex` y
+        // el trait pedía que empezaran por `Central`, `Shared` o `Tenant*`, que solo existen en
+        // multiinquilino. La carpeta la trae el propio componente, que llega como
+        // `SubFuncionalidad/Archivo`.
+        if (! ModuleMode::current()->hasContextAxis()) {
+            return '';
+        }
+
         $map = $this->buildPrefixMap();
 
         foreach ($map as $prefix => $folder) {

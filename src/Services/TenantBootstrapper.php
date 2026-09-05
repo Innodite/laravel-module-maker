@@ -118,5 +118,4 @@ class TenantBootstrapper
 
         return $piezas[$dado] ?? throw TenantBootstrapFailedException::unknownEnvironment($environment);
     }
-
 }

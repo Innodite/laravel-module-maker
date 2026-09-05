@@ -27,6 +27,18 @@ import {{{ vueComponentBase }}}Create from './{{{ vueComponentBase }}}Create.vue
 import {{{ vueComponentBase }}}Edit from './{{{ vueComponentBase }}}Edit.vue'
 import {{{ vueComponentBase }}}Show from './{{{ vueComponentBase }}}Show.vue'
 
+/**
+ * Las rutas se piden **por su nombre**, nunca escribiendo la dirección: el nombre lo resuelve
+ * Ziggy con el mapa que publica el servidor, así que cambiar un prefijo en el archivo de rutas no
+ * obliga a tocar ni una vista. `contextRoute()` le antepone el contexto activo.
+ *
+ * Va por `window.` por lo mismo que `window.axios`: la directiva `@routes` del layout define
+ * `route` y `Ziggy` en el ámbito global del navegador, y ese es el único punto de entrada que vale
+ * igual en las dos versiones de Ziggy. Importarlo de `ziggy-js` solo funciona en la v2.
+ *
+ * ⛔ Si la pantalla muere al abrirse con `route is not defined`, no falta nada de este módulo:
+ * falta Ziggy, o falta `@routes` en el layout. `php artisan innodite:doctor` lo dice con su arreglo.
+ */
 const { contextRoute } = useModuleContext()
 const { can } = usePermissions()
 
@@ -59,7 +71,7 @@ async function fetchItems(page = 1) {
     loading.value = true
     error.value   = null
     try {
-        const { data } = await axios.get(route(contextRoute('{{{ routeBase }}}.list')), {
+        const { data } = await window.axios.get(window.route(contextRoute('{{{ routeBase }}}.list')), {
             params: { page }
         })
         items.value = data.data
@@ -88,7 +100,7 @@ async function destroy(id) {
     if (!confirmado) return
 
     try {
-        await axios.delete(route(contextRoute('{{{ routeBase }}}.destroy'), { id }))
+        await window.axios.delete(window.route(contextRoute('{{{ routeBase }}}.destroy'), { id }))
         exito('Registro eliminado.')
         await fetchItems(meta.value.current_page)
     } catch (err) {
@@ -100,7 +112,7 @@ async function restore(id) {
     // Restaurar no pide confirmación: no destruye nada, y una ventana de por medio en la acción que
     // arregla un error hace que la gente deje de usarla y pida el arreglo por otro lado.
     try {
-        await axios.patch(route(contextRoute('{{{ routeBase }}}.restore'), { id }))
+        await window.axios.patch(window.route(contextRoute('{{{ routeBase }}}.restore'), { id }))
         exito('Registro restaurado.')
         await fetchItems(meta.value.current_page)
     } catch (err) {

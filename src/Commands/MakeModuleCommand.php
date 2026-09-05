@@ -15,6 +15,8 @@ use Innodite\LaravelModuleMaker\Services\EventLog;
 use Innodite\LaravelModuleMaker\Support\ContextOption;
 use Innodite\LaravelModuleMaker\Support\ContextResolver;
 use Innodite\LaravelModuleMaker\Support\ModuleMode;
+use Innodite\LaravelModuleMaker\Support\StubsDeVendor;
+use Innodite\LaravelModuleMaker\Support\Ziggy;
 use Throwable;
 
 /**
@@ -623,5 +625,161 @@ class MakeModuleCommand extends Command
         $this->line("    2. Despliega el módulo: <comment>php artisan innodite:deploy stage</comment>");
         $this->line("       (o una sola migración con <comment>innodite:migrate-one</comment>).");
         $this->newLine();
+
+        $this->decirQuienAportoLosStubs();
+        $this->avisarSiElModuloNoVaACargar($moduleName);
+        $this->avisarSiLaPantallaNoVaAAbrir();
+    }
+
+    /**
+     * Dice si el módulo se generó con stubs de otro paquete, y de cuál.
+     *
+     * ⚠️ **Cambiar el origen de lo que se genera sin decirlo es lo que después nadie sabe
+     * explicar.** Un paquete instalado puede aportar sus propios stubs y ganarle a los del
+     * generador; eso es deliberado y útil, pero significa que dos proyectos con el mismo comando
+     * obtienen código distinto. Que salga escrito convierte una sorpresa en un dato.
+     *
+     * Con más de un paquete aportando el mismo archivo hay un empate, y ese sí se avisa: gana el
+     * primero por orden alfabético, que es determinista pero no necesariamente el que se quería.
+     */
+    private function decirQuienAportoLosStubs(): void
+    {
+        $carpetas = StubsDeVendor::carpetas();
+
+        if ($carpetas === []) {
+            return;
+        }
+
+        $this->line(
+            '  <fg=cyan>Stubs aportados por:</> <comment>'
+            . implode('</comment>, <comment>', array_keys($carpetas))
+            . '</comment>'
+        );
+        $this->line(
+            '  <fg=gray>Ganan a los del paquete y pierden contra los de '
+            . 'module-maker-config/stubs/contextual/.</>'
+        );
+
+        $empatados = [];
+
+        foreach (['vue-index.stub', 'vue-create.stub', 'vue-edit.stub', 'vue-show.stub', 'provider-boot.stub'] as $stub) {
+            $quienes = StubsDeVendor::paquetesQueAportan($stub);
+
+            if (count($quienes) > 1) {
+                $empatados[$stub] = $quienes;
+            }
+        }
+
+        foreach ($empatados as $stub => $quienes) {
+            $this->components->warn(
+                "Varios paquetes aportan {$stub}: " . implode(', ', $quienes)
+                . '. Gana ' . $quienes[0] . ' (orden alfabético).'
+            );
+        }
+
+        $this->newLine();
+    }
+
+    /**
+     * Comprueba que el módulo recién escrito **va a cargar de verdad**, y lo dice si no.
+     *
+     * ⚠️ **El fallo que esto evita no da ningún error.** El proveedor del paquete registra el de cada
+     * módulo, pero dentro de un `class_exists()`: si la clase no resuelve —porque el proyecto no
+     * declara el namespace `Modules\` en su autoload, o porque falta el `dump-autoload` de después de
+     * generar—, no se registra, sus rutas no se cargan y **la aplicación sigue respondiendo 200**.
+     * Se descubre buscando durante horas una ruta que «no existe».
+     */
+    private function avisarSiElModuloNoVaACargar(string $moduleName): void
+    {
+        $proveedor = "Modules\\{$moduleName}\\Providers\\{$moduleName}ServiceProvider";
+
+        if (class_exists($proveedor)) {
+            return;
+        }
+
+        $this->components->warn("El módulo está escrito, pero todavía NO carga.");
+
+        if (! $this->proyectoDeclaraElAutoload()) {
+            $this->line(
+                '  <fg=yellow>FALLA:</> el composer.json del proyecto no declara el namespace '
+                . '<comment>Modules\\</comment> en su autoload, así que ninguna de sus clases '
+                . 'resuelve — ni el proveedor, ni el modelo, ni el servicio.'
+            );
+            $this->line('  <fg=green>FIX:</> añádelo a <comment>autoload.psr-4</comment> y recarga:');
+            $this->line('       <comment>"Modules\\\\": "Modules/"</comment>');
+            $this->line('       <comment>composer dump-autoload</comment>');
+        } else {
+            $this->line(
+                '  <fg=yellow>FALLA:</> el autoload todavía no conoce las clases recién escritas.'
+            );
+            $this->line('  <fg=green>FIX:</> <comment>composer dump-autoload</comment>');
+        }
+
+        $this->line(
+            '  <fg=gray>Sin esto la aplicación arranca igual y sus rutas sencillamente no existen.</>'
+        );
+        $this->newLine();
+    }
+
+    /**
+     * Comprueba que la pantalla recién generada **va a abrir**, y lo dice si no.
+     *
+     * Es el gemelo del aviso de arriba, en el otro lado. Aquel mira si el módulo carga en el
+     * servidor; este, si su vista sobrevive en el navegador. Las cuatro vistas piden sus rutas por
+     * el nombre —lo correcto, porque así un cambio de prefijo no obliga a tocar ninguna—, y quien
+     * traduce ese nombre a una dirección es `route()`, que la pone Ziggy.
+     *
+     * ⚠️ **Sin Ziggy la pantalla no falla a medias: no llega a pintarse.** `route is not defined`
+     * salta al montar el componente, y el mensaje no menciona ni al módulo, ni al paquete, ni a
+     * Ziggy. En el servidor no queda constancia de nada, porque la petición respondió 200.
+     */
+    private function avisarSiLaPantallaNoVaAAbrir(): void
+    {
+        if (! Ziggy::falta()) {
+            return;
+        }
+
+        $this->components->warn('El módulo está escrito, pero su pantalla todavía NO abre.');
+
+        if (! Ziggy::instalado()) {
+            $this->line(
+                '  <fg=yellow>FALLA:</> las vistas generadas piden sus rutas por el nombre y este '
+                . 'proyecto no tiene <comment>Ziggy</comment>, que es quien resuelve el nombre en '
+                . 'el navegador.'
+            );
+            $this->line('  <fg=green>FIX:</> instálalo y publica el mapa en el layout:');
+            $this->line('       <comment>composer require tightenco/ziggy</comment>');
+            $this->line('       <comment>@routes</comment> en el &lt;head&gt; del layout Blade');
+        } else {
+            $this->line(
+                '  <fg=yellow>FALLA:</> Ziggy está instalado, pero ningún layout Blade publica el '
+                . 'mapa de rutas.'
+            );
+            $this->line(
+                '  <fg=green>FIX:</> añade <comment>@routes</comment> en el &lt;head&gt; del '
+                . 'layout que sirve las páginas.'
+            );
+        }
+
+        $this->line(
+            '  <fg=gray>El síntoma es una pantalla en blanco y «route is not defined» en la '
+            . 'consola del navegador; en el servidor no aparece ningún error.</>'
+        );
+        $this->newLine();
+    }
+
+    /** ¿Está `Modules\` declarado en el autoload PSR-4 del proyecto? */
+    private function proyectoDeclaraElAutoload(): bool
+    {
+        $composer = base_path('composer.json');
+
+        if (! File::exists($composer)) {
+            return true;   // sin composer.json no hay nada que afirmar: no se inventa un fallo
+        }
+
+        $declarado = json_decode(File::get($composer), true);
+        $psr4      = $declarado['autoload']['psr-4'] ?? [];
+
+        return is_array($psr4) && array_key_exists('Modules\\', $psr4);
     }
 }
