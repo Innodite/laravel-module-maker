@@ -5,7 +5,6 @@ declare(strict_types=1);
 namespace Innodite\LaravelModuleMaker;
 
 use Innodite\LaravelModuleMaker\Support\ModuleMode;
-
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Route;
@@ -326,5 +325,4 @@ class LaravelModuleMakerServiceProvider extends ServiceProvider
                 . "\033[36m  php artisan innodite:module-setup\033[0m" . PHP_EOL . PHP_EOL);
         });
     }
-
 }

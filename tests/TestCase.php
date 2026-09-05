@@ -39,12 +39,39 @@ abstract class TestCase extends Orchestra
     protected function tearDown(): void
     {
         ContextResolver::flush();
+        $this->retirarConfigPublicada();
 
         if (File::isDirectory($this->tempBase)) {
             File::deleteDirectory($this->tempBase);
         }
 
         parent::tearDown();
+    }
+
+    /**
+     * Retira el `config/make-module.php` que cualquier prueba haya dejado publicado.
+     *
+     * ⚠️ **Sin esto hay un rojo fantasma, y de los peores: aparece en un archivo que nadie tocó.**
+     * `config_path()` es lo único del contrato que no se puede mover al temporal —el `TestCase`
+     * desvía los módulos, los stubs y `database/`, pero la configuración se publica donde Laravel
+     * diga—, así que apunta al skeleton de Testbench: dentro de `vendor/`, fuera del repositorio y
+     * superviviente a la prueba.
+     *
+     * Media docena de pruebas ejecutan `innodite:module-setup`, que lo publica. Con el archivo ahí,
+     * la prueba del diagnóstico que comprueba qué se dice cuando la configuración **no** está
+     * publicada falla — y no falla en su corrida, falla en la **siguiente**. Se clasifica como base
+     * sucia (R81) y se cierra en el único sitio por el que pasan todas.
+     *
+     * En un skeleton limpio este archivo no existe: solo aparece si alguien lo publica. Por eso
+     * borrarlo siempre es correcto, y no hay nada que restaurar.
+     */
+    private function retirarConfigPublicada(): void
+    {
+        $publicada = config_path('make-module.php');
+
+        if (File::exists($publicada)) {
+            File::delete($publicada);
+        }
     }
 
     /**
