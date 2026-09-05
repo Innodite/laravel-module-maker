@@ -8,13 +8,11 @@ use Illuminate\Console\Command;
 use Innodite\LaravelModuleMaker\Commands\Concerns\PrintsHeader;
 use Innodite\LaravelModuleMaker\Commands\Concerns\ReportsFailures;
 use Innodite\LaravelModuleMaker\Commands\Concerns\RehearsesChanges;
-use Illuminate\Database\Seeder;
 use Innodite\LaravelModuleMaker\Exceptions\ModeNotConfiguredException;
-use Innodite\LaravelModuleMaker\Support\DryRun;
+use Innodite\LaravelModuleMaker\Services\DeploymentRunner;
 use Innodite\LaravelModuleMaker\Support\ModuleMode;
 use Innodite\LaravelModuleMaker\Support\SeederNames;
 use Innodite\LaravelModuleMaker\Support\TenancyPackage;
-use Throwable;
 
 /**
  * Levanta el proyecto entero con una orden: esquema, datos y permisos, en el orden declarado.
@@ -171,34 +169,28 @@ class DeployCommand extends Command
             return self::SUCCESS;
         }
 
-        $salida = self::SUCCESS;
+        // Un tenant que falla no cancela a los demás: cada base es independiente, y detenerse en el
+        // tercero de doce deja nueve sin desplegar por un fallo ajeno. El runner los recorre y
+        // devuelve cuáles fallaron; el seeder ya listó por pantalla qué falló dentro de cada uno.
+        $resultado = $this->runner()->runForTenants(
+            $fqcn,
+            $pieza,
+            $tenants,
+            fn (string $clave) => $this->components->info("Tenant {$clave}"),
+        );
 
-        foreach ($tenants as $tenant) {
-            $clave = (string) $tenant->getTenantKey();
-
-            if (DryRun::active()) {
-                DryRun::record("ejecutaría  {$fqcn} · pieza {$pieza} · tenant {$clave}");
-
-                continue;
-            }
-
-            $this->components->info("Tenant {$clave}");
-
-            tenancy()->initialize($tenant);
-
-            try {
-                // Un tenant que falla no cancela a los demás: cada base es independiente, y
-                // detenerse en el tercero de doce deja nueve sin desplegar por un fallo ajeno.
-                // El código de salida recuerda que algo falló, y el seeder ya listó qué.
-                if ($this->runProjectSeeder($fqcn, $pieza) !== self::SUCCESS) {
-                    $salida = self::FAILURE;
-                }
-            } finally {
-                tenancy()->end();
-            }
+        if ($resultado->successful()) {
+            return self::SUCCESS;
         }
 
-        return $salida;
+        $this->fallo(
+            count($resultado->errors()) . ' de ' . count($tenants) . ' tenant(s) fallaron: '
+            . implode(', ', array_keys($resultado->errors())) . '.',
+            'corrige lo que listó el seeder de cada uno y vuelve a lanzarlo con --tenant=<clave>.',
+            'Los demás quedaron desplegados: no hace falta repetirlos.'
+        );
+
+        return self::FAILURE;
     }
 
     /**
@@ -394,37 +386,26 @@ class DeployCommand extends Command
      */
     private function runProjectSeeder(string $fqcn, string $pieza): int
     {
-        // En ensayo se enseña QUÉ se ejecutaría, y no se ejecuta.
-        //
-        // Es el comando donde más falta hace y el único de los cinco que no tenía la opción: los
-        // otros cuatro escriben archivos, que se pueden borrar; este corre un seeder contra una base
-        // real, y `stage` con el modo destructivo puesto reconstruye tablas desde cero. Un
-        // despliegue lanzado contra la base equivocada no se deshace leyendo el error.
-        if (DryRun::active()) {
-            DryRun::record("ejecutaría  {$fqcn} · pieza {$pieza}");
+        $resultado = $this->runner()->run($fqcn, $pieza);
 
+        if ($resultado->successful()) {
             return self::SUCCESS;
         }
 
-        /** @var Seeder $seeder */
-        $seeder = $this->laravel->make($fqcn);
+        // El seeder ya listó cada fallo con su archivo:línea al cerrar; aquí solo se traduce a un
+        // código de salida, para que quien lo automatizó se entere.
+        $this->fallo(
+            (string) $resultado->firstError(),
+            'corrige lo que listó el seeder arriba y vuelve a lanzar el despliegue.',
+            'El despliegue se detuvo: parte del orden declarado puede haberse aplicado ya.'
+        );
 
-        $seeder->setContainer($this->laravel)->setCommand($this);
+        return self::FAILURE;
+    }
 
-        try {
-            $seeder->__invoke(['piece' => $pieza]);
-        } catch (Throwable $e) {
-            // El seeder ya listó cada fallo con su archivo:línea al cerrar; aquí solo se traduce a
-            // un código de salida, para que quien lo automatizó se entere.
-            $this->fallo(
-                $e->getMessage(),
-                'corrige lo que listó el seeder arriba y vuelve a lanzar el despliegue.',
-                'El despliegue se detuvo: parte del orden declarado puede haberse aplicado ya.'
-            );
-
-            return self::FAILURE;
-        }
-
-        return self::SUCCESS;
+    /** El runner, con este comando dentro para que el seeder pueda seguir hablando por pantalla. */
+    private function runner(): DeploymentRunner
+    {
+        return new DeploymentRunner($this->laravel, $this);
     }
 }
