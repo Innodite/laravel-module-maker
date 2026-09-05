@@ -61,7 +61,7 @@ it('el listado pide el endpoint de datos, no la pantalla', function () {
     $vista = $this->generateModule('Invoice', ModuleMode::SingleApp)
         ->contents('resources/js/Pages/Invoice/InvoiceIndex.vue');
 
-    expect(str_contains($vista, "axios.get(route(contextRoute('invoices.list'))"))->toBeTrue(
+    expect(str_contains($vista, "axios.get(window.route(contextRoute('invoices.list'))"))->toBeTrue(
         'FALLA: el listado no pide `list`. · FIX: `index` devuelve la pantalla; los datos están en '
         . "`list`, y cada una tiene su permiso propio.\nLa vista dice:\n" . $vista
     );
