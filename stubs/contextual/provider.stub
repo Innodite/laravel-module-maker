@@ -18,6 +18,6 @@ class {{{ providerName }}} extends ServiceProvider
 
     public function boot(): void
     {
-        //
+        {{{ bootBody }}}
     }
 }

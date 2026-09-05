@@ -65,6 +65,25 @@ Todo cambio que afecte a quien usa el paquete. El formato sigue
   cada cliente a través del contrato. Si usas otro paquete de tenencia, ahí está el punto donde
   engancharlo.
 
+- **Otro paquete instalado puede aportar sus stubs**, y el generador los usa sin configurar nada. El
+  contrato es una ruta: cualquier paquete que traiga
+  `stubs/module-maker/contextual/<nombre>.stub` participa en la resolución, por detrás de los del
+  proyecto y por delante de los del paquete. `make-module` dice al terminar quién aportó qué, y avisa
+  si dos aportan lo mismo.
+
+  **Para qué.** Las plantillas del paquete son genéricas a propósito. Un proyecto montado sobre una
+  biblioteca de interfaz querría generar contra ella —su tabla, sus formularios— y hasta ahora eso
+  obligaba a copiar los stubs al proyecto y mantenerlos a mano, uno por uno y en cada proyecto.
+
+- **`provider-boot.stub`**, un stub **opcional** cuyo contenido se escribe en el `boot()` del
+  ServiceProvider del módulo generado. No existe en el paquete: si no lo aporta nadie, el `boot()`
+  sale vacío, exactamente como antes.
+
+  **Para qué.** Enganchar el módulo recién generado en el menú de la aplicación. Esa línea el
+  generador no puede escribirla —depende de cómo declare su menú cada proyecto—, y escribirla «por
+  si acaso» llamaría a una clase que puede no existir: eso no deja un módulo invisible, deja la
+  aplicación entera sin arrancar. Recibe `{{{ moduleName }}}` y `{{{ functionality }}}`.
+
 ### Corregido
 
 - **El webmaster ya no asume que los identificadores son enteros.** Si tus tablas `roles`,
@@ -88,6 +107,23 @@ Todo cambio que afecte a quien usa el paquete. El formato sigue
   `cache` si tu caché es de base de datos, `jobs` si tu cola lo es—. Antes fallaba en cadena y el
   primer error, el único que importaba, quedaba fuera de la pantalla. ⛔ No las crea: son de Laravel,
   no del generador; te dice que ejecutes `php artisan migrate`.
+
+- **El diagnóstico comprueba Ziggy, del que dependen todas las pantallas generadas.** Las vistas
+  piden sus rutas por el nombre —`route(contextRoute('invoices.list'))`—, y quien traduce ese nombre
+  en el navegador es Ziggy. Si falta, o si está instalado pero ningún layout publica el mapa con
+  `@routes`, la pantalla **muere al montarse**: `route is not defined`, antes de pintar nada, con un
+  mensaje que no menciona ni al módulo ni al paquete. Y en el servidor no queda constancia de nada,
+  porque la petición respondió 200.
+
+  Ahora `innodite:doctor` comprueba **las dos mitades** por separado —instalarlo sin la directiva
+  falla igual, y es lo que más se olvida— y `make-module` avisa al terminar si la pantalla que acaba
+  de escribir no va a abrir. Es el gemelo del aviso que ya existía para el módulo que no carga: aquel
+  mira el servidor, este el navegador.
+
+- Las cuatro vistas generadas llaman a `window.route(...)` en vez de a `route(...)` a secas. La
+  directiva `@routes` define la función en el ámbito global del navegador, y ese es el único punto de
+  entrada que vale igual en las dos versiones de Ziggy —importarla de `ziggy-js` solo existe en la
+  v2—. Es la misma razón por la que ya usaban `window.axios`.
 
 ### Cambiado
 

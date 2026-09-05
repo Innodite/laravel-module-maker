@@ -6,6 +6,7 @@ namespace Innodite\LaravelModuleMaker\Generators\Concerns;
 
 use Illuminate\Support\Facades\File;
 use Innodite\LaravelModuleMaker\Support\StubPlaceholder;
+use Innodite\LaravelModuleMaker\Support\StubsDeVendor;
 
 /**
  * Trait HasStubs
@@ -13,7 +14,8 @@ use Innodite\LaravelModuleMaker\Support\StubPlaceholder;
  * Resolves stubs from most specific to most generic:
  *   1. {config_path}/stubs/contextual/{ContextFolder}/{stub}  — project override, per context
  *   2. {config_path}/stubs/contextual/{stub}                  — project override, generic
- *   3. package/stubs/contextual/{stub}                        — the package, single source of truth
+ *   3. vendor/{cualquiera}/stubs/module-maker/contextual/{stub} — lo que aporte otro paquete
+ *   4. package/stubs/contextual/{stub}                        — the package, single source of truth
  *
  * ContextFolder is passed as $contextFolder (e.g. "Central", "Tenant/Shared").
  * $isClean and $context are kept for signature compatibility.
@@ -61,6 +63,50 @@ trait HasStubs
     }
 
     /**
+     * El contenido de un stub **opcional**, o null si no lo aporta nadie.
+     *
+     * La diferencia con {@see self::getStub()} es el último escalón: aquel termina en el paquete y
+     * lanza si allí no está, porque sus stubs son obligatorios —un `model.stub` que falta es una
+     * instalación rota—. Este recorre los tres primeros escalones y, si ninguno lo trae, devuelve
+     * null sin queja.
+     *
+     * Es lo que permite un **punto de enganche**: un trozo de código que el paquete no escribe
+     * porque no sabe escribirlo, que aparece solo si el proyecto o una biblioteca instalada lo
+     * aportan, y cuya ausencia no es un fallo sino el caso normal.
+     *
+     * @param  string       $stubFile      Nombre del archivo stub
+     * @param  array        $placeholders  Mapa de marcadores → valores
+     * @param  string|null  $context       Clave o carpeta de contexto
+     * @return string|null                 Contenido ya resuelto, o null si no existe
+     */
+    protected function getOptionalStubContent(string $stubFile, array $placeholders = [], ?string $context = null): ?string
+    {
+        $customBase = config('make-module.stubs.path') . '/contextual';
+        $folder     = $this->normalizeContextFolder($context);
+
+        $candidatas = [];
+
+        if ($folder) {
+            $candidatas[] = "{$customBase}/{$folder}/{$stubFile}";
+        }
+
+        $candidatas[] = "{$customBase}/{$stubFile}";
+
+        $aportada = StubsDeVendor::buscar($stubFile);
+        if ($aportada !== null) {
+            $candidatas[] = $aportada;
+        }
+
+        foreach ($candidatas as $ruta) {
+            if (File::exists($ruta)) {
+                return $this->replacePlaceholders(File::get($ruta), $placeholders);
+            }
+        }
+
+        return null;
+    }
+
+    /**
      * Resuelve la ruta completa del archivo stub con resolución por carpeta de contexto.
      *
      * Orden de prioridad:
@@ -100,7 +146,20 @@ trait HasStubs
             return $p;
         }
 
-        // 3. The package's single source of truth
+        // 3. Lo que aporte otro paquete instalado.
+        //
+        // Va **detrás** del proyecto y **delante** del paquete, y ese orden es el contenido de la
+        // decisión: quien aporta sabe más que este generador sobre cómo se escribe una pantalla en
+        // su biblioteca, y menos que el proyecto sobre su propio código. Lo de en medio, entonces.
+        //
+        // Que no haya nadie es el caso normal y no cuesta nada: el descubrimiento se hace una vez
+        // por proceso y devuelve una lista vacía.
+        $aportado = StubsDeVendor::buscar($stubFile);
+        if ($aportado !== null) {
+            return $aportado;
+        }
+
+        // 4. The package's single source of truth
         return "{$packageBase}/{$stubFile}";
     }
 
