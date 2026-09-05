@@ -356,29 +356,33 @@ Publica en `resources/js/Composables/`:
 
 ---
 
-### `innodite:migrate-plan` — Aplica el esquema del contexto
+### `innodite:migrate-plan` — ⛔ RETIRADO en la v4
 
-Ejecuta las migraciones del proyecto **en el orden que declaran los traits `MigrationsList`** de cada
-subfuncionalidad. Antes de ejecutar valida la conexión del contexto y comprueba que la base de datos
-exista, para no lanzar un despliegue parcial ni contra la base equivocada.
+Aplicaba las migraciones del proyecto recorriendo el árbol. **Usa `innodite:deploy`**, que aplica el
+esquema, los datos y los permisos juntos y en el orden que declaras tú:
 
 ```bash
-# Todas las migraciones del contexto central
-php artisan innodite:migrate-plan --context=central
-
-# Ver el plan sin aplicar nada
-php artisan innodite:migrate-plan --context=tenant_shared --dry-run
+php artisan innodite:deploy stage --context=central
+php artisan innodite:deploy stage --context=central --dry-run   # ver el plan sin tocar la base
 ```
 
-| Opción | Descripción |
-|---|---|
-| `--context=` | **Obligatoria.** Contra qué contexto se ejecuta: `central`, `shared`, `tenant_shared` o el id de un tenant |
-| `--dry-run` | Muestra el plan y no aplica nada |
+El comando sigue registrado durante la v4 para decir esto mismo si lo ejecutas, y devuelve error
+—no éxito—, de modo que un script que lo tuviera escrito no lo dé por hecho.
 
-> **El orden vive en el módulo, no en un JSON.** Cada subfuncionalidad declara sus migraciones en su
-> trait `MigrationsList`, así que el orden viaja con el módulo cuando se copia a otro proyecto. El
-> contexto se dice en voz alta con `--context`, y de él salen **a la vez** las migraciones que se
-> seleccionan y la conexión contra la que se aplican.
+**Por qué se retiró.** Ordenaba las subfuncionalidades por el **nombre de sus carpetas**, ignorando
+el orden que el proyecto declara en `deploy`. Con `Cart`, `Customer` y `Order` en un módulo de
+ventas, `carts` se migraba antes que las dos tablas a las que apunta. Y era el único sitio del
+paquete que ejecutaba migraciones **fuera del seeder**, contra la regla que el propio paquete
+escribe en cada trait que genera: *el vehículo del despliegue es el seeder*.
+
+**Dónde vive ahora cada mitad del orden**, que es lo único que hay que recordar:
+
+| Quién | Qué decide |
+|---|---|
+| `deploy`, en `config/make-module.php` | El orden **entre** subfuncionalidades — lo declaras tú |
+| El trait `MigrationsList` de cada una | El orden **dentro** de una subfuncionalidad — lo genera el paquete |
+
+Para una migración suelta sigue estando `innodite:migrate-one`.
 
 ---
 
@@ -1299,7 +1303,7 @@ Con `innodite:add-entity User Role --context=central`, se añade dentro de `Modu
 | `innodite:doctor` | Diagnóstico en cascada: entorno del generador, contrato del proyecto y criterio |
 | `innodite:crear-bd-test` | Clona el esquema real en la base `_test`, sin una sola fila |
 | `innodite:publish-frontend` | Publica composables Vue 3 (`useModuleContext`, `usePermissions`) |
-| `innodite:migrate-plan --context=` | Aplica las migraciones del contexto, en el orden de sus traits `MigrationsList` |
+| ~~`innodite:migrate-plan`~~ | **Retirado en la v4** — usa `innodite:deploy` |
 | `innodite:migrate-one` | Ejecuta una migración puntual por coordenada |
 | `innodite:deploy {stage\|production}` | Levanta el proyecto: esquema, datos, permisos y webmaster |
 | `innodite:test` | Ejecuta el contrato de una subfuncionalidad, en cascada y con corte temprano |

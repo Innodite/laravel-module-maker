@@ -13,7 +13,7 @@ src/
   Commands/
     MakeModuleCommand.php           — innodite:make-module
     SetupModuleMakerCommand.php     — innodite:module-setup
-    MigratePlanCommand.php          — innodite:migrate-plan
+    MigratePlanCommand.php          — innodite:migrate-plan ⛔ RETIRADO (solo explica a dónde ir)
     MigrateOneCommand.php           — innodite:migrate-one
     SeedOneCommand.php              — innodite:seed-one
     MigrationSyncCommand.php        — innodite:migration-sync
@@ -354,12 +354,19 @@ array<int, array{
 Namespace: Innodite\LaravelModuleMaker\Services
 ```
 
+> ⚠️ **Ya no resuelve ningún plan, y por eso ya no ordena nada** (05/09/2026). Reunir las
+> migraciones del proyecto y ordenarlas era su otra mitad, y se retiró con `innodite:migrate-plan`:
+> el orden del despliegue tiene **un solo dueño**, el array `deploy` de `config/make-module.php`,
+> que leen los maestros de cada módulo. Lo que queda traduce la coordenada que escribe una persona
+> a la ruta real de un archivo, para `innodite:migrate-one`.
+
 | Método | Retorno | Descripción |
 |--------|---------|-------------|
-| `resolveManifestPath(?string $opt)` | `string` | Resuelve ruta del manifest. Fallback: `central.order.json` |
-| `loadPlan(string $path)` | `array` | Carga y valida JSON. Retorna `{migrations: [], seeders: []}` |
-| `resolveMigrationCoordinate(string $coord)` | `array` | Resuelve ruta física de una coordenada de migración |
-| `resolveSeederCoordinate(string $coord)` | `array` | Resuelve FQCN de un seeder |
+| `resolveMigrationCoordinate(string $coord)` | `array` | Resuelve la ruta física de una coordenada `Modulo:Contexto/archivo.php` |
+
+**Retirados** (recuperables del historial de git):
+`migrationsFromTraits()`, `absolutePathOf()`, y de la v3 `resolveManifestPath()`, `loadPlan()` y
+`resolveSeederCoordinate()`.
 
 ### `resolveMigrationCoordinate` — Retorno
 
@@ -494,22 +501,35 @@ php artisan innodite:module-setup
 
 ---
 
-### 3. `innodite:migrate-plan`
+### 3. `innodite:migrate-plan` — ⛔ RETIRADO (05/09/2026)
+
+No ejecuta nada. Imprime a dónde ir y devuelve `FAILURE`.
 
 ```bash
-php artisan innodite:migrate-plan {--manifest=} {--dry-run} {--seed}
+php artisan innodite:migrate-plan          # → «se retiró» + la orden de innodite:deploy
 ```
 
-**Opciones:**
-- `--manifest=` — Manifiesto a ejecutar (ej: `central.order.json`)
-- `--dry-run` — Solo muestra el plan sin ejecutar
-- `--seed` — Ejecuta seeders después de migraciones
+**Qué usar en su lugar:** `innodite:deploy <stage|production> --context=<...>`, que aplica esquema,
+datos y permisos en el orden declarado en `deploy`.
 
-**Flujo:**
-1. Resolver manifest → `MigrationPlanResolver::resolveManifestPath()`
-2. `resolveExecutionConnection()` → valida conexión
-3. Ejecutar migraciones en orden (`migrate` command con `--database`)
-4. Ejecutar seeders opcionales (`db:seed`)
+**Por qué se retiró — el defecto que lo condenó.** `migrationsFromTraits()` recorría el árbol y
+ordenaba con `ksort` sobre `getRelativePathname()`: el abecedario de las carpetas. Ignoraba `deploy`,
+así que `Sales/Cart` se migraba antes que `Sales/Customer` aunque `carts` tenga una foránea a
+`customers`. Además era el único punto del paquete que ejecutaba `migrate` fuera del seeder (contra
+R22).
+
+**Detalles de implementación que conviene no repetir:**
+- No declara `--context` ni `--dry-run`: usa `ignoreValidationErrors()` en el constructor. Declarar
+  `--dry-run` lo devolvería a la lista de comandos con ensayo de `DryRunTest`, y `FirmaCoherenteTest`
+  exigiría describirlo como «Ensayo: …» para algo que no ensaya.
+- Devuelve `FAILURE`. En verde, un script de despliegue lo daría por hecho.
+- Sus pruebas leen la salida con `Artisan::output()`, no con `$this->artisan()`: el ayudante envuelve
+  el párrafo por el ancho del terminal y parte `innodite:deploy` a mitad de palabra.
+
+**Lo que se retiró con él:** `MigrationPlanResolver::migrationsFromTraits()` y `absolutePathOf()`
+—quedaban sin llamador— y `tests/Feature/MigrationsFromTraitsTest.php`. El aviso de manifiestos
+legados y la validación de conexión los sigue cubriendo `innodite:migrate-one`, que usa el mismo
+`MigrationTargetService`.
 
 ---
 

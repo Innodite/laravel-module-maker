@@ -2,6 +2,58 @@
 
 ---
 
+## [2026-09-05] Retirado `innodite:migrate-plan` — el orden de las migraciones tiene un solo dueño
+
+**Rama:** `sesion-2026-09-05`
+
+**El defecto.** `MigrationPlanResolver::migrationsFromTraits()` reunía las migraciones del proyecto
+recorriendo el árbol y las ordenaba con `ksort` sobre la ruta relativa del archivo — el abecedario
+de las carpetas. Ignoraba `deploy`, el array de `config/make-module.php` donde el proyecto declara
+qué subfuncionalidad va antes que cuál. Reproducido generando un módulo de ventas con cuatro
+subfuncionalidades: `Sale` (la más antigua por timestamp) salía la última y `Cart` la primera, así
+que `carts` se migraba antes que `customers` y `orders`, a los que referencia.
+
+Solo lo sufría `innodite:migrate-plan`, único llamador del método. `innodite:deploy` nunca estuvo
+afectado: allí cada `StageSeeder` aplica sus migraciones en la posición que el proyecto declaró.
+
+**Por qué se retiró en vez de corregirse.** Lo único que ofrecía y `deploy` no —aplicar el esquema
+sin sembrar— es justamente lo que la norma no contempla: el propio paquete escribe en cada trait que
+genera que *el vehículo del despliegue es el seeder*. Corregirlo habría dejado dos comandos capaces
+de contradecirse sobre el mismo hecho. La v4 sigue en beta, así que retirarlo ahora no rompe a nadie.
+
+**Cambios:**
+
+- `src/Commands/MigratePlanCommand.php` — el comando ya no ejecuta nada: explica a dónde ir y
+  devuelve `FAILURE`. Sigue registrado durante la v4 para que un script viejo lea la explicación en
+  vez de «command not found». No declara `--context` ni `--dry-run`; las tolera con
+  `ignoreValidationErrors()`, porque declarar la segunda lo devolvería a la lista de comandos con
+  ensayo y obligaría a describir como «Ensayo: …» algo que no ensaya.
+- `src/Services/MigrationPlanResolver.php` — retirados `migrationsFromTraits()` y `absolutePathOf()`,
+  que quedaban sin llamador. La clase conserva solo la resolución de una coordenada, para
+  `innodite:migrate-one`.
+- `src/Commands/MigrateOneCommand.php` — el comentario que remitía a `absolutePathOf()` explica ahora
+  el motivo por sí mismo.
+- `tests/Feature/MigrationsFromTraitsTest.php` — retirado. Su test de dos módulos normalizaba con
+  `sort()` antes de comparar, así que su aserción no podía fallar por orden: el defecto convivió con
+  la suite en verde.
+- `tests/Feature/MigratePlanCommandTest.php` — reescrito: fija que la retirada se explica, que nombra
+  la orden completa y que **no** devuelve éxito.
+- `tests/Feature/ConnectionValidationCommandTest.php` y `LegacyManifestTest.php` — el vehículo pasa a
+  ser `innodite:migrate-one`, que usa el mismo `MigrationTargetService` y emite el mismo aviso de
+  manifiestos legados.
+- `tests/Feature/DryRunTest.php` — el comando retirado sale de la lista de los que ensayan, con una
+  prueba propia de las dos mitades del diseño.
+- `README.md`, `docs/migracion-v3-a-v4.md`, `skills/module-maker.md` — la retirada, con qué escribir
+  en su lugar y la advertencia de que `deploy` hace **más** que el plan: también datos y permisos.
+
+**Suite:** 414 pruebas, 1284 aserciones, verde.
+
+**Lo que queda dicho para el que venga:** el orden se compone de dos niveles y cada uno tiene su
+dueño — `deploy` decide el orden **entre** subfuncionalidades y lo declara el desarrollador; el trait
+`MigrationsList` decide el orden **dentro** de una y lo genera el paquete.
+
+---
+
 ## [2026-04-06] v3.5.4 — Documentación completa + badges de CI en README y GitHub Pages
 
 **Tag:** `v3.5.4`

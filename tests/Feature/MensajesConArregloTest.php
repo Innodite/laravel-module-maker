@@ -50,7 +50,7 @@ it('el fallo de cada comando trae el arreglo, no solo el diagnóstico', function
     ['el despliegue sin contexto', 'innodite:deploy', ['environment' => 'production']],
     ['el módulo que no existe', 'innodite:add-entity', ['module' => 'Fantasma', 'entity' => 'Cosa']],
     ['el nombre de módulo reservado', 'innodite:make-module', ['name' => 'class']],
-    ['el plan de migración sin contexto', 'innodite:migrate-plan', []],
+    ['el plan de migración, retirado', 'innodite:migrate-plan', []],
     ['el modo de instalación inexistente', 'innodite:module-setup', ['--mode' => 'multi-tenant']],
 ]);
 

@@ -119,9 +119,12 @@ it('la opción está en los que escriben o tocan una base, y en ninguno más', f
         'innodite:publish-frontend', // escribe en resources/js
         'innodite:deploy',           // corre seeders contra una base real
         'innodite:migrate-one',      // ya la tenía: aplica una migración
-        'innodite:migrate-plan',     // ya la tenía: aplica el plan
         'innodite:crear-bd-test',    // crea una base de datos
     ];
+
+    // `innodite:migrate-plan` está RETIRADO y no entra en ninguna de las dos listas: conserva la
+    // opción para que un script viejo no reciba un error sobre la firma, pero no ensaya nada porque
+    // ya no ejecuta nada. Se comprueba abajo, aparte.
 
     $sinEnsayo = [
         'innodite:doctor',           // diagnostica — los dos que había se fusionaron aquí
@@ -139,6 +142,39 @@ it('la opción está en los que escriben o tocan una base, y en ninguno más', f
         expect(isset($comandos[$nombre]))->toBeTrue("El comando {$nombre} no está registrado.");
         expect($comandos[$nombre]->getDefinition()->hasOption('dry-run'))->toBeFalse(
             "FALLA: {$nombre} solo lee, así que su --dry-run no previene nada."
+        );
+    }
+});
+
+it('el comando retirado no declara el ensayo, pero tolera que se lo pasen', function () {
+    // Las dos mitades del diseño, y se prueban juntas porque por separado cada una parece un error.
+    //
+    // NO lo declara: una opción declarada en un comando que no ejecuta nada tendría que describirse
+    // «Ensayo: …» —lo exige FirmaCoherenteTest— para algo que no ensaya, y la firma diría una cosa
+    // mientras el comando hace otra.
+    //
+    // Y AUN ASÍ lo tolera, vía ignoreValidationErrors(): quien lo tenga escrito en un script con
+    // sus opciones de siempre tiene que leer que el comando se retiró, no «The "--dry-run" option
+    // does not exist», que manda a mirar la firma cuando lo que cambió es el comando entero.
+    $comandos = Artisan::all();
+
+    expect($comandos['innodite:migrate-plan']->getDefinition()->hasOption('dry-run'))->toBeFalse(
+        'FALLA: el comando retirado declara --dry-run. · FIX: quítala de la firma — no ensaya nada; '
+        . 'las opciones viejas se toleran con ignoreValidationErrors(), no declarándolas.'
+    );
+
+    foreach ([[], ['--dry-run' => true], ['--context' => 'central']] as $opciones) {
+        $codigo = Artisan::call('innodite:migrate-plan', $opciones + ['--no-interaction' => true]);
+
+        expect($codigo)->not->toBe(
+            0,
+            'FALLA: el comando retirado devuelve éxito. · FIX: que devuelva FAILURE — no hizo lo '
+            . 'que se le pidió, y en un script en verde pasa por trabajo hecho.'
+        );
+
+        expect(str_contains(Artisan::output(), 'se retiró'))->toBeTrue(
+            'FALLA: con esas opciones no llega a explicar la retirada. · FIX: ignoreValidationErrors() '
+            . 'en el constructor, para que la opción no se rechace antes de entrar en handle().'
         );
     }
 });

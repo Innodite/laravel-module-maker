@@ -138,13 +138,46 @@ Los nombres de la v3 describían el mecanismo; los de la v4 describen lo que hac
 | `innodite:test-module` | `innodite:test` | Ejecuta el contrato de pruebas de una subfuncionalidad |
 | `innodite:check-env` | *(absorbido por `innodite:doctor`)* | — |
 | `innodite:seed-one` | *(absorbido por `innodite:deploy`)* | — |
-| `innodite:migration-sync` | *(absorbido por `innodite:migrate-plan`)* | — |
+| `innodite:migration-sync` | *(absorbido por `innodite:deploy`)* | — |
+| `innodite:migrate-plan` | *(retirado)* | Usa `innodite:deploy` — ver abajo |
 | `innodite:test-sync` | *(retirado)* | — |
 | — | `innodite:deploy` | **Nuevo.** Levanta el proyecto entero en el orden declarado |
 | — | `innodite:crear-bd-test` | **Nuevo.** Clona el esquema real en la base `_test`, sin una sola fila |
 
 Si tienes scripts de despliegue, un `Makefile` o tareas de CI que llamen a los nombres viejos,
 actualízalos: los antiguos ya no existen y fallan con «command not found».
+
+### `innodite:migrate-plan` se retiró — qué poner en su lugar
+
+Es el único que **no** desapareció del todo: sigue registrado durante la v4 para explicar a dónde ir,
+y devuelve error, de modo que un script que lo tuviera escrito no lo dé por hecho.
+
+```bash
+# Antes
+php artisan innodite:migrate-plan --context=central
+php artisan innodite:migrate-plan --context=central --dry-run
+
+# Ahora
+php artisan innodite:deploy stage --context=central
+php artisan innodite:deploy stage --context=central --dry-run
+```
+
+⚠️ **No es un cambio de nombre: `deploy` hace más.** El plan aplicaba solo el esquema; `deploy`
+aplica el esquema, **los datos canónicos y los permisos**, que es lo que deja la aplicación en pie.
+Si tu script encadenaba `migrate-plan` con `db:seed`, ahora sobra la segunda mitad.
+
+**Por qué se retiró, que es lo que conviene entender antes de migrar el script.** Ordenaba las
+subfuncionalidades por el nombre de sus carpetas, ignorando `deploy` —la lista donde tu proyecto
+declara qué va antes que qué—, así que una tabla podía crearse antes que aquella a la que apunta.
+Y ejecutaba migraciones fuera del seeder, contra la regla que el propio paquete escribe en cada
+trait que genera.
+
+**Comprueba tu `deploy` al migrar.** Ahora que el orden lo manda solo esa lista, el orden en que
+estén escritas sus líneas es el orden real del despliegue. `innodite:make-module` añade cada
+subfuncionalidad **al final**; moverla a su sitio —los padres antes que quien los referencia— es
+tuyo.
+
+Para una migración suelta sigue estando `innodite:migrate-one`.
 
 ---
 
