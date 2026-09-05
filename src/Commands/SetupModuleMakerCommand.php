@@ -111,7 +111,7 @@ class SetupModuleMakerCommand extends Command
         $this->publishStubs($configPath);
 
         // ── contexts.json ─────────────────────────────────────────────────────
-        $this->publishContextsJson($configPath);
+        $this->publishContextsJson($configPath, $mode);
 
         // ── Seeders de despliegue del proyecto ────────────────────────────────
         // Son del proyecto y no de un módulo —uno, o dos en multitenant—, así que se escriben al
@@ -429,9 +429,17 @@ class SetupModuleMakerCommand extends Command
      * @param  string  $configPath  Ruta a module-maker-config/ en el project root
      * @return void
      */
-    protected function publishContextsJson(string $configPath): void
+    protected function publishContextsJson(string $configPath, ?ModuleMode $mode = null): void
     {
-        $source      = dirname(__DIR__, 2) . '/stubs/contexts.json';
+        // ⭐ La plantilla depende del MODO, y no hacerlo así rompía toda pantalla de un proyecto de
+        // una sola aplicación: el archivo llegaba con `central`, `shared` y dos inquilinos, y el
+        // renderizador de vistas —que construye su mapa de prefijos desde aquí— exigía que cada
+        // componente empezara por uno de ellos. En single-app ese prefijo no existe.
+        $plantilla = $mode !== null && ! $mode->hasContextAxis()
+            ? 'contexts-single-app.json'
+            : 'contexts.json';
+
+        $source      = dirname(__DIR__, 2) . '/stubs/' . $plantilla;
         $destination = "{$configPath}/contexts.json";
 
         if (File::exists($destination)) {

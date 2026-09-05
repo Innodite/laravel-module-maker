@@ -59,7 +59,11 @@ class ControllerGenerator extends AbstractComponentGenerator
         $controllerDir      = $this->buildPath('Http/Controllers');
         // FQCN del service interface: Services/Contracts/{Context}/{Interface}
         $serviceInterfaceNs = $this->buildContractsNamespace('Services') . '\\' . $serviceInterface;
-        $viewName           = $this->prefixClass("{$this->modelName}Index");
+        // ⚠️ Con su carpeta delante. El generador de vistas escribe en
+        // `Pages/{Contexto}/{SubFuncionalidad}/`, y pedir solo el nombre del archivo hacía que el
+        // trait buscara en `Pages/{Contexto}/` — un archivo que no está ahí. Ninguna prueba lo veía
+        // porque todas comprobaban que la vista se GENERA, no que se RESUELVA.
+        $viewName           = $this->subFeatureName() . '/' . $this->prefixClass("{$this->modelName}Index");
 
         // Los dos FormRequests que reciben `store()` y `update()`. El nombre lo decide
         // `RequestNames`, que es de donde lo lee también el generador que los escribe: componerlo
