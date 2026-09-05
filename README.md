@@ -71,6 +71,7 @@ Versión mínima recomendada para uso nuevo:
 
 **Nuevos en la v4:**
 - [Guía de migración desde la v3](docs/migracion-v3-a-v4.md) — el salto, paso a paso
+- [Cómo se ejecutan las migraciones](docs/como-se-ejecutan-las-migraciones.md) — quién decide el orden, y por qué son dos niveles
 - [`innodite:doctor`](#-innoditedoctor--diagnóstico-en-cascada) — el diagnóstico en cascada, que sustituye a `module-check` y `check-env`
 - [`innodite:deploy`](#-innoditedeploy--desplegar-el-proyecto) — levanta el proyecto entero en el orden declarado
 - [`innodite:crear-bd-test`](#-pruebas) — clona el esquema real en la base `_test`, sin una sola fila
