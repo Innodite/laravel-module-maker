@@ -47,7 +47,7 @@ it('un valor desconocido NO cae al defecto en silencio: falla diciendo qué pone
             ->toThrow(InvalidArgumentException::class);
     });
 
-    // El mensaje trae el arreglo, no solo el error (R30).
+    // El mensaje trae el arreglo, no solo el error.
     conClavePrimaria('uuid', function () {
         try {
             PrimaryKeyMode::current();

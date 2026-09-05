@@ -183,7 +183,7 @@ class SubFeatureSeederGenerator extends AbstractComponentGenerator
      * dos veces, las rutas exigían permisos que el seeder no creaba.
      *
      * Se separan los de ruta y los de vista con un rótulo porque son **dos protecciones
-     * independientes** (R20), y quien abra el archivo tiene que poder ver cuál es cuál.
+     * independientes**, y quien abra el archivo tiene que poder ver cuál es cuál.
      */
     protected function permissionsLiteral(string $subFeature): string
     {
@@ -204,7 +204,7 @@ class SubFeatureSeederGenerator extends AbstractComponentGenerator
                 $tipo     = $permiso['kind'];
                 $lineas[] = $tipo === 'ruta'
                     ? "\n            // ── Permisos de RUTA: protegen el servicio ──────────────────────"
-                    : "\n\n            // ── Permisos de VISTA: protegen el elemento visual (R20) ───────";
+                    : "\n\n            // ── Permisos de VISTA: protegen el elemento visual ───────";
             }
 
             $lineas[] = "\n            [\n"

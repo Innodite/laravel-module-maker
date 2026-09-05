@@ -168,7 +168,7 @@ abstract class AbstractComponentGenerator
     }
 
     /**
-     * El prefijo de clase de OTRA configuración — si el modo lo pide (C5 · R6).
+     * El prefijo de clase de OTRA configuración — si el modo lo pide.
      *
      * @param  array<string, mixed>  $config
      */
@@ -196,7 +196,7 @@ abstract class AbstractComponentGenerator
      *
      * Antes se antepondía siempre, así que una aplicación sin un solo tenant generaba
      * `CentralRoleController`: un prefijo que no desambigua nada, porque no hay nada de lo que
-     * distinguirlo (C5 · R6). El prefijo existe para separar contextos; sin eje de contexto es
+     * distinguirlo. El prefijo existe para separar contextos; sin eje de contexto es
      * ruido pegado al nombre de cada clase de cada módulo.
      *
      * @return string  'Central', 'TenantShared', 'TenantAlpha'… o vacío en single-app
@@ -214,7 +214,7 @@ abstract class AbstractComponentGenerator
      * Subcarpeta del contexto — **si el modo tiene eje de contexto**.
      *
      * En single-app la subfuncionalidad va directa bajo la capa: `Models/Role/`, no
-     * `Models/Central/Role/` (R5).
+     * `Models/Central/Role/`.
      *
      * @return string  'Central', 'Tenant/Shared', 'Tenant/Alpha'… o vacío en single-app
      */

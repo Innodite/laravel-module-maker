@@ -269,7 +269,7 @@ it('un paquete de tenencia que no existe es un error, no un archivo sin envoltur
         expect($e->getMessage())->toContain('tenancy-for-laravel');
         expect($e->getMessage())->toContain('stancl');
         expect(str_contains($e->getMessage(), 'FIX:'))->toBeTrue(
-            'R30: el mensaje trae el error y cómo corregirlo, con los valores que sí valen.'
+            'el mensaje trae el error y cómo corregirlo, con los valores que sí valen.'
         );
     }
 });

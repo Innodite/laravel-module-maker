@@ -125,7 +125,7 @@ it('sin modo elegido se niega a generar, y el error dice cómo elegirlo', functi
         . 'estructura equivocada multiplicada por cada módulo de cada proyecto.'
     );
 
-    // R30: el mensaje trae la instrucción, no solo el diagnóstico.
+    // el mensaje trae la instrucción, no solo el diagnóstico.
     expect($message)->toContain('innodite:module-setup');
     expect($message)->toContain('single-app');
     expect($message)->toContain('multitenant-shared');
@@ -146,7 +146,7 @@ it('un modo desconocido falla nombrando el valor mal escrito', function () {
     expect($message)->not->toBeNull('Un modo inválido no puede resolverse inventando otro.');
     expect($message)->toContain("el modo 'lo-que-sea' no existe");
 
-    // R30: nombrar el valor mal escrito no basta — el mensaje trae también qué escribir en su lugar.
+    // nombrar el valor mal escrito no basta — el mensaje trae también qué escribir en su lugar.
     expect(str_contains($message, 'FIX:'))->toBeTrue(
         "FALLA: el error nombra el valor y no dice cómo corregirlo.\nDice:\n{$message}"
     );

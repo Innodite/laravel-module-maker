@@ -14,7 +14,7 @@ use PHPUnit\Framework\AssertionFailedError;
  * que falle, y que el mensaje **nombre el archivo** — sin el nombre hay que buscar a mano entre
  * los 23 archivos de un módulo.
  *
- * Es el mismo método que cerró TASK-003c con el cruce de stubs: verificar que la prueba muerde,
+ * Es el mismo método del cruce de stubs: verificar que la prueba muerde,
  * con una clave inventada a propósito.
  */
 
@@ -73,7 +73,7 @@ it('caza un import que apunta a una clase que nadie escribió', function () {
 });
 
 it('el fallo de generación se distingue del fallo de la afirmación', function () {
-    // Un contexto que el modo no acepta hace que el comando termine con error (C2). El arnés debe
+    // Un contexto que el modo no acepta hace que el comando termine con error. El arnés debe
     // decir eso —con la salida del comando delante— en vez de dejar que la prueba falle más tarde
     // por un árbol vacío, que es lo que cada prueba tenía que recordar en un mensaje suyo.
     try {

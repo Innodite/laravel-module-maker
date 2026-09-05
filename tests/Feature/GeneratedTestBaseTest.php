@@ -33,7 +33,7 @@ it('el módulo generado trae la base de su grupo de pruebas', function (ModuleMo
 
     $modulo->assertTreeHas(
         [$ruta],
-        'R76: la derivación de rutas, permisos y usuarios vive en la base del grupo. Sin ella, las '
+        'la derivación de rutas, permisos y usuarios vive en la base del grupo. Sin ella, las '
         . 'cinco piezas repiten el mismo cálculo cinco veces.'
     );
 })->with([
@@ -51,7 +51,7 @@ it('la base lee el manifiesto en vez de declarar nada por su cuenta', function (
     // puede cumplir, negada, pasa siempre. Por eso aquí se afirma sobre el booleano.
     expect(str_contains($base, 'InvoiceContract::ROUTE_PREFIX'))->toBeTrue(
         'FALLA: la base no filtra por el prefijo del manifiesto. · FIX: el manifiesto es la fuente; '
-        . 'un prefijo escrito aquí sería una segunda verdad (R76).'
+        . 'un prefijo escrito aquí sería una segunda verdad.'
     );
 
     expect(str_contains($base, 'InvoiceContract::PERMISSION_SEEDER'))->toBeTrue(
@@ -62,7 +62,7 @@ it('la base lee el manifiesto en vez de declarar nada por su cuenta', function (
     foreach (['invoices_index', 'invoices_store', 'invoices_view_store'] as $permiso) {
         expect(str_contains($base, "'{$permiso}'"))->toBeFalse(
             "FALLA: la base enumera el permiso '{$permiso}'. · FIX: los permisos se derivan del "
-            . 'seeder; enumerarlos aquí los convierte en una lista que mantener (R76).'
+            . 'seeder; enumerarlos aquí los convierte en una lista que mantener.'
         );
     }
 });
@@ -119,7 +119,7 @@ it('el alias del permiso que escriben las rutas es el que la base sabe leer', fu
 
     expect($alias)->not->toBeEmpty(
         'FALLA: las rutas generadas no llevan middleware de permiso con parámetro. · FIX: cada ruta '
-        . 'lleva el suyo (R16); sin él, el tema 5 no tiene nada que comprobar.'
+        . 'lleva el suyo; sin él, el tema 5 no tiene nada que comprobar.'
     );
 
     foreach (array_unique($alias) as $uno) {

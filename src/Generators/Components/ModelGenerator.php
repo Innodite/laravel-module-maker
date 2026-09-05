@@ -182,7 +182,7 @@ class ModelGenerator extends AbstractComponentGenerator
     }
 
     /**
-     * La conexión del modelo — **si el modo dice que este contexto la declara** (R7).
+     * La conexión del modelo — **si el modo dice que este contexto la declara**.
      *
      * La respuesta la da `connectionKey()` en el generador base, que es también de donde la toman
      * los tres seeders ejecutables de esta subfuncionalidad: el modelo que lee de una base y su

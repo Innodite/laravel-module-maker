@@ -7,7 +7,7 @@ use Innodite\LaravelModuleMaker\Support\GeneratedFileCheck;
 use Innodite\LaravelModuleMaker\Support\SubFeaturePermissions;
 
 /**
- * Las tres piezas ejecutables, con contenido de verdad (B3 · R23 · R24).
+ * Las tres piezas ejecutables, con contenido de verdad.
  *
  * El paquete emitía **un** seeder con un `run()` vacío y un `//` dentro: la pieza existía, el árbol
  * la mostraba, y no desplegaba nada. Las pruebas por existencia lo daban por bueno — por eso estas
@@ -96,7 +96,7 @@ it('las tres piezas se resuelven en PHP válido que el chequeo de salida acepta'
 
 it('los dos ejecutables llaman a runMigrations y a runInlineAlters', function (string $stub, string $clase) {
     // Los dos métodos que la fase de migraciones dejó escritos **y sin invocador**: el trait existía,
-    // el método estaba, y nadie lo llamaba nunca. El seeder es el vehículo del despliegue (R22), así
+    // el método estaba, y nadie lo llamaba nunca. El seeder es el vehículo del despliegue, así
     // que es aquí donde el esquema se aplica.
     $contenido = renderizarStub($stub, ['seederName' => $clase]);
 
@@ -172,7 +172,7 @@ it('el de stage propaga el modo a los permisos, sin forzarlo', function () {
 });
 
 it('el de permisos nace con la firma no destructiva de la norma', function () {
-    // R24: sin pedirlo, nada se borra — y lo que de verdad se pierde al borrar y recrear son las
+    // sin pedirlo, nada se borra — y lo que de verdad se pierde al borrar y recrear son las
     // asignaciones a roles hechas a mano.
     $contenido = renderizarStub('permissions-seeder.stub', ['seederName' => 'InvoiceInvoicePermissionsSeeder']);
 

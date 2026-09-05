@@ -20,7 +20,7 @@ use Tests\TestCase;
  * su cuenta serían cuatro cálculos repetidos cinco veces, y el día que el paquete cambie el formato
  * del middleware habría que corregirlos en veinte sitios. Aquí se responden **una vez**.
  *
- * **Ninguna respuesta se escribe a mano (R76).** Las rutas salen del router, el permiso sale del
+ * **Ninguna respuesta se escribe a mano.** Las rutas salen del router, el permiso sale del
  * middleware que la propia ruta declara, y los permisos canónicos salen del `PermissionsSeeder` — que
  * es quien los crea. Una lista literal en un test es una segunda verdad que el día que alguien añada
  * una acción solo se actualiza una vez.
@@ -133,7 +133,7 @@ abstract class {{{ baseName }}} extends TestCase
     /**
      * Deja la subfuncionalidad levantada: esquema, deltas, datos canónicos y permisos.
      *
-     * **Ejecuta el mismo seeder que corre en el servidor** (R75), y esa es toda la idea: si el
+     * **Ejecuta el mismo seeder que corre en el servidor**, y esa es toda la idea: si el
      * despliegue no levanta, las pruebas que vengan detrás fallan aquí y no treinta pasos más
      * adelante, con un síntoma que no se parece a la causa.
      *

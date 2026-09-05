@@ -24,7 +24,7 @@ use Innodite\LaravelModuleMaker\Tests\Support\GeneratedModule;
  *
  * Por eso aquí no se lee nada: se **ejecuta el mismo comando que corre en el servidor**
  * (`innodite:deploy`) contra una base de datos de verdad, y se miran los **efectos** — la tabla
- * creada, el permiso sembrado, el rol con sus permisos dentro. Es R75 aplicada al propio paquete.
+ * creada, el permiso sembrado, el rol con sus permisos dentro — sobre el propio paquete.
  *
  * **Dos decisiones del montaje, que no son detalles:**
  *
@@ -143,7 +143,7 @@ function moduloEnElProyecto(string $nombre, ModuleMode $modo, ?string $contexto 
     // antes—, y ahí el módulo se queda dentro de `vendor/`: invisible al repositorio, y suficiente
     // para que `make-module` se niegue a generar en la corrida siguiente porque «ya existe». El
     // síntoma es una suite que falla entera sin que nadie haya tocado nada, y que vuelve a pasar sola
-    // al intento siguiente. Pasó mientras se escribía TASK-002: **una corrida no puede depender de
+    // al intento siguiente. Pasó de verdad: **una corrida no puede depender de
     // que la anterior terminara bien.**
     //
     // Solo con el registro vacío, que es lo que distingue «arranco» de «voy por el segundo módulo»:
@@ -257,16 +257,16 @@ it('un módulo generado levanta entero con un solo comando', function () {
     foreach ($permisos as $permiso) {
         expect($permiso->description)->not->toBeEmpty(
             "FALLA: el permiso '{$permiso->name}' se sembró sin description. · FIX: la description "
-            . 'es obligatoria (R18): dice qué permite, dónde está y qué bloquea.'
+            . 'es obligatoria: dice qué permite, dónde está y qué bloquea.'
         );
 
         expect($permiso->module_id)->not->toBeNull(
             "FALLA: el permiso '{$permiso->name}' no cuelga de ningún módulo. · FIX: el "
-            . 'PermissionsSeeder crea la fila en `modules` y la referencia (R19).'
+            . 'PermissionsSeeder crea la fila en `modules` y la referencia.'
         );
     }
 
-    // 3. El webmaster — con TODOS los permisos que acaban de crearse, que es la promesa de R25:
+    // 3. El webmaster — con TODOS los permisos que acaban de crearse, que es su promesa:
     //    un módulo generado hoy queda cubierto sin que nadie toque una lista.
     $rol = DB::table('roles')->where('name', 'webmaster')->first();
 
@@ -333,7 +333,7 @@ it('desplegar dos veces deja el mismo estado que desplegar una', function () {
 });
 
 it('un dato que ya estaba sobrevive al siguiente despliegue', function () {
-    // La garantía que se comprueba una sola vez y se agradece siempre: R71 dice que los seeders son
+    // La garantía que se comprueba una sola vez y se agradece siempre: los seeders son
     // NO destructivos salvo que se pida lo contrario con SEEDER_DESTRUCTIVE. Aquí no se pide, así
     // que un registro de negocio tiene que seguir ahí después de volver a desplegar.
     requiereBaseDeDatos();
@@ -354,7 +354,7 @@ it('un dato que ya estaba sobrevive al siguiente despliegue', function () {
 
     expect(DB::table('deploys')->where('id', $id)->exists())->toBeTrue(
         'FALLA: el despliegue se llevó por delante un registro que ya estaba. · FIX: sin '
-        . 'SEEDER_DESTRUCTIVE=true, el StageSeeder NO vacía su tabla (R71). Un truncate por defecto '
+        . 'SEEDER_DESTRUCTIVE=true, el StageSeeder NO vacía su tabla. Un truncate por defecto '
         . 'convierte cada despliegue en una pérdida de datos, y en producción no hay vuelta atrás.'
     );
 });

@@ -14,7 +14,7 @@ use Illuminate\Support\Facades\File;
  * aplicación queda a medio levantar: una pantalla que no abre nadie porque su seeder de permisos no
  * se llegó a ejecutar, y una tabla vacía porque su seeder de datos tampoco. Sin error, sin log.
  *
- * Desde TASK-005 `make-module` declara sola cada subfuncionalidad que genera, así que el desfase ya
+ * `make-module` declara sola cada subfuncionalidad que genera, así que el desfase ya
  * no nace por olvido. Pero sigue naciendo por las otras tres vías: una configuración sin publicar el
  * día que se generó, un marcador borrado al reordenar la lista a mano, y una subfuncionalidad creada
  * a mano copiando otra. Por eso el despliegue **cruza al terminar** en vez de confiar.

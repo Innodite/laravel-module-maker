@@ -19,7 +19,7 @@ use Innodite\LaravelModuleMaker\Tests\Support\GeneratedModule;
  *   1. Que el contrato **carga y responde**: las constantes están declaradas y valen algo.
  *   2. Que cada pieza del `SCAFFOLD` **apunta a un archivo que este mismo módulo escribió**. Un
  *      manifiesto que nombra una clase inexistente pasa el parser y revienta al primer `class_exists`.
- *   3. Que **no enumera** rutas ni permisos de ruta (R76): esos se derivan, y una segunda lista es
+ *   3. Que **no enumera** rutas ni permisos de ruta: esos se derivan, y una segunda lista es
  *      una lista que se queda atrás.
  */
 
@@ -43,8 +43,8 @@ it('el módulo generado trae el manifiesto de su subfuncionalidad', function (Mo
 
     $modulo->assertTreeHas(
         [$ruta],
-        'R32 · R76: el grupo de pruebas de la subfuncionalidad empieza por su manifiesto, y vive en '
-        . 'la carpeta de la subfuncionalidad (R36).'
+        'el grupo de pruebas de la subfuncionalidad empieza por su manifiesto, y vive en '
+        . 'la carpeta de la subfuncionalidad.'
     );
 })->with([
     'single-app'  => [ModuleMode::SingleApp, null, 'Tests/Feature/Invoice/InvoiceContract.php'],
@@ -165,7 +165,7 @@ it('cada pieza del andamiaje apunta a algo que el módulo escribió', function (
 ]);
 
 it('no enumera lo que se deriva del código', function () {
-    // R76. El manifiesto declara el prefijo de rutas y el seeder de permisos, que son las dos
+    // El manifiesto declara el prefijo de rutas y el seeder de permisos, que son las dos
     // fuentes; escribir además la lista de rutas o la de permisos de ruta la convertiría en una
     // segunda verdad, y el día que alguien añada una acción solo se actualizaría una de las dos.
     $modulo = $this->generateModule('Invoice', ModuleMode::SingleApp);
@@ -180,7 +180,7 @@ it('no enumera lo que se deriva del código', function () {
         expect(str_contains($contenido, "'{$permisoDeRuta}'"))->toBeFalse(
             "FALLA: el manifiesto enumera el permiso de ruta '{$permisoDeRuta}'. · FIX: los permisos "
             . 'de ruta se derivan del PermissionsSeeder que ya declara PERMISSION_SEEDER; enumerarlos '
-            . 'aquí crea una segunda lista (R76).'
+            . 'aquí crea una segunda lista.'
         );
     }
 });

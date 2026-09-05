@@ -6,7 +6,7 @@ use Illuminate\Support\Facades\Artisan;
 use Innodite\LaravelModuleMaker\Support\ModuleMode;
 
 /**
- * R30 en los comandos: un fallo dice qué pasó **y qué hacer**.
+ * En los comandos: un fallo dice qué pasó **y qué hacer**.
  *
  * El paquete ya lo aplicaba en las pruebas que genera —`FALLA: … · FIX: …`— y sus propios comandos
  * no. Casi todos explicaban la salida, en prosa, en las líneas de abajo; lo que les faltaba era la
@@ -14,7 +14,7 @@ use Innodite\LaravelModuleMaker\Support\ModuleMode;
  *
  *   · Un arreglo que no se encuentra es un arreglo que no se aplica: cuatro frases seguidas tapan
  *     la única línea que dice qué escribir.
- *   · Y por **R81**: un rojo se clasifica antes de investigarse, y clasificar es leer muchos fallos
+ *   · Y porque un rojo se clasifica antes de investigarse, y clasificar es leer muchos fallos
  *     rápido. Un mensaje con el FIX marcado se ojea; uno sin él hay que leerlo entero, y entonces
  *     se salta.
  *

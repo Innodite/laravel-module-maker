@@ -16,7 +16,7 @@ use RuntimeException;
  *
  * **Un comando levanta la subfuncionalidad entera**: crea el esquema, aplica los cambios
  * posteriores, valida que las tablas están, siembra los datos canónicos y crea los permisos. Nadie
- * ejecuta `migrate` a mano — el vehículo del despliegue es el seeder (R22).
+ * ejecuta `migrate` a mano — el vehículo del despliegue es el seeder.
  *
  *     php artisan db:seed --class="{{{ seederName }}}"
  *

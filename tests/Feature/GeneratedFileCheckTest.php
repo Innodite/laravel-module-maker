@@ -36,7 +36,7 @@ it('el rechazo nombra el placeholder huérfano y dice qué hacer', function () {
             'Y el archivo, para saber qué generador lo emitió.'
         );
         expect(str_contains($e->getMessage(), 'no entrega'))->toBeTrue(
-            'R30: el mensaje dice qué hacer — añadir la clave al generador o quitarla del stub.'
+            'el mensaje dice qué hacer — añadir la clave al generador o quitarla del stub.'
         );
     }
 });
@@ -134,6 +134,6 @@ it('el factory generado compila y apunta al modelo con su prefijo de contexto', 
 
     // El cruce que faltaba: que la clase importada exista de verdad donde dice. Un import
     // correcto en sintaxis a un archivo que nadie escribió pasa el parser y falla al ejecutar.
-    // Desde TASK-005 lo hace el arnés para TODOS los imports del módulo, no solo para este.
+    // Lo hace el arnés para TODOS los imports del módulo, no solo para este.
     $modulo->assertInternalImportsExist();
 });

@@ -173,7 +173,7 @@ class DeployOrderInjectionService
      *
      * Se busca a partir de la clave `deploy`, y saltando los comentarios de bloque: las dos cosas
      * apuntan al mismo sitio, y juntas hacen que un ejemplo documentado no pueda confundirse con el
-     * array de verdad (B26).
+     * array de verdad.
      */
     private function lineaDelMarcador(string $contenido, string $marcador): ?int
     {

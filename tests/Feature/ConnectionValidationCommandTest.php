@@ -6,7 +6,7 @@ use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\File;
 
 /**
- * La guarda que impide desplegar contra una conexión que no existe (R03).
+ * La guarda que impide desplegar contra una conexión que no existe.
  *
  * `contexts.json` declara `connection_key`, pero quien tiene que tener esa conexión configurada es
  * `config/database.php` del proyecto. Cuando no la tiene, Laravel falla mucho más adentro y con un

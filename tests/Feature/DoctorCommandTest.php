@@ -128,7 +128,7 @@ it('con --continuar comprueba las dos etapas aunque la primera falle', function 
 });
 
 it('cada fallo trae el arreglo, no solo el diagnóstico', function () {
-    // R30, y por R81: clasificar un rojo es leer muchos fallos rápido, y un mensaje sin FIX marcado
+    // Clasificar un rojo es leer muchos fallos rápido, y un mensaje sin FIX marcado
     // hay que leerlo entero — así que se salta.
     config()->set('make-module.contexts_path', $this->tempPath('module-maker-config/no-existe.json'));
 

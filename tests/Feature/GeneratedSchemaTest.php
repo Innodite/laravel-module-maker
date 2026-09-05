@@ -58,7 +58,7 @@ it('la migración generada se ejecuta y crea la tabla con la forma que promete',
 
     expect(Schema::hasColumn('invoices', 'id'))->toBeTrue();
     expect(Schema::hasColumn('invoices', 'deleted_at'))->toBeTrue(
-        'R69 · R70: el borrado lógico está en toda tabla generada, para que eliminar y restaurar '
+        'el borrado lógico está en toda tabla generada, para que eliminar y restaurar '
         . 'estén siempre disponibles.'
     );
     expect(Schema::hasColumn('invoices', 'created_at'))->toBeTrue();
@@ -70,7 +70,7 @@ it('la clave primaria es ULID, no un autoincremental', function () {
     $contenido = file_get_contents($modulo->migrations()[0]);
 
     expect(str_contains($contenido, "\$table->ulid('id')->primary();"))->toBeTrue(
-        "R10: la clave primaria es ULID. Un autoincremental es enumerable —con un id en la URL se "
+        "la clave primaria es ULID. Un autoincremental es enumerable —con un id en la URL se "
         . "recorre la tabla entera probando números—, y en multitenant eso cruza inquilinos.\n"
         . "La migración dice:\n" . $contenido
     );
@@ -114,7 +114,7 @@ it('las claves foráneas apuntan a un ULID, no a un entero', function () {
     $linea = $metodo->invoke($instancia, ['name' => 'customer_id', 'type' => 'foreignId']);
 
     expect(str_contains($linea, 'foreignUlid'))->toBeTrue(
-        "R10: la FK sigue el tipo de la PK a la que apunta. Se generó: {$linea}"
+        "la FK sigue el tipo de la PK a la que apunta. Se generó: {$linea}"
     );
     expect(str_contains($linea, 'foreignId('))->toBeFalse(
         'Un `foreignId` es un entero: contra una PK de tipo ULID la restricción ni se crea.'

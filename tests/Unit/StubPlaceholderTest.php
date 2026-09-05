@@ -10,7 +10,7 @@ use Innodite\LaravelModuleMaker\Support\StubPlaceholder;
  * al que escribe, un placeholder llamado como una variable de la vista habría reescrito el
  * código del usuario en silencio. Estas pruebas fijan la frontera entre los tres tokens que
  * conviven —placeholder, interpolación de Vue y marcador de inyección— porque confundirlos
- * es exactamente lo que rompió las cuatro vistas de cada módulo (B15).
+ * es exactamente lo que rompió las cuatro vistas de cada módulo.
  */
 
 it('envuelve una clave desnuda en triple llave', function () {
@@ -31,7 +31,7 @@ it('el mensaje de la clave envuelta dice cómo se pasa bien', function () {
         $this->fail('Una clave envuelta debe lanzar: envolver dos veces no sustituye nada y el fallo es silencioso.');
     } catch (InvalidArgumentException $e) {
         expect(str_contains($e->getMessage(), "['modelName' => 'Role']"))->toBeTrue(
-            'R30: el error dice qué hacer, no solo qué pasó. Debe mostrar el formato correcto de la clave.'
+            'el error dice qué hacer, no solo qué pasó. Debe mostrar el formato correcto de la clave.'
         );
     }
 });

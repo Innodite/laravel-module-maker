@@ -91,7 +91,7 @@ it('el ensayo se describe igual en los ocho que lo tienen', function () {
 });
 
 it('los argumentos se nombran en inglés, como el resto del código', function () {
-    // R51. Y no es solo la norma: `entorno` era el único en español entre nueve comandos, así que
+    // Y no es solo la norma: `entorno` era el único en español entre nueve comandos, así que
     // Artisan::call(['entorno' => …]) fallaba para quien hubiera leído cualquiera de los otros ocho.
     $conocidos = ['module', 'entity', 'name', 'subfeature', 'environment', 'coordinate'];
 

@@ -21,7 +21,7 @@ use RuntimeException;
  * **Qué no hace, y no puede hacer:** truncar, `delete` masivo o `drop`. Y no es que aquí se responda
  * «no» a la pregunta del modo destructivo: **la pregunta no está**. Este archivo no usa
  * `ResolvesSeederDestructiveMode`, así que exportar `SEEDER_DESTRUCTIVE=true` en el servidor no
- * habilita nada — no hay nada que habilitar (R23).
+ * habilita nada — no hay nada que habilitar.
  *
  * **Idempotente:** ejecutarlo dos veces seguidas deja exactamente el mismo estado. Es la condición
  * para poder relanzarlo cuando un despliegue se corta a medias, que es cuando más falta hace.
@@ -61,7 +61,7 @@ class {{{ seederName }}} extends Seeder
         // Merge sin destruir: inserta lo que no está, actualiza lo que sí.
         $this->safe('upsertCanonicalData', fn () => $this->upsertCanonicalData());
 
-        // Los permisos, también sin borrar: las asignaciones hechas a mano sobreviven (R24).
+        // Los permisos, también sin borrar: las asignaciones hechas a mano sobreviven.
         $this->safe('seedPermissions', fn () => $this->callWith(
             {{{ permissionsSeeder }}}::class,
             ['destructive' => false],

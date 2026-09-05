@@ -22,7 +22,7 @@ use Throwable;
  *
  * ⛔ What it does NOT do is re-clone on every run. Cleaning always hides whatever is dirtying the
  * database — in kapitalizando the same pair of tests failed three times from contamination before
- * anybody wrote it down, and that repetition is what led to the defect underneath (R81).
+ * anybody wrote it down, and that repetition is what led to the defect underneath.
  */
 final class TestDatabase
 {

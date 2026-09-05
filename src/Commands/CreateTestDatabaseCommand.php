@@ -21,7 +21,7 @@ use Throwable;
  *
  * **Why the package ships this and not each project.** Every project was writing its own — kapitalizando
  * has one, NeoCenter another under a different name — and it is not project code: it is the
- * infrastructure the test contract stands on (R81). One implementation, tested once, used by all.
+ * infrastructure the test contract stands on. One implementation, tested once, used by all.
  *
  * **Why a clone and not `migrate --path`.** Migrations build the schema they *describe*. The clone
  * builds the schema that *is*: the index somebody added by hand, the collation that differs on one

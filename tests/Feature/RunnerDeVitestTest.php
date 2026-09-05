@@ -89,7 +89,7 @@ it('nombra las dependencias que faltan, con el npm exacto', function () {
     }
 
     expect(str_contains($salida, 'npm i -D'))->toBeTrue(
-        "FALLA: dice qué falta y no cómo instalarlo (R30).\n{$salida}"
+        "FALLA: dice qué falta y no cómo instalarlo.\n{$salida}"
     );
 
     // Y no reclama la que sí está: el comando que ofrece instala solo lo que falta.

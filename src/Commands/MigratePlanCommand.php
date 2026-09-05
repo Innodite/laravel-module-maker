@@ -14,7 +14,7 @@ use Innodite\LaravelModuleMaker\Commands\Concerns\ReportsFailures;
  * **Qué hacía y por qué sobraba.** Aplicaba las migraciones del proyecto leyendo los traits
  * `MigrationsList` del árbol. Era el único sitio del paquete que ejecutaba migraciones **fuera del
  * seeder**, y eso contradice lo que el propio paquete escribe en cada trait que genera: *«Nadie
- * ejecuta `migrate` a mano — el vehículo del despliegue es el seeder»* (R22).
+ * ejecuta `migrate` a mano — el vehículo del despliegue es el seeder»*.
  *
  * **Y ordenaba mal.** Recorría el árbol y ordenaba las subfuncionalidades con `ksort` sobre la ruta
  * del archivo — es decir, por el abecedario de las carpetas, ignorando `deploy`, que es donde el

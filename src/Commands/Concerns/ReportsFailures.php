@@ -5,14 +5,14 @@ declare(strict_types=1);
 namespace Innodite\LaravelModuleMaker\Commands\Concerns;
 
 /**
- * R30 for the ten commands: a failure states what broke AND how to fix it.
+ * For the ten commands: a failure states what broke AND how to fix it.
  *
  * The package already applies this to the tests it generates — `FALLA: … · FIX: …` — and the
  * commands did not. Most of them did explain the way out, in prose, on the lines below the error;
  * what they lacked was the shape. That sounds cosmetic and is not, for two reasons.
  *
  * The first is that a fix nobody can find is a fix nobody applies: a wall of four sentences hides
- * the one line that says what to type. The second is R81 — a red run gets classified before it gets
+ * the one line that says what to type. The second: a red run gets classified before it gets
  * investigated, and classifying means reading many failures fast. A message with a marked FIX can be
  * skimmed; one without it has to be read whole, and then it gets skipped.
  *

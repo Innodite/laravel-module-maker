@@ -51,7 +51,7 @@ it('rechaza un modo que no existe, y dice cuáles hay', function () {
 
     expect($salida)->toContain('multitenant-shared');
     expect(str_contains($salida, 'no existe'))->toBeTrue(
-        'R30: el error dice qué está mal y cuáles son los valores válidos.'
+        'el error dice qué está mal y cuáles son los valores válidos.'
     );
 });
 
@@ -147,7 +147,7 @@ it('rechaza un paquete de tenencia que no soporta, y dice cuáles hay', function
 
     expect($salida)->toContain('stancl');
     expect(str_contains($salida, 'FIX:'))->toBeTrue(
-        'R30: el mensaje trae el error y cómo corregirlo, no solo el rechazo.'
+        'el mensaje trae el error y cómo corregirlo, no solo el rechazo.'
     );
 });
 

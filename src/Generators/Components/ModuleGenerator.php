@@ -432,7 +432,7 @@ class ModuleGenerator
      * central no arrastra al del tenant.
      *
      * Aquí se crea la carpeta y queda fijada la convención de nombres (ver SeederNames). El
-     * contenido —el fan-out en orden y la propagación de `destructive`— es de FEAT-003: emitir ahora
+     * contenido —el fan-out en orden y la propagación de `destructive`— llegó después: emitir antes
      * tres seeders con `run()` vacío sería repetir B3, que es el hallazgo que esa fase corrige.
      */
     private function createMasterSeederFolders(): void

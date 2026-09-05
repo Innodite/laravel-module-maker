@@ -19,8 +19,8 @@ class TestGenerator extends AbstractComponentGenerator
     /**
      * Las columnas que toda tabla generada tiene, pase lo que pase con el negocio.
      *
-     * Van al contrato porque son las que el patrón exige: la clave ULID (R10), las marcas de tiempo
-     * y el borrado lógico (R69 · R70). Si alguna desaparece de una migración, el tema 2 lo dice.
+     * Van al contrato porque son las que el patrón exige: la clave ULID, las marcas de tiempo
+     * y el borrado lógico. Si alguna desaparece de una migración, el tema 2 lo dice.
      */
     private const COLUMNAS_DEL_PATRON = ['id', 'created_at', 'updated_at', 'deleted_at'];
 
@@ -62,7 +62,7 @@ class TestGenerator extends AbstractComponentGenerator
     {
         // El manifiesto del grupo de pruebas. Va antes que nada porque es lo que las piezas leen:
         // sin él, cada una tendría que volver a declarar las tablas, las acciones y el andamiaje —
-        // que es exactamente la duplicación que R76 prohíbe.
+        // que es exactamente la duplicación que el manifiesto existe para evitar.
         $this->writeContract();
 
         // Y la base que lee ese manifiesto: donde vive la derivación de rutas, permisos y usuarios.
@@ -78,7 +78,7 @@ class TestGenerator extends AbstractComponentGenerator
         $this->writeVueTest();
     }
 
-    // ─── El manifiesto del grupo de pruebas (R76) ─────────────────────────────
+    // ─── El manifiesto del grupo de pruebas ─────────────────────────────
 
     /**
      * Escribe `{Prefijo}{SubFunc}Contract.php` en la carpeta del grupo, si no está ya.
@@ -179,7 +179,7 @@ class TestGenerator extends AbstractComponentGenerator
     }
 
     /**
-     * Tema 0 — el andamiaje: las piezas existen **y su contenido cumple** (R77).
+     * Tema 0 — el andamiaje: las piezas existen **y su contenido cumple**.
      */
     protected function writeScaffoldTest(): void
     {
@@ -211,7 +211,7 @@ class TestGenerator extends AbstractComponentGenerator
     }
 
     /**
-     * Tema 7 — el comportamiento por HTTP: el único sin techo, y con el borde de R34.
+     * Tema 7 — el comportamiento por HTTP: el único sin techo de pruebas mecánicas.
      *
      * La prueba de aislamiento entre tenants **solo se escribe en multitenant**, y no por ahorrar
      * líneas: en una aplicación sin tenants no hay otro inquilino del que aislarse, así que esa

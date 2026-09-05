@@ -100,7 +100,7 @@ it('al primer fallo corta, y no lanza lo que viene detrás', function () {
         ['LedgerScaffoldTest', 'LedgerSchemaTest'],
         'FALLA: la cascada siguió después de un fallo. · FIX: lo que viene detrás depende de lo que '
         . 'acaba de romperse y fallaría por la misma causa. Treinta rojos de un solo problema '
-        . 'cuestan más de leer que uno (R31 · R33).'
+        . 'cuestan más de leer que uno.'
     );
 });
 

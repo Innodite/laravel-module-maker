@@ -9,7 +9,7 @@ use Innodite\LaravelModuleMaker\Services\PhpunitRunner;
 use Innodite\LaravelModuleMaker\Support\ModuleMode;
 
 /**
- * R81 — un rojo se **clasifica** antes de investigarse.
+ * Un rojo se **clasifica** antes de investigarse.
  *
  * Significa tres cosas distintas y las tres se ven igual: base sucia, prueba intermitente o defecto
  * de verdad. Empezar por la tercera —el reflejo natural— convierte una base contaminada en horas de

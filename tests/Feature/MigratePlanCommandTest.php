@@ -13,7 +13,7 @@ use Illuminate\Support\Facades\Artisan;
  *
  * El comando aplicaba las migraciones recorriendo el árbol y ordenándolas por el nombre de las
  * carpetas, ignorando `deploy`. Se retiró en vez de corregirse: era el único sitio que ejecutaba
- * migraciones fuera del seeder —contra R22— y `innodite:deploy` ya hace lo mismo, en el orden que
+ * migraciones fuera del seeder, y `innodite:deploy` ya hace lo mismo en el orden que
  * el proyecto declara.
  *
  * **Se lee la salida con `Artisan::output()` y no con `$this->artisan()`**, a propósito: el

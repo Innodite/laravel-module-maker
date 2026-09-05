@@ -66,7 +66,7 @@ final class {{{ contractName }}}
     /**
      * Tema 6 — cada acción de la vista con el permiso que la hace visible.
      *
-     * Son los permisos de VISTA (R20), independientes de los de ruta: ocultar el botón no protege el
+     * Son los permisos de VISTA, independientes de los de ruta: ocultar el botón no protege el
      * endpoint, y proteger el endpoint no limpia la pantalla.
      *
      * @var array<string, string>

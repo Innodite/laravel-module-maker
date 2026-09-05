@@ -27,7 +27,7 @@ use InvalidArgumentException;
  * B17 — dos mitades que dejan de coincidir y un archivo que no carga.
  *
  * Aquí solo viven los NOMBRES. El contenido de cada pieza —el `safe()` paso a paso, el
- * `reportErrors()` al cerrar, el upsert de producción, el truncate opt-in de stage— es de FEAT-003.
+ * `reportErrors()` al cerrar, el upsert de producción, el truncate opt-in de stage— llegó después.
  */
 final class SeederNames
 {

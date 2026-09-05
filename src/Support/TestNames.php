@@ -10,7 +10,7 @@ namespace Innodite\LaravelModuleMaker\Support;
  * El hermano de `SeederNames`, para el otro contrato del patrón. Por subfuncionalidad hay **seis
  * piezas** —los nueve temas repartidos— más su manifiesto y su base:
  *
- *     {Prefijo}{SubFunc}Contract      el manifiesto: lo no derivable, y nada más (R76)
+ *     {Prefijo}{SubFunc}Contract      el manifiesto: lo no derivable, y nada más
  *     {Prefijo}{SubFunc}TestCase      la base del grupo: la derivación, en un solo sitio
  *     {Prefijo}{SubFunc}ScaffoldTest      tema 0     · las piezas existen y su contenido cumple
  *     {Prefijo}{SubFunc}SchemaTest        temas 1-2  · tablas y columnas
@@ -48,7 +48,7 @@ final class TestNames
      * esquema no está, los permisos fallan por lo mismo; y el comportamiento por HTTP falla, de
      * treinta formas distintas, por el mismo motivo único.
      *
-     * De ahí el corte temprano (R31 · R33): treinta fallos rojos de una sola causa no informan
+     * De ahí el corte temprano: treinta fallos rojos de una sola causa no informan
      * treinta veces mejor que uno — informan **peor**, porque hay que leerlos todos para descubrir
      * que eran el mismo.
      *

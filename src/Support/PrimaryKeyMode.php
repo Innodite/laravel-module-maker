@@ -27,7 +27,7 @@ namespace Innodite\LaravelModuleMaker\Support;
  */
 enum PrimaryKeyMode: string
 {
-    /** ULID — what the pattern requires (R10). Not enumerable from a URL. */
+    /** ULID — what the pattern requires. Not enumerable from a URL. */
     case Ulid = 'ulid';
 
     /** Auto-incrementing big integer — Laravel's own default, for whoever wants it. */

@@ -21,11 +21,11 @@ use Illuminate\Support\Str;
  * de la vista existía ni iba a existir, así que **todos los botones quedaban ocultos para todo el
  * mundo**, incluido el webmaster.
  *
- * **Las dos protecciones son independientes (R20).** El permiso de **ruta** protege el servicio; el de
+ * **Las dos protecciones son independientes.** El permiso de **ruta** protege el servicio; el de
  * **vista** protege el elemento visual. Ocultar el botón no protege el endpoint, y proteger el
  * endpoint no limpia la pantalla. Se emiten las dos, siempre — y nunca son el mismo permiso.
  *
- * **Un permiso por ruta y por acción de vista, sin reutilizar ninguno (R16 · SA §7).** Ni siquiera
+ * **Un permiso por ruta y por acción de vista, sin reutilizar ninguno.** Ni siquiera
  * `index` y `list` lo comparten, aunque una alimente a la otra: protegen cosas distintas —la pantalla
  * y sus datos— y cada permiso tiene que poder decirle al usuario, en su `description`, **qué cosa
  * concreta** habilita. Un permiso compartido entre varias acciones deja de ser explicable: quien
@@ -57,7 +57,7 @@ final class SubFeaturePermissions
     ];
 
     /**
-     * Las acciones de la interfaz, cada una con su permiso propio (R20).
+     * Las acciones de la interfaz, cada una con su permiso propio.
      *
      * El infijo `view` las separa de las de ruta al leer la lista de permisos, y el verbo se empareja
      * con el del servicio que consume el elemento: el botón `view_store` dispara la ruta `store`. Ese
@@ -116,7 +116,7 @@ final class SubFeaturePermissions
             'bloquea' => 'no se puede eliminar ningún registro',
         ],
 
-        // ── Permisos de VISTA: protegen el elemento visual (R20) ──────────────────────────────
+        // ── Permisos de VISTA: protegen el elemento visual ──────────────────────────────
         'view_store'   => [
             'verbo'   => 'Ver el botón de crear en',
             'permite' => 'que el botón «Crear» se muestre en la pantalla',
@@ -195,7 +195,7 @@ final class SubFeaturePermissions
      * Los elementos de la interfaz, cada uno con el permiso que decide si se muestra.
      *
      * Lo lee el generador de vistas para escribir el `can()` de cada botón. Sin permiso el elemento
-     * **se oculta**, no se muestra deshabilitado (R20).
+     * **se oculta**, no se muestra deshabilitado.
      *
      * @return array<string, string>  elemento => nombre completo del permiso
      */
@@ -213,7 +213,7 @@ final class SubFeaturePermissions
     /**
      * **Todos** los permisos que hay que crear: los de ruta y los de vista.
      *
-     * Lo lee el `PermissionsSeeder`. Son uno por ruta y uno por acción de la interfaz —R16 no admite
+     * Lo lee el `PermissionsSeeder`. Son uno por ruta y uno por acción de la interfaz —no se admite
      * reutilizar ninguno—, y la prueba que lo vigila exige que no haya repetidos.
      *
      * @return array<int, array{name: string, description: string, module: string, kind: string}>
@@ -271,7 +271,7 @@ final class SubFeaturePermissions
     /**
      * El grupo con el que la interfaz agrupa estos permisos: `"{Módulo} - {SubFuncionalidad}"`.
      *
-     * Es lo que produce el acordeón por funcionalidad con una pestaña por subfuncionalidad (R21), en
+     * Es lo que produce el acordeón por funcionalidad con una pestaña por subfuncionalidad, en
      * vez de una lista plana de doscientos permisos sueltos.
      */
     public static function moduleLabel(string $module, string $subFeature): string

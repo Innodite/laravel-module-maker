@@ -24,7 +24,7 @@ trait PrintsHeader
     /**
      * Prints `Innodite ModuleMaker — <what this run is doing>  v<installed version>`.
      *
-     * @param  string  $queHace  What this particular run is about, in Spanish (R51) and specific:
+     * @param  string  $queHace  What this particular run is about, in Spanish and specific:
      *                           "Módulo Invoice" beats "Generador de módulos".
      */
     private function cabecera(string $queHace): void

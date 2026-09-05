@@ -692,12 +692,12 @@ class RouteGenerator extends AbstractComponentGenerator
      *
      *   1. El import se armaba dentro del stub —`Modules\{Módulo}\Http\Controllers\{Clase}`—
      *      **sin la carpeta de la subfuncionalidad**, que es carpeta en todas las capas desde
-     *      TASK-004a. Las cinco rutas del módulo apuntaban a un controlador inexistente: sintaxis
+     *      Las cinco rutas del módulo apuntaban a un controlador inexistente: sintaxis
      *      correcta, archivo escrito, 500 en cada petición. Ahora el FQCN lo entrega quien sabe
      *      dónde vive la clase, `buildNamespace()`, que es el mismo que decidió dónde escribirla.
      *
      *   2. Escribía con `file_put_contents` directo, así que **no pasaba por el chequeo de
-     *      salida**: el sexto agujero de la red, después de los cinco que cerró TASK-003b. Un
+     *      salida**: el sexto agujero de la red, después de los cinco anteriores. Un
      *      `routes/web.php` que no parsea tumba la aplicación entera, no un módulo.
      *
      * @return void

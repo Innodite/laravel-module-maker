@@ -40,7 +40,7 @@ class MigrationTargetService
         $contextId = trim($context);
         $context   = $this->findContext($contextId);
 
-        // El modo decide ANTES que el contexto — es la corrección de R7 que dejó anotada la fase 1.
+        // El modo decide ANTES que el contexto: sin modo no se sabe si hay eje de contexto siquiera.
         //
         // En `multitenant-shared` los tenants comparten funcionalidad y **ninguno declara conexión**:
         // la conmuta la tenancy al identificar al inquilino, y nombrarla en el contexto ataría el

@@ -94,7 +94,7 @@ class VueGenerator extends AbstractComponentGenerator
      * Claves desnudas: envolverlas aquí era B15 — el trait las envolvía otra vez y no se
      * sustituía ninguna, así que las cuatro vistas salían con los placeholders literales,
      * incluida la ruta que piden a Axios. El método que sí sabía resolver ese formato
-     * —replacePlaceholdersInContent()— no lo llamaba nadie (A10), y por eso el fallo era
+     * —replacePlaceholdersInContent()— no lo llamaba nadie, y por eso el fallo era
      * silencioso: la pieza correcta existía, muerta, al lado de la llamada equivocada.
      *
      * @return array<string, string>
@@ -117,7 +117,7 @@ class VueGenerator extends AbstractComponentGenerator
     }
 
     /**
-     * Los permisos que deciden si cada elemento de la vista se muestra (R20).
+     * Los permisos que deciden si cada elemento de la vista se muestra.
      *
      * Salen de `SubFeaturePermissions`, que es de donde los toma también el `PermissionsSeeder` que
      * los crea. Antes los stubs los escribían por su cuenta como `{subFeaturePlural}.create` —con
@@ -160,7 +160,7 @@ class VueGenerator extends AbstractComponentGenerator
      *   multitenant central → {module}/resources/js/Pages/Central/Role/
      *   tenants iguales     → {module}/resources/js/Pages/Tenant/Shared/Role/
      *
-     * Y `resources` en minúscula (B11 · R5): en Linux la diferencia no es cosmética, porque el
+     * Y `resources` en minúscula: en Linux la diferencia no es cosmética, porque el
      * bundler distingue mayúsculas al resolver la ruta de la página.
      */
     private function buildPagesPath(): string
