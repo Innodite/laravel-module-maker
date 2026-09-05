@@ -36,6 +36,11 @@ Todo cambio que afecte a quien usa el paquete. El formato sigue
 - **`Services\DeploymentRunner`** y **`Support\DeploymentResult`**, que es lo que hace posible lo
   anterior: el despliegue deja de vivir dentro del comando y pasa a decir **hasta dónde llegó**.
 
+- **`Contracts\TenantContext`**, con `Services\Tenancy\StanclTenantContext` detrás. El paquete ya no
+  llama a la orden global `tenancy()` desde su código de despliegue: entra y sale del contexto de
+  cada cliente a través del contrato. Si usas otro paquete de tenencia, ahí está el punto donde
+  engancharlo.
+
 ### Cambiado
 
 - `innodite:deploy --context=tenant`, cuando **algunos** tenants fallan, ahora dice **cuántos y

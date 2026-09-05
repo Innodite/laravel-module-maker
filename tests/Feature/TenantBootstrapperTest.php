@@ -5,6 +5,8 @@ declare(strict_types=1);
 use Innodite\LaravelModuleMaker\Exceptions\TenantBootstrapFailedException;
 use Innodite\LaravelModuleMaker\Services\TenantBootstrapper;
 use Innodite\LaravelModuleMaker\Support\ModuleMode;
+use Innodite\LaravelModuleMaker\Tests\Support\ContextoDeMentira;
+use Innodite\LaravelModuleMaker\Tests\Support\TenantDeMentira;
 
 /**
  * El arranque de un tenant recién creado, llamado desde el código del proyecto.
@@ -20,18 +22,6 @@ use Innodite\LaravelModuleMaker\Support\ModuleMode;
  * comando tampoco lo comprobaba— y se cierra o bien añadiendo el paquete a `require-dev`, o bien en
  * el proyecto anfitrión, que sí lo tiene.
  */
-class TenantDoble
-{
-    public function __construct(private readonly string $clave = 'acme')
-    {
-    }
-
-    public function getTenantKey(): string
-    {
-        return $this->clave;
-    }
-}
-
 beforeEach(function () {
     config()->set('make-module.mode', ModuleMode::MultitenantShared->value);
     config()->set('make-module.deploy', ['tenant' => ['Invoice/Invoice']]);
@@ -40,13 +30,13 @@ beforeEach(function () {
 it('el entorno se dice entero, y si no, no se levanta nada', function () {
     // Se comprueba lo primero, antes que la tenencia o la configuración: quien se equivocó de
     // palabra tiene que leer eso, no un discurso sobre paquetes de tenencia.
-    expect(fn () => (new TenantBootstrapper($this->app))->bootstrap(new TenantDoble(), 'prod'))
+    expect(fn () => (new TenantBootstrapper($this->app))->bootstrap(new TenantDeMentira(), 'prod'))
         ->toThrow(TenantBootstrapFailedException::class, "'prod' no es un entorno de despliegue");
 });
 
 it('el mensaje del entorno equivocado trae su arreglo', function () {
     try {
-        (new TenantBootstrapper($this->app))->bootstrap(new TenantDoble(), 'preprod');
+        (new TenantBootstrapper($this->app))->bootstrap(new TenantDeMentira(), 'preprod');
     } catch (TenantBootstrapFailedException $e) {
         expect($e->getMessage())->toContain('FALLA:')
             ->and($e->getMessage())->toContain('FIX:')
@@ -61,7 +51,7 @@ it('el mensaje del entorno equivocado trae su arreglo', function () {
 it('en una aplicación única no hay tenants que levantar', function () {
     config()->set('make-module.mode', ModuleMode::SingleApp->value);
 
-    expect(fn () => (new TenantBootstrapper($this->app))->bootstrap(new TenantDoble(), 'production'))
+    expect(fn () => (new TenantBootstrapper($this->app))->bootstrap(new TenantDeMentira(), 'production'))
         ->toThrow(TenantBootstrapFailedException::class, 'no hay tenants que levantar');
 });
 
@@ -70,7 +60,7 @@ it('con el orden de despliegue vacío no se levanta: sería un alta con la base 
     // seguir devolvería una cuenta que parece lista y no tiene una sola tabla.
     config()->set('make-module.deploy', []);
 
-    expect(fn () => (new TenantBootstrapper($this->app))->bootstrap(new TenantDoble(), 'production'))
+    expect(fn () => (new TenantBootstrapper($this->app))->bootstrap(new TenantDeMentira(), 'production'))
         ->toThrow(TenantBootstrapFailedException::class, 'no habría nada que levantar');
 });
 
@@ -79,7 +69,7 @@ it('sin tenencia que el generador sepa inicializar, tampoco: escribiría en la b
     // por defecto —la central— creyendo que siembra la del cliente.
     config()->set('make-module.tenancy_package', 'none');
 
-    expect(fn () => (new TenantBootstrapper($this->app))->bootstrap(new TenantDoble(), 'production'))
+    expect(fn () => (new TenantBootstrapper($this->app))->bootstrap(new TenantDeMentira(), 'production'))
         ->toThrow(TenantBootstrapFailedException::class, 'paquete de tenencia');
 });
 
@@ -95,4 +85,36 @@ it('si falta el seeder de despliegue del proyecto, el mensaje dice quién lo esc
         ->and($mensaje)->toContain('FIX:')
         ->and($mensaje)->toContain('innodite:module-setup')
         ->and($mensaje)->toContain('es del proyecto, no del paquete');
+});
+
+it('si el contexto del cliente ya está abierto, no se exige el paquete de tenencia', function () {
+    // ⭐ La decisión P6 en una prueba. Con el contexto abierto para ESTE tenant, el arranque no
+    // necesita abrir nada, así que no tiene por qué reclamar un paquete que sepa hacerlo — y sobre
+    // todo, no lo cerrará al terminar, que es lo que dejaría sin contexto a quien nos llamó.
+    //
+    // Se comprueba por QUÉ FALLA: si se saltó la comprobación de tenencia, el siguiente obstáculo
+    // es el seeder del proyecto, que en el paquete no existe. Si no se la hubiera saltado, el
+    // mensaje hablaría de tenencia.
+    $tenant   = new TenantDeMentira('acme');
+    $contexto = new ContextoDeMentira(usable: false, abierto: $tenant);
+
+    try {
+        (new TenantBootstrapper($this->app, null, $contexto))->bootstrap($tenant, 'production');
+    } catch (TenantBootstrapFailedException $e) {
+        expect($e->getMessage())->toContain('seeder de despliegue')
+            ->and($e->getMessage())->not->toContain('paquete de tenencia');
+
+        return;
+    }
+
+    $this->fail('Sin el seeder del proyecto no puede haber llegado a desplegar.');
+});
+
+it('sin contexto abierto y sin tenencia usable, no se levanta nada', function () {
+    // La otra mitad de lo mismo: aquí sí hay que abrir, y no hay con qué.
+    $contexto = new ContextoDeMentira(usable: false);
+
+    expect(fn () => (new TenantBootstrapper($this->app, null, $contexto))
+        ->bootstrap(new TenantDeMentira(), 'production'))
+        ->toThrow(TenantBootstrapFailedException::class, 'paquete de tenencia');
 });

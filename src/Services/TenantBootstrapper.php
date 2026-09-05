@@ -6,7 +6,9 @@ namespace Innodite\LaravelModuleMaker\Services;
 
 use Illuminate\Console\Command;
 use Illuminate\Contracts\Foundation\Application;
+use Innodite\LaravelModuleMaker\Contracts\TenantContext;
 use Innodite\LaravelModuleMaker\Exceptions\TenantBootstrapFailedException;
+use Innodite\LaravelModuleMaker\Services\Tenancy\StanclTenantContext;
 use Innodite\LaravelModuleMaker\Support\DeploymentResult;
 use Innodite\LaravelModuleMaker\Support\ModuleMode;
 use Innodite\LaravelModuleMaker\Support\SeederNames;
@@ -52,6 +54,7 @@ class TenantBootstrapper
     public function __construct(
         private readonly Application $app,
         private readonly ?Command $command = null,
+        private readonly ?TenantContext $context = null,
     ) {
     }
 
@@ -82,15 +85,13 @@ class TenantBootstrapper
             throw TenantBootstrapFailedException::nothingDeclared();
         }
 
+        $contexto = $this->context ?? new StanclTenantContext();
+
         // El contexto ya abierto se respeta: cerrarlo al terminar dejaría sin él a quien nos llamó.
-        $dentro = $this->alreadyInsideContextOf($tenant);
+        $dentro = $contexto->isInside($tenant);
 
-        if (! $dentro) {
-            $tenancy = TenancyPackage::current();
-
-            if (! $tenancy->initialisesContext()) {
-                throw TenantBootstrapFailedException::tenancyNotUsable($tenancy->label());
-            }
+        if (! $dentro && ! $contexto->usable()) {
+            throw TenantBootstrapFailedException::tenancyNotUsable(TenancyPackage::current()->label());
         }
 
         // La clase del proyecto se comprueba la última, y a propósito: es lo único que depende de
@@ -102,7 +103,7 @@ class TenantBootstrapper
             throw TenantBootstrapFailedException::seederMissing($fqcn);
         }
 
-        $runner = new DeploymentRunner($this->app, $this->command);
+        $runner = new DeploymentRunner($this->app, $this->command, $contexto);
 
         return $dentro
             ? $runner->run($fqcn, $pieza, (string) $tenant->getTenantKey())
@@ -118,27 +119,4 @@ class TenantBootstrapper
         return $piezas[$dado] ?? throw TenantBootstrapFailedException::unknownEnvironment($environment);
     }
 
-    /**
-     * ¿Estamos ya dentro del contexto de **este** tenant?
-     *
-     * Comprobar solo que «hay un contexto abierto» no basta: si el abierto fuera el de otro cliente,
-     * respetarlo sembraría la base equivocada, que es exactamente el fallo que este arranque evita.
-     */
-    private function alreadyInsideContextOf(object $tenant): bool
-    {
-        if (! function_exists('tenancy')) {
-            return false;
-        }
-
-        $tenancy = tenancy();
-
-        if (! ($tenancy->initialized ?? false)) {
-            return false;
-        }
-
-        $abierto = $tenancy->tenant ?? null;
-
-        return $abierto !== null
-            && (string) $abierto->getTenantKey() === (string) $tenant->getTenantKey();
-    }
 }

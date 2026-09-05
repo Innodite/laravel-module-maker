@@ -5,6 +5,8 @@ declare(strict_types=1);
 use Illuminate\Database\Seeder;
 use Innodite\LaravelModuleMaker\Services\DeploymentRunner;
 use Innodite\LaravelModuleMaker\Support\DeploymentResult;
+use Innodite\LaravelModuleMaker\Tests\Support\ContextoDeMentira;
+use Innodite\LaravelModuleMaker\Tests\Support\TenantDeMentira;
 
 /**
  * El despliegue, invocable desde código y no solo desde la consola.
@@ -80,4 +82,64 @@ it('el resultado es inmutable: un paso nuevo no toca el anterior', function () {
         ->and($primero->applied())->toBe(['uno'])
         ->and($segundo->successful())->toBeFalse()
         ->and($segundo->applied())->toBe(['uno']);
+});
+
+// ─── La mecánica del contexto de cliente ───────────────────────────────────────────────────────
+//
+// Es la parte más delicada del despliegue y era la única sin ninguna prueba: el generador llamaba a
+// `tenancy()`, la orden global de un paquete que este no declara, así que aquí no existía y esas
+// líneas no las ejecutaba nadie. Con el contrato de por medio, se comprueba sin instalar nada.
+
+class SeederIntermitente extends Seeder
+{
+    public static int $veces = 0;
+
+    public function run(string $piece = 'Production'): void
+    {
+        self::$veces++;
+
+        if (self::$veces === 1) {
+            throw new RuntimeException('la primera base estaba a medias');
+        }
+    }
+}
+
+it('entra en el contexto de cada tenant y sale de todos', function () {
+    $contexto = new ContextoDeMentira();
+    $tenants  = [new TenantDeMentira('acme'), new TenantDeMentira('globex')];
+
+    (new DeploymentRunner($this->app, null, $contexto))
+        ->runForTenants(SeederQueAnota::class, 'Stage', $tenants);
+
+    // El orden importa tanto como los pasos: salir antes de entrar en el siguiente es lo que impide
+    // que el segundo cliente se siembre dentro de la base del primero.
+    expect($contexto->pasos)->toBe(['entra:acme', 'sale', 'entra:globex', 'sale']);
+});
+
+it('sale del contexto aunque el despliegue reviente dentro', function () {
+    // Si no saliera, todo lo que viniera después —otro tenant, o lo que hiciera el proyecto al
+    // volver— escribiría en la base del cliente que falló, y sin un solo aviso.
+    $contexto = new ContextoDeMentira();
+
+    $resultado = (new DeploymentRunner($this->app, null, $contexto))
+        ->runForTenants(SeederQueRevienta::class, 'Stage', [new TenantDeMentira('acme')]);
+
+    expect($contexto->pasos)->toBe(['entra:acme', 'sale'])
+        ->and($resultado->successful())->toBeFalse();
+});
+
+it('un tenant que falla no cancela a los demás', function () {
+    // Detenerse en el tercero de doce dejaría nueve sin desplegar por un fallo ajeno. Lo que falló
+    // queda con su clave, para saber cuáles hay que rehacer y cuáles no.
+    SeederIntermitente::$veces = 0;
+
+    $resultado = (new DeploymentRunner($this->app, null, new ContextoDeMentira()))
+        ->runForTenants(SeederIntermitente::class, 'Stage', [
+            new TenantDeMentira('acme'),
+            new TenantDeMentira('globex'),
+        ]);
+
+    expect($resultado->errors())->toHaveKey('acme')
+        ->and($resultado->applied())->toBe(['globex'])
+        ->and(SeederIntermitente::$veces)->toBe(2);
 });

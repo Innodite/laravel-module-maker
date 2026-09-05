@@ -7,6 +7,8 @@ namespace Innodite\LaravelModuleMaker\Services;
 use Illuminate\Console\Command;
 use Illuminate\Contracts\Foundation\Application;
 use Illuminate\Database\Seeder;
+use Innodite\LaravelModuleMaker\Contracts\TenantContext;
+use Innodite\LaravelModuleMaker\Services\Tenancy\StanclTenantContext;
 use Innodite\LaravelModuleMaker\Support\DeploymentResult;
 use Innodite\LaravelModuleMaker\Support\DryRun;
 use Throwable;
@@ -32,7 +34,19 @@ class DeploymentRunner
     public function __construct(
         private readonly Application $app,
         private readonly ?Command $command = null,
+        private readonly ?TenantContext $context = null,
     ) {
+    }
+
+    /**
+     * El contexto de cliente. Se inyecta en las pruebas y se resuelve solo en producción.
+     *
+     * ⛔ No se guarda en una propiedad al construir: `usable()` consulta la configuración del
+     * proyecto, y hacerlo en el constructor la congelaría en el momento equivocado.
+     */
+    private function context(): TenantContext
+    {
+        return $this->context ?? new StanclTenantContext();
     }
 
     /**
@@ -78,14 +92,15 @@ class DeploymentRunner
                 $notify($key);
             }
 
-            tenancy()->initialize($tenant);
+            $contexto = $this->context();
+            $contexto->enter($tenant);
 
             try {
                 $result = $this->runOne($result, $fqcn, $piece, $key);
             } finally {
                 // Salir del contexto pase lo que pase: dejarlo abierto haría que el siguiente
                 // tenant —o lo que venga después— escribiera en la base del anterior.
-                tenancy()->end();
+                $contexto->leave();
             }
         }
 
