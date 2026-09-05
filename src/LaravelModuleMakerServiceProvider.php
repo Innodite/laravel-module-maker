@@ -108,7 +108,10 @@ class LaravelModuleMakerServiceProvider extends ServiceProvider
             $this->detectFirstInstall();
         }
 
-        $modulesPath = base_path('Modules');
+        // De la configuración, como hace el doctor desde que se midió el desfase: el generador
+        // escribe donde diga `module_path`, y leer `base_path('Modules')` fijo deja al paquete
+        // mirando una carpeta vacía en un proyecto que movió sus módulos — sin un solo aviso.
+        $modulesPath = config('make-module.module_path') ?: base_path('Modules');
         if (!File::exists($modulesPath)) {
             return;
         }

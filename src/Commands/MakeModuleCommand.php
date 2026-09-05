@@ -623,5 +623,63 @@ class MakeModuleCommand extends Command
         $this->line("    2. Despliega el módulo: <comment>php artisan innodite:deploy stage</comment>");
         $this->line("       (o una sola migración con <comment>innodite:migrate-one</comment>).");
         $this->newLine();
+
+        $this->avisarSiElModuloNoVaACargar($moduleName);
+    }
+
+    /**
+     * Comprueba que el módulo recién escrito **va a cargar de verdad**, y lo dice si no.
+     *
+     * ⚠️ **El fallo que esto evita no da ningún error.** El proveedor del paquete registra el de cada
+     * módulo, pero dentro de un `class_exists()`: si la clase no resuelve —porque el proyecto no
+     * declara el namespace `Modules\` en su autoload, o porque falta el `dump-autoload` de después de
+     * generar—, no se registra, sus rutas no se cargan y **la aplicación sigue respondiendo 200**.
+     * Se descubre buscando durante horas una ruta que «no existe».
+     */
+    private function avisarSiElModuloNoVaACargar(string $moduleName): void
+    {
+        $proveedor = "Modules\\{$moduleName}\\Providers\\{$moduleName}ServiceProvider";
+
+        if (class_exists($proveedor)) {
+            return;
+        }
+
+        $this->components->warn("El módulo está escrito, pero todavía NO carga.");
+
+        if (! $this->proyectoDeclaraElAutoload()) {
+            $this->line(
+                '  <fg=yellow>FALLA:</> el composer.json del proyecto no declara el namespace '
+                . '<comment>Modules\\</comment> en su autoload, así que ninguna de sus clases '
+                . 'resuelve — ni el proveedor, ni el modelo, ni el servicio.'
+            );
+            $this->line('  <fg=green>FIX:</> añádelo a <comment>autoload.psr-4</comment> y recarga:');
+            $this->line('       <comment>"Modules\\\\": "Modules/"</comment>');
+            $this->line('       <comment>composer dump-autoload</comment>');
+        } else {
+            $this->line(
+                '  <fg=yellow>FALLA:</> el autoload todavía no conoce las clases recién escritas.'
+            );
+            $this->line('  <fg=green>FIX:</> <comment>composer dump-autoload</comment>');
+        }
+
+        $this->line(
+            '  <fg=gray>Sin esto la aplicación arranca igual y sus rutas sencillamente no existen.</>'
+        );
+        $this->newLine();
+    }
+
+    /** ¿Está `Modules\` declarado en el autoload PSR-4 del proyecto? */
+    private function proyectoDeclaraElAutoload(): bool
+    {
+        $composer = base_path('composer.json');
+
+        if (! File::exists($composer)) {
+            return true;   // sin composer.json no hay nada que afirmar: no se inventa un fallo
+        }
+
+        $declarado = json_decode(File::get($composer), true);
+        $psr4      = $declarado['autoload']['psr-4'] ?? [];
+
+        return is_array($psr4) && array_key_exists('Modules\\', $psr4);
     }
 }

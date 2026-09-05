@@ -52,7 +52,7 @@ async function submit() {
     errors.value = {}
 
     try {
-        await axios.post(route(contextRoute('{{{ routeBase }}}.store')), form.value)
+        await window.axios.post(route(contextRoute('{{{ routeBase }}}.store')), form.value)
         exito('Registro creado.')
         emit('guardado')
     } catch (err) {
