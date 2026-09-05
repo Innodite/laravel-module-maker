@@ -24,19 +24,27 @@ function diagnostico(array $opciones = []): array
 }
 
 /**
- * Escribe archivos en el proyecto de prueba y los retira al terminar, pase lo que pase.
+ * Escribe archivos en el proyecto de prueba y **deja el árbol como estaba**, pase lo que pase.
  *
  * El contrato de la etapa 2 vive en rutas de Laravel que no se pueden mover por configuración
  * —`app/Models/User.php`, `app/Http/Middleware/…`—, así que la única forma de probar el verde es
- * crearlos. El `finally` no es cortesía: el skeleton de Testbench vive en `vendor/`, sobrevive a la
- * prueba y no aparece en el repositorio, así que un archivo olvidado aquí contaminaría todas las
+ * crearlos. La restauración no es cortesía: el skeleton de Testbench vive en `vendor/`, sobrevive a
+ * la prueba y no aparece en el repositorio, así que un archivo olvidado aquí contaminaría todas las
  * corridas siguientes sin dejar rastro.
+ *
+ * ⛔ Y por eso restaura en vez de borrar. Algunas de estas rutas —`composer.json`, sobre todo— ya
+ * existen en el skeleton: borrarlas al terminar no dejaba el árbol limpio, lo dejaba **peor que
+ * antes**, y el daño solo se vería en la prueba siguiente que necesitara el archivo original.
  *
  * @param array<string, string> $archivos ruta absoluta => contenido
  */
 function conArchivosEnElProyecto(array $archivos, Closure $prueba): void
 {
+    $previos = [];
+
     foreach ($archivos as $ruta => $contenido) {
+        $previos[$ruta] = File::exists($ruta) ? File::get($ruta) : null;
+
         File::ensureDirectoryExists(dirname($ruta));
         File::put($ruta, $contenido);
     }
@@ -44,8 +52,8 @@ function conArchivosEnElProyecto(array $archivos, Closure $prueba): void
     try {
         $prueba();
     } finally {
-        foreach (array_keys($archivos) as $ruta) {
-            File::delete($ruta);
+        foreach ($previos as $ruta => $anterior) {
+            $anterior === null ? File::delete($ruta) : File::put($ruta, $anterior);
         }
     }
 }
@@ -220,6 +228,13 @@ it('pasa en verde cuando el generador puede escribir y el proyecto cumple su con
         // Un proyecto que cumple su contrato la tiene publicada: el orden de despliegue vive
         // dentro, y sin ella generar un módulo no lo declara en ningún sitio.
         config_path('make-module.php') => "<?php\n\nreturn ['deploy' => []];\n",
+        // Las dos mitades de Ziggy, que es quien resuelve los nombres de ruta que piden las vistas
+        // generadas. Instalarlo sin la directiva no basta: el síntoma en pantalla es el mismo.
+        base_path('composer.json') => json_encode(
+            ['require' => ['tightenco/ziggy' => '^2.0']],
+            JSON_PRETTY_PRINT
+        ),
+        base_path('resources/views/app.blade.php') => "<html><head>@routes</head><body></body></html>",
     ], function () {
         [$codigo, $salida] = diagnostico();
 
