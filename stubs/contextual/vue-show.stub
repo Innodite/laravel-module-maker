@@ -18,6 +18,18 @@ const props = defineProps({
     id: { type: [Number, String], required: true },
 })
 
+/**
+ * Las rutas se piden **por su nombre**, nunca escribiendo la dirección: el nombre lo resuelve
+ * Ziggy con el mapa que publica el servidor, así que cambiar un prefijo en el archivo de rutas no
+ * obliga a tocar ni una vista. `contextRoute()` le antepone el contexto activo.
+ *
+ * Va por `window.` por lo mismo que `window.axios`: la directiva `@routes` del layout define
+ * `route` y `Ziggy` en el ámbito global del navegador, y ese es el único punto de entrada que vale
+ * igual en las dos versiones de Ziggy. Importarlo de `ziggy-js` solo funciona en la v2.
+ *
+ * ⛔ Si la pantalla muere al abrirse con `route is not defined`, no falta nada de este módulo:
+ * falta Ziggy, o falta `@routes` en el layout. `php artisan innodite:doctor` lo dice con su arreglo.
+ */
 const { contextRoute } = useModuleContext()
 const { can }          = usePermissions()
 
@@ -42,7 +54,7 @@ async function fetchItem() {
     loading.value = true
     try {
         const { data } = await window.axios.get(
-            route(contextRoute('{{{ routeBase }}}.show'), { id: props.id })
+            window.route(contextRoute('{{{ routeBase }}}.show'), { id: props.id })
         )
         item.value = data
     } catch (err) {
@@ -67,7 +79,7 @@ async function destroy() {
 
     try {
         await window.axios.delete(
-            route(contextRoute('{{{ routeBase }}}.destroy'), { id: props.id })
+            window.route(contextRoute('{{{ routeBase }}}.destroy'), { id: props.id })
         )
         exito('Registro eliminado.')
         emit('eliminado')
