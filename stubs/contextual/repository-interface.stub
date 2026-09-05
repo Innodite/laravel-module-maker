@@ -22,4 +22,10 @@ interface {{{ repositoryInterfaceName }}}
     public function create(array $data): mixed;
     public function update(string $id, array $data): mixed;
     public function delete(string $id): bool;
+
+    public function findTrashed(string $id): mixed;
+
+    public function restore(string $id): bool;
+
+    public function forceDelete(string $id): bool;
 }

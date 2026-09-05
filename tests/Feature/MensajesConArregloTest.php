@@ -3,6 +3,7 @@
 declare(strict_types=1);
 
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\File;
 use Innodite\LaravelModuleMaker\Support\ModuleMode;
 
 /**
@@ -52,6 +53,33 @@ it('el fallo de cada comando trae el arreglo, no solo el diagnóstico', function
     ['el nombre de módulo reservado', 'innodite:make-module', ['name' => 'class']],
     ['el plan de migración, retirado', 'innodite:migrate-plan', []],
     ['el modo de instalación inexistente', 'innodite:module-setup', ['--mode' => 'multi-tenant']],
+    ['la coordenada de migración que no resuelve', 'innodite:migrate-one', ['coordinate' => 'Fantasma:Central/2026_01_01_000000_nada.php']],
+    ['el grupo de pruebas que no existe', 'innodite:test', ['module' => 'Fantasma', 'subfeature' => 'Cosa']],
+    ['la conexión de la que clonar, inexistente', 'innodite:crear-bd-test', ['--connection' => 'fantasma']],
+    ['el proyecto sin catálogo de contextos', 'innodite:doctor', []],
+]);
+
+it('el FIX de cada comando nombra algo que se puede escribir', function (
+    string $titulo,
+    string $comando,
+    array $parametros,
+    string $accionable
+) {
+    // La forma se comprueba arriba; esto comprueba el FONDO. Un «FIX: usa un valor válido» pasa la
+    // prueba de forma y no ayuda a nadie: el arreglo tiene que nombrar la orden, la bandera o el
+    // formato exacto que el desarrollador va a teclear.
+    $salida = salidaDelFallo($comando, $parametros);
+
+    expect(str_contains($salida, $accionable))->toBeTrue(
+        "FALLA: el FIX de {$titulo} no nombra nada que se pueda escribir. · FIX: que diga "
+        . "'{$accionable}'.\nLa salida dice:\n{$salida}"
+    );
+})->with([
+    ['la coordenada de migración', 'innodite:migrate-one', ['coordinate' => 'Fantasma:Central/2026_01_01_000000_nada.php'], 'Modulo:Contexto/archivo.php'],
+    ['el grupo de pruebas ausente', 'innodite:test', ['module' => 'Fantasma', 'subfeature' => 'Cosa'], 'innodite:add-entity'],
+    ['la conexión inexistente', 'innodite:crear-bd-test', ['--connection' => 'fantasma'], '--connection='],
+    ['el módulo que no existe', 'innodite:add-entity', ['module' => 'Fantasma', 'entity' => 'Cosa'], 'innodite:make-module'],
+    ['el modo de instalación inexistente', 'innodite:module-setup', ['--mode' => 'multi-tenant'], 'single-app'],
 ]);
 
 it('el FIX dice qué hacer, no repite el fallo con otras palabras', function () {
@@ -64,4 +92,34 @@ it('el FIX dice qué hacer, no repite el fallo con otras palabras', function () 
     expect(str_contains($salida, '--context=central'))->toBeTrue(
         "FALLA: el FIX no dice qué escribir.\n{$salida}"
     );
+});
+
+it('publicar el frontend sin frontend que publicar también dice qué hacer', function () {
+    // Este no entra en el conjunto de arriba: su fallo no se provoca con un parámetro malo, sino con
+    // un proyecto al que le falta `resources/js`. Invocarlo sin más publica correctamente, así que
+    // una prueba de dataset habría dado verde sin comprobar nada.
+    $js     = resource_path('js');
+    $aparte = $js . '_apartado';
+    $habia  = File::isDirectory($js);
+
+    if ($habia) {
+        File::moveDirectory($js, $aparte);
+    }
+
+    try {
+        $salida = salidaDelFallo('innodite:publish-frontend');
+
+        expect(str_contains($salida, 'FALLA:'))->toBeTrue(
+            "FALLA: publicar sin resources/js no marca el fallo.\nLa salida dice:\n{$salida}"
+        );
+        expect(str_contains($salida, 'FIX:'))->toBeTrue(
+            "FALLA: publicar sin resources/js dice qué pasó y no qué hacer.\nLa salida dice:\n{$salida}"
+        );
+    } finally {
+        File::deleteDirectory($js);
+
+        if ($habia) {
+            File::moveDirectory($aparte, $js);
+        }
+    }
 });

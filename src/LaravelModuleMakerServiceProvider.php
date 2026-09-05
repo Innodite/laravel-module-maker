@@ -4,6 +4,8 @@ declare(strict_types=1);
 
 namespace Innodite\LaravelModuleMaker;
 
+use Innodite\LaravelModuleMaker\Support\ModuleMode;
+
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Route;
@@ -297,17 +299,19 @@ class LaravelModuleMakerServiceProvider extends ServiceProvider
     }
 
     /**
-     * Detecta si es la primera instalación del paquete verificando si existe
-     * la carpeta module-maker-config/ en el proyecto. Si no existe, registra
-     * un evento que muestra una sugerencia en consola al terminar el comando.
+     * Sugiere el instalador mientras el paquete no esté configurado.
+     *
+     * **La señal es el MODO, no una carpeta.** Antes miraba si existía `module-maker-config/`, y esa
+     * pregunta no es la misma: la carpeta puede existir sin que nadie haya instalado nada —basta un
+     * `vendor:publish` suelto— y, sobre todo, el instalador puede haber terminado bien y la señal no
+     * cambiar, con lo que el aviso seguía saliendo en cada comando después de hacer justo lo que
+     * pedía. Lo que el instalador deja decidido es el modo, y sin modo ningún comando genera nada.
      *
      * No interrumpe ningún flujo: solo es informativo.
      */
     private function detectFirstInstall(): void
     {
-        $configPath = config('make-module.config_path');
-
-        if (File::isDirectory($configPath)) {
+        if (ModuleMode::isConfigured()) {
             return;
         }
 
@@ -319,4 +323,5 @@ class LaravelModuleMakerServiceProvider extends ServiceProvider
                 . "\033[36m  php artisan innodite:module-setup\033[0m" . PHP_EOL . PHP_EOL);
         });
     }
+
 }

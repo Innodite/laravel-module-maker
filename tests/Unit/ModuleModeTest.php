@@ -151,3 +151,21 @@ it('un modo desconocido falla nombrando el valor mal escrito', function () {
         "FALLA: el error nombra el valor y no dice cómo corregirlo.\nDice:\n{$message}"
     );
 });
+
+// ── El aviso de primera instalación ────────────────────────────────────────────────────────────
+
+it('sin modo elegido, el paquete no está configurado', function () {
+    config()->set('make-module.mode', null);
+
+    expect(ModuleMode::isConfigured())->toBeFalse();
+});
+
+it('con el modo elegido sí lo está, y por eso el aviso de instalación se calla', function () {
+    // Medido en un proyecto real: el aviso «Primera instalación detectada» seguía saliendo en cada
+    // comando DESPUÉS de instalar con éxito, porque miraba si existía una carpeta en vez de mirar
+    // si el paquete estaba configurado. La carpeta puede existir sin instalar nada —un
+    // `vendor:publish` suelto la crea— y puede faltar con la instalación hecha.
+    config()->set('make-module.mode', ModuleMode::SingleApp->value);
+
+    expect(ModuleMode::isConfigured())->toBeTrue();
+});

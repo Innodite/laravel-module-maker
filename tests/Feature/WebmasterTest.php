@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Str;
 use Symfony\Component\Console\Input\ArrayInput;
 use Symfony\Component\Console\Output\BufferedOutput;
 
@@ -63,15 +64,62 @@ function tablasDePermisos(): void
 }
 
 /** Deja escritos unos permisos, como los habría dejado el seeder de una subfuncionalidad. */
+function tablasDePermisosConUlid(): void
+{
+    // Es la forma de la Suite: char(26) en vez de bigint autoincremental. El generador tiene que
+    // servir con las dos, porque un proyecto puede llegar con cualquiera de ellas.
+    Schema::create('permissions', function ($tabla): void {
+        $tabla->ulid('id')->primary();
+        $tabla->string('name');
+        $tabla->string('guard_name');
+        $tabla->timestamps();
+    });
+
+    Schema::create('roles', function ($tabla): void {
+        $tabla->ulid('id')->primary();
+        $tabla->string('name');
+        $tabla->string('guard_name');
+        $tabla->timestamps();
+    });
+
+    Schema::create('role_has_permissions', function ($tabla): void {
+        $tabla->ulid('permission_id');
+        $tabla->ulid('role_id');
+    });
+
+    Schema::create('users', function ($tabla): void {
+        $tabla->ulid('id')->primary();
+        $tabla->string('name');
+        $tabla->string('email')->unique();
+        $tabla->string('password');
+        $tabla->timestamps();
+    });
+
+    Schema::create('model_has_roles', function ($tabla): void {
+        $tabla->ulid('role_id');
+        $tabla->string('model_type');
+        $tabla->ulid('model_id');
+    });
+}
+
 function sembrarPermisos(array $nombres): void
 {
+    $ponerId = collect(Schema::getColumns('permissions'))
+        ->firstWhere('name', 'id')['auto_increment'] === false;
+
     foreach ($nombres as $nombre) {
-        DB::table('permissions')->insert([
+        $fila = [
             'name'       => $nombre,
             'guard_name' => 'web',
             'created_at' => now(),
             'updated_at' => now(),
-        ]);
+        ];
+
+        if ($ponerId) {
+            $fila['id'] = (string) Str::ulid();
+        }
+
+        DB::table('permissions')->insert($fila);
     }
 }
 
@@ -339,3 +387,40 @@ it('sin ningún permiso todavía, lo dice en vez de dejar un rol vacío sin expl
 
     expect($buffer->fetch())->toContain('los seeders de permisos corrieron antes');
 });
+
+// ── Identificadores: el generador no decide de qué tipo son ────────────────────────────────────
+//
+// El proyecto llega con lo que tenga. La Suite declara `char(26)` en roles, permissions y users; el
+// esqueleto de Laravel, bigint autoincremental. Este archivo lo escribe el instalador **una vez** y
+// tiene que servir con las dos formas, sin que nadie mueva un ajuste.
+
+it('siembra igual cuando los identificadores son ULID y no enteros', function () {
+    // ⭐ El fallo que esta prueba impide volver a tener: `(int)` sobre un ULID devuelve 0 y no lanza
+    // nada, así que el rol quedaba creado, los permisos se repartían al id 0 —que no existe— y el
+    // despliegue terminaba en verde. Nadie se enteraba hasta que alguien no podía abrir una pantalla.
+    foreach (['model_has_roles', 'role_has_permissions', 'users', 'roles', 'permissions'] as $tabla) {
+        Schema::dropIfExists($tabla);
+    }
+
+    tablasDePermisosConUlid();
+    sembrarPermisos(['facturas_ver', 'facturas_crear']);
+
+    [$seeder] = webmasterGenerado();
+    $seeder->run();
+
+    $rol = DB::table('roles')->where('name', 'webmaster')->first();
+
+    expect($rol)->not->toBeNull()
+        ->and($rol->id)->toBeString()
+        ->and(strlen($rol->id))->toBe(26);
+
+    // Y los permisos están en ESE rol, no en un id 0 que no existe.
+    expect(permisosDelRol())->toEqualCanonicalizing(['facturas_ver', 'facturas_crear']);
+
+    $usuario = DB::table('users')->where('email', 'webmaster@innodite.local')->first();
+
+    expect($usuario)->not->toBeNull()
+        ->and(strlen($usuario->id))->toBe(26)
+        ->and(DB::table('model_has_roles')->where('model_id', $usuario->id)->where('role_id', $rol->id)->exists())
+        ->toBeTrue('El usuario tiene que quedar asignado al rol por sus ids de verdad.');
+})->skip(! extension_loaded('pdo_sqlite'), 'Necesita sqlite para una base real.');

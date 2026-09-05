@@ -79,7 +79,7 @@ async function fetchItems(page = 1) {
 async function destroy(id) {
     // La confirmación devuelve una promesa, así que la espera se lee igual que antes con `confirm()`
     // — pero sin bloquear el navegador y con una ventana que sí se puede estilar y probar.
-    const confirmado = await confirmar('Esta acción no se puede deshacer.', {
+    const confirmado = await confirmar('El registro deja de aparecer, y se puede restaurar después.', {
         titulo: 'Eliminar registro',
         textoConfirmar: 'Eliminar',
         peligrosa: true,
@@ -93,6 +93,18 @@ async function destroy(id) {
         await fetchItems(meta.value.current_page)
     } catch (err) {
         avisarError(mensajeDeError(err, 'No se pudo eliminar el registro.'))
+    }
+}
+
+async function restore(id) {
+    // Restaurar no pide confirmación: no destruye nada, y una ventana de por medio en la acción que
+    // arregla un error hace que la gente deje de usarla y pida el arreglo por otro lado.
+    try {
+        await axios.patch(route(contextRoute('{{{ routeBase }}}.restore'), { id }))
+        exito('Registro restaurado.')
+        await fetchItems(meta.value.current_page)
+    } catch (err) {
+        avisarError(mensajeDeError(err, 'No se pudo restaurar el registro.'))
     }
 }
 
@@ -212,12 +224,20 @@ onMounted(() => fetchItems())
                                     Editar
                                 </button>
                                 <button
-                                    v-if="can('{{{ permViewDestroy }}}')"
+                                    v-if="can('{{{ permViewDestroy }}}') && !item.deleted_at"
                                     data-test="boton-eliminar"
                                     @click="destroy(item.id)"
                                     class="text-red-500 hover:underline text-xs"
                                 >
                                     Eliminar
+                                </button>
+                                <button
+                                    v-if="can('{{{ permViewRestore }}}') && item.deleted_at"
+                                    data-test="boton-restaurar"
+                                    @click="restore(item.id)"
+                                    class="text-emerald-600 hover:underline text-xs"
+                                >
+                                    Restaurar
                                 </button>
                             </td>
                         </tr>

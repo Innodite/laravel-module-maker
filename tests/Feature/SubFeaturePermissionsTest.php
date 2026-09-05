@@ -43,15 +43,15 @@ it('las rutas generadas exigen exactamente los permisos que siembra el seeder', 
 });
 
 it('un permiso por ruta, sin reutilizar ninguno', function () {
-    // La norma no admite compartir: seis rutas, seis permisos. Ni siquiera index y list, aunque una
+    // La norma no admite compartir: ocho rutas, ocho permisos. Ni siquiera index y list, aunque una
     // alimente a la otra — protegen cosas distintas (la pantalla y sus datos) y cada permiso tiene
     // que poder decir en su descripción QUÉ habilita. Compartido, deja de ser explicable.
     $rutas    = SubFeaturePermissions::routes('central', 'invoices');
     $permisos = SubFeaturePermissions::permissions('central', 'invoices', 'Billing', 'Invoices');
 
-    expect($rutas)->toHaveCount(6);
-    // 6 de ruta + 4 de vista: las dos protecciones son independientes.
-    expect($permisos)->toHaveCount(10);
+    expect($rutas)->toHaveCount(8);
+    // 8 de ruta + 5 de vista: las dos protecciones son independientes.
+    expect($permisos)->toHaveCount(13);
 
     $nombres = array_column($permisos, 'name');
 
@@ -161,8 +161,8 @@ it('los permisos de vista existen y son independientes de los de ruta', function
     expect($permisos->has('invoices_store'))->toBeTrue();
     expect($permisos->has('invoices_view_store'))->toBeTrue();
 
-    expect($permisos->where('kind', 'ruta'))->toHaveCount(6);
-    expect($permisos->where('kind', 'vista'))->toHaveCount(4);
+    expect($permisos->where('kind', 'ruta'))->toHaveCount(8);
+    expect($permisos->where('kind', 'vista'))->toHaveCount(5);
 });
 
 it('ningun permiso se repite entre ruta y vista', function () {

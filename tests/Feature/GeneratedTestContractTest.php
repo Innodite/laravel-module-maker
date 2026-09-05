@@ -84,6 +84,7 @@ it('el manifiesto carga y declara lo que la subfuncionalidad es', function () {
         'show'    => 'invoices_view_show',
         'update'  => 'invoices_view_update',
         'destroy' => 'invoices_view_destroy',
+        'restore' => 'invoices_view_restore',
     ], 'FALLA: las acciones de vista no son las que emite el seeder de permisos. · FIX: las dos '
      . 'salen de SubFeaturePermissions; si divergen, el tema 6 comprueba permisos que no existen.');
 });

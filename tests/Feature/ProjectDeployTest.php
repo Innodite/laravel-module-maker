@@ -462,3 +462,30 @@ it('sin el seeder de despliegue dice quién lo escribe', function () {
         . 'está para evitar.'
     );
 });
+
+// ── Lo que hace falta antes de desplegar ───────────────────────────────────────────────────────
+
+it('no empieza si falta una tabla del esqueleto que este proyecto va a usar', function () {
+    // Medido instalando en un Laravel limpio: once errores seguidos, todos porque no existía
+    // `cache`. El primero, que es el único que importa, quedaba fuera de la pantalla.
+    config()->set('cache.default', 'database');
+
+    Artisan::call('innodite:deploy', ['environment' => 'stage', '--no-interaction' => true]);
+    $salida = Artisan::output();
+
+    expect($salida)->toContain('FALLA:')
+        ->and($salida)->toContain('cache')
+        ->and($salida)->toContain('php artisan migrate');
+});
+
+it('no reclama tablas que este proyecto no usa', function () {
+    // Un proyecto con la caché en Redis no necesita la tabla `cache`. Reclamársela sería un falso
+    // positivo, y los falsos positivos se aprenden a ignorar — incluidos los verdaderos.
+    config()->set('cache.default', 'redis');
+    config()->set('queue.default', 'sync');
+
+    Artisan::call('innodite:deploy', ['environment' => 'stage', '--no-interaction' => true]);
+    $salida = Artisan::output();
+
+    expect($salida)->not->toContain('faltan tablas del esqueleto');
+});

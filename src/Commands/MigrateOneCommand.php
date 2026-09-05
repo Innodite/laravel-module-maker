@@ -54,7 +54,14 @@ class MigrateOneCommand extends Command
         try {
             $resuelta = $resolver->resolveMigrationCoordinate($coordenada);
         } catch (Throwable $e) {
-            $this->components->error($e->getMessage());
+            // El fallo más frecuente del comando, y hasta aquí el único que salía sin arreglo: la
+            // excepción dice qué ruta buscó, que es el diagnóstico, pero no qué escribir en su lugar.
+            $this->fallo(
+                $e->getMessage(),
+                'revisa el módulo, la carpeta del contexto y el nombre del archivo — el formato es '
+                . 'Modulo:Contexto/archivo.php, y la lista buena es la que declara el trait '
+                . 'MigrationsList de esa subfuncionalidad.',
+            );
 
             return self::FAILURE;
         }
@@ -64,7 +71,11 @@ class MigrateOneCommand extends Command
         try {
             $conexion = $targets->resolveExecutionConnection($contexto, $dryRun);
         } catch (Throwable $e) {
-            $this->components->error($e->getMessage());
+            $this->fallo(
+                $e->getMessage(),
+                'declara esa conexión en config/database.php, o fuerza el contexto de ejecución con '
+                . '--context=<central|shared|tenant_shared|id del tenant>.',
+            );
 
             return self::FAILURE;
         }
@@ -87,7 +98,11 @@ class MigrateOneCommand extends Command
         $error = $targets->validateDatabaseExists($conexion);
 
         if ($error !== null) {
-            $this->components->error($error);
+            $this->fallo(
+                $error,
+                'crea esa base de datos antes de migrar, o apunta la conexión a una que ya exista '
+                . 'en config/database.php.',
+            );
 
             return self::FAILURE;
         }

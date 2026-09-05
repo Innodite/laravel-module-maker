@@ -42,4 +42,27 @@ class {{{ serviceName }}} implements {{{ serviceInterfaceName }}}
     {
         return $this->{{{ repositoryInstance }}}->delete($id);
     }
+
+    /**
+     * Devuelve a la vida un registro eliminado.
+     *
+     * ⛔ **Si al restaurar esto hay que restaurar algo más, se escribe aquí.** La cascada es una
+     * decisión de negocio —qué arrastra qué— y por eso vive en el Service y no en el Repository ni
+     * en el modelo: ahí sería una regla escondida que nadie encuentra al leer el flujo.
+     */
+    public function restore(string $id): bool
+    {
+        return $this->{{{ repositoryInstance }}}->restore($id);
+    }
+
+    /**
+     * Lo borra de la base de datos, sin vuelta atrás.
+     *
+     * ⛔ **Antes de borrar del todo, comprueba aquí lo que cuelga de este registro.** Es el único
+     * punto donde se puede negar: cuando llega al repositorio, ya es tarde.
+     */
+    public function forceDelete(string $id): bool
+    {
+        return $this->{{{ repositoryInstance }}}->forceDelete($id);
+    }
 }

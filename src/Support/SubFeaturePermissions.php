@@ -54,6 +54,8 @@ final class SubFeaturePermissions
         ['route' => 'show',    'verb' => 'GET',    'uri' => '/{id}', 'action' => 'show',    'permission' => 'show',    'comment' => 'Ver uno'],
         ['route' => 'update',  'verb' => 'PUT',    'uri' => '/{id}', 'action' => 'update',  'permission' => 'update',  'comment' => 'Actualizar'],
         ['route' => 'destroy', 'verb' => 'DELETE', 'uri' => '/{id}', 'action' => 'destroy', 'permission' => 'destroy', 'comment' => 'Eliminar'],
+        ['route' => 'restore', 'verb' => 'PATCH',  'uri' => '/{id}/restore', 'action' => 'restore', 'permission' => 'restore', 'comment' => 'Restaurar lo eliminado'],
+        ['route' => 'forceDestroy', 'verb' => 'DELETE', 'uri' => '/{id}/force', 'action' => 'forceDestroy', 'permission' => 'force_destroy', 'comment' => 'Eliminar definitivamente'],
     ];
 
     /**
@@ -72,6 +74,7 @@ final class SubFeaturePermissions
         ['action' => 'show',    'permission' => 'view_show',    'element' => 'enlace-ver'],
         ['action' => 'update',  'permission' => 'view_update',  'element' => 'boton-editar'],
         ['action' => 'destroy', 'permission' => 'view_destroy', 'element' => 'boton-eliminar'],
+        ['action' => 'restore', 'permission' => 'view_restore', 'element' => 'boton-restaurar'],
     ];
 
     /**
@@ -116,6 +119,17 @@ final class SubFeaturePermissions
             'bloquea' => 'no se puede eliminar ningún registro',
         ],
 
+        'restore'      => [
+            'verbo'   => 'Restaurar',
+            'permite' => 'devolver a la vida un registro eliminado, con sus datos intactos',
+            'bloquea' => 'lo eliminado por error se queda eliminado hasta que alguien con permiso lo restaure',
+        ],
+        'force_destroy' => [
+            'verbo'   => 'Eliminar definitivamente',
+            'permite' => 'borrar un registro de la base de datos, sin vuelta atrás',
+            'bloquea' => 'nadie puede borrar nada de forma irreversible',
+        ],
+
         // ── Permisos de VISTA: protegen el elemento visual ──────────────────────────────
         'view_store'   => [
             'verbo'   => 'Ver el botón de crear en',
@@ -131,6 +145,11 @@ final class SubFeaturePermissions
             'verbo'   => 'Ver el botón de editar en',
             'permite' => 'que el botón «Editar» se muestre en cada fila',
             'bloquea' => 'el botón no aparece y no se puede iniciar la edición',
+        ],
+        'view_restore' => [
+            'verbo'   => 'Ver el botón de restaurar en',
+            'permite' => 'que aparezca la acción de recuperar un registro eliminado',
+            'bloquea' => 'la papelera se ve, pero sin forma de recuperar nada desde ahí',
         ],
         'view_destroy' => [
             'verbo'   => 'Ver el botón de eliminar en',

@@ -193,6 +193,100 @@ it('volver a generar sobre un módulo existente no pisa lo que se escribió a ma
     );
 });
 
+// ─── La pieza de producción, por dentro ────────────────────────────────────────────────────────
+//
+// Que el archivo SE GENERE ya se comprueba arriba, dos veces: en el árbol de las seis piezas y al
+// instanciarlas. Lo que faltaba era mirar QUÉ LLEVA DENTRO, y es la pieza donde eso importa más:
+// corre contra la base de un cliente en producción, y su docblock promete cuatro cosas que hasta
+// aquí nadie vigilaba. Perder cualquiera de ellas dejaba la suite en verde y el fallo aparecía en
+// los datos de alguien.
+
+it('la pieza de producción no trae una sola operación que borre', function () {
+    // El docblock lo promete por escrito —«truncar, delete masivo o drop»— y por eso hay que mirar
+    // SOLO el código: las tres palabras están en el comentario que dice que no se usan.
+    $codigo = soloCodigo(
+        $this->generateModule('Invoice', ModuleMode::SingleApp)
+            ->contents('Database/Seeders/Invoice/InvoiceInvoiceProductionSeeder.php')
+    );
+
+    foreach (['truncate', '->delete(', 'dropIfExists', 'Schema::drop'] as $destructiva) {
+        expect(str_contains($codigo, $destructiva))->toBeFalse(
+            "Producción no borra nada, y aquí aparece `{$destructiva}`. Si hace falta reconstruir, "
+            . 'eso es stage con su modo destructivo, no este archivo.'
+        );
+    }
+});
+
+it('la pieza de producción no conoce el modo destructivo: no hay nada que habilitar', function () {
+    // La diferencia con stage no es responder «no» a la pregunta: es que la pregunta no está. Sin
+    // el trait, exportar SEEDER_DESTRUCTIVE=true en el servidor no enciende nada en este archivo.
+    $modulo = $this->generateModule('Invoice', ModuleMode::SingleApp);
+
+    $produccion = soloCodigo($modulo->contents('Database/Seeders/Invoice/InvoiceInvoiceProductionSeeder.php'));
+    $stage      = soloCodigo($modulo->contents('Database/Seeders/Invoice/InvoiceInvoiceStageSeeder.php'));
+
+    expect(str_contains($produccion, 'ResolvesSeederDestructiveMode'))->toBeFalse(
+        'Producción no usa el trait del modo destructivo: no hay modo que resolver.'
+    );
+    expect(str_contains($produccion, 'isDestructive()'))->toBeFalse(
+        'Producción no pregunta por el modo destructivo en ningún sitio.'
+    );
+
+    // Y el contraste, que es lo que hace que la prueba signifique algo: stage SÍ lo trae.
+    expect(str_contains($stage, 'ResolvesSeederDestructiveMode'))->toBeTrue(
+        'Si stage tampoco lo trae, el que está mal es stage: el reset opt-in vive ahí.'
+    );
+
+    // Los permisos bajan con el borrado apagado, y apagado a mano: no heredado de una variable.
+    expect($produccion)->toContain("'destructive' => false");
+});
+
+it('la pieza de producción mezcla los datos, no los siembra desde cero', function () {
+    // Las dos mitades del trait Data: `upsert…` respeta lo que ya está, `seed…` asume base vacía.
+    // Producción solo puede usar la primera.
+    $codigo = soloCodigo(
+        $this->generateModule('Invoice', ModuleMode::SingleApp)
+            ->contents('Database/Seeders/Invoice/InvoiceInvoiceProductionSeeder.php')
+    );
+
+    expect(str_contains($codigo, 'upsertCanonicalData'))->toBeTrue(
+        'Producción mezcla los datos canónicos con upsert: los que ya están se actualizan.'
+    );
+    expect(str_contains($codigo, 'seedCanonicalData'))->toBeFalse(
+        'El sembrado desde cero es de stage. Aquí borraría el trabajo del cliente.'
+    );
+});
+
+it('la pieza de producción comprueba las tablas después de migrar', function () {
+    // Descubrir aquí que una migración no se aplicó es barato; descubrirlo en la primera consulta
+    // de un usuario, no.
+    $codigo = soloCodigo(
+        $this->generateModule('Invoice', ModuleMode::SingleApp)
+            ->contents('Database/Seeders/Invoice/InvoiceInvoiceProductionSeeder.php')
+    );
+
+    expect($codigo)->toContain('validateTables')
+        ->and($codigo)->toContain('hasTable')
+        ->and($codigo)->toContain("'invoices',");
+});
+
+it('la pieza de producción declara la conexión de su contexto, igual que stage', function () {
+    // La simetría que faltaba: la conexión de stage estaba vigilada y la de producción no, siendo
+    // la que corre contra la base del cliente. Un seeder sembrando en la base que no era es el
+    // fallo que esta línea existe para impedir.
+    $produccion = $this->generateModule('Invoice', ModuleMode::MultitenantPerTenant, 'central')
+        ->contents('Database/Seeders/Central/Invoice/CentralInvoiceInvoiceProductionSeeder.php');
+
+    expect($produccion)->toContain("protected ?string \$connection = 'central';");
+});
+
+it('en single-app la pieza de producción tampoco declara conexión', function () {
+    $produccion = $this->generateModule('Invoice', ModuleMode::SingleApp)
+        ->contents('Database/Seeders/Invoice/InvoiceInvoiceProductionSeeder.php');
+
+    expect($produccion)->toContain('protected ?string $connection = null;');
+});
+
 it('el módulo con sus seis piezas sigue siendo coherente', function () {
     $this->generateModule('Invoice', ModuleMode::MultitenantPerTenant, 'central')->assertCoherent();
 });

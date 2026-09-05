@@ -5,16 +5,15 @@ declare(strict_types=1);
 namespace Innodite\LaravelModuleMaker\Commands;
 
 use Illuminate\Console\Command;
+use Illuminate\Support\Facades\Schema;
 use Innodite\LaravelModuleMaker\Commands\Concerns\PrintsHeader;
 use Innodite\LaravelModuleMaker\Commands\Concerns\ReportsFailures;
 use Innodite\LaravelModuleMaker\Commands\Concerns\RehearsesChanges;
-use Illuminate\Database\Seeder;
 use Innodite\LaravelModuleMaker\Exceptions\ModeNotConfiguredException;
-use Innodite\LaravelModuleMaker\Support\DryRun;
+use Innodite\LaravelModuleMaker\Services\DeploymentRunner;
 use Innodite\LaravelModuleMaker\Support\ModuleMode;
 use Innodite\LaravelModuleMaker\Support\SeederNames;
 use Innodite\LaravelModuleMaker\Support\TenancyPackage;
-use Throwable;
 
 /**
  * Levanta el proyecto entero con una orden: esquema, datos y permisos, en el orden declarado.
@@ -42,6 +41,7 @@ class DeployCommand extends Command
     protected $signature = 'innodite:deploy
         {environment : Qué se despliega: stage | production}
         {--context= : Contexto contra el que se despliega, en multitenant: central | tenant}
+        {--module= : Despliega SOLO este módulo, por sus maestros. Sin él, el proyecto entero}
         {--tenant= : Qué tenant se despliega, por su clave. Una ejecución por tenant}
         {--all : Despliega TODOS los tenants, uno tras otro}
         {--force : Despliega sin pedir confirmación, aunque el modo destructivo esté activo}
@@ -84,16 +84,30 @@ class DeployCommand extends Command
             return self::FAILURE;
         }
 
+        if (! $this->tablasDelEsqueletoPresentes()) {
+            return self::FAILURE;
+        }
+
         $contexto = $this->resolveContext($mode);
 
         if ($contexto === false) {
             return self::FAILURE;
         }
 
-        $clase = SeederNames::projectDeploySeeder($contexto);
-        $fqcn  = "Database\\Seeders\\{$clase}";
+        $modulo = trim((string) $this->option('module'));
 
-        if (! class_exists($fqcn)) {
+        if ($modulo !== '') {
+            $fqcn = $this->maestrosDelModulo($modulo, $contexto, $pieza);
+
+            if ($fqcn === false) {
+                return self::FAILURE;
+            }
+        } else {
+            $clase = SeederNames::projectDeploySeeder($contexto);
+            $fqcn  = "Database\\Seeders\\{$clase}";
+        }
+
+        if (is_string($fqcn) && ! class_exists($fqcn)) {
             $this->fallo(
                 "no existe {$fqcn}.",
                 'lánzalo con el instalador — php artisan innodite:module-setup',
@@ -128,13 +142,119 @@ class DeployCommand extends Command
     }
 
     /**
+     * Los maestros de UN módulo: el de la pieza pedida y el de sus permisos.
+     *
+     * **La unidad es el módulo, no la subfuncionalidad**, porque el maestro `Application` es lo que
+     * §5.4 define como punto de entrada único: reparte hacia sus subfuncionalidades en el orden
+     * declarado. Sirve para desarrollo, para reparar un módulo concreto y para el alta de un tenant.
+     *
+     * **Se resuelven desde el orden de despliegue y no del nombre del módulo**, porque ahí es donde
+     * está escrito en qué contexto vive cada subfuncionalidad — y el contexto decide el prefijo de
+     * la clase. Deducirlo del nombre acertaría en `Central` y fallaría en un tenant de lógica propia.
+     *
+     * @return array<int, string>|false Las clases, o `false` si lo pedido no se puede resolver.
+     */
+    private function maestrosDelModulo(string $modulo, ?string $contexto, string $pieza): array|false
+    {
+        $rutas = $this->rutasDelModulo($modulo, $contexto);
+
+        if ($rutas === []) {
+            $this->fallo(
+                "no hay ninguna subfuncionalidad de '{$modulo}' en el orden de despliegue"
+                . ($contexto !== null ? " del contexto '{$contexto}'" : '') . '.',
+                'comprueba el nombre del módulo, o declara sus subfuncionalidades en `deploy` de '
+                . 'config/make-module.php.',
+                'El orden de despliegue es de donde sale en qué contexto vive cada una, y el '
+                . 'contexto decide el nombre de sus clases.'
+            );
+
+            return false;
+        }
+
+        $maestros = [];
+
+        foreach ($rutas as $ruta) {
+            try {
+                // Los tres maestros son del MÓDULO, así que varias subfuncionalidades dan el mismo.
+                foreach ([$pieza, 'Permissions'] as $cual) {
+                    $maestro = SeederNames::masterFromPath($ruta, $cual);
+
+                    if (! in_array($maestro, $maestros, true)) {
+                        $maestros[] = $maestro;
+                    }
+                }
+            } catch (\InvalidArgumentException $e) {
+                $this->fallo(
+                    $e->getMessage(),
+                    'corrige esa línea en `deploy` de config/make-module.php — se escribe '
+                    . 'Modulo/Contexto/SubFuncionalidad.',
+                );
+
+                return false;
+            }
+        }
+
+        return $maestros;
+    }
+
+    /**
+     * Las rutas del orden de despliegue que son de este módulo, en el contexto pedido.
+     *
+     * ⚠️ **El despliegue de `tenant` cubre tres claves** —`tenant`, `tenant_shared` y `shared`—,
+     * como el del proyecto: son la misma base de datos vista desde tres formas de compartir lógica.
+     *
+     * @return array<int, string>
+     */
+    private function rutasDelModulo(string $modulo, ?string $contexto): array
+    {
+        $declarado = config('make-module.deploy', []);
+
+        if (! is_array($declarado)) {
+            return [];
+        }
+
+        $claves = match ($contexto) {
+            'tenant' => ['tenant', 'tenant_shared', 'shared'],
+            null     => null,
+            default  => [$contexto],
+        };
+
+        $rutas = [];
+
+        foreach ($declarado as $clave => $valor) {
+            if (is_string($valor)) {
+                $rutas[] = $valor;          // lista plana: no hay eje de contexto
+                continue;
+            }
+
+            if (! is_array($valor) || ($claves !== null && ! in_array((string) $clave, $claves, true))) {
+                continue;
+            }
+
+            foreach ($valor as $ruta) {
+                if (is_string($ruta) && trim($ruta) !== '') {
+                    $rutas[] = trim($ruta);
+                }
+            }
+        }
+
+        return array_values(array_filter(
+            $rutas,
+            static fn (string $ruta): bool => strcasecmp(
+                strtok(str_replace('\\', '/', $ruta), '/') ?: '',
+                $modulo
+            ) === 0
+        ));
+    }
+
+    /**
      * Despliega el contexto de tenant una vez por cada tenant pedido, dentro de su contexto.
      *
      * **Sin valor por defecto, como el resto del comando.** `--tenant=` despliega uno y `--all` los
      * despliega todos; sin ninguno de los dos no se arranca. Adivinar «el primero» o «todos» son las
      * dos formas de llenar la base que no era, que es justo lo que este comando existe para evitar.
      */
-    private function deployTenants(string $fqcn, string $pieza): int
+    private function deployTenants(string|array $fqcn, string $pieza): int
     {
         // Primero lo que decide quien lanza el comando, y solo después lo que depende del entorno:
         // a quien se olvidó de elegir tenant no se le contesta hablándole de la configuración.
@@ -171,34 +291,28 @@ class DeployCommand extends Command
             return self::SUCCESS;
         }
 
-        $salida = self::SUCCESS;
+        // Un tenant que falla no cancela a los demás: cada base es independiente, y detenerse en el
+        // tercero de doce deja nueve sin desplegar por un fallo ajeno. El runner los recorre y
+        // devuelve cuáles fallaron; el seeder ya listó por pantalla qué falló dentro de cada uno.
+        $resultado = $this->runner()->runForTenants(
+            $fqcn,
+            $pieza,
+            $tenants,
+            fn (string $clave) => $this->components->info("Tenant {$clave}"),
+        );
 
-        foreach ($tenants as $tenant) {
-            $clave = (string) $tenant->getTenantKey();
-
-            if (DryRun::active()) {
-                DryRun::record("ejecutaría  {$fqcn} · pieza {$pieza} · tenant {$clave}");
-
-                continue;
-            }
-
-            $this->components->info("Tenant {$clave}");
-
-            tenancy()->initialize($tenant);
-
-            try {
-                // Un tenant que falla no cancela a los demás: cada base es independiente, y
-                // detenerse en el tercero de doce deja nueve sin desplegar por un fallo ajeno.
-                // El código de salida recuerda que algo falló, y el seeder ya listó qué.
-                if ($this->runProjectSeeder($fqcn, $pieza) !== self::SUCCESS) {
-                    $salida = self::FAILURE;
-                }
-            } finally {
-                tenancy()->end();
-            }
+        if ($resultado->successful()) {
+            return self::SUCCESS;
         }
 
-        return $salida;
+        $this->fallo(
+            count($resultado->errors()) . ' de ' . count($tenants) . ' tenant(s) fallaron: '
+            . implode(', ', array_keys($resultado->errors())) . '.',
+            'corrige lo que listó el seeder de cada uno y vuelve a lanzarlo con --tenant=<clave>.',
+            'Los demás quedaron desplegados: no hace falta repetirlos.'
+        );
+
+        return self::FAILURE;
     }
 
     /**
@@ -352,6 +466,56 @@ class DeployCommand extends Command
     }
 
     /**
+     * ¿Están las tablas del esqueleto de Laravel que este proyecto va a usar al desplegar?
+     *
+     * **Medido instalando en un Laravel limpio:** el despliegue terminaba con once errores seguidos,
+     * todos por lo mismo — no existía la tabla `cache`, que el paquete de permisos toca al vaciar su
+     * caché—. Once mensajes en los que el primero, que es el único que importa, queda arriba y fuera
+     * de la pantalla.
+     *
+     * ⛔ **No las crea.** Son del esqueleto de Laravel, no del generador: aplicarlas por su cuenta
+     * sería tocar migraciones ajenas en la base de datos de otro. Lo que hace es **no empezar**, y
+     * decir con qué orden se arreglan.
+     *
+     * **Y solo exige lo que este proyecto declara usar**, no una lista fija: `cache` si su caché es
+     * de base de datos y `jobs` si su cola lo es. Un proyecto con la caché en Redis no necesita esa
+     * tabla, y reclamársela sería un falso positivo que se aprende a ignorar.
+     */
+    private function tablasDelEsqueletoPresentes(): bool
+    {
+        $necesarias = [];
+
+        if (config('cache.default') === 'database') {
+            $necesarias['cache'] = 'la caché de este proyecto es de base de datos, y los permisos la vacían al sembrar';
+        }
+
+        if (config('queue.default') === 'database') {
+            $necesarias['jobs'] = 'la cola de este proyecto es de base de datos';
+        }
+
+        $faltan = [];
+
+        foreach ($necesarias as $tabla => $porque) {
+            if (! Schema::hasTable($tabla)) {
+                $faltan[] = "{$tabla} ({$porque})";
+            }
+        }
+
+        if ($faltan === []) {
+            return true;
+        }
+
+        $this->fallo(
+            'faltan tablas del esqueleto de Laravel: ' . implode(' · ', $faltan) . '.',
+            'aplícalas antes — php artisan migrate',
+            'El despliegue siembra datos y permisos; sin esas tablas falla en cadena y el primer '
+            . 'error, que es el único que importa, queda fuera de la pantalla.'
+        );
+
+        return false;
+    }
+
+    /**
      * Con el modo destructivo activo se pregunta, porque eso sí borra.
      *
      * Solo entonces: el despliegue normal no destruye nada, y preguntar siempre enseña a contestar
@@ -392,39 +556,28 @@ class DeployCommand extends Command
      * distingue un despliegue del otro. Se le entrega igual que se lo entregaría el `DatabaseSeeder`
      * del proyecto: `$this->call($clase, false, ['piece' => 'Stage'])`.
      */
-    private function runProjectSeeder(string $fqcn, string $pieza): int
+    private function runProjectSeeder(string|array $fqcn, string $pieza): int
     {
-        // En ensayo se enseña QUÉ se ejecutaría, y no se ejecuta.
-        //
-        // Es el comando donde más falta hace y el único de los cinco que no tenía la opción: los
-        // otros cuatro escriben archivos, que se pueden borrar; este corre un seeder contra una base
-        // real, y `stage` con el modo destructivo puesto reconstruye tablas desde cero. Un
-        // despliegue lanzado contra la base equivocada no se deshace leyendo el error.
-        if (DryRun::active()) {
-            DryRun::record("ejecutaría  {$fqcn} · pieza {$pieza}");
+        $resultado = $this->runner()->run($fqcn, $pieza);
 
+        if ($resultado->successful()) {
             return self::SUCCESS;
         }
 
-        /** @var Seeder $seeder */
-        $seeder = $this->laravel->make($fqcn);
+        // El seeder ya listó cada fallo con su archivo:línea al cerrar; aquí solo se traduce a un
+        // código de salida, para que quien lo automatizó se entere.
+        $this->fallo(
+            (string) $resultado->firstError(),
+            'corrige lo que listó el seeder arriba y vuelve a lanzar el despliegue.',
+            'El despliegue se detuvo: parte del orden declarado puede haberse aplicado ya.'
+        );
 
-        $seeder->setContainer($this->laravel)->setCommand($this);
+        return self::FAILURE;
+    }
 
-        try {
-            $seeder->__invoke(['piece' => $pieza]);
-        } catch (Throwable $e) {
-            // El seeder ya listó cada fallo con su archivo:línea al cerrar; aquí solo se traduce a
-            // un código de salida, para que quien lo automatizó se entere.
-            $this->fallo(
-                $e->getMessage(),
-                'corrige lo que listó el seeder arriba y vuelve a lanzar el despliegue.',
-                'El despliegue se detuvo: parte del orden declarado puede haberse aplicado ya.'
-            );
-
-            return self::FAILURE;
-        }
-
-        return self::SUCCESS;
+    /** El runner, con este comando dentro para que el seeder pueda seguir hablando por pantalla. */
+    private function runner(): DeploymentRunner
+    {
+        return new DeploymentRunner($this->laravel, $this);
     }
 }
