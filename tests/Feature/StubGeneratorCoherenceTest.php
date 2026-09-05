@@ -12,8 +12,8 @@ declare(strict_types=1);
  *
  * Las dos direcciones son asimétricas y las dos importan:
  *
- *   stub pide → generador no entrega   el archivo sale con el placeholder dentro (B13)
- *   generador entrega → stub no pide   trabajo que se calcula y se tira (A11)
+ *   stub pide → generador no entrega   el archivo sale con el placeholder dentro
+ *   generador entrega → stub no pide   trabajo que se calcula y se tira
  *
  * La primera la ataja además el chequeo de salida, en ejecución. La segunda solo se ve así,
  * porque no rompe nada: es la señal de que stub y generador evolucionaron por separado — que es
@@ -121,7 +121,7 @@ it('ningún generador entrega una clave que su stub no usa', function () {
 
     expect($sobrantes)->toBe(
         [],
-        "Trabajo que se calcula y se tira (A11):\n  - " . implode("\n  - ", $sobrantes)
+        "Trabajo que se calcula y se tira:\n  - " . implode("\n  - ", $sobrantes)
         . "\n\nO el stub debería usarla, o el generador debería dejar de calcularla. Las dos son "
         . 'arreglos; dejarla es la señal de que stub y generador van por separado.'
     );

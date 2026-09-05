@@ -36,7 +36,7 @@ it('encuentra los 37 stubs del paquete', function () {
     // salieron `route-api.stub` y `route-web.stub` —el camino de single-app, que escribía rutas
     // sin un solo permiso— porque ese modo pasó a usar el mismo bloque que los contextos, y en la
     // fase 4 salieron `test.stub`, `test-unit.stub` y `test-support.stub`: los tres emitían
-    // `assertTrue(true)` y ninguno estaba en los 9 temas del contrato (B4). En la fase 5 salieron
+    // `assertTrue(true)` y ninguno estaba en los 9 temas del contrato. En la fase 5 salieron
     // `request-store.stub` y `request-update.stub`, que se fusionaron en un único `request.stub`
     // —la pieza es la misma, lo que cambia es la acción que valida—, y con ellos desapareció el
     // camino que escribía un Request genérico distinto según el contexto.

@@ -67,7 +67,7 @@ class LaravelModuleMakerServiceProvider extends ServiceProvider
             return $app->make(is_string($clase) && class_exists($clase) ? $clase : CriterioLocal::class);
         });
 
-        // Aquí vivía el singleton `innodite.module_seeder` (B27). Construía un InnoditeModuleSeeder
+        // Aquí vivía el singleton `innodite.module_seeder`. Construía un InnoditeModuleSeeder
         // y le llamaba a setModuleSeeders() — un método que esa clase nunca tuvo—, así que resolverlo
         // era un fatal. No lo resolvía nadie: por eso llevaba desde la v3 sin dar un solo síntoma.
         // Su trabajo lo hace ahora el seeder de despliegue del proyecto, que además lee el orden

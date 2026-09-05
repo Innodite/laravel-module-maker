@@ -25,7 +25,7 @@ final class {{{ schemaName }}} extends {{{ baseName }}}
      * ⛔ Y no `RefreshDatabase`: ese recorre `database/migrations`, donde las migraciones de un
      * módulo **no viven**. Con él, estas dos pruebas fallarían siempre por buscar una tabla que
      * nadie creó — no por un defecto de la subfuncionalidad. El vehículo del despliegue es el
-     * seeder, y probar el esquema es ejecutar el mismo camino que corre en el servidor (R75).
+     * seeder, y probar el esquema es ejecutar el mismo camino que corre en el servidor.
      */
     protected function setUp(): void
     {

@@ -155,7 +155,7 @@ class ProjectSeederGenerator
      * Se ve al abrir lo generado y no en ninguna afirmación: el placeholder cae dentro de un
      * docblock, así que una frase larga sale como una línea que desborda mientras el resto del
      * archivo respeta el margen. Es de la misma familia que la sangría del array de permisos de
-     * TASK-003 — nada que rompa, y sin embargo lo primero que se nota al leerlo (R77).
+     * Nada que rompa, y sin embargo lo primero que se nota al leerlo.
      */
     private function envuelto(string $texto): string
     {

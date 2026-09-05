@@ -33,7 +33,7 @@ use PHPUnit\Framework\Assert;
  *     chequeo por archivo puede verlos, porque le falta el otro lado del par.
  *
  * Las fases 2 a 6 lo usan en una línea: `$this->generateModule('Invoice')->assertCoherent()`, y
- * encima de eso afirman lo suyo. Es también lo que dice R77 —el andamiaje no se prueba por
+ * encima de eso afirman lo suyo: el andamiaje no se prueba por
  * existencia, se evalúa por contenido— aplicado a lo que este paquete genera.
  */
 final class GeneratedModule
@@ -242,7 +242,7 @@ final class GeneratedModule
      * Y no es redundante con el chequeo que corre al escribir: aquel valida el archivo **en el
      * momento de escribirlo**; este valida **el estado final del árbol**, incluido lo que se
      * reescribió después, lo que inyectó otro paso y lo que se escribió por una vía que todavía
-     * no pasa por el trait. Es la distinción de R77 aplicada al paquete.
+     * no pasa por el trait — la misma distinción, aplicada al paquete.
      */
     public function assertEveryFileWouldBeAccepted(): self
     {
@@ -378,7 +378,7 @@ final class GeneratedModule
     }
 
     /**
-     * Ni una carpeta de contexto, ni un nombre con prefijo: la forma de single-app (R5 · R6).
+     * Ni una carpeta de contexto, ni un nombre con prefijo: la forma de single-app.
      *
      * Mira archivos **y** carpetas, porque una carpeta de contexto vacía no aparece en el árbol
      * de archivos y sugiere igual una estructura que el modo dice que no existe.
@@ -403,7 +403,7 @@ final class GeneratedModule
         Assert::assertSame(
             [],
             $conContexto,
-            "R5: en {$this->mode->value} no existe el eje de contexto, y aquí aparece:\n  - "
+            "en {$this->mode->value} no existe el eje de contexto, y aquí aparece:\n  - "
             . implode("\n  - ", $conContexto)
         );
 
@@ -416,7 +416,7 @@ final class GeneratedModule
         Assert::assertSame(
             [],
             $conPrefijo,
-            "R6: sin contextos no hay nada que desambiguar, así que ningún nombre lleva prefijo:\n  - "
+            "sin contextos no hay nada que desambiguar, así que ningún nombre lleva prefijo:\n  - "
             . implode("\n  - ", $conPrefijo)
         );
 
@@ -436,7 +436,7 @@ final class GeneratedModule
         Assert::assertNotSame(
             [],
             $conCarpeta,
-            "R5: en {$this->mode->value} el contexto '{$carpeta}' separa las capas, y no aparece en "
+            "en {$this->mode->value} el contexto '{$carpeta}' separa las capas, y no aparece en "
             . "ninguna ruta:\n  - " . implode("\n  - ", $this->tree())
         );
 
@@ -448,7 +448,7 @@ final class GeneratedModule
         Assert::assertNotSame(
             [],
             $conPrefijo,
-            "R6: en multitenant el prefijo '{$prefijo}' desambigua clases del mismo nombre en dos "
+            "en multitenant el prefijo '{$prefijo}' desambigua clases del mismo nombre en dos "
             . "contextos, y ningún archivo lo lleva:\n  - " . implode("\n  - ", $this->tree())
         );
 

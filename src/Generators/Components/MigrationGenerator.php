@@ -164,7 +164,7 @@ class MigrationGenerator extends AbstractComponentGenerator
      *
      * Vive con las otras cinco piezas de seeder —en `Database/Seeders/{Ctx}/{SubFunc}/`, no en
      * `Migrations/`— porque es una de las seis (norma §6, `SeederNames`). Y es el seeder quien
-     * ejecuta las migraciones (**R22**): nadie corre `migrate` a mano.
+     * ejecuta las migraciones: nadie corre `migrate` a mano.
      */
     protected function writeMigrationsListTrait(string $migrationDirectoryPath): void
     {
@@ -275,7 +275,7 @@ class MigrationGenerator extends AbstractComponentGenerator
     {
         $schemaLines = [];
 
-        // La clave primaria la decide la CONFIGURACIÓN, con ULID por defecto (R10) — el
+        // La clave primaria la decide la CONFIGURACIÓN, con ULID por defecto — el
         // autoincremental es enumerable: con un `id` en la URL se recorre la tabla entera probando
         // números, y en un multitenant eso cruza inquilinos. Quien lo prefiera lo declara al
         // instalar, de forma explícita y una sola vez.
@@ -308,7 +308,7 @@ class MigrationGenerator extends AbstractComponentGenerator
             $schemaLines[] = $this->getSchemaLineForAttribute($attribute) . ";";
         }
 
-        // Borrado lógico en toda tabla generada (R69 · R70): eliminar y restaurar tienen que estar
+        // Borrado lógico en toda tabla generada: eliminar y restaurar tienen que estar
         // siempre, y un `delete` que borra de verdad no se puede deshacer cuando el usuario se
         // equivoca. El modelo recibe `SoftDeletes` en la misma pasada — si una mitad lo lleva y la
         // otra no, la columna existe y nadie la usa, o el modelo filtra por una columna que no está.
@@ -583,7 +583,7 @@ class MigrationGenerator extends AbstractComponentGenerator
     /**
      * Clave foránea — del mismo tipo que la clave primaria que apunta.
      *
-     * Si la PK es ULID (R10) y la FK sigue siendo `foreignId` —un entero—, la restricción no se
+     * Si la PK es ULID y la FK sigue siendo `foreignId` —un entero—, la restricción no se
      * puede crear: los tipos no casan. Es el mismo par que la clave primaria, un escalón más abajo,
      * y por eso lo decide la MISMA pieza: dos sitios eligiendo por separado es exactamente cómo
      * dejan de coincidir.

@@ -15,7 +15,7 @@ namespace Innodite\LaravelModuleMaker\Services\SchemaCloners;
  * **Why the test database is a clone and not a set of migrations.** Running migrations builds the
  * schema the migrations *say* exists. The clone builds the schema that *is* — including the column
  * somebody added by hand in production three months ago. Tests that pass against the first and fail
- * against the second are the deployments that break at 2am (R81).
+ * against the second are the deployments that break at 2am.
  */
 interface SchemaCloner
 {

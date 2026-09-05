@@ -5,7 +5,7 @@ declare(strict_types=1);
 use Innodite\LaravelModuleMaker\Support\SeederNames;
 
 /**
- * Los nombres de las piezas de seeder, fijados aquí antes de que FEAT-003 escriba su contenido.
+ * Los nombres de las piezas de seeder, fijados aquí antes de que existiera su contenido.
  *
  * Se fijan ahora porque **varios los van a necesitar**: el generador que escribe las seis piezas, el
  * maestro que las llama por su nombre de clase, el trait de migraciones y las pruebas de despliegue.
@@ -23,7 +23,7 @@ it('una subfuncionalidad tiene seis piezas: tres seeders y tres traits', functio
         'CentralUserManagementRoleMigrationsList',
         'CentralUserManagementRoleInlineAlters',
         'CentralUserManagementRoleData',
-    ], 'R23 exige las seis por subfuncionalidad: reconstruir, publicar, permisos, la lista ordenada '
+    ], 'Son seis por subfuncionalidad: reconstruir, publicar, permisos, la lista ordenada '
      . 'de migraciones, los deltas con guardia y los datos canónicos.');
 });
 

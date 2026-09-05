@@ -6,7 +6,7 @@ use Innodite\LaravelModuleMaker\Traits\ReportsSeederErrors;
 use Innodite\LaravelModuleMaker\Traits\ResolvesSeederDestructiveMode;
 
 /**
- * La infraestructura que comparten las tres piezas ejecutables (R23 · R24).
+ * La infraestructura que comparten las tres piezas ejecutables.
  *
  * Vive en el paquete y no en el archivo generado porque es idéntica en cada subfuncionalidad de cada
  * módulo de cada proyecto: escribirla en el archivo generado sería sembrar N copias del mismo código

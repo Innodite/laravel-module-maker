@@ -34,7 +34,7 @@ use Throwable;
  *
  * Treinta fallos rojos de un solo problema no informan treinta veces mejor: informan **peor**, porque
  * hay que leerlos todos para descubrir que eran el mismo. Por eso al primer fallo se para y se dice
- * **qué** falló, **qué cubría** y **qué queda sin ejecutar** (R31 · R33).
+ * **qué** falló, **qué cubría** y **qué queda sin ejecutar**.
  *
  * El tema 6 —la vista— no se ejecuta aquí: es JavaScript y lo corre Vitest, cuya infraestructura es
  * del proyecto anfitrión. Se nombra al final para que nadie lo dé por corrido.
@@ -110,7 +110,7 @@ class TestCommand extends Command
         return $this->correrCascada($runner, $grupo, $prefijo, $subFuncion);
     }
 
-    // ─── La base de pruebas, antes de lanzar nada (R81) ───────────────────────
+    // ─── La base de pruebas, antes de lanzar nada ───────────────────────
 
     /**
      * Comprueba —y si hace falta clona— la base contra la que se va a correr.
@@ -167,7 +167,7 @@ class TestCommand extends Command
      *
      * No lo tiene sin base declarada, y no lo tiene con `:memory:` — que no puede ser la base de
      * nadie: nace vacía en cada proceso y muere con él. No hay datos que proteger ni esquema real del
-     * que desfasarse, así que las tres preguntas de R81 sobran ahí.
+     * que desfasarse, así que las tres preguntas de la clasificación sobran ahí.
      */
     protected function baseClonable(): bool
     {
@@ -350,7 +350,7 @@ class TestCommand extends Command
     }
 
     /**
-     * Clasifica el rojo antes de que nadie abra el código — R81, los tres pasos en orden.
+     * Clasifica el rojo antes de que nadie abra el código — los tres pasos en orden.
      *
      * Un rojo significa tres cosas distintas y las tres se ven igual, así que se descartan por orden
      * de coste: **base sucia** (re-clonar y repetir solo esa pieza), **intermitente** (repetirla), y
@@ -362,7 +362,7 @@ class TestCommand extends Command
      */
     protected function clasificar(PhpunitRunner $runner, string $archivo, ?string $filtro, array $pieza): bool
     {
-        $this->line('  <fg=cyan>Clasificando el rojo antes de investigarlo (R81):</>');
+        $this->line('  <fg=cyan>Clasificando el rojo antes de investigarlo:</>');
 
         // 1 · ¿Base sucia?
         if ((bool) $this->option('sin-reclonar')) {

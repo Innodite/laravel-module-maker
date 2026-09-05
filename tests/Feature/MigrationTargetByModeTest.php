@@ -6,7 +6,7 @@ use Innodite\LaravelModuleMaker\Services\MigrationTargetService;
 use Innodite\LaravelModuleMaker\Support\ModuleMode;
 
 /**
- * El modo de tenants iguales, por fin capaz de migrar (R7).
+ * El modo de tenants iguales, por fin capaz de migrar.
  *
  * El hallazgo salió construyendo la fase 1 y quedó anotado para esta: la validación exigía
  * `connection_key` a **todos** los contextos de tenant. Pero en `multitenant-shared` ningún tenant
@@ -46,7 +46,7 @@ it('el mismo contexto, en el modo de lógica propia, sí exige la conexión', fu
 
 it('la app central pasa por la validación de siempre', function () {
     // La excepción es solo para el tenant del modo compartido. La central declara su conexión
-    // siempre (R7): si aquí se relajara, el despliegue central acabaría en la base equivocada.
+    // siempre: si aquí se relajara, el despliegue central acabaría en la base equivocada.
     $this->withMode(ModuleMode::MultitenantShared);
 
     $conexion = (new MigrationTargetService())->resolveExecutionConnection('central', true);

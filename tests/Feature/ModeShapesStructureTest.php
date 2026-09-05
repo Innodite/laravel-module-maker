@@ -11,7 +11,7 @@ use Innodite\LaravelModuleMaker\Support\ModuleMode;
  *
  * Hasta ahora lo decidía `contexts.json`, y de forma incondicional: una aplicación sin un solo
  * tenant generaba `Models/Central/CentralRole.php` — una carpeta que no separa nada y un prefijo
- * que no desambigua nada, porque no hay un segundo contexto del que distinguirlo (C5 · R6).
+ * que no desambigua nada, porque no hay un segundo contexto del que distinguirlo.
  *
  * Estas pruebas fijan la diferencia entre modos sobre archivos generados de verdad, porque es
  * exactamente el tipo de cosa que se puede leer bien en el código y salir mal en el disco.
@@ -29,12 +29,12 @@ it('en single-app la subfuncionalidad va directa bajo la capa, sin contexto ni p
     ]))->generate();
 
     expect(File::isDirectory("{$modulePath}/resources/js/Pages/Role"))->toBeTrue(
-        'R5: en single-app la ruta es resources/js/Pages/Role/. Si aparece Central/ en medio, '
+        'en single-app la ruta es resources/js/Pages/Role/. Si aparece Central/ en medio, '
         . 'ModuleMode::hasContextAxis() no está mandando sobre getContextFolder().'
     );
 
     expect(File::exists("{$modulePath}/resources/js/Pages/Role/RoleIndex.vue"))->toBeTrue(
-        'R6: sin eje de contexto no hay prefijo. "CentralRoleIndex.vue" en un proyecto sin tenants '
+        'sin eje de contexto no hay prefijo. "CentralRoleIndex.vue" en un proyecto sin tenants '
         . 'es ruido pegado al nombre de cada archivo de cada módulo.'
     );
 
@@ -69,7 +69,7 @@ it('la carpeta de páginas va en minúscula', function () {
     (new VueGenerator('UserManagement', $modulePath, false, 'Role', ['subFeature' => 'Role']))->generate();
 
     expect(File::isDirectory("{$modulePath}/resources"))->toBeTrue(
-        'B11 · R5: `resources` en minúscula. En Linux no es cosmético — el bundler distingue '
+        '`resources` en minúscula. En Linux no es cosmético — el bundler distingue '
         . 'mayúsculas al resolver la ruta de la página, así que Resources/ rompe la vista.'
     );
     expect(File::isDirectory("{$modulePath}/Resources"))->toBeFalse();
@@ -80,7 +80,7 @@ it('el modo responde si el modelo declara conexión, y son tres respuestas disti
         'Una sola base de datos: no hay nada que conmutar.'
     );
     expect(ModuleMode::MultitenantShared->declaresModelConnection('central'))->toBeTrue(
-        'La app central siempre declara su conexión (R7).'
+        'La app central siempre declara su conexión.'
     );
     expect(ModuleMode::MultitenantShared->declaresModelConnection('tenant_shared'))->toBeFalse(
         'Un tenant que hace lo mismo que los demás NO declara conexión: la conmuta stancl al '
@@ -94,7 +94,7 @@ it('el modo responde si el modelo declara conexión, y son tres respuestas disti
 
 it('el modo rechaza un contexto que no le corresponde', function () {
     expect(ModuleMode::SingleApp->supportsContext('central'))->toBeFalse(
-        'Una aplicación única no tiene contextos. Aceptarlo la obliga a inventarse uno (C2).'
+        'Una aplicación única no tiene contextos. Aceptarlo la obliga a inventarse uno.'
     );
     expect(ModuleMode::SingleApp->supportsContext(null))->toBeTrue();
 

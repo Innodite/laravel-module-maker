@@ -17,6 +17,21 @@ use Innodite\LaravelModuleMaker\Support\LegacyManifests;
  * por un archivo que nadie lee sería exactamente al revés de lo que hace falta.
  */
 
+/**
+ * Deja en el disco la migración que el comando va a nombrar.
+ *
+ * El aviso se comprueba con `innodite:migrate-one` desde que `innodite:migrate-plan` se retiró: es
+ * el comando que queda de los que leían los manifiestos. A diferencia del plan, este nombra UNA
+ * migración, así que el archivo tiene que existir para que la corrida llegue hasta el aviso.
+ */
+function migracionDeProbe(): void
+{
+    $ruta = test()->tempPath('Modules/Probe/Database/Migrations/Central/2026_01_01_000001_crea_cosas.php');
+
+    File::ensureDirectoryExists(dirname($ruta));
+    File::put($ruta, "<?php\n");
+}
+
 /** Deja un manifiesto de la v3 donde la v3 los guardaba. */
 function manifiestoV3(string $nombre = 'central.order.json'): void
 {
@@ -39,15 +54,24 @@ it('un proyecto sin ellos no tiene nada que reportar', function () {
 
 it('el comando avisa, y sigue adelante', function () {
     manifiestoV3();
+    migracionDeProbe();
 
-    $this->artisan('innodite:migrate-plan', ['--context' => 'central', '--dry-run' => true])
+    $this->artisan('innodite:migrate-one', [
+        'coordinate' => 'Probe:Central/2026_01_01_000001_crea_cosas.php',
+        '--dry-run' => true,
+    ])
         ->expectsOutputToContain('manifiesto(s) de la v3')
         ->expectsOutputToContain('MigrationsList')
         ->assertSuccessful();
 });
 
 it('sin manifiestos no dice nada: un proyecto nuevo no tiene por qué oír hablar de la v3', function () {
-    $this->artisan('innodite:migrate-plan', ['--context' => 'central', '--dry-run' => true])
+    migracionDeProbe();
+
+    $this->artisan('innodite:migrate-one', [
+        'coordinate' => 'Probe:Central/2026_01_01_000001_crea_cosas.php',
+        '--dry-run' => true,
+    ])
         ->doesntExpectOutputToContain('manifiesto(s) de la v3')
         ->assertSuccessful();
 });

@@ -28,7 +28,7 @@ it('las rutas generadas exigen exactamente los permisos que siembra el seeder', 
     $exigidos  = array_unique(array_column($rutas, 'permission'));
     $sembrados = array_column(
         // Solo los de ruta: los de vista no los exige ningún middleware, los consume el `can()` de
-        // la pantalla. Que sean dos conjuntos distintos es la regla, no un descuadre (R20).
+        // la pantalla. Que sean dos conjuntos distintos es la regla, no un descuadre.
         array_filter($seeder, fn (array $p): bool => $p['kind'] === 'ruta'),
         'name'
     );
@@ -42,7 +42,7 @@ it('las rutas generadas exigen exactamente los permisos que siembra el seeder', 
     );
 });
 
-it('un permiso por ruta, sin reutilizar ninguno (R16)', function () {
+it('un permiso por ruta, sin reutilizar ninguno', function () {
     // La norma no admite compartir: seis rutas, seis permisos. Ni siquiera index y list, aunque una
     // alimente a la otra — protegen cosas distintas (la pantalla y sus datos) y cada permiso tiene
     // que poder decir en su descripción QUÉ habilita. Compartido, deja de ser explicable.
@@ -50,13 +50,13 @@ it('un permiso por ruta, sin reutilizar ninguno (R16)', function () {
     $permisos = SubFeaturePermissions::permissions('central', 'invoices', 'Billing', 'Invoices');
 
     expect($rutas)->toHaveCount(6);
-    // 6 de ruta + 4 de vista: las dos protecciones son independientes (R20).
+    // 6 de ruta + 4 de vista: las dos protecciones son independientes.
     expect($permisos)->toHaveCount(10);
 
     $nombres = array_column($permisos, 'name');
 
     expect($nombres)->toBe(array_unique($nombres),
-        'Hay un permiso repetido. R16: nunca se reutiliza un permiso en dos rutas o acciones.'
+        'Hay un permiso repetido. Nunca se reutiliza un permiso en dos rutas o acciones.'
     );
 });
 
@@ -151,9 +151,9 @@ it('el generador de rutas escribe los permisos que dice RoutePermissions, no los
     }
 });
 
-it('los permisos de vista existen y son independientes de los de ruta (R20)', function () {
+it('los permisos de vista existen y son independientes de los de ruta', function () {
     // «Ocultar el botón no protege el endpoint, y proteger el endpoint no limpia la pantalla.
-    //  Las dos, siempre.» — R20.
+    //  Las dos, siempre.»
     $permisos = collect(SubFeaturePermissions::permissions('', 'invoices', 'Billing', 'Invoices'))
         ->keyBy('name');
 
@@ -172,7 +172,7 @@ it('ningun permiso se repite entre ruta y vista', function () {
     );
 
     expect($nombres)->toBe(array_unique($nombres),
-        'R16: nunca se reutiliza un permiso en dos rutas o acciones distintas.'
+        'nunca se reutiliza un permiso en dos rutas o acciones distintas.'
     );
 });
 
@@ -197,7 +197,7 @@ it('las vistas generadas piden permisos que el seeder va a crear', function () {
         $pedidos = [...$pedidos, ...$m[1]];
     }
 
-    expect($pedidos)->not->toBeEmpty('Las vistas generadas tienen que proteger sus acciones (R20).');
+    expect($pedidos)->not->toBeEmpty('Las vistas generadas tienen que proteger sus acciones.');
 
     foreach (array_unique($pedidos) as $pedido) {
         expect(in_array($pedido, $sembrados, true))->toBeTrue(

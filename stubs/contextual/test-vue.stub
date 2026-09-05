@@ -13,7 +13,7 @@ import {{{ vueComponent }}} from '{{{ rutaAlComponente }}}';
  * recibe un error por algo que nunca debió ofrecérsele.
  *
  * **Recorre el manifiesto, no enumera.** Una acción nueva se declara ahí y esta prueba la cubre sin
- * tocarse, igual que sus hermanas de PHP (R76).
+ * tocarse, igual que sus hermanas de PHP.
  *
  * **Busca por `data-test`, no por el texto del botón.** Cambiar «Editar» por «Modificar» es un
  * cambio de copy: no puede romper una prueba de permisos.

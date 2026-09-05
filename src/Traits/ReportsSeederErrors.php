@@ -14,7 +14,7 @@ use Throwable;
  * **Por qué existe.** Un despliegue son diez o quince pasos encadenados —migrar, alterar, validar,
  * sembrar, permisos—, y sin esto el primero que revienta corta la ejecución: se arregla, se vuelve a
  * lanzar, revienta el siguiente, y así una vez por cada fallo. `safe()` **acumula y continúa**, de
- * modo que una sola pasada deja delante la lista completa de lo que hay que arreglar (R23).
+ * modo que una sola pasada deja delante la lista completa de lo que hay que arreglar.
  *
  * **Lo que NO es.** No es un `try/catch` que traga la excepción y termina en verde: ese es el
  * anti-patrón que la norma señala, y es peor que no capturar nada, porque un despliegue de producción

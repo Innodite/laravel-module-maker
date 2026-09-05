@@ -14,7 +14,7 @@ use Innodite\LaravelModuleMaker\Support\ModuleMode;
  * subfuncionalidades de primera y de segunda clase — unas con su grupo de pruebas y otras sin él —
  * y nadie lo nota, porque lo que falta no da error: simplemente no está.
  *
- * Es lo que ya pasó en la fase 3 con los seeders (B25). Aquí se cierra por el otro lado: **las seis
+ * Es lo que ya pasó en la fase 3 con los seeders. Aquí se cierra por el otro lado: **las seis
  * piezas del contrato** también nacen por este camino.
  */
 
@@ -105,7 +105,7 @@ it('ni make-module ni add-entity vuelven a emitir las piezas que no están en el
         expect($archivo)->not->toMatch(
             '#(ServiceTest|Support)\.php$#',
             "FALLA: el módulo generado trae '{$archivo}', que no es ninguna de las 6 piezas del "
-            . 'contrato (R32). · FIX: el grupo son manifiesto + base + los 9 temas repartidos en '
+            . 'contrato. · FIX: el grupo son manifiesto + base + los 9 temas repartidos en '
             . 'Scaffold, Schema, Permissions, Deployment, Http y Vitest. Nada más.'
         );
     }
@@ -164,7 +164,7 @@ it('en multitenant no genera sin contexto: lo exige y lista el catálogo', funct
 
     expect($salida)->toContain('--context');
     expect(str_contains($salida, 'central'))->toBeTrue(
-        "R30: el error lista el catálogo, para que el FIX no obligue a ir a buscarlo.\n{$salida}"
+        "el error lista el catálogo, para que el FIX no obligue a ir a buscarlo.\n{$salida}"
     );
 });
 

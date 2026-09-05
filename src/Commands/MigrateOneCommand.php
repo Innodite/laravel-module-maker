@@ -102,7 +102,8 @@ class MigrateOneCommand extends Command
             // La coordenada ya se resolvió a ruta absoluta contra `module_path`, así que se pasa tal
             // cual con `--realpath`. Antes se convertía a relativa a `base_path()` —la raíz de la
             // que `migrate` parte por defecto—, y las dos solo coinciden mientras nadie mueva la
-            // carpeta de módulos. Ver `MigrationPlanResolver::absolutePathOf()`.
+            // carpeta de módulos. El síntoma de mezclarlas es el peor posible: `migrate` no falla
+            // por «archivo no encontrado», simplemente no aplica nada y devuelve éxito.
             '--path'     => $resuelta['path'],
             '--realpath' => true,
             '--database' => $conexion,

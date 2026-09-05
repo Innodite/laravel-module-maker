@@ -18,18 +18,18 @@ use Innodite\LaravelModuleMaker\Traits\ReportsSeederErrors;
  * salen del mismo cálculo que esta lista. Cuando se separaron, la pantalla generada cargaba perfecta
  * y sin un solo botón, para todo el mundo, sin error ni registro en ningún log.
  *
- * **Las dos protecciones son independientes (R20).** El permiso de ruta protege el servicio; el de
+ * **Las dos protecciones son independientes.** El permiso de ruta protege el servicio; el de
  * vista, el elemento visual. Ocultar el botón no protege el endpoint, y proteger el endpoint no
  * limpia la pantalla: por eso se crean los dos y nunca son el mismo.
  *
- * **No destructivo por defecto (R24).** La firma es `run(bool $destructive = false)`: sin pedirlo,
+ * **No destructivo por defecto.** La firma es `run(bool $destructive = false)`: sin pedirlo,
  * nada se borra —`updateOrInsert` sobre lo que ya está— y **las asignaciones a roles hechas a mano
  * sobreviven**, que es lo que de verdad se pierde cuando un seeder de permisos borra y recrea. Lo
  * pide el Stage cuando se lanza con `SEEDER_DESTRUCTIVE=true`; el de producción lo fuerza a `false`.
  *
  * **Aquí no se asigna ningún rol.** El rol de webmaster recoge **todos** los permisos de forma
  * dinámica, de modo que un módulo nuevo queda cubierto sin tocar nada; y los demás roles los define
- * el proyecto, no el generador (R25).
+ * el proyecto, no el generador.
  *
  * Se escribe contra las tablas y no contra las clases del paquete de permisos: así el seeder
  * funciona igual con Spatie instalado que con una implementación propia, siempre que las tablas
@@ -77,7 +77,7 @@ class {{{ seederName }}} extends Seeder
     /**
      * Todos los permisos de esta subfuncionalidad: uno por ruta y uno por acción de la interfaz.
      *
-     * **Ninguno se comparte con otro (R16)**, ni siquiera los de la pantalla y su listado, porque
+     * **Ninguno se comparte con otro**, ni siquiera los de la pantalla y su listado, porque
      * cada `description` tiene que poder decir qué cosa concreta habilita: es lo único que ve quien
      * asigna permisos a un rol, y un permiso que sirve para dos cosas ya no se puede explicar.
      *
@@ -187,7 +187,7 @@ class {{{ seederName }}} extends Seeder
      * El grupo bajo el que la interfaz muestra estos permisos, creado si aún no existe.
      *
      * Es lo que convierte una lista plana de doscientas claves en un bloque por funcionalidad con
-     * una pestaña por subfuncionalidad (R21).
+     * una pestaña por subfuncionalidad.
      */
     protected function resolveModuleId(): int|string|null
     {

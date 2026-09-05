@@ -9,95 +9,26 @@ use Illuminate\Support\Str;
 use InvalidArgumentException;
 
 /**
- * De dónde salen las migraciones del proyecto, y cómo se nombra una sola.
+ * Cómo se nombra **una** migración, y dónde está el archivo que nombra.
  *
- * **Ya no queda nada del manifiesto JSON.** Describía lo que la carpeta ya dice, no viajaba con el
+ * **Ya no resuelve ningún plan, y por eso ya no ordena nada.** Hasta la retirada de
+ * `innodite:migrate-plan` esta clase también reunía las migraciones de todo el proyecto recorriendo
+ * el árbol, y las ordenaba con `ksort` sobre la ruta del archivo — el abecedario de las carpetas—,
+ * ignorando el orden que el proyecto declara en `deploy`. Ese era el defecto: `carts` se migraba
+ * antes que `customers`. Se retiró junto con su único llamador, porque el orden de despliegue tiene
+ * **un solo dueño** y es `deploy`, leído por los maestros de cada módulo.
+ *
+ * Lo que queda es la otra mitad, que nunca ordenó nada: traducir la coordenada que escribe una
+ * persona —`Factura:Central/2026_01_01_crea_facturas.php`— a la ruta real del archivo, para
+ * `innodite:migrate-one`.
+ *
+ * **Y no queda nada del manifiesto JSON.** Describía lo que la carpeta ya dice, no viajaba con el
  * módulo al copiarlo a otro proyecto y se desincronizaba en silencio; peor aún, de su NOMBRE se
- * derivaba la base de datos contra la que se ejecutaba. Las migraciones salen de los traits
- * `MigrationsList` desde F2 y los seeders del array `deploy` desde F3: el orden vive en código,
- * dentro del módulo, y la conexión la dicen la coordenada y el modo.
+ * derivaba la base de datos contra la que se ejecutaba. Hoy las migraciones de una subfuncionalidad
+ * las declara su trait `MigrationsList` y el orden entre subfuncionalidades lo declara `deploy`.
  */
 class MigrationPlanResolver
 {
-    /**
-     * Las migraciones del proyecto, **leídas de los traits `MigrationsList`** (P2).
-     *
-     * Esta es la fuente a partir de la v4. El manifiesto JSON describía lo que ya dice la carpeta:
-     * no viajaba con el módulo al copiarlo a otro proyecto y se desincronizaba en silencio, así que
-     * el orden de despliegue vive ahora **en código**, dentro del módulo.
-     *
-     * Se leen por texto y no instanciando el trait, a propósito: este paquete corre dentro de la
-     * aplicación de otro, donde el autoload de `Modules\…` puede no estar registrado todavía —
-     * justo cuando se despliega por primera vez, que es cuando más falta hace.
-     *
-     * @param  string|null  $contextFilter  'Central', 'Tenant/Shared'… o null para todos
-     * @return array<int, string> Rutas relativas a la raíz del proyecto, en el orden de los traits
-     */
-    public function migrationsFromTraits(?string $contextFilter = null): array
-    {
-        $modulesPath = rtrim((string) config('make-module.module_path'), '/\\');
-
-        if (! File::isDirectory($modulesPath)) {
-            return [];
-        }
-
-        $traits = [];
-
-        foreach (File::allFiles($modulesPath) as $archivo) {
-            if (! str_ends_with($archivo->getFilename(), 'MigrationsList.php')) {
-                continue;
-            }
-
-            $relativo = str_replace('\\', '/', $archivo->getRelativePathname());
-
-            if ($contextFilter !== null && ! str_contains($relativo, "/{$contextFilter}/")) {
-                continue;
-            }
-
-            $traits[$relativo] = $archivo->getRealPath();
-        }
-
-        ksort($traits);   // orden estable entre módulos: el del árbol
-
-        $migraciones = [];
-
-        foreach ($traits as $ruta) {
-            preg_match_all("/'(Modules\/[^']+\.php)'/", (string) File::get($ruta), $encontradas);
-
-            foreach ($encontradas[1] as $migracion) {
-                $migraciones[] = $migracion;   // el orden DENTRO del módulo lo fija su trait
-            }
-        }
-
-        return $migraciones;
-    }
-
-    /**
-     * La ruta declarada por un trait, resuelta contra **la misma raíz de la que salió**.
-     *
-     * Los traits declaran `Modules/Factura/Database/Migrations/…`, relativo a la raíz del proyecto, y
-     * quien los encuentra es `migrationsFromTraits()` recorriendo `make-module.module_path`. Pero
-     * `migrate --path`, sin `--realpath`, resuelve lo que reciba contra `base_path()`.
-     *
-     * **Son dos raíces distintas, y solo coinciden por defecto.** `module_path` es configurable —vale
-     * `base_path('Modules')` de serie, pero nada obliga a dejarlo ahí—, así que en cuanto alguien lo
-     * mueve, el comando encuentra los traits en un sitio y busca sus migraciones en otro. El síntoma
-     * es el peor posible: `migrate` no falla por «archivo no encontrado», simplemente no aplica nada
-     * y devuelve éxito.
-     *
-     * Es el mismo defecto que persiguen B13 y B17: dos mitades correctas por separado que dejaron de
-     * apuntar al mismo sitio. Aquí se cierra devolviendo una ruta absoluta, que quien la ejecute pasa
-     * con `--realpath`.
-     */
-    public function absolutePathOf(string $declared): string
-    {
-        // El padre de la carpeta de módulos: los traits declaran `Modules/…` **incluyendo** ese
-        // primer segmento, así que la raíz contra la que se resuelven es la que lo contiene.
-        $raiz = dirname(rtrim((string) config('make-module.module_path'), '/\\'));
-
-        return $raiz . '/' . ltrim($declared, '/');
-    }
-
     /**
      * @return array{module: string, contextPath: string, file: string, path: string}
      */

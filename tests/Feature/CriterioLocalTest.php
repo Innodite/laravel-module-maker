@@ -74,7 +74,7 @@ it('el diagnóstico le pregunta al criterio, y enseña sus hallazgos como propio
     );
 
     expect(str_contains($salida, 'FIX:'))->toBeTrue(
-        "FALLA: el hallazgo llega sin su arreglo — R30 vale también para lo que dice el criterio.\n{$salida}"
+        "FALLA: el hallazgo llega sin su arreglo — el estándar vale también para el criterio.\n{$salida}"
     );
 });
 
@@ -93,13 +93,13 @@ final class CriterioDePrueba implements ProveedorDeCriterio
 
     public function reglas(string $area): array
     {
-        return [['id' => 'R1', 'titulo' => 'Las capas', 'severidad' => 'alta']];
+        return [['id' => 'X1', 'titulo' => 'Una regla de ejemplo', 'severidad' => 'alta']];
     }
 
     public function revisar(string $area, array $contexto): array
     {
         return [[
-            'regla'   => 'R1',
+            'regla'   => 'X1',
             'mensaje' => 'las capas están cruzadas: el controlador toca el modelo.',
             'arreglo' => 'pásalo por el servicio y el repositorio.',
         ]];

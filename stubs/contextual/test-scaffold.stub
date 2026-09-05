@@ -14,7 +14,7 @@ use ReflectionClass;
  * los archivos estaban todos. Lo que fallaba era el contenido — el import a una clase que nadie
  * escribió, el seeder que no invocaba sus migraciones, el service leyendo Eloquent por su cuenta.
  *
- * Por eso la segunda prueba **abre las piezas y las lee**. Es R77: el andamiaje no se prueba por
+ * Por eso la segunda prueba **abre las piezas y las lee**. El andamiaje no se prueba por
  * existencia, se evalúa por contenido.
  *
  * Ninguna de las dos enumera nada: las dos recorren el manifiesto.

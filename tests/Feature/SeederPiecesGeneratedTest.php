@@ -8,7 +8,7 @@ use Innodite\LaravelModuleMaker\Support\SeederNames;
 use Innodite\LaravelModuleMaker\Support\SubFeaturePermissions;
 
 /**
- * Las seis piezas, escritas por el generador y no por la prueba (R23).
+ * Las seis piezas, escritas por el generador y no por la prueba.
  *
  * Hasta ahora el paquete emitía **una** —un seeder plano con el `run()` vacío— y las dos de esquema
  * que dejó la fase de migraciones. Aquí se comprueba lo que de verdad importa de un grupo de seis:
@@ -115,7 +115,7 @@ it('en multitenant las piezas llevan el prefijo del contexto y su carpeta', func
         piezasEsperadas('Central', 'Invoice', 'Invoice')
     );
 
-    $modulo->assertTreeHas($esperadas, 'El contexto entra en la carpeta y en el nombre (R5 · R6).');
+    $modulo->assertTreeHas($esperadas, 'El contexto entra en la carpeta y en el nombre.');
 });
 
 it('el seeder declara la conexión del contexto, la misma que el modelo', function () {

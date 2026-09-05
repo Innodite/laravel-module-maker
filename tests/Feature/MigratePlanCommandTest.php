@@ -2,106 +2,77 @@
 
 declare(strict_types=1);
 
-use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Artisan;
 
 /**
- * El esquema se aplica desde los traits, y la base de datos la dice el contexto.
+ * `innodite:migrate-plan` está retirado, y lo dice bien.
  *
- * Las dos mitades de la retirada del manifiesto JSON. Antes **el orden** salía de una lista dentro
- * del archivo —que no viajaba con el módulo al copiarlo y se desincronizaba en silencio— y **la
- * conexión** salía de su nombre: `tenant-one.order.json` → contexto `tenant-one`. Pasar otro
- * `--manifest` ejecutaba contra otra base de datos sin que nada lo advirtiera.
+ * **Qué se prueba aquí y por qué no es ceremonia.** Un comando retirado tiene dos maneras de fallar,
+ * y las dos son silenciosas: contestar «no está definido» —que no dice a dónde ir— o contestar en
+ * verde, que en un script de despliegue pasa por trabajo hecho. Este grupo fija las dos.
  *
- * Ahora el orden lo declara cada subfuncionalidad en su trait `MigrationsList`, y el contexto se
- * dice en voz alta.
+ * El comando aplicaba las migraciones recorriendo el árbol y ordenándolas por el nombre de las
+ * carpetas, ignorando `deploy`. Se retiró en vez de corregirse: era el único sitio que ejecutaba
+ * migraciones fuera del seeder, y `innodite:deploy` ya hace lo mismo en el orden que
+ * el proyecto declara.
+ *
+ * **Se lee la salida con `Artisan::output()` y no con `$this->artisan()`**, a propósito: el
+ * ayudante de consola envuelve el párrafo por el ancho del terminal, y ahí `innodite:deploy` se
+ * parte a mitad de palabra. La prueba se caía por dónde cortaba la línea, no por lo que decía el
+ * mensaje.
  */
 
-/** Deja un trait MigrationsList con las migraciones que declara, y los archivos que nombra. */
-function traitConMigraciones(string $carpeta, array $migraciones): void
+/** Ejecuta el comando retirado y devuelve [código, salida]. */
+function retirado(array $opciones = []): array
 {
-    $lista = implode("\n", array_map(
-        static fn (string $m): string => "            '{$m}',",
-        $migraciones
-    ));
+    $codigo = Artisan::call('innodite:migrate-plan', $opciones + ['--no-interaction' => true]);
 
-    $destino = test()->tempPath("Modules/Probe/Database/Seeders/{$carpeta}/Thing");
-    File::ensureDirectoryExists($destino);
-
-    File::put("{$destino}/ProbeThingMigrationsList.php", "<?php\n\ntrait ProbeThingMigrationsList\n{\n"
-        . "    protected function migrations(): array\n    {\n        return [\n{$lista}\n        ];\n    }\n}\n");
-
-    foreach ($migraciones as $migracion) {
-        $ruta = test()->tempPath(str_replace('Modules/', 'Modules/', $migracion));
-        File::ensureDirectoryExists(dirname($ruta));
-        File::put($ruta, "<?php\n");
-    }
+    return [$codigo, Artisan::output()];
 }
 
-it('lista las migraciones que declaran los traits, sin ejecutar nada', function () {
-    traitConMigraciones('Central', [
-        'Modules/Probe/Database/Migrations/Central/2026_01_01_000001_crea_cosas.php',
-        'Modules/Probe/Database/Migrations/Central/2026_01_01_000002_crea_otras.php',
-    ]);
+it('dice que se retiró y a qué comando ir', function () {
+    [, $salida] = retirado(['--context' => 'central']);
 
-    $this->artisan('innodite:migrate-plan', ['--context' => 'central', '--dry-run' => true])
-        ->expectsOutputToContain('2026_01_01_000001_crea_cosas.php')
-        ->expectsOutputToContain('2026_01_01_000002_crea_otras.php')
-        ->expectsOutputToContain('Dry-run completado')
-        ->assertSuccessful();
+    expect($salida)->toContain('se retiró');
+    expect($salida)->toContain('innodite:deploy');
 });
 
-it('sin contexto no adivina contra qué base de datos ejecutar', function () {
-    // Es el fallo que el manifiesto escondía: la base de datos salía del nombre de un archivo, así
-    // que siempre había una «por defecto» aunque nadie la hubiera elegido.
-    $this->artisan('innodite:migrate-plan')
-        ->expectsOutputToContain('--context=central')
-        ->assertFailed();
+it('da la orden entera, lista para copiar', function () {
+    // Un FIX que nombra el comando pero no lo escribe obliga a ir a buscar la firma a otro sitio.
+    [, $salida] = retirado();
+
+    expect($salida)->toContain('php artisan innodite:deploy stage --context=central');
 });
 
-it('un contexto sin migraciones declaradas lo dice, en vez de fingir que desplegó', function () {
-    $this->artisan('innodite:migrate-plan', ['--context' => 'central', '--dry-run' => true])
-        ->expectsOutputToContain('No hay ninguna migración declarada')
-        ->assertSuccessful();
+it('falla, no termina en verde: no hizo lo que se le pidió', function () {
+    // Es el mismo defecto que este issue vino a corregir en otro sitio —no aplicar nada y devolver
+    // éxito—, así que anunciar la retirada así sería repetirlo en la despedida.
+    [$codigo] = retirado(['--context' => 'central']);
+
+    expect($codigo)->not->toBe(0);
 });
 
-it('ejecuta las migraciones de verdad sobre una base sqlite temporal', function () {
-    requiereBaseDeDatos();
+it('sigue contestando cuando le pasan las opciones de antes', function () {
+    // No las declara —no ensaya nada—, pero las tolera: quien lo tenga escrito en un script tiene
+    // que leer que el comando se retiró, no un error sobre la firma.
+    [$codigo, $salida] = retirado(['--context' => 'central', '--dry-run' => true]);
 
-    $baseDatos = $this->tempPath('database/test-central.sqlite');
-    File::ensureDirectoryExists(dirname($baseDatos));
-    touch($baseDatos);
+    expect($salida)->toContain('se retiró');
+    expect($codigo)->not->toBe(0);
+});
 
-    config()->set('database.connections.central', [
-        'driver'   => 'sqlite',
-        'database' => $baseDatos,
-        'prefix'   => '',
-    ]);
+it('nombra la alternativa para una migración suelta', function () {
+    // Quien usaba el plan para aplicar una sola cosa necesita saber que eso sigue existiendo.
+    [, $salida] = retirado();
 
-    $migracion = 'Modules/Probe/Database/Migrations/Central/2026_01_01_000001_crea_cosas.php';
+    expect($salida)->toContain('innodite:migrate-one');
+});
 
-    traitConMigraciones('Central', [$migracion]);
+it('dice por qué se retiró, no solo que se retiró', function () {
+    // Sin el motivo, la retirada parece un capricho y el siguiente proyecto vuelve a pedir el
+    // comando. El motivo es el orden: lo declara `deploy`, y este lo decidía por su cuenta.
+    [, $salida] = retirado();
 
-    // La migración de verdad: `migrate --path` la incluye y la ejecuta.
-    File::put($this->tempPath($migracion), <<<'PHP'
-        <?php
-
-        use Illuminate\Database\Migrations\Migration;
-        use Illuminate\Database\Schema\Blueprint;
-        use Illuminate\Support\Facades\Schema;
-
-        return new class extends Migration {
-            public function up(): void
-            {
-                Schema::create('cosas', function (Blueprint $tabla): void {
-                    $tabla->id();
-                    $tabla->string('nombre');
-                });
-            }
-        };
-        PHP);
-
-    $this->artisan('innodite:migrate-plan', ['--context' => 'central'])
-        ->assertSuccessful();
-
-    expect(Schema::connection('central')->hasTable('cosas'))->toBeTrue();
+    expect($salida)->toContain('deploy');
+    expect($salida)->toContain('carpetas');
 });

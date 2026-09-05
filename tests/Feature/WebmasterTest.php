@@ -192,7 +192,7 @@ it('crea el rol y le da todos los permisos que existen', function () {
 it('un módulo generado DESPUÉS queda cubierto sin tocar nada', function () {
     requiereBaseDeDatos();
 
-    // **Esta es la prueba de R25.** Una lista literal pasaría todas las demás de este archivo y
+    // **Esta es LA prueba del webmaster.** Una lista literal pasaría todas las demás de este archivo y
     // fallaría aquí: el permiso que nace mañana no estaría escrito en ella. Y el síntoma sería un
     // 403 a quien se supone que puede entrar a todo, en la pantalla de lo último que se construyó.
     sembrarPermisos(['invoices_index', 'invoices_store']);

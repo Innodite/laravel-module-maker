@@ -7,7 +7,7 @@ namespace Innodite\LaravelModuleMaker\Traits;
 /**
  * ResolvesSeederDestructiveMode — la única puerta por la que un seeder borra datos.
  *
- * **No destructivo por defecto (R23 · R24).** Un seeder se ejecuta muchas veces y en entornos que
+ * **No destructivo por defecto.** Un seeder se ejecuta muchas veces y en entornos que
  * no siempre son el que uno cree: el mismo comando que en local reconstruye una tabla de prueba, en
  * el servidor equivocado borra datos reales. Por eso el borrado no es un modo del seeder sino una
  * **orden explícita** de quien lo lanza:

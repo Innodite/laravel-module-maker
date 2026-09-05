@@ -24,7 +24,7 @@ use Innodite\LaravelModuleMaker\Traits\ResolvesSeederDestructiveMode;
  *     SEEDER_DESTRUCTIVE=true php artisan db:seed --class="{{{ seederName }}}"
  *
  * Sin esa señal, los permisos se actualizan sin tocar las asignaciones a roles hechas a mano — que
- * es lo que de verdad se pierde cuando un seeder de permisos borra y recrea (R24).
+ * es lo que de verdad se pierde cuando un seeder de permisos borra y recrea.
  *
  * **La cadena no se cruza:** este maestro deriva cada clase de la carpeta más su propia pieza, así
  * que solo puede invocar seeders de permisos.

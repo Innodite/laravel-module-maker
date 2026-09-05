@@ -15,11 +15,11 @@ use Illuminate\Support\Facades\DB;
  * entra en el recorrido de las que ya existen.
  *
  * Y ninguna enumera. Las rutas salen del router, los permisos del seeder que los crea — las dos
- * fuentes que ya existen (R76).
+ * fuentes que ya existen.
  *
  * **Dónde está el borde con el tema 7.** Aquí se mide **la puerta**: que sin el permiso no se entra y
  * que con él no rebota. Lo que hay al otro lado —el JSON correcto, el 422, el propietario— es el
- * `{{{ subFeature }}}HttpTest`, y repetirlo aquí es la duplicación que infla las suites (R34).
+ * `{{{ subFeature }}}HttpTest`, y repetirlo aquí es la duplicación que infla las suites.
  */
 final class {{{ permissionsName }}} extends {{{ baseName }}}
 {

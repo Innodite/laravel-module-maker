@@ -178,7 +178,7 @@ class ProviderGenerator extends AbstractComponentGenerator
      *
      * Los namespaces salen de `namespaceForComponent()`, el mismo cálculo que usa cada generador
      * para decidir DÓNDE escribe su archivo. Se armaban aquí a mano, y desde que la
-     * subfuncionalidad es carpeta en todas las capas (TASK-004a) faltaba ese último tramo: el
+     * subfuncionalidad es carpeta en todas las capas faltaba ese último tramo: el
      * provider importaba `…\Services\InvoiceService` mientras el archivo estaba en
      * `…\Services\Invoice\InvoiceService`. PHP válido, cero placeholders, y el módulo entero sin
      * arrancar — el binding revienta al resolver el servicio. La misma forma de fallo que B13,

@@ -399,7 +399,7 @@ class MakeModuleCommand extends Command
 
         // En single-app no hay contexto que elegir. Antes se preguntaba siempre, así que una
         // aplicación única se quedaba esperando que eligieran entre central y tenant — o tenía que
-        // declarar contextos falsos para pasar el diagnóstico (C2). No es que single-app estuviera
+        // declarar contextos falsos para pasar el diagnóstico. No es que single-app estuviera
         // «sin implementar»: estaba bloqueado.
         if (! $mode->hasContextAxis()) {
             return ['', []];
@@ -616,7 +616,7 @@ class MakeModuleCommand extends Command
         //   · El ServiceProvider del módulo NO hay que registrarlo a mano — lo registra el del
         //     paquete al arrancar, y en los dos proyectos reales `bootstrap/providers.php` no
         //     nombra ni uno solo.
-        //   · `php artisan migrate` a secas es justo lo que el patrón prohíbe (R22): ejecuta todo
+        //   · `php artisan migrate` a secas es justo lo que el patrón prohíbe: ejecuta todo
         //     lo pendiente del proyecto, no la migración de este módulo. Para eso está `deploy`,
         //     que además pone permisos y datos canónicos en el orden declarado.
         $this->line("    1. Revisa la migración generada y ajusta sus columnas al negocio.");

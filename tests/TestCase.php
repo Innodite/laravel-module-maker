@@ -114,7 +114,7 @@ abstract class TestCase extends Orchestra
     }
 
     /**
-     * Genera un módulo de verdad y devuelve el arnés para contrastarlo (A1 · R77).
+     * Genera un módulo de verdad y devuelve el arnés para contrastarlo.
      *
      * Es la puerta de entrada de las fases 2 a 6: `$this->generateModule('Invoice')->assertCoherent()`
      * ejecuta el comando real, falla con la salida completa si no generó, y contrasta lo escrito.

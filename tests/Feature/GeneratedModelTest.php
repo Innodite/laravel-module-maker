@@ -28,7 +28,7 @@ it('el modelo trae ULID y borrado lógico, como la tabla que le corresponde', fu
 
     expect(str_contains($migracion, '$table->softDeletes();'))->toBeTrue('La tabla trae deleted_at…');
     expect(str_contains($modelo, 'use SoftDeletes;'))->toBeTrue(
-        '…así que el modelo necesita `SoftDeletes` (R69 · R70). Sin el trait, la columna existe y '
+        '…así que el modelo necesita `SoftDeletes`. Sin el trait, la columna existe y '
         . 'nadie la usa: un delete borra de verdad y no hay forma de restaurar.'
     );
 });
@@ -61,7 +61,7 @@ it('la conexión del modelo la decide el modo, y son tres respuestas distintas',
         ->contents('Models/Invoice/Invoice.php');
 
     expect(str_contains($single, '$connection'))->toBeFalse(
-        'R7: en single-app hay una sola base de datos. Declarar conexión ahí es una línea muerta '
+        'en single-app hay una sola base de datos. Declarar conexión ahí es una línea muerta '
         . 'en cada modelo de cada módulo.'
     );
 
@@ -69,7 +69,7 @@ it('la conexión del modelo la decide el modo, y son tres respuestas distintas',
         ->contents('Models/Central/Payment/CentralPayment.php');
 
     expect(str_contains($central, "protected \$connection = 'central';"))->toBeTrue(
-        'R7: la app central declara siempre la suya.'
+        'la app central declara siempre la suya.'
     );
 });
 
