@@ -41,6 +41,7 @@ class DeployCommand extends Command
     protected $signature = 'innodite:deploy
         {environment : Qué se despliega: stage | production}
         {--context= : Contexto contra el que se despliega, en multitenant: central | tenant}
+        {--module= : Despliega SOLO este módulo, por sus maestros. Sin él, el proyecto entero}
         {--tenant= : Qué tenant se despliega, por su clave. Una ejecución por tenant}
         {--all : Despliega TODOS los tenants, uno tras otro}
         {--force : Despliega sin pedir confirmación, aunque el modo destructivo esté activo}
@@ -93,10 +94,20 @@ class DeployCommand extends Command
             return self::FAILURE;
         }
 
-        $clase = SeederNames::projectDeploySeeder($contexto);
-        $fqcn  = "Database\\Seeders\\{$clase}";
+        $modulo = trim((string) $this->option('module'));
 
-        if (! class_exists($fqcn)) {
+        if ($modulo !== '') {
+            $fqcn = $this->maestrosDelModulo($modulo, $contexto, $pieza);
+
+            if ($fqcn === false) {
+                return self::FAILURE;
+            }
+        } else {
+            $clase = SeederNames::projectDeploySeeder($contexto);
+            $fqcn  = "Database\\Seeders\\{$clase}";
+        }
+
+        if (is_string($fqcn) && ! class_exists($fqcn)) {
             $this->fallo(
                 "no existe {$fqcn}.",
                 'lánzalo con el instalador — php artisan innodite:module-setup',
@@ -131,13 +142,119 @@ class DeployCommand extends Command
     }
 
     /**
+     * Los maestros de UN módulo: el de la pieza pedida y el de sus permisos.
+     *
+     * **La unidad es el módulo, no la subfuncionalidad**, porque el maestro `Application` es lo que
+     * §5.4 define como punto de entrada único: reparte hacia sus subfuncionalidades en el orden
+     * declarado. Sirve para desarrollo, para reparar un módulo concreto y para el alta de un tenant.
+     *
+     * **Se resuelven desde el orden de despliegue y no del nombre del módulo**, porque ahí es donde
+     * está escrito en qué contexto vive cada subfuncionalidad — y el contexto decide el prefijo de
+     * la clase. Deducirlo del nombre acertaría en `Central` y fallaría en un tenant de lógica propia.
+     *
+     * @return array<int, string>|false Las clases, o `false` si lo pedido no se puede resolver.
+     */
+    private function maestrosDelModulo(string $modulo, ?string $contexto, string $pieza): array|false
+    {
+        $rutas = $this->rutasDelModulo($modulo, $contexto);
+
+        if ($rutas === []) {
+            $this->fallo(
+                "no hay ninguna subfuncionalidad de '{$modulo}' en el orden de despliegue"
+                . ($contexto !== null ? " del contexto '{$contexto}'" : '') . '.',
+                'comprueba el nombre del módulo, o declara sus subfuncionalidades en `deploy` de '
+                . 'config/make-module.php.',
+                'El orden de despliegue es de donde sale en qué contexto vive cada una, y el '
+                . 'contexto decide el nombre de sus clases.'
+            );
+
+            return false;
+        }
+
+        $maestros = [];
+
+        foreach ($rutas as $ruta) {
+            try {
+                // Los tres maestros son del MÓDULO, así que varias subfuncionalidades dan el mismo.
+                foreach ([$pieza, 'Permissions'] as $cual) {
+                    $maestro = SeederNames::masterFromPath($ruta, $cual);
+
+                    if (! in_array($maestro, $maestros, true)) {
+                        $maestros[] = $maestro;
+                    }
+                }
+            } catch (\InvalidArgumentException $e) {
+                $this->fallo(
+                    $e->getMessage(),
+                    'corrige esa línea en `deploy` de config/make-module.php — se escribe '
+                    . 'Modulo/Contexto/SubFuncionalidad.',
+                );
+
+                return false;
+            }
+        }
+
+        return $maestros;
+    }
+
+    /**
+     * Las rutas del orden de despliegue que son de este módulo, en el contexto pedido.
+     *
+     * ⚠️ **El despliegue de `tenant` cubre tres claves** —`tenant`, `tenant_shared` y `shared`—,
+     * como el del proyecto: son la misma base de datos vista desde tres formas de compartir lógica.
+     *
+     * @return array<int, string>
+     */
+    private function rutasDelModulo(string $modulo, ?string $contexto): array
+    {
+        $declarado = config('make-module.deploy', []);
+
+        if (! is_array($declarado)) {
+            return [];
+        }
+
+        $claves = match ($contexto) {
+            'tenant' => ['tenant', 'tenant_shared', 'shared'],
+            null     => null,
+            default  => [$contexto],
+        };
+
+        $rutas = [];
+
+        foreach ($declarado as $clave => $valor) {
+            if (is_string($valor)) {
+                $rutas[] = $valor;          // lista plana: no hay eje de contexto
+                continue;
+            }
+
+            if (! is_array($valor) || ($claves !== null && ! in_array((string) $clave, $claves, true))) {
+                continue;
+            }
+
+            foreach ($valor as $ruta) {
+                if (is_string($ruta) && trim($ruta) !== '') {
+                    $rutas[] = trim($ruta);
+                }
+            }
+        }
+
+        return array_values(array_filter(
+            $rutas,
+            static fn (string $ruta): bool => strcasecmp(
+                strtok(str_replace('\\', '/', $ruta), '/') ?: '',
+                $modulo
+            ) === 0
+        ));
+    }
+
+    /**
      * Despliega el contexto de tenant una vez por cada tenant pedido, dentro de su contexto.
      *
      * **Sin valor por defecto, como el resto del comando.** `--tenant=` despliega uno y `--all` los
      * despliega todos; sin ninguno de los dos no se arranca. Adivinar «el primero» o «todos» son las
      * dos formas de llenar la base que no era, que es justo lo que este comando existe para evitar.
      */
-    private function deployTenants(string $fqcn, string $pieza): int
+    private function deployTenants(string|array $fqcn, string $pieza): int
     {
         // Primero lo que decide quien lanza el comando, y solo después lo que depende del entorno:
         // a quien se olvidó de elegir tenant no se le contesta hablándole de la configuración.
@@ -439,7 +556,7 @@ class DeployCommand extends Command
      * distingue un despliegue del otro. Se le entrega igual que se lo entregaría el `DatabaseSeeder`
      * del proyecto: `$this->call($clase, false, ['piece' => 'Stage'])`.
      */
-    private function runProjectSeeder(string $fqcn, string $pieza): int
+    private function runProjectSeeder(string|array $fqcn, string $pieza): int
     {
         $resultado = $this->runner()->run($fqcn, $pieza);
 

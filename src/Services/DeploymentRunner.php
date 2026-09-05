@@ -52,13 +52,26 @@ class DeploymentRunner
     /**
      * Ejecuta el seeder contra la conexión que esté activa.
      *
-     * @param  string  $fqcn   Clase del seeder de despliegue del proyecto.
-     * @param  string  $piece  `Stage` o `Production`.
-     * @param  string  $step   Con qué nombre queda registrado el paso en el resultado.
+     * **Acepta una clase o varias.** El despliegue del proyecto es un seeder; el de un módulo suelto
+     * son sus maestros —el de la pieza y el de permisos—, que se ejecutan en orden. Uno que falla no
+     * detiene a los siguientes: el seeder ya listó lo suyo y el resultado guarda cada fallo con su
+     * clave, igual que entre tenants.
+     *
+     * @param  string|array<int, string>  $fqcn   Clase o clases del seeder a ejecutar.
+     * @param  string                     $piece  `Stage` o `Production`.
+     * @param  string                     $step   Con qué nombre queda registrado el paso.
      */
-    public function run(string $fqcn, string $piece, string $step = 'default'): DeploymentResult
+    public function run(string|array $fqcn, string $piece, string $step = 'default'): DeploymentResult
     {
-        return $this->runOne(DeploymentResult::empty(), $fqcn, $piece, $step);
+        $result = DeploymentResult::empty();
+        $clases = (array) $fqcn;
+
+        foreach ($clases as $clase) {
+            $paso   = count($clases) === 1 ? $step : "{$step}:" . class_basename($clase);
+            $result = $this->runOne($result, $clase, $piece, $paso);
+        }
+
+        return $result;
     }
 
     /**
@@ -72,7 +85,7 @@ class DeploymentRunner
      * @param  null|callable(string):void  $notify  Se invoca con la clave, antes de cada tenant.
      */
     public function runForTenants(
-        string $fqcn,
+        string|array $fqcn,
         string $piece,
         array $tenants,
         ?callable $notify = null,
@@ -83,7 +96,9 @@ class DeploymentRunner
             $key = (string) $tenant->getTenantKey();
 
             if (DryRun::active()) {
-                DryRun::record("ejecutaría  {$fqcn} · pieza {$piece} · tenant {$key}");
+                foreach ((array) $fqcn as $clase) {
+                    DryRun::record("ejecutaría  {$clase} · pieza {$piece} · tenant {$key}");
+                }
 
                 continue;
             }
@@ -96,7 +111,10 @@ class DeploymentRunner
             $contexto->enter($tenant);
 
             try {
-                $result = $this->runOne($result, $fqcn, $piece, $key);
+                foreach ((array) $fqcn as $clase) {
+                    $paso   = is_array($fqcn) ? "{$key}:" . class_basename($clase) : $key;
+                    $result = $this->runOne($result, $clase, $piece, $paso);
+                }
             } finally {
                 // Salir del contexto pase lo que pase: dejarlo abierto haría que el siguiente
                 // tenant —o lo que venga después— escribiera en la base del anterior.
