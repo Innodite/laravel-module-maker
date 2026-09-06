@@ -66,6 +66,7 @@ Versión mínima recomendada para uso nuevo:
 - [Pruebas](#-pruebas)
 - [Estándares de código](#-estándares-de-código)
 - [Publicar en Packagist](#-publicar-en-packagist--repositorio-privado)
+- [Documentación](#-documentación)
 - [Changelog](#-changelog)
 - [Licencia](#-licencia)
 
@@ -951,7 +952,8 @@ async function submit() {
 
 ## 🔧 Stubs contextuales
 
-El sistema de stubs de v3.1.0 organiza las plantillas en **4 carpetas independientes**, una por contexto. Esto permite personalizar la salida generada para cada contexto sin afectar los demás.
+El paquete trae **un solo juego** de plantillas, en una carpeta plana. Tú decides cuáles
+personalizar, y puedes hacerlo para todo el proyecto o solo para un contexto.
 
 ### Estructura de stubs
 
@@ -959,30 +961,25 @@ El sistema de stubs de v3.1.0 organiza las plantillas en **4 carpetas independie
 module-maker-config/
 └── stubs/
     └── contextual/
-        ├── Central/
-        │   ├── controller.stub
-        │   ├── service.stub
-        │   ├── repository.stub
-        │   ├── model.stub
-        │   ├── request-store.stub
-        │   ├── request-update.stub
-        │   ├── vue-index.stub
-        │   ├── vue-create.stub
-        │   ├── vue-edit.stub
-        │   └── vue-show.stub
-        ├── Shared/
-        │   ├── controller.stub
-        │   ├── service.stub
-        │   └── ...
-        ├── TenantShared/
-        │   ├── controller.stub
-        │   ├── service.stub
-        │   └── ...
-        └── TenantName/
-            ├── controller.stub
-            ├── service.stub
-            └── ...
+        ├── controller.stub          ← lo que publicas: una carpeta plana
+        ├── service.stub
+        ├── repository.stub
+        ├── model.stub
+        ├── request.stub
+        ├── vue-index.stub
+        ├── vue-create.stub
+        ├── vue-edit.stub
+        ├── vue-show.stub
+        ├── …                        ← 37 en total
+        │
+        └── Central/                 ← OPCIONAL: solo si un contexto necesita algo distinto
+            └── controller.stub
 ```
+
+⚠️ **El paquete ya NO envía copias por contexto.** Llegó a llevar cuatro —`Central`, `Shared`,
+`TenantShared`, `TenantName`—, idénticas byte a byte a la plantilla base y con prioridad sobre ella:
+corregir la base sin tocar sus cuatro copias no cambiaba nada, porque ganaba la copia vieja. La
+carpeta por contexto **sigue existiendo en tu proyecto**, que es donde puede diferir de verdad.
 
 ### Publicar stubs para personalización
 
@@ -990,7 +987,12 @@ module-maker-config/
 php artisan vendor:publish --tag=module-maker-stubs
 ```
 
-Copia las 4 carpetas de stubs a `module-maker-config/stubs/contextual/` en tu proyecto. A partir de ese momento, el generador usará tus stubs en lugar de los del paquete.
+Copia las plantillas a `module-maker-config/stubs/contextual/`. A partir de ahí ganan a las del
+paquete, y puedes borrar las que no vayas a tocar: lo que no esté ahí se sigue leyendo del paquete.
+
+⚠️ **Publicarlas tiene un coste**: una plantilla copiada **no se actualiza** con el paquete. Si
+publicaste las 37 «por si acaso», borra las que no personalizaste — si no, seguirás generando con
+las de la versión en que las copiaste.
 
 ### Stubs aportados por otro paquete instalado
 
@@ -1034,16 +1036,36 @@ proyecto. Recibe dos variables:
 
 ### Variables disponibles en los stubs
 
+⛔ **Se escriben con TRIPLE llave**: `{{{ nombre }}}`, no `{{ nombre }}`. No es capricho: los stubs
+generan código que a su vez lleva llaves —Blade, Vue, arrays de PHP—, y con doble llave el
+sustituidor se comía trozos que no eran suyos. Un stub personalizado con doble llave **no se
+sustituye y sale literal en el archivo generado**; el `doctor` lo detecta y lo dice.
+
+Las que verás en casi todos:
+
 | Variable | Descripción | Ejemplo |
 |---|---|---|
-| `{{MODULE}}` | Nombre del módulo | `User` |
-| `{{CLASS_PREFIX}}` | Prefijo de clase del contexto | `Central` |
-| `{{NAMESPACE}}` | Namespace completo de la clase | `Modules\User\Http\Controllers\Central` |
-| `{{CLASS_NAME}}` | Nombre completo de la clase | `CentralUserController` |
-| `{{MODEL_CLASS}}` | Clase del modelo | `CentralUser` |
-| `{{SERVICE_INTERFACE}}` | Interface del servicio | `CentralUserServiceInterface` |
-| `{{ROUTE_PREFIX}}` | Prefijo de ruta del contexto | `central` |
-| `{{TABLE_NAME}}` | Nombre de la tabla | `central_users` |
+| `{{{ moduleName }}}` | Nombre del módulo | `Invoice` |
+| `{{{ modelName }}}` | Nombre del modelo | `Invoice` |
+| `{{{ namespace }}}` | Namespace de la clase que se genera | `Modules\Invoice\Http\Controllers` |
+| `{{{ className }}}` | Nombre de la clase generada | `InvoiceController` |
+| `{{{ tableName }}}` | Nombre de la tabla | `invoices` |
+| `{{{ subFeature }}}` | Subfuncionalidad | `Payment` |
+| `{{{ subFeatureLabel }}}` | Etiqueta legible de la subfuncionalidad | `Payment` |
+| `{{{ routeBase }}}` | La funcionalidad, como la nombran las rutas | `invoices` |
+| `{{{ routePrefix }}}` | Prefijo de ruta del contexto | `central` |
+| `{{{ connection }}}` | Conexión declarada, cuando el modo la lleva | `tenant_one` |
+
+Y en las cuatro vistas Vue, además:
+
+| Variable | Descripción | Ejemplo |
+|---|---|---|
+| `{{{ vueComponentName }}}` | Componente de **esta** vista | `InvoiceIndex` |
+| `{{{ vueComponentBase }}}` | Nombre sin el sufijo de vista | `Invoice` |
+| `{{{ permViewStore }}}` · `{{{ permViewShow }}}` · `{{{ permViewUpdate }}}` · `{{{ permViewDestroy }}}` · `{{{ permViewRestore }}}` | El permiso que decide si se muestra cada elemento | |
+
+⭐ **La lista completa la tiene cada stub**: abre el que vayas a personalizar y mira qué variables
+usa. Son las que su generador le entrega, y no todas están en todos.
 
 ---
 
@@ -1416,11 +1438,19 @@ El paquete incluye configuración de PHP CS Fixer compatible con PSR-12. Todos l
 ### Repositorio público (Packagist)
 
 ```bash
-git init && git add . && git commit -m "feat: release v3.1.0"
-git tag v3.1.0 && git push origin main --tags
+git tag -a v4.2.0 -m "v4.2.0 — resumen de la versión"
+git push origin refs/tags/v4.2.0
 ```
 
 Luego registrar el repositorio en [packagist.org](https://packagist.org) con la URL del repositorio.
+
+⚠️ **La etiqueta se empuja sola, por su referencia completa.** `--tags` arrastra todas las que tengas
+en local, incluidas las de pruebas que no querías publicar — y una etiqueta publicada no se corrige:
+hay que retirarla y rehacerla, cuando Packagist ya la ha servido.
+
+⭐ Y **etiqueta después de cerrar el `CHANGELOG.md`**, no antes: lo que se publica es el árbol tal y
+como está en ese commit, así que una versión etiquetada con su changelog aún en «sin publicar» sale
+diciendo que no publica nada de lo que trae.
 
 ### Repositorio privado (VCS)
 
@@ -1438,8 +1468,26 @@ Agregar en el `composer.json` del proyecto consumidor:
 ```
 
 ```bash
-composer require innodite/laravel-module-maker:^3.5
+composer require innodite/laravel-module-maker:^4.2
 ```
+
+---
+
+## 📚 Documentación
+
+El manual de uso vive en **`docs/`**, dentro del propio paquete, y se declara en el `composer.json`
+con `extra.innodite-docs`:
+
+```json
+{ "extra": { "innodite-docs": "docs/fichas.json" } }
+```
+
+Ocho fichas: instalación, elegir el modo, los comandos, crear un módulo, desplegar, las pruebas,
+personalizar lo generado y **cuándo NO usarlo**.
+
+⭐ **Vive aquí a propósito**: quien cambia un comando actualiza su ficha **en el mismo commit**. Una
+documentación que se escribe en otro sitio se actualiza «después», y «después» es como se llega a un
+manual que anuncia comandos que ya no existen.
 
 ---
 
