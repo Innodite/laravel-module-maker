@@ -4,7 +4,13 @@ Todo cambio que afecte a quien usa el paquete. El formato sigue
 [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y las versiones,
 [SemVer](https://semver.org/lang/es/).
 
-## [Sin publicar]
+## [4.2.0] — 05/09/2026
+
+**Por qué MINOR y no MAYOR.** Todo lo de abajo **añade** o **corrige**: nada cambia la forma de lo
+que los comandos ya generaban, así que actualizar desde la 4.1 no obliga a tocar ningún módulo
+existente. Los dos puntos de extensión nuevos —los stubs que otro paquete puede aportar y el
+enganche del `boot()`— están **inactivos mientras nadie los use**: sin un paquete que aporte
+plantillas, se genera exactamente lo mismo que antes.
 
 ### Añadido
 
@@ -74,6 +80,14 @@ Todo cambio que afecte a quien usa el paquete. El formato sigue
   **Para qué.** Las plantillas del paquete son genéricas a propósito. Un proyecto montado sobre una
   biblioteca de interfaz querría generar contra ella —su tabla, sus formularios— y hasta ahora eso
   obligaba a copiar los stubs al proyecto y mantenerlos a mano, uno por uno y en cada proyecto.
+
+- **La documentación del paquete, dentro del propio paquete** (`docs/`), declarada con
+  `extra.innodite-docs`. Ocho fichas: instalación, elegir el modo, los comandos, crear un módulo,
+  desplegar, las pruebas, personalizar lo generado y **cuándo NO usarlo**.
+
+  Se escriben aquí a propósito: quien cambia un comando actualiza su ficha **en el mismo commit**.
+  ⚠️ Están redactadas contra el código y no contra el README, así que corrigen algo que el README
+  aún dice mal: los comandos vivos son **nueve**, y `innodite:migrate-plan` está **retirado**.
 
 - **`provider-boot.stub`**, un stub **opcional** cuyo contenido se escribe en el `boot()` del
   ServiceProvider del módulo generado. No existe en el paquete: si no lo aporta nadie, el `boot()`
