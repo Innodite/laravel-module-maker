@@ -82,25 +82,37 @@ return [
 
     /*
     |--------------------------------------------------------------------------
-    | De dónde salen las reglas — el criterio
+    | El frontend — qué componentes usan las vistas generadas
     |--------------------------------------------------------------------------
     |
-    | Este paquete reparte MECÁNICA: estructura, generación, migraciones, despliegue
-    | y ejecución del contrato de pruebas. El CRITERIO —qué reglas debe cumplir un
-    | módulo, qué es un hallazgo, qué se recomienda corregir— no viaja dentro: vive en
-    | el servidor de Innodite y se consume por API con token.
+    | ⛔ **Este paquete no configura el frontend de tu proyecto.** No publica composables, ni
+    | componentes, ni toca `app.js`, `bootstrap.js` ni el middleware de Inertia. Solo GENERA las
+    | vistas de cada subfuncionalidad. Quien monta el frontend es tu proyecto —o la biblioteca de
+    | interfaz que uses—, y esa separación es deliberada: un generador que además instala el
+    | andamiaje acaba peleándose con lo que el proyecto ya tenía.
     |
-    | El valor por defecto, CriterioLocal, responde vacío a todo. No es una
-    | implementación a medias: es la correcta para un paquete público. Escribir las
-    | reglas aquí «hasta que exista el remoto» sería publicarlas, y lo que se publica
-    | una vez ya está publicado.
+    | Lo que decides aquí es CONTRA QUÉ se generan esas vistas:
     |
-    | Cuando exista CriterioRemoto se cambia esta clase, y ningún comando se entera.
-    | Esa es toda la fase 2 del producto: una línea de configuración.
+    |   'default'   Vistas autónomas, sin depender de ninguna biblioteca.
+    |   'innodite'  Vistas escritas con los componentes de la biblioteca de la casa.
     |
     */
-    'criterio' => [
-        'proveedor' => Innodite\LaravelModuleMaker\Services\Criterio\CriterioLocal::class,
+    'frontend' => [
+
+        'modo' => env('MODULE_MAKER_FRONTEND', 'default'),
+
+        /*
+        | El layout que envuelve cada pantalla generada.
+        |
+        | Vacío significa que la vista no importa ninguno y se dibuja suelta — que es lo correcto
+        | mientras no sepas cuál es el tuyo. Se declara aquí y no se adivina porque el nombre y la
+        | ruta del layout son de tu proyecto: escribir uno inventado produce una vista que no
+        | compila, y el error aparece en el navegador del usuario, no al generar.
+        |
+        | Ejemplo:  '@/Layouts/AppLayout.vue'
+        */
+        'layout' => env('MODULE_MAKER_LAYOUT', ''),
+
     ],
 
     /*

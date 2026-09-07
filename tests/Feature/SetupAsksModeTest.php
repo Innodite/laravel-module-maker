@@ -30,7 +30,7 @@ it('escribe el modo elegido en el .env', function () {
 
 it('no vuelve a escribir si el .env ya declaraba ese mismo modo', function () {
     $env = base_path('.env');
-    File::put($env, "APP_NAME=Testbench\nMODULE_MAKER_MODE=single-app\n");
+    File::put($env, "APP_NAME=Testbench\nMODULE_MAKER_MODE=single-app\n\nMODULE_MAKER_FRONTEND=default\n");
     $antes = File::get($env);
 
     Artisan::call('innodite:module-setup', ['--mode' => 'single-app', '--no-interaction' => true]);

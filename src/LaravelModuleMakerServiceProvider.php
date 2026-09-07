@@ -16,12 +16,10 @@ use Innodite\LaravelModuleMaker\Commands\DoctorCommand;
 use Innodite\LaravelModuleMaker\Commands\MakeModuleCommand;
 use Innodite\LaravelModuleMaker\Commands\MigrateOneCommand;
 use Innodite\LaravelModuleMaker\Commands\MigratePlanCommand;
-use Innodite\LaravelModuleMaker\Commands\PublishFrontendCommand;
+use Innodite\LaravelModuleMaker\Commands\PublishStubsCommand;
 use Innodite\LaravelModuleMaker\Commands\SetupModuleMakerCommand;
 use Innodite\LaravelModuleMaker\Commands\TestCommand;
-use Innodite\LaravelModuleMaker\Contracts\ProveedorDeCriterio;
 use Innodite\LaravelModuleMaker\Middleware\InnoditeContextBridge;
-use Innodite\LaravelModuleMaker\Services\Criterio\CriterioLocal;
 use Illuminate\Support\Str;
 
 class LaravelModuleMakerServiceProvider extends ServiceProvider
@@ -45,7 +43,7 @@ class LaravelModuleMakerServiceProvider extends ServiceProvider
         DoctorCommand::class,
         CreateTestDatabaseCommand::class,
         SetupModuleMakerCommand::class,
-        PublishFrontendCommand::class,
+        PublishStubsCommand::class,
         TestCommand::class,
     ];
 
@@ -58,15 +56,6 @@ class LaravelModuleMakerServiceProvider extends ServiceProvider
 
         // Alias del middleware para uso en rutas: Route::middleware('innodite.bridge')
         $this->app['router']->aliasMiddleware('innodite.bridge', InnoditeContextBridge::class);
-
-        // El enchufe del criterio. Quien pregunta pide la INTERFAZ; qué implementación llega lo dice
-        // la configuración. Es lo que hace que conectar el criterio remoto sea cambiar una clave en
-        // vez de tocar los comandos que preguntan.
-        $this->app->bind(ProveedorDeCriterio::class, function ($app) {
-            $clase = config('make-module.criterio.proveedor', CriterioLocal::class);
-
-            return $app->make(is_string($clase) && class_exists($clase) ? $clase : CriterioLocal::class);
-        });
 
         // Aquí vivía el singleton `innodite.module_seeder`. Construía un InnoditeModuleSeeder
         // y le llamaba a setModuleSeeders() — un método que esa clase nunca tuvo—, así que resolverlo
@@ -94,14 +83,6 @@ class LaravelModuleMakerServiceProvider extends ServiceProvider
             $this->publishes([
                 __DIR__ . '/../stubs/contexts.json' => base_path('module-maker-config/contexts.json'),
             ], 'module-maker-contexts');
-
-            // ── Publicar composables y componentes Vue 3 ──────────────────────
-            // Los dos grupos van bajo el mismo tag: la vista generada importa de ambos, así que
-            // publicar solo uno deja la pantalla con imports que no resuelven.
-            $this->publishes([
-                __DIR__ . '/../stubs/resources/js/Composables' => resource_path('js/Composables'),
-                __DIR__ . '/../stubs/resources/js/Components'  => resource_path('js/Components'),
-            ], 'module-maker-frontend');
 
             // ── First-run: sugerir setup si module-maker-config/ no existe ────
             $this->detectFirstInstall();

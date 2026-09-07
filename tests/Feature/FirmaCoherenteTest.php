@@ -35,8 +35,8 @@ it('los diez se presentan igual, y con la versión que corre', function () {
         'innodite:crear-bd-test'    => ['--connection' => 'fantasma'],
         'innodite:migrate-one'      => ['coordinate' => 'Fantasma:Central/no-existe.php'],
         'innodite:migrate-plan'     => ['--context' => 'central'],
-        'innodite:publish-frontend' => ['--dry-run' => true],
         'innodite:module-setup'     => ['--dry-run' => true],
+        'innodite:publish-stubs'    => [],
         'innodite:test'             => ['module' => 'Fantasma', 'subfeature' => 'Cosa'],
     ];
 
@@ -64,7 +64,7 @@ it('los diez se presentan igual, y con la versión que corre', function () {
 });
 
 it('una sola forma de decir «no me preguntes»', function () {
-    // Eran dos: `--force` en deploy y publish-frontend, `--yes` en migrate-one. Dos nombres para la
+    // Eran dos: `--force` en deploy y en el retirado publish-frontend, `--yes` en migrate-one. Dos nombres para la
     // misma orden significan que hay que recordar cuál va con cuál, y quien no lo recuerda escribe la
     // que usó ayer.
     foreach (comandosDelPaquete() as $nombre => $comando) {
@@ -93,7 +93,7 @@ it('el ensayo se describe igual en los ocho que lo tienen', function () {
 it('los argumentos se nombran en inglés, como el resto del código', function () {
     // Y no es solo la norma: `entorno` era el único en español entre nueve comandos, así que
     // Artisan::call(['entorno' => …]) fallaba para quien hubiera leído cualquiera de los otros ocho.
-    $conocidos = ['module', 'entity', 'name', 'subfeature', 'environment', 'coordinate'];
+    $conocidos = ['module', 'entity', 'name', 'subfeature', 'environment', 'coordinate', 'stub'];
 
     foreach (comandosDelPaquete() as $nombre => $comando) {
         foreach (array_keys($comando->getDefinition()->getArguments()) as $argumento) {
