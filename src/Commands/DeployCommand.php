@@ -199,8 +199,9 @@ class DeployCommand extends Command
     /**
      * Las rutas del orden de despliegue que son de este módulo, en el contexto pedido.
      *
-     * ⚠️ **El despliegue de `tenant` cubre tres claves** —`tenant`, `tenant_shared` y `shared`—,
-     * como el del proyecto: son la misma base de datos vista desde tres formas de compartir lógica.
+     * Una clave por contexto, y ya está. Aquí `tenant` cubría **tres** —`tenant`, `tenant_shared` y
+     * `shared`—, que eran la misma base de datos vista desde tres formas de compartir lógica. Con
+     * dos contextos, cada uno es el suyo.
      *
      * @return array<int, string>
      */
@@ -212,11 +213,7 @@ class DeployCommand extends Command
             return [];
         }
 
-        $claves = match ($contexto) {
-            'tenant' => ['tenant', 'tenant_shared', 'shared'],
-            null     => null,
-            default  => [$contexto],
-        };
+        $claves = $contexto === null ? null : [$contexto];
 
         $rutas = [];
 
@@ -454,8 +451,8 @@ class DeployCommand extends Command
             $this->fallo(
                 "'{$opcion}' no es un despliegue.",
                 'usa ' . implode(' | ', self::DESPLIEGUES) . '.',
-                'No es la clave del orden de despliegue, sino la base que se llena: el despliegue de '
-                . "tenant cubre 'tenant', 'tenant_shared' y 'shared'."
+                'No es la clave del orden de despliegue, sino la base que se llena: la de la '
+                . 'aplicación central, o la de cada inquilino.'
             );
 
             return false;

@@ -7,17 +7,22 @@ return [
     |--------------------------------------------------------------------------
     |
     | Decide la forma de todo lo que se genera: si existe el eje de contexto
-    | (Central/Tenant), si los nombres de clase llevan prefijo, si un tenant
-    | declara su propia conexión y qué middleware protege cada ruta.
+    | (Central/Tenant), si los nombres de clase llevan prefijo, si el modelo declara
+    | conexión y qué middleware protege cada ruta.
     |
     | Ningún comando lo adivina leyendo el proyecto ni asume uno por defecto:
     | adivinar produce archivos que parecen correctos y están mal en el único
     | sitio que nadie revisa, multiplicado por cada módulo. Sin modo elegido,
     | los comandos se niegan a generar y dicen cómo elegirlo.
     |
-    |   'single-app'              Aplicación única, sin tenancy
-    |   'multitenant-shared'      Todos los tenants comparten funcionalidad
-    |   'multitenant-per-tenant'  Cada tenant con lógica de negocio propia
+    |   'single-app'   Aplicación única, sin tenancy
+    |   'multitenant'  Aplicación central e inquilinos
+    |
+    | ⚠️ En la 4.x los dos modos multiinquilino se unieron en uno. Si tu proyecto declara
+    | 'multitenant-shared' o 'multitenant-per-tenant', los comandos se niegan a generar y
+    | dicen qué escribir: toda la diferencia entre ellos era nombrar a cada inquilino y
+    | declararle conexión, y las dos cosas resultaron equivocadas. Si necesitas un contexto
+    | propio para un cliente, decláralo en module-maker-config/contexts.json.
     |
     */
     'mode' => env('MODULE_MAKER_MODE'),

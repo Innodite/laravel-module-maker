@@ -230,15 +230,16 @@ class DoctorCommand extends Command
      * Every sub-context declares the four keys the resolver cannot work without.
      *
      * `route_file` is deliberately NOT one of them, and the old command demanded it — which made it
-     * reject the very contexts.json that `innodite:module-setup` publishes, because `shared` does not
-     * declare one. That absence is not an omission: it is how a context says it lives in *both* route
-     * files, and {@see \Innodite\LaravelModuleMaker\Generators\Components\RouteGenerator} reads it that
-     * way. A diagnostic that fails the package's own default installation teaches people to ignore the
+     * reject the very contexts.json that `innodite:module-setup` publishes. A context that declares
+     * none lives in *both* route files, and
+     * {@see \Innodite\LaravelModuleMaker\Generators\Components\RouteGenerator} reads it that way. A
+     * diagnostic that fails the package's own default installation teaches people to ignore the
      * diagnostic.
      *
-     * The shape is hybrid on purpose: `central`, `shared` and `tenant_shared` are single objects, while
-     * `tenant` is an indexed list of them. Iterating without normalising was defect ERROR-001 — a
-     * TypeError on every run.
+     * **Every context is an object now.** Until 4.x the shape was hybrid — `tenant` was an indexed
+     * list of named tenants — and iterating it without normalising was defect ERROR-001, a TypeError
+     * on every run. The normalisation stays because a project may still declare a list of its own,
+     * and a diagnostic that crashes on a catalogue it merely dislikes is worse than one that reads it.
      *
      * @param  array<string, mixed>  $contexts
      */

@@ -164,11 +164,22 @@ trait HasStubs
     }
 
     /**
-     * Normaliza la carpeta de contexto para usarla en la ruta de stubs.
-     * Mapea claves de contexto ("central") o carpetas ("Tenant/Shared") al nombre de carpeta de stubs.
+     * Normaliza la carpeta de contexto para usarla en la ruta de stubs del PROYECTO.
+     *
+     * Acepta la clave (`central`, `tenant`) o la carpeta ya escrita (`Central`, `Tenant`), y
+     * devuelve el nombre de carpeta bajo el que un proyecto puede poner una plantilla distinta para
+     * ese contexto: `module-maker-config/stubs/contextual/Central/controller.stub`.
+     *
+     * ⛔ El paquete NO trae carpetas por contexto —solo `contextual/`—, y esto es solo el nivel 1 de
+     * la resolución. Traía cuatro (`Central`, `Shared`, `TenantShared`, `TenantName`) idénticas byte
+     * a byte a la plantilla base y que le ganaban en prioridad: corregir la base sin tocar sus cuatro
+     * copias no cambiaba nada.
+     *
+     * Un contexto que el proyecto declare por su cuenta cae en `null`, y eso es correcto: usará la
+     * plantilla genérica, que es la que hay.
      *
      * @param  string|null  $context  Clave de contexto o carpeta de contexto
-     * @return string|null  Nombre de carpeta de stubs (ej: "Central", "TenantShared", "TenantName")
+     * @return string|null  Nombre de carpeta de stubs (ej: "Central", "Tenant")
      */
     private function normalizeContextFolder(?string $context): ?string
     {
@@ -176,28 +187,11 @@ trait HasStubs
             return null;
         }
 
-        // Si ya es una carpeta con slash (ej: "Tenant/Shared"), extraer el nombre de carpeta de stubs
-        $map = [
-            'central'       => 'Central',
-            'shared'        => 'Shared',
-            'tenant_shared' => 'TenantShared',
-            'tenant'        => 'TenantName',
-            // Carpetas directas
-            'Central'         => 'Central',
-            'Shared'          => 'Shared',
-            'Tenant/Shared'   => 'TenantShared',
-        ];
-
-        if (isset($map[$context])) {
-            return $map[$context];
-        }
-
-        // Tenants específicos (ej: "Tenant/INNODITE") → TenantName
-        if (str_starts_with($context, 'Tenant/') && $context !== 'Tenant/Shared') {
-            return 'TenantName';
-        }
-
-        return null;
+        return match ($context) {
+            'central', 'Central' => 'Central',
+            'tenant',  'Tenant'  => 'Tenant',
+            default              => null,
+        };
     }
 
     /**

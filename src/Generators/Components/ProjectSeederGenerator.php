@@ -174,10 +174,11 @@ class ProjectSeederGenerator
     /**
      * Qué despliegues necesita este proyecto — lo decide el modo, no el contenido del proyecto.
      *
-     * La clave es la del despliegue (`--context` del comando), no la del array `deploy`: un
-     * despliegue de tenant cubre **varias** claves del orden, porque `tenant`, `tenant_shared` y
-     * `shared` viven en la misma base de datos. Que cuáles son quede escrito en el archivo generado
-     * —y no aquí— es lo que permite corregirlo en un proyecto donde `shared` viva en la central.
+     * La clave es la del despliegue (`--context` del comando) y coincide con la del array `deploy`,
+     * porque hay dos contextos y cada uno tiene su base. Aquí el despliegue del inquilino cubría
+     * **tres** claves —`tenant`, `tenant_shared` y `shared`—, que eran la misma base vista desde tres
+     * formas de compartir lógica. Que cuáles son quede escrito en el archivo generado —y no aquí— es
+     * lo que permite ajustarlo en un proyecto que declare contextos propios.
      *
      * @return array<string, array{label: string, doc: string, contexts: array<int, string>}>
      */
@@ -199,10 +200,10 @@ class ProjectSeederGenerator
                 'contexts' => ['central'],
             ],
             'tenant' => [
-                'label'    => 'Despliegue de un tenant',
-                'doc'      => 'Las claves que viven en la base del tenant. Si en tu proyecto '
-                    . "'shared' vive en la central, quítala de aquí y añádela al despliegue central.",
-                'contexts' => ['tenant', 'tenant_shared', 'shared'],
+                'label'    => 'Despliegue de un inquilino',
+                'doc'      => 'Las claves que viven en la base del inquilino. Si declaras contextos '
+                    . 'propios, añádelos a la lista de arriba.',
+                'contexts' => ['tenant'],
             ],
         ];
     }

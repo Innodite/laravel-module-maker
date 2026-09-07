@@ -33,7 +33,7 @@ class SetupModuleMakerCommand extends Command
     use ReportsFailures;
 
     protected $signature = 'innodite:module-setup
-        {--mode= : Modo del proyecto: single-app | multitenant-shared | multitenant-per-tenant}
+        {--mode= : Modo del proyecto: single-app | multitenant}
         {--tenancy= : Paquete de tenencia del proyecto (solo multitenant): stancl | none}
         {--frontend= : Contra qué se generan las vistas: default | innodite}
         {--dry-run : Ensayo: enseña lo que instalaría, sin escribir nada}';
