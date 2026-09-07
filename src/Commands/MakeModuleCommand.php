@@ -380,10 +380,9 @@ class MakeModuleCommand extends Command
      * Resuelve el contexto desde --context o via selección interactiva.
      *
      * Orden de resolución:
-     *   1. Si --context=X y X es una clave directa (central, shared, tenant_shared) → usar
-     *   2. Si --context=X y X coincide con name/class_prefix de un tenant → usar ese tenant
-     *   3. Si --context vacío → selección interactiva
-     *   4. Si nada coincide → error con lista de disponibles
+     *   1. Si --context=X y X es una clave del catálogo (central, tenant) → usar
+     *   2. Si --context vacío → selección interactiva
+     *   3. Si nada coincide → error con la lista de los disponibles
      *
      * @return array{0: string, 1: array}  [contextKey, contextItem]
      * @throws \InvalidArgumentException
@@ -424,7 +423,7 @@ class MakeModuleCommand extends Command
             // Detectar si es array asociativo (contexto único) vs array indexado (lista)
             $isAssociative = array_keys($item) !== range(0, count($item) - 1);
 
-            // Array asociativo → contexto único (central, shared, tenant_shared)
+            // Array asociativo → contexto único (central, tenant)
             if ($isAssociative) {
                 return [$option, $item];
             }
@@ -506,9 +505,12 @@ class MakeModuleCommand extends Command
     /**
      * Carga todos los contextos desde contexts.json.
      *
-     * ARQUITECTURA HÍBRIDA:
-     *   - central, shared, tenant_shared → objetos únicos (acceso directo)
-     *   - tenant → array de objetos (múltiples instancias)
+     * Cada contexto es un objeto y se accede por su clave: `central` y `tenant`.
+     *
+     * ⛔ *Historia:* hasta la 4.x el catálogo era híbrido y `tenant` era una LISTA de inquilinos
+     * nombrados. De ahí sale la rama de array indexado que este comando todavía distingue más
+     * abajo — se conserva porque un proyecto puede declarar su propio contexto y no se le va a
+     * romper la carga por una forma que antes era válida.
      *
      * @throws \InvalidArgumentException Si no hay contexts.json o está vacío
      */

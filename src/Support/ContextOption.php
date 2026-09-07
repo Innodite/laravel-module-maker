@@ -22,9 +22,9 @@ use InvalidArgumentException;
  *                            `central-permission`, for a subfeature that was meant for
  *                            tenants. The file is perfectly written and completely wrong.
  *
- *   context ≠ mode           Error. Generating for a named tenant under `multitenant-shared`
- *                            produces precisely what that mode exists to avoid: one copy per
- *                            tenant of identical logic.
+ *   context ≠ mode           Error. Generating into the wrong axis produces a module that reads
+ *                            as correct and is not: routes in the wrong file, guarded by the
+ *                            other context's permission.
  *
  * It lives here and not inside a command because BOTH commands that generate — `make-module`
  * and `add-entity` — need the same three answers. They used to each carry their own copy of
@@ -74,8 +74,8 @@ final class ContextOption
                 . "'{$mode->value}'.\n"
                 . '  · FIX: usa uno de los de este modo — ' . implode(', ', $mode->requiredContextKeys())
                 . ".\n"
-                . '  Generar para un tenant nombrado en el modo de tenants iguales produce justo lo que'
-                . ' ese modo evita: una copia por tenant de lógica idéntica.'
+                . '  Generar en el eje equivocado produce un módulo que parece correcto y no lo es:'
+                . " las rutas en el archivo que no es\n  y protegidas con el permiso de otro contexto."
             );
         }
     }

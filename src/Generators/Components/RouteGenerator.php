@@ -16,17 +16,14 @@ use Innodite\LaravelModuleMaker\Support\TenancyPackage;
  *
  * Comportamientos según contexto:
  *
- *   central       → routes/web.php, envuelto en foreach central_domains,
- *                   prefijo 'central-{functionality}', middleware central-permission
+ *   central → routes/web.php, envuelto en foreach central_domains,
+ *             prefijo 'central-{functionality}', middleware central-permission
  *
- *   shared        → routes/web.php, prefijo 'shared-{functionality}',
- *                   middleware central-permission
+ *   tenant  → routes/tenant.php, prefijo 'tenant-{functionality}',
+ *             middleware tenant-permission
  *
- *   tenant_shared → routes/tenant.php, genera un bloque por CADA tenant específico
- *                   definido en contexts.json (generates_routes_for_all_tenants = false),
- *                   el controlador apunta al TenantShared
- *
- *   tenant_alpha  → routes/tenant.php, un solo bloque para ese tenant
+ * Un bloque por subfuncionalidad y **un solo contexto por archivo**: el archivo declara las rutas
+ * de su contexto y de ninguno más.
  *
  * Si el archivo ya existe, agrega la nueva sección sin sobreescribir las existentes.
  * Usa marcadores de comentario para saber dónde insertar.
@@ -135,9 +132,12 @@ class RouteGenerator extends AbstractComponentGenerator
      * que dicen ser. Solo está en el sitio equivocado.
      *
      * **El catálogo ya tenía la respuesta y no se leía**: cada contexto declara su `route_file`.
-     * `central` dice `web.php`; `tenant_shared` y los tenants dicen `tenant.php`; `shared` **no
-     * declara ninguno**, y esa ausencia es su forma de decir que vive en los dos — es el único que
-     * de verdad es dual.
+     * `central` dice `web.php` y `tenant` dice `tenant.php`, y eso es todo lo que hay que preguntar.
+     *
+     * ⛔ *Historia:* cuando el catálogo traía cuatro claves, la pregunta tenía más filo — `shared`
+     * no declaraba archivo, y esa ausencia significaba que vivía en los dos. Con dos contextos ya no
+     * hay ambigüedad que resolver, pero el principio se queda: **quien decide dónde va una ruta es
+     * el catálogo, no una condición escrita aquí**.
      *
      * @param  string  $routesDir   Ruta al directorio de rutas del módulo
      * @param  array   $context     Configuración del contexto ya resuelta
@@ -472,11 +472,12 @@ class RouteGenerator extends AbstractComponentGenerator
      * dentro de un archivo que ya existía, el resultado no parsea —`unexpected token "<"`— y el
      * chequeo de salida lo rechaza, así que la generación aborta entera.
      *
-     * Y no era un caso raro: es exactamente lo que pasa en `tenant_shared`, donde cada tenant
-     * escribe su bloque con **su propio marcador** en el mismo `tenant.php`. El primero creaba el
-     * archivo y el segundo no encontraba el suyo. Es decir, el contexto principal del modo
-     * `multitenant-shared` no podía generar en cuanto el proyecto tenía dos tenants — que es el
-     * caso normal de ese modo.
+     * Y no era un caso raro. ⛔ *Historia, de cuando había cuatro contextos:* en `tenant_shared`
+     * cada tenant escribía su bloque con **su propio marcador** en el mismo `tenant.php`; el primero
+     * creaba el archivo y el segundo no encontraba el suyo, así que el contexto principal de aquel
+     * modo no podía generar en cuanto el proyecto tenía dos tenants — el caso normal de ese modo.
+     * Ese contexto ya no existe, pero el defecto que destapó sí sigue siendo posible: **cualquier
+     * segundo bloque en un archivo existente pasa por este camino**.
      *
      * @param  string             $filePath     Ruta absoluta al archivo de rutas
      * @param  string             $fullContent  Contenido completo, solo para el archivo nuevo

@@ -9,10 +9,14 @@ use Illuminate\Support\Str;
 /**
  * Genera la interfaz y la implementación del servicio respetando la convención de contextos.
  *
- * Ejemplos de salida según contexto:
- *   central        → Services/Central/CentralUserService.php + Services/Central/Contracts/CentralUserServiceInterface.php
- *   tenant_shared  → Services/Tenant/Shared/TenantSharedUserService.php + .../Contracts/TenantSharedUserServiceInterface.php
- *   tenant_alpha   → Services/Tenant/Alpha/TenantAlphaUserService.php + .../Contracts/...
+ * Ejemplos de salida, con la subfuncionalidad por delante y el contexto como hoja:
+ *   central          → User/Services/Central/CentralUserService.php
+ *   tenant           → User/Services/Tenant/TenantUserService.php
+ *   aplicación única → User/Services/UserService.php
+ *
+ * El contrato NO lleva contexto: es uno por subfuncionalidad —
+ * User/Services/Contracts/UserServiceInterface.php— porque las dos implementaciones cumplen el
+ * mismo, que es justo lo que permite inyectar una u otra según dónde corra.
  */
 class ServiceGenerator extends AbstractComponentGenerator
 {

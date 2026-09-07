@@ -193,7 +193,7 @@ class ModuleGenerator
      * Crea un módulo limpio con contexto explícito.
      * Aplica prefijos de clase y subcarpetas según el contexto seleccionado.
      *
-     * @param  string       $contextKey    Clave del contexto (ej: 'central', 'tenant', 'tenant_shared')
+     * @param  string       $contextKey    Clave del contexto: 'central' o 'tenant'
      * @param  string       $functionality Nombre funcional para prefijo de ruta (ej: 'users')
      * @param  string|null  $contextId   Valor del campo 'id' del sub-contexto
      * @return void
