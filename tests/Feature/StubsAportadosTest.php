@@ -74,8 +74,8 @@ it('sin nadie que aporte nada, lo generado es exactamente lo del paquete', funct
     $vista = $this->generateModule('Invoice', ModuleMode::SingleApp)
         ->contents('resources/js/Pages/Invoice/InvoiceIndex.vue');
 
-    expect($vista)->toContain('useModuleContext')
-        ->and($vista)->toContain('window.route(contextRoute(');
+    expect($vista)->toContain("window.route('")
+        ->and($vista)->toContain('usePage');
 });
 
 it('con dos paquetes aportando el mismo stub gana el primero por orden alfabético', function () {

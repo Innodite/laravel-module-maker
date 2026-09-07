@@ -109,6 +109,14 @@ class VueGenerator extends AbstractComponentGenerator
             // dejan de coincidir en cuanto tiene dos. El síntoma no es un error de compilación: es
             // un `route()` que no encuentra la ruta, ya en el navegador del usuario.
             'routeBase'          => $this->getFunctionality(),
+            // El nombre COMPLETO de la ruta, con el prefijo de su contexto ya puesto.
+            //
+            // Antes lo componía la vista en tiempo de ejecución, con un composable que leía el
+            // contexto activo de las props de Inertia. Es el mismo caso que la ruta de la pantalla:
+            // el generador **sabe** en qué contexto escribe —es él quien elige el prefijo de las
+            // rutas—, así que resolverlo aquí evita un composable, una lectura por petición y un
+            // `if` de modo delante de cada llamada.
+            'routeName'          => ($this->getContext()['route_name'] ?? '') . $this->getFunctionality(),
             'subFeaturePlural'   => Str::kebab(Str::plural(Str::snake($this->modelName))),
             'subFeatureSingular' => Str::kebab(Str::snake($this->modelName)),
             'subFeatureLabel'    => $this->modelName,

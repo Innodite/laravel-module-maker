@@ -108,7 +108,7 @@ it('el despliegue en ensayo dice qué correría y no toca la base', function () 
 });
 
 it('la opción está en los que escriben o tocan una base, y en ninguno más', function () {
-    // D2. Ponerla en los diez habría quedado más simétrico y habría sido peor: una opción que no
+    // D2. Ponerla en los nueve habría quedado más simétrico y habría sido peor: una opción que no
     // cambia nada enseña que la opción no cambia nada, y entonces se omite el día que sí importaba.
     $comandos = Artisan::all();
 
@@ -116,7 +116,6 @@ it('la opción está en los que escriben o tocan una base, y en ninguno más', f
         'innodite:make-module',      // escribe el módulo entero
         'innodite:add-entity',       // escribe la subfuncionalidad nueva
         'innodite:module-setup',     // escribe la instalación en el proyecto
-        'innodite:publish-frontend', // escribe en resources/js
         'innodite:deploy',           // corre seeders contra una base real
         'innodite:migrate-one',      // ya la tenía: aplica una migración
         'innodite:crear-bd-test',    // crea una base de datos

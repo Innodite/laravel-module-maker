@@ -4,6 +4,42 @@ Todo cambio que afecte a quien usa el paquete. El formato sigue
 [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y las versiones,
 [SemVer](https://semver.org/lang/es/).
 
+## [Sin publicar]
+
+### Cambiado
+
+> **Nota de versión.** La v4 **todavía no se ha publicado ni está en uso**, así que estos cambios
+> entran en la propia 4.x en vez de esperar a una mayor. Lo que se describe abajo como «qué se
+> rompe» aplica a quien hubiera generado módulos con una 4.x preliminar.
+
+- **Retirado el trait `RendersInertiaModule`.** El controlador generado llama ahora a
+  `Inertia::render()` con la ruta literal de su vista, como cualquier controlador de Laravel.
+
+  **Por qué.** La ruta se componía en **tiempo de ejecución**: en cada petición el trait leía
+  `contexts.json`, deducía la carpeta desde el prefijo del nombre del componente y comprobaba que el
+  archivo existiera. Eso metía los dos modos en una sola pieza —tenía que preguntar si el proyecto
+  tenía eje de contexto para decidir si exigir prefijo— y ponía un `if` de configuración delante de
+  cada pantalla, de modo que un error de configuración se convertía en una pantalla que no abre.
+
+  El generador **ya sabe** en qué contexto escribe, porque es él quien elige la carpeta del `.vue`.
+  Así que ahora escribe la ruta entera:
+
+  ```php
+  Inertia::render('Invoice::Invoice/InvoiceIndex');                        // aplicación única
+  Inertia::render('Invoice::Central/Invoice/CentralInvoiceIndex');         // central
+  Inertia::render('Invoice::Tenant/TenantOne/Invoice/TenantOneInvoiceIndex');
+  ```
+
+  ⚠️ **Qué se rompe.** Los controladores generados con una 4.x preliminar importan el trait. Al
+  retirarlo, esas clases dejan de resolver y el proveedor del módulo revienta **en el arranque**: no
+  es una pantalla caída, es la aplicación entera sin responder, incluido el `artisan` con el que se
+  arreglaría. Se regeneran o se migran a mano con las cuatro líneas de abajo.
+
+  **Cómo se migra**, controlador a controlador: quitar el `use` del trait y el `use
+  RendersInertiaModule;` del cuerpo, añadir `use Inertia\Inertia;`, y sustituir
+  `$this->renderModule('<Modulo>', '<ruta>')` por `Inertia::render('<Modulo>::<carpeta><ruta>')`,
+  donde `<carpeta>` es la del contexto (vacía en aplicación única).
+
 ## [4.2.0] — 05/09/2026
 
 **Por qué MINOR y no MAYOR.** Todo lo de abajo **añade** o **corrige**: nada cambia la forma de lo

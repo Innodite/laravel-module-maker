@@ -94,32 +94,3 @@ it('el FIX dice qué hacer, no repite el fallo con otras palabras', function () 
     );
 });
 
-it('publicar el frontend sin frontend que publicar también dice qué hacer', function () {
-    // Este no entra en el conjunto de arriba: su fallo no se provoca con un parámetro malo, sino con
-    // un proyecto al que le falta `resources/js`. Invocarlo sin más publica correctamente, así que
-    // una prueba de dataset habría dado verde sin comprobar nada.
-    $js     = resource_path('js');
-    $aparte = $js . '_apartado';
-    $habia  = File::isDirectory($js);
-
-    if ($habia) {
-        File::moveDirectory($js, $aparte);
-    }
-
-    try {
-        $salida = salidaDelFallo('innodite:publish-frontend');
-
-        expect(str_contains($salida, 'FALLA:'))->toBeTrue(
-            "FALLA: publicar sin resources/js no marca el fallo.\nLa salida dice:\n{$salida}"
-        );
-        expect(str_contains($salida, 'FIX:'))->toBeTrue(
-            "FALLA: publicar sin resources/js dice qué pasó y no qué hacer.\nLa salida dice:\n{$salida}"
-        );
-    } finally {
-        File::deleteDirectory($js);
-
-        if ($habia) {
-            File::moveDirectory($aparte, $js);
-        }
-    }
-});

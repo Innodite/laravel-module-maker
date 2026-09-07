@@ -193,7 +193,7 @@ it('la vista generada pide una ruta real, no el nombre del placeholder', functio
 
     $index = File::get("{$modulePath}/resources/js/Pages/Role/RoleIndex.vue");
 
-    expect(str_contains($index, "contextRoute('roles.list')"))->toBeTrue(
+    expect(str_contains($index, "window.route('roles.list')"))->toBeTrue(
         'Aquí es donde B15 dolía de verdad: con el placeholder literal, la vista pedía la ruta '
         . "'{{ entityPlural }}.index' y la pantalla no cargaba nada.\n"
         . 'Y desde la fase 5 pide `list`, no `index`: son dos rutas distintas a propósito — `index` '

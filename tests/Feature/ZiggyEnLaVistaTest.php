@@ -12,7 +12,7 @@ use Innodite\LaravelModuleMaker\Support\Ziggy;
  *
  * **Las dos mitades de esto son inseparables y por eso viven en el mismo archivo.**
  *
- * La primera es una decisión de diseño: las vistas piden `route(contextRoute('invoices.list'))` y
+ * La primera es una decisión de diseño: las vistas piden `window.route('invoices.list')` y
  * nunca escriben la dirección. Es lo correcto —cambiar un prefijo en el archivo de rutas no obliga
  * a tocar ni una vista— y lo que se comprueba abajo es que siga siendo así, porque la tentación de
  * «simplificar» a una URL literal aparece cada vez que algo no resuelve.
@@ -64,9 +64,9 @@ it('las cuatro vistas piden sus rutas por el nombre, nunca escribiendo la direcc
     foreach (['Index', 'Create', 'Edit', 'Show'] as $pieza) {
         $vista = $modulo->contents("resources/js/Pages/Invoice/Invoice{$pieza}.vue");
 
-        expect(str_contains($vista, 'contextRoute('))->toBeTrue(
+        expect(str_contains($vista, "window.route('"))->toBeTrue(
             "FALLA: Invoice{$pieza}.vue ya no pide sus rutas por el nombre. · FIX: la vista llama a "
-            . 'route(contextRoute(...)); escribir la dirección a mano ata cada pantalla al prefijo '
+            . 'window.route("<nombre>"); escribir la dirección a mano ata cada pantalla al prefijo '
             . 'del archivo de rutas.'
         );
 
@@ -75,7 +75,7 @@ it('las cuatro vistas piden sus rutas por el nombre, nunca escribiendo la direcc
         // sin que nada avise.
         expect(preg_match('#axios\.\w+\(\s*[`\'"]/#', $vista))->toBe(0,
             "FALLA: Invoice{$pieza}.vue le pasa a axios una dirección escrita a mano. · FIX: pídela "
-            . 'por su nombre con route(contextRoute(...)).'
+            . 'por su nombre con window.route("<nombre>").'
         );
     }
 });
@@ -89,7 +89,7 @@ it('la llamada va por window.route, que es lo que define la directiva del layout
     foreach (['Index', 'Create', 'Edit', 'Show'] as $pieza) {
         $vista = $modulo->contents("resources/js/Pages/Invoice/Invoice{$pieza}.vue");
 
-        preg_match_all('/(?<!window\.)\broute\(contextRoute\(/', $vista, $sueltas);
+        preg_match_all("/(?<!window\.)\broute\('/", $vista, $sueltas);
 
         expect($sueltas[0])->toBeEmpty(
             "FALLA: Invoice{$pieza}.vue llama a route() sin `window.`. · FIX: `window.route(...)`. "

@@ -6,10 +6,8 @@
  * modal correspondiente; «Eliminar» emite `eliminado` y el índice recarga la tabla. Así hay un solo
  * componente que sabe qué registro se está mirando.
  */
-import { ref, onMounted } from 'vue'
-import { useModuleContext } from '@/Composables/useModuleContext'
-import { usePermissions } from '@/Composables/usePermissions'
-import { useAvisos } from '@/Composables/useAvisos'
+import { computed, ref, onMounted } from 'vue'
+import { usePage } from '@inertiajs/vue3'
 import InnoditeModal from '@/Components/InnoditeModal.vue'
 
 const emit = defineEmits(['editar', 'eliminado', 'cerrar'])
@@ -19,22 +17,38 @@ const props = defineProps({
 })
 
 /**
- * Las rutas se piden **por su nombre**, nunca escribiendo la dirección: el nombre lo resuelve
- * Ziggy con el mapa que publica el servidor, así que cambiar un prefijo en el archivo de rutas no
- * obliga a tocar ni una vista. `contextRoute()` le antepone el contexto activo.
+ * Los permisos del usuario, tal y como el backend los comparte por Inertia.
  *
- * Va por `window.` por lo mismo que `window.axios`: la directiva `@routes` del layout define
- * `route` y `Ziggy` en el ámbito global del navegador, y ese es el único punto de entrada que vale
- * igual en las dos versiones de Ziggy. Importarlo de `ziggy-js` solo funciona en la v2.
+ * Van escritos aquí, en la propia pantalla, y no importados de un composable del generador. Son
+ * tres líneas que no cambian nunca, y a cambio esta vista **no depende de ningún archivo que el
+ * paquete tenga que dejar en tu proyecto** — uno copiado deja de actualizarse el día que se copia.
  *
- * ⛔ Si la pantalla muere al abrirse con `route is not defined`, no falta nada de este módulo:
- * falta Ziggy, o falta `@routes` en el layout. `php artisan innodite:doctor` lo dice con su arreglo.
+ * Si prefieres tu propio composable, sustitúyelas: esto es un punto de partida, no una jaula.
+ * Lo único imprescindible es que `HandleInertiaRequests` comparta `auth.permissions`; el
+ * diagnóstico del paquete lo exige y da el bloque exacto (`php artisan innodite:doctor`).
  */
-const { contextRoute } = useModuleContext()
-const { can }          = usePermissions()
+const permisos = computed(() => usePage().props?.auth?.permissions ?? [])
+const can = (permiso) => permisos.value.includes(permiso)
 
 /** Avisos y confirmación: los pinta el componente montado en el listado. */
-const { exito, error: avisarError, confirmar, mensajeDeError } = useAvisos()
+/**
+ * Los mensajes de la pantalla, sin `alert()` y sin depender de ningún componente externo.
+ *
+ * `error` es el fallo que impide ver los datos y se queda escrito; `aviso` es la confirmación de
+ * que algo salió bien. Son dos cosas distintas y por eso conviven — un fallo que deja la tabla
+ * vacía no es un mensaje que se desvanece.
+ */
+const aviso = ref(null)
+
+function avisar(mensaje) {
+    aviso.value = mensaje
+    setTimeout(() => (aviso.value = null), 5000)
+}
+
+/** El mensaje que venga del servidor, y si no viene, el nuestro. */
+function mensajeDeError(err, porDefecto) {
+    return err?.response?.data?.message ?? porDefecto
+}
 
 const item    = ref(null)
 const loading = ref(false)
@@ -54,12 +68,12 @@ async function fetchItem() {
     loading.value = true
     try {
         const { data } = await window.axios.get(
-            window.route(contextRoute('{{{ routeBase }}}.show'), { id: props.id })
+            window.route('{{{ routeName }}}.show', { id: props.id })
         )
         item.value = data
     } catch (err) {
         // Se cierra el modal y el aviso permanece: el estado es compartido, no de este componente.
-        avisarError(mensajeDeError(err, 'No se pudo cargar el registro.'))
+        error.value = mensajeDeError(err, 'No se pudo cargar el registro.')
         goBack()
     } finally {
         loading.value = false
@@ -69,22 +83,18 @@ async function fetchItem() {
 async function destroy() {
     if (!can('{{{ permViewDestroy }}}')) return
 
-    const confirmado = await confirmar('Esta acción no se puede deshacer.', {
-        titulo: 'Eliminar registro',
-        textoConfirmar: 'Eliminar',
-        peligrosa: true,
-    })
-
-    if (!confirmado) return
+    // Con un <dialog> nativo: no bloquea el navegador como `confirm()`, se puede estilar y se
+    // puede probar — y no depende de ningún componente de terceros.
+    if (! await pedirConfirmacion()) return
 
     try {
         await window.axios.delete(
-            window.route(contextRoute('{{{ routeBase }}}.destroy'), { id: props.id })
+            window.route('{{{ routeName }}}.destroy', { id: props.id })
         )
-        exito('Registro eliminado.')
+        avisar('Registro eliminado.')
         emit('eliminado')
     } catch (err) {
-        avisarError(mensajeDeError(err, 'No se pudo eliminar el registro.'))
+        error.value = mensajeDeError(err, 'No se pudo eliminar el registro.')
     }
 }
 
@@ -97,6 +107,28 @@ function goBack() {
 }
 
 onMounted(() => fetchItem())
+
+/**
+ * La confirmación, con el `<dialog>` del navegador.
+ *
+ * Devuelve una promesa que se resuelve cuando el usuario elige, así que quien la llama la espera
+ * igual que esperaría a `confirm()` — pero sin bloquear la página, con una ventana que se puede
+ * estilar, y que una prueba puede abrir y pulsar.
+ */
+const dialogo = ref(null)
+let resolverConfirmacion = null
+
+function pedirConfirmacion() {
+    dialogo.value?.showModal()
+
+    return new Promise((resolve) => (resolverConfirmacion = resolve))
+}
+
+function responder(respuesta) {
+    dialogo.value?.close()
+    resolverConfirmacion?.(respuesta)
+    resolverConfirmacion = null
+}
 </script>
 
 <template>
@@ -140,7 +172,25 @@ onMounted(() => fetchItem())
             <div>
                 <span class="block text-xs font-medium text-gray-500">Actualizado</span>
                 <span class="text-sm text-gray-800">{{ item.updated_at }}</span>
+            
+        <!--
+            La confirmación de borrado, con el <dialog> del navegador. Nativo a propósito: no hace
+            falta ningún componente y una prueba puede abrirlo y pulsar sus botones.
+        -->
+        <dialog ref="dialogo" class="rounded-xl p-0 backdrop:bg-black/40">
+            <div class="w-80 p-5">
+                <h2 class="text-base font-semibold text-gray-800">Eliminar registro</h2>
+                <p class="mt-2 text-sm text-gray-600">Esta acción no se puede deshacer.</p>
+                <div class="mt-5 flex justify-end space-x-2">
+                    <button data-test="confirmar-no" @click="responder(false)"
+                        class="px-3 py-1.5 text-sm text-gray-600 hover:text-gray-800">Cancelar</button>
+                    <button data-test="confirmar-si" @click="responder(true)"
+                        class="rounded-lg bg-red-600 px-3 py-1.5 text-sm text-white hover:bg-red-700">Eliminar</button>
+                </div>
             </div>
+        </dialog>
+
+    </div>
         </template>
 
         <p v-else-if="!loading" class="sm:col-span-2 text-center text-sm text-gray-400 py-6">

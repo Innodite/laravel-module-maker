@@ -35,6 +35,7 @@ class SetupModuleMakerCommand extends Command
     protected $signature = 'innodite:module-setup
         {--mode= : Modo del proyecto: single-app | multitenant-shared | multitenant-per-tenant}
         {--tenancy= : Paquete de tenencia del proyecto (solo multitenant): stancl | none}
+        {--frontend= : Contra qué se generan las vistas: default | innodite}
         {--dry-run : Ensayo: enseña lo que instalaría, sin escribir nada}';
 
     protected $description = 'Configura el paquete: elige el modo del proyecto y crea module-maker-config/ en el project root.';
@@ -100,6 +101,11 @@ class SetupModuleMakerCommand extends Command
         $modulesPath = config('make-module.module_path');
         $this->ensureDirectory($modulesPath, "Modules/");
 
+        // ── El frontend: contra qué se generan las vistas ─────────────────────
+        // No configura nada del proyecto —eso no es de este paquete—: solo decide con qué
+        // componentes se escriben las pantallas que genere.
+        $this->configureFrontend();
+
         // ── Carpeta de configuración (project root) ───────────────────────────
         $configPath = config('make-module.config_path');
         $this->ensureDirectory($configPath, "module-maker-config/");
@@ -107,11 +113,20 @@ class SetupModuleMakerCommand extends Command
         // ── config/make-module.php ────────────────────────────────────────────
         $this->publishPackageConfig();
 
-        // ── Stubs ─────────────────────────────────────────────────────────────
-        $this->publishStubs($configPath);
+        // ── Los stubs NO se publican al instalar ──────────────────────────────
+        //
+        // ⛔ Publicarlos aquí dejaba 37 copias congeladas en cada proyecto, y una copia no se
+        // actualiza nunca más: quien instale una versión nueva del paquete seguirá generando con
+        // las plantillas del día que instaló, sin un solo aviso. Personalizar stubs es una decisión
+        // deliberada y por eso tiene su propio comando: `innodite:publish-stubs`.
 
-        // ── contexts.json ─────────────────────────────────────────────────────
-        $this->publishContextsJson($configPath, $mode);
+        // ── contexts.json, solo donde hay contextos ───────────────────────────
+        //
+        // En aplicación única el catálogo salía con `{"contexts": {}}` — un archivo vacío que había
+        // que explicar cada vez y que no decide nada. Donde no hay eje de contexto no hay catálogo.
+        if ($mode?->hasContextAxis()) {
+            $this->publishContextsJson($configPath, $mode);
+        }
 
         // ── Seeders de despliegue del proyecto ────────────────────────────────
         // Son del proyecto y no de un módulo —uno, o dos en multitenant—, así que se escriben al
@@ -124,9 +139,15 @@ class SetupModuleMakerCommand extends Command
 
         $this->newLine();
         $this->hecho("Configuración completa.");
-        $this->line("  → Edita <comment>module-maker-config/contexts.json</comment> con los contextos de tu proyecto.");
-        $this->line("  → Personaliza stubs en <comment>module-maker-config/stubs/contextual/</comment>.");
-        $this->line("  → Ejecuta: <comment>php artisan innodite:make-module NombreModulo SubFuncionalidad</comment>");
+
+        if ($mode?->hasContextAxis()) {
+            $this->line("  → Edita <comment>module-maker-config/contexts.json</comment> con los contextos de tu proyecto.");
+        }
+
+        $this->line("  → Ejecuta: <comment>php artisan innodite:make-module NombreModulo</comment>");
+        $this->newLine();
+        $this->line("  <fg=gray>¿Quieres personalizar lo que se genera? <comment>php artisan innodite:publish-stubs</comment></>");
+        $this->line("  <fg=gray>⚠️ Una plantilla copiada deja de actualizarse con el paquete: copia solo las que vayas a tocar.</>");
 
         return self::SUCCESS;
     }
@@ -278,6 +299,79 @@ class SetupModuleMakerCommand extends Command
         // choice() devuelve la etiqueta cuando las claves son strings; se recupera el valor.
         return TenancyPackage::tryFrom($respuesta)
             ?? TenancyPackage::tryFrom((string) array_search($respuesta, $etiquetas, true));
+    }
+
+    // ─── El frontend ──────────────────────────────────────────────────────────
+
+    /**
+     * Decide contra qué biblioteca se escriben las vistas generadas.
+     *
+     * ⛔ **No instala ni configura nada del frontend.** Ni composables, ni componentes, ni
+     * `app.js`, ni el middleware de Inertia. Este paquete GENERA; quien monta el andamiaje del
+     * frontend es el proyecto, o la biblioteca de interfaz que lo instale.
+     *
+     * La dirección de esa dependencia va en un solo sentido y conviene tenerla clara: **la
+     * biblioteca de la casa instala este paquete, y este paquete nunca la instala a ella**. Es un
+     * paquete público; declararla como dependencia obligaría a todo el que lo instale a poder
+     * descargar un producto que no es suyo.
+     *
+     * Por eso el modo `innodite` no arrastra nada: solo cambia la forma de las vistas que se
+     * escriben, dando por hecho que la biblioteca ya está montada en el proyecto.
+     */
+    private function configureFrontend(): void
+    {
+        $elegido = $this->resolveFrontend();
+
+        $this->persistEnvKey('MODULE_MAKER_FRONTEND', $elegido, 'frontend');
+
+        $descripcion = $elegido === 'innodite'
+            ? 'con los componentes de la biblioteca de la casa'
+            : 'autónomas, sin depender de ninguna biblioteca';
+
+        $this->components->twoColumnDetail('Vistas generadas', "<fg=green>{$elegido}</> — {$descripcion}");
+
+        if ($elegido === 'innodite') {
+            $this->line('  <fg=gray>El andamiaje del frontend lo instala la biblioteca, no este paquete.</>');
+        }
+
+        $this->newLine();
+    }
+
+    /** El valor pedido por opción, o preguntado — con `default` como respuesta segura. */
+    private function resolveFrontend(): string
+    {
+        $opcion = $this->option('frontend');
+
+        if (is_string($opcion) && $opcion !== '') {
+            if (in_array($opcion, ['default', 'innodite'], true)) {
+                return $opcion;
+            }
+
+            $this->fallo(
+                "«{$opcion}» no es un frontend soportado.",
+                'usa <comment>default</comment> o <comment>innodite</comment>.',
+                'Se continúa con «default», que no depende de ninguna biblioteca.'
+            );
+
+            return 'default';
+        }
+
+        // A diferencia del modo, aquí SÍ hay respuesta por defecto y no se detiene la instalación:
+        // elegir mal el frontend produce vistas que hay que reescribir, no una estructura equivocada
+        // multiplicada por cada módulo. Y `default` funciona en cualquier proyecto.
+        if (! $this->input->isInteractive()) {
+            return 'default';
+        }
+
+        $respuesta = $this->choice(
+            '  ¿Con qué componentes se generan las vistas?',
+            ['default', 'innodite'],
+            'default',
+            null,
+            false
+        );
+
+        return $respuesta === 'innodite' ? 'innodite' : 'default';
     }
 
     // ─── Escritura en el .env ─────────────────────────────────────────────────

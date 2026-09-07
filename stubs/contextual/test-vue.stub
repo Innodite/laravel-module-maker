@@ -19,21 +19,22 @@ import {{{ vueComponent }}} from '{{{ rutaAlComponente }}}';
  * cambio de copy: no puede romper una prueba de permisos.
  */
 
-/** Los permisos que el componente ve; el composable del proyecto se sustituye por este doble. */
+/**
+ * Los permisos que el componente ve.
+ *
+ * Llegan por donde llegan de verdad: las props que `HandleInertiaRequests` comparte. La vista no
+ * importa ningún composable del paquete —lee `usePage()` y comprueba la lista—, así que el doble
+ * que hace falta aquí es el de Inertia y no el de una pieza nuestra.
+ */
 let permisosConcedidos = [];
 
-vi.mock('@/Composables/usePermissions', () => ({
-    usePermissions: () => ({
-        can: (permiso) => permisosConcedidos.includes(permiso),
-    }),
+vi.mock('@inertiajs/vue3', () => ({
+    usePage: () => ({ props: { auth: { permissions: permisosConcedidos } } }),
 }));
 
-vi.mock('@/Composables/useModuleContext', () => ({
-    useModuleContext: () => ({
-        contextRoute: (nombre) => `/${nombre}`,
-        moduleContext: '',
-    }),
-}));
+/** `route()` la publica Ziggy en el navegador; en la prueba basta con que devuelva algo estable. */
+window.route = (nombre, parametros) =>
+    '/' + nombre.split('.').join('/') + (parametros?.id ? `/${parametros.id}` : '');
 
 /**
  * La respuesta que el listado espera de `list`: una página con **un registro**.
