@@ -41,7 +41,7 @@ class DeployCommand extends Command
 
     protected $signature = 'innodite:deploy
         {environment : Qué se despliega: stage | production}
-        {--context= : Contexto contra el que se despliega, en multitenant: central | tenant}
+        {--context= : Contexto contra el que se despliega, en multitenant: central | tenant. En aplicación única no se pasa}
         {--module= : Despliega SOLO este módulo, por sus maestros. Sin él, el proyecto entero}
         {--tenant= : Qué tenant se despliega, por su clave. Una ejecución por tenant}
         {--all : Despliega TODOS los tenants, uno tras otro}
