@@ -282,7 +282,7 @@ abstract class AbstractComponentGenerator
      * Patrón: `Modules\{Module}\{SubFeature}\{Type}\{ContextNs}`
      * Ej: buildNamespace('Http\\Controllers') → 'Modules\User\Role\Http\Controllers\Central'
      *
-     * ⛔ El orden importa y hasta la 4.x estaba al revés — `{Type}\{ContextNs}\{SubFeature}`—, con
+     * ⛔ El orden importa y hasta la 4.x estuvo al revés — `{Type}\{ContextNs}\{SubFeature}`—, con
      * dos consecuencias. Una, que el árbol se leía por capas y no por funcionalidad: para ver qué
      * tiene `Role` había que abrir doce carpetas. Y dos, la que costaba de verdad: con el contexto
      * por delante, cada capa duplicaba su rama entera por contexto.
