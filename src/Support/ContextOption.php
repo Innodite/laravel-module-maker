@@ -22,9 +22,17 @@ use InvalidArgumentException;
  *                            `central-permission`, for a subfeature that was meant for
  *                            tenants. The file is perfectly written and completely wrong.
  *
- *   context ≠ mode           Error. Generating into the wrong axis produces a module that reads
- *                            as correct and is not: routes in the wrong file, guarded by the
- *                            other context's permission.
+ *   context not in the       Error, listing what the catalogue does have. Generating into the wrong
+ *   catalogue                axis produces a module that reads as correct and is not: routes in the
+ *                            wrong file, guarded by the other context's permission.
+ *
+ * ⭐ **The catalogue decides, not a list of names.** This guard used to reject any key the MODE did
+ * not know, which meant it rejected the very thing the package promises: that a project may declare
+ * a context of its own. Everything downstream was already ready for one — the generator reads
+ * `permission_prefix`, `permission_middleware` and `route_middleware` from the catalogue and only
+ * falls back to the mode when they are empty; the route file comes from `route_file`; the connection
+ * from `connection_key`; `is_tenant` says whether it is a tenant. Every half was right except this
+ * one, which is this package's recurring defect shape.
  *
  * It lives here and not inside a command because BOTH commands that generate — `make-module`
  * and `add-entity` — need the same three answers. They used to each carry their own copy of
@@ -68,12 +76,11 @@ final class ContextOption
             );
         }
 
-        if ($option !== '' && isset($allContexts[$option]) && ! $mode->supportsContext($option)) {
+        if ($option !== '' && ! isset($allContexts[$option])) {
             throw new InvalidArgumentException(
-                "FALLA: el contexto '{$option}' existe en contexts.json pero no corresponde al modo "
-                . "'{$mode->value}'.\n"
-                . '  · FIX: usa uno de los de este modo — ' . implode(', ', $mode->requiredContextKeys())
-                . ".\n"
+                "FALLA: el contexto '{$option}' no está en contexts.json.\n"
+                . '  · FIX: escribe uno de los que hay — ' . self::catalogo($allContexts) . ", o "
+                . "declara el tuyo en module-maker-config/contexts.json.\n"
                 . '  Generar en el eje equivocado produce un módulo que parece correcto y no lo es:'
                 . " las rutas en el archivo que no es\n  y protegidas con el permiso de otro contexto."
             );

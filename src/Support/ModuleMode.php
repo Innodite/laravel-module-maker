@@ -166,8 +166,15 @@ enum ModuleMode: string
     /**
      * Context keys this mode ACCEPTS in `--context`.
      *
-     * Wider than what the catalogue has to declare: a project may add contexts of its own, and
-     * generating into one that exists is not an error just because the diagnostic did not demand it.
+     * ⛔ These are the FACTORY keys, and this method cannot be the whole answer: a project may add
+     * contexts of its own, and this enum has no way of knowing about them. Whether a given key can
+     * be generated into is decided by {@see \Innodite\LaravelModuleMaker\Support\ContextOption},
+     * which has the project's catalogue in front of it — a key that the catalogue declares is valid
+     * even though this list does not name it.
+     *
+     * Saying otherwise here is not a wording detail: while this method was treated as the whole
+     * answer, the package rejected every context a project declared, which is the one thing the
+     * catalogue's own README promises it can do.
      *
      * @return array<int, string>
      */
