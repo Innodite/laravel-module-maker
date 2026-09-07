@@ -4,6 +4,59 @@ Todo cambio que afecte a quien usa el paquete. El formato sigue
 [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y las versiones,
 [SemVer](https://semver.org/lang/es/).
 
+## [5.0.1] — 07/09/2026
+
+**Versión de corrección.** No cambia nada de lo que el paquete genera: quien esté en la `5.0.0`
+puede actualizar sin tocar un solo archivo de sus módulos.
+
+El motivo es que **la 5.0.0 se contaba a sí misma como la versión anterior**. Cambió la forma de todo
+lo generado, pero la ayuda de los comandos y el manual publicado seguían describiendo la 4.x.
+
+### Corregido
+
+- **La ayuda de `--context` ofrecía contextos que esta versión retiró.** Los cuatro comandos que la
+  piden —`make-module`, `add-entity`, `test`, `migrate-one`— anunciaban
+  `central | shared | tenant_shared | id del tenant`, y de esos solo `central` y `tenant` existen.
+  Quien elegía uno de los otros recibía un rechazo, y lo había elegido porque la ayuda se lo ofreció.
+
+  Ahora dicen los dos que hay, y además **qué hacer en aplicación única**, que no estaba escrito en
+  ningún sitio: no se pasa contexto. `deploy` tampoco lo decía.
+
+- **⭐ El paquete rechazaba generar en un contexto declarado por el proyecto.** `contexts.json` dice
+  por escrito que un proyecto puede añadir el suyo, y `ContextOption` lo negaba: preguntaba al MODO,
+  que solo conoce los dos de fábrica.
+
+  Todo lo demás ya estaba listo —el prefijo de permisos, el middleware, el archivo de rutas, la
+  conexión y `is_tenant` salen del catálogo—, así que era una guarda contradiciendo a nueve piezas.
+  Ahora la pregunta es si la clave está en el catálogo; si no está, el error lista las que hay y
+  recuerda que se puede declarar una propia.
+
+- **Los docblocks de los generadores dibujaban el árbol anterior**, con la capa por delante. Lo que
+  describe el comportamiento de hoy se corrigió contra lo que afirman las pruebas; lo que explica
+  **por qué** se retiró algo se conserva, marcado como historia.
+
+- **El README prometía tres cosas que no existen**: el composable `useModuleContext`, el tag
+  `vendor:publish --tag=module-maker-frontend` y una tercera etapa del diagnóstico. Los tres se
+  fueron en versiones anteriores; quien los siguiera se encontraba con un `import` que no resuelve,
+  un `vendor:publish` que no publica nada y un `doctor` con una etapa menos de las anunciadas.
+
+### Añadido
+
+- **El manual, sobre esta versión** — nueve fichas: instalación, elegir el modo, **la forma del
+  árbol**, los comandos, crear un módulo, desplegar, las pruebas, personalizar lo generado y cuándo
+  NO usarlo. Se lee en `docs/`, y la página se **genera** desde los `.md`, que son su fuente única.
+
+- **Una prueba que compara lo que la ayuda ofrece con lo que el paquete admite.** No había nada que
+  mirase la ayuda —las pruebas medían lo que los comandos hacen—, y por eso el desfase sobrevivió una
+  versión mayor entera.
+
+### Retirado
+
+- `docs/migracion-v3-a-v4.md`: documentaba el salto entre dos versiones, y ninguna de las dos es la
+  actual. Sigue en el historial de Git.
+
+---
+
 ## [5.0.0] — 07/09/2026
 
 **Versión MAYOR**, y el motivo es uno solo: **cambia la forma de todo lo que el paquete escribe**.
