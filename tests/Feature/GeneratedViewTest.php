@@ -32,8 +32,8 @@ it('la vista pide exactamente los nombres de ruta que el módulo declara', funct
     $vista = $modulo->contents('resources/js/Pages/Invoice/InvoiceIndex.vue');
     $rutas = $modulo->contents('Routes/web.php');
 
-    // Cada `contextRoute('algo.accion')` de la vista tiene que existir como ruta con ese nombre.
-    preg_match_all("/contextRoute\('([^']+)'\)/", $vista, $encontrados);
+    // Cada `window.route('algo.accion')` de la vista tiene que existir como ruta con ese nombre.
+    preg_match_all("/window\.route\('([^']+)'/", $vista, $encontrados);
 
     expect($encontrados[1])->not->toBeEmpty('La vista no llama a ninguna ruta: algo se rompió antes.');
 
@@ -61,7 +61,7 @@ it('el listado pide el endpoint de datos, no la pantalla', function () {
     $vista = $this->generateModule('Invoice', ModuleMode::SingleApp)
         ->contents('resources/js/Pages/Invoice/InvoiceIndex.vue');
 
-    expect(str_contains($vista, "axios.get(window.route(contextRoute('invoices.list'))"))->toBeTrue(
+    expect(str_contains($vista, "axios.get(window.route('invoices.list')"))->toBeTrue(
         'FALLA: el listado no pide `list`. · FIX: `index` devuelve la pantalla; los datos están en '
         . "`list`, y cada una tiene su permiso propio.\nLa vista dice:\n" . $vista
     );
@@ -75,7 +75,7 @@ it('ningún route() de la vista recibe el nombre de un permiso', function () {
     foreach (['Index', 'Create', 'Edit', 'Show'] as $pieza) {
         $vista = $modulo->contents("resources/js/Pages/Invoice/Invoice{$pieza}.vue");
 
-        preg_match_all("/contextRoute\('([^']+)'\)/", $vista, $encontrados);
+        preg_match_all("/window\.route\('([^']+)'/", $vista, $encontrados);
 
         foreach ($encontrados[1] as $nombre) {
             expect(str_contains($nombre, 'view_'))->toBeFalse(
@@ -146,29 +146,28 @@ it('ninguna pantalla generada avisa con alert() ni pregunta con confirm()', func
     }
 });
 
-it('el listado monta el componente de avisos, y lo monta una sola vez', function () {
-    // El estado de los avisos es compartido por el módulo, así que el componente que los pinta va
-    // en la pantalla raíz. Montarlo también dentro de cada modal duplicaría cada mensaje y, peor,
-    // haría desaparecer el aviso al cerrar el modal que lo lanzó — que es justo cuando hay algo que
-    // contar: «no se pudo cargar el registro» se lanza y se cierra en la misma línea.
-    $modulo = $this->generateModule('Invoice', ModuleMode::SingleApp);
+it('el listado avisa y confirma sin depender de ningún componente externo', function () {
+    // ⭐ Antes montaba un componente que publicaba el propio paquete. Ya no publica ninguno: el
+    // aviso y la confirmación viven en la propia pantalla, con un <dialog> nativo del navegador.
+    // Así la vista generada no depende de un archivo que el paquete tenga que dejar en el proyecto
+    // — y uno copiado deja de actualizarse el día que se copia.
+    $index = $this->generateModule('Invoice', ModuleMode::SingleApp)
+        ->contents('resources/js/Pages/Invoice/InvoiceIndex.vue');
 
-    $index = $modulo->contents('resources/js/Pages/Invoice/InvoiceIndex.vue');
-
-    expect(substr_count($index, '<InnoditeAviso'))->toBe(
-        1,
-        'FALLA: el listado no monta exactamente un <InnoditeAviso />. · FIX: uno, y en el índice: '
-        . "es el que sobrevive al cierre de los modales.\nLa vista dice:\n" . $index
+    expect(substr_count($index, '<dialog ref='))->toBe(1,
+        'FALLA: el listado no monta exactamente un <dialog>. · FIX: la confirmación de borrado va '
+        . 'con el <dialog> nativo, uno por pantalla.'
     );
 
-    foreach (['Create', 'Edit', 'Show'] as $modal) {
-        $vista = $modulo->contents("resources/js/Pages/Invoice/Invoice{$modal}.vue");
+    expect(str_contains($index, 'data-test="confirmar-si"'))->toBeTrue(
+        'FALLA: el diálogo no tiene botón de confirmar localizable. · FIX: márcalo con data-test, '
+        . 'que es por donde lo busca la prueba de vista.'
+    );
 
-        expect(str_contains($vista, '<InnoditeAviso'))->toBeFalse(
-            "FALLA: Invoice{$modal}.vue monta su propio <InnoditeAviso />. · FIX: usa useAvisos() "
-            . 'para lanzar el mensaje; pintarlo es cosa del listado.'
-        );
-    }
+    expect(str_contains($index, 'v-if="aviso"'))->toBeTrue(
+        'FALLA: el listado no pinta el aviso de éxito. · FIX: `aviso` es el ref local que rellena '
+        . 'avisar(), y se dibuja en la pantalla.'
+    );
 });
 
 it('crear, ver y editar se dibujan como modal y no como pantalla suelta', function () {

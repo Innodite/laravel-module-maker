@@ -18,38 +18,44 @@
  * Los `can()` de abajo son permisos **de vista**, distintos de los que protegen cada ruta: ocultar un
  * botón no protege el endpoint, y proteger el endpoint no limpia la pantalla. Se emiten los dos.
  */
-import { ref, onMounted } from 'vue'
-import { useModuleContext } from '@/Composables/useModuleContext'
-import { usePermissions } from '@/Composables/usePermissions'
-import { useAvisos } from '@/Composables/useAvisos'
-import InnoditeAviso from '@/Components/InnoditeAviso.vue'
+import { computed, ref, onMounted } from 'vue'
+import { usePage } from '@inertiajs/vue3'
 import {{{ vueComponentBase }}}Create from './{{{ vueComponentBase }}}Create.vue'
 import {{{ vueComponentBase }}}Edit from './{{{ vueComponentBase }}}Edit.vue'
 import {{{ vueComponentBase }}}Show from './{{{ vueComponentBase }}}Show.vue'
 
 /**
- * Las rutas se piden **por su nombre**, nunca escribiendo la dirección: el nombre lo resuelve
- * Ziggy con el mapa que publica el servidor, así que cambiar un prefijo en el archivo de rutas no
- * obliga a tocar ni una vista. `contextRoute()` le antepone el contexto activo.
+ * Los permisos del usuario, tal y como el backend los comparte por Inertia.
  *
- * Va por `window.` por lo mismo que `window.axios`: la directiva `@routes` del layout define
- * `route` y `Ziggy` en el ámbito global del navegador, y ese es el único punto de entrada que vale
- * igual en las dos versiones de Ziggy. Importarlo de `ziggy-js` solo funciona en la v2.
+ * Van escritos aquí, en la propia pantalla, y no importados de un composable del generador. Son
+ * tres líneas que no cambian nunca, y a cambio esta vista **no depende de ningún archivo que el
+ * paquete tenga que dejar en tu proyecto** — uno copiado deja de actualizarse el día que se copia.
  *
- * ⛔ Si la pantalla muere al abrirse con `route is not defined`, no falta nada de este módulo:
- * falta Ziggy, o falta `@routes` en el layout. `php artisan innodite:doctor` lo dice con su arreglo.
+ * Si prefieres tu propio composable, sustitúyelas: esto es un punto de partida, no una jaula.
+ * Lo único imprescindible es que `HandleInertiaRequests` comparta `auth.permissions`; el
+ * diagnóstico del paquete lo exige y da el bloque exacto (`php artisan innodite:doctor`).
  */
-const { contextRoute } = useModuleContext()
-const { can } = usePermissions()
+const permisos = computed(() => usePage().props?.auth?.permissions ?? [])
+const can = (permiso) => permisos.value.includes(permiso)
 
 /**
- * Los avisos y la confirmación, sin `alert()` ni `confirm()`.
+ * Los mensajes de la pantalla, sin `alert()` y sin depender de ningún componente externo.
  *
- * `error` se renombra al desestructurar porque abajo hay un `error` propio: el de «la tabla no
- * cargó», que se queda escrito en la pantalla. Son dos cosas distintas —un fallo que impide ver los
- * datos no es un mensaje que se desvanece a los seis segundos— y por eso conviven.
+ * `error` es el fallo que impide ver los datos y se queda escrito; `aviso` es la confirmación de
+ * que algo salió bien. Son dos cosas distintas y por eso conviven — un fallo que deja la tabla
+ * vacía no es un mensaje que se desvanece.
  */
-const { error: avisarError, exito, confirmar, mensajeDeError } = useAvisos()
+const aviso = ref(null)
+
+function avisar(mensaje) {
+    aviso.value = mensaje
+    setTimeout(() => (aviso.value = null), 5000)
+}
+
+/** El mensaje que venga del servidor, y si no viene, el nuestro. */
+function mensajeDeError(err, porDefecto) {
+    return err?.response?.data?.message ?? porDefecto
+}
 
 const items   = ref([])
 const loading = ref(false)
@@ -71,7 +77,7 @@ async function fetchItems(page = 1) {
     loading.value = true
     error.value   = null
     try {
-        const { data } = await window.axios.get(window.route(contextRoute('{{{ routeBase }}}.list')), {
+        const { data } = await window.axios.get(window.route('{{{ routeName }}}.list'), {
             params: { page }
         })
         items.value = data.data
@@ -89,22 +95,16 @@ async function fetchItems(page = 1) {
 }
 
 async function destroy(id) {
-    // La confirmación devuelve una promesa, así que la espera se lee igual que antes con `confirm()`
-    // — pero sin bloquear el navegador y con una ventana que sí se puede estilar y probar.
-    const confirmado = await confirmar('El registro deja de aparecer, y se puede restaurar después.', {
-        titulo: 'Eliminar registro',
-        textoConfirmar: 'Eliminar',
-        peligrosa: true,
-    })
-
-    if (!confirmado) return
+    // La confirmación se pide en la propia pantalla, con un <dialog> nativo del navegador: no
+    // bloquea como `confirm()`, se puede estilar y se puede probar. Sin componentes de terceros.
+    if (! await pedirConfirmacion()) return
 
     try {
-        await window.axios.delete(window.route(contextRoute('{{{ routeBase }}}.destroy'), { id }))
-        exito('Registro eliminado.')
+        await window.axios.delete(window.route('{{{ routeName }}}.destroy', { id }))
+        avisar('Registro eliminado.')
         await fetchItems(meta.value.current_page)
     } catch (err) {
-        avisarError(mensajeDeError(err, 'No se pudo eliminar el registro.'))
+        error.value = mensajeDeError(err, 'No se pudo eliminar el registro.')
     }
 }
 
@@ -112,11 +112,11 @@ async function restore(id) {
     // Restaurar no pide confirmación: no destruye nada, y una ventana de por medio en la acción que
     // arregla un error hace que la gente deje de usarla y pida el arreglo por otro lado.
     try {
-        await window.axios.patch(window.route(contextRoute('{{{ routeBase }}}.restore'), { id }))
-        exito('Registro restaurado.')
+        await window.axios.patch(window.route('{{{ routeName }}}.restore', { id }))
+        avisar('Registro restaurado.')
         await fetchItems(meta.value.current_page)
     } catch (err) {
-        avisarError(mensajeDeError(err, 'No se pudo restaurar el registro.'))
+        error.value = mensajeDeError(err, 'No se pudo restaurar el registro.')
     }
 }
 
@@ -147,6 +147,28 @@ async function alGuardar() {
 }
 
 onMounted(() => fetchItems())
+
+/**
+ * La confirmación, con el `<dialog>` del navegador.
+ *
+ * Devuelve una promesa que se resuelve cuando el usuario elige, así que quien la llama la espera
+ * igual que esperaría a `confirm()` — pero sin bloquear la página, con una ventana que se puede
+ * estilar, y que una prueba puede abrir y pulsar.
+ */
+const dialogo = ref(null)
+let resolverConfirmacion = null
+
+function pedirConfirmacion() {
+    dialogo.value?.showModal()
+
+    return new Promise((resolve) => (resolverConfirmacion = resolve))
+}
+
+function responder(respuesta) {
+    dialogo.value?.close()
+    resolverConfirmacion?.(respuesta)
+    resolverConfirmacion = null
+}
 </script>
 
 <template>
@@ -304,13 +326,44 @@ onMounted(() => fetchItems())
             @cerrar="cerrarModal"
         />
 
-        <!--
-            Los avisos, montados **una sola vez** y aquí.
+        <!-- El aviso de que algo salió bien. Se va solo a los cinco segundos. -->
+        <p
+            v-if="aviso"
+            data-test="aviso"
+            class="mt-4 rounded-lg border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-800"
+        >
+            {{ aviso }}
+        </p>
 
-            El estado lo comparte `useAvisos`, así que los modales de arriba avisan por este mismo
-            componente. Montar uno dentro de cada modal duplicaría los mensajes, y además haría
-            desaparecer el aviso justo al cerrar el modal que lo lanzó — que es cuando hace falta.
+        <!--
+            La confirmación de borrado, con el <dialog> del navegador.
+
+            Nativo a propósito: no hace falta ningún componente, no bloquea la página como
+            `confirm()`, se puede estilar y una prueba puede abrirlo y pulsar sus botones.
         -->
-        <InnoditeAviso />
+        <dialog ref="dialogo" class="rounded-xl p-0 backdrop:bg-black/40">
+            <div class="w-80 p-5">
+                <h2 class="text-base font-semibold text-gray-800">Eliminar registro</h2>
+                <p class="mt-2 text-sm text-gray-600">
+                    El registro deja de aparecer, y se puede restaurar después.
+                </p>
+                <div class="mt-5 flex justify-end space-x-2">
+                    <button
+                        data-test="confirmar-no"
+                        @click="responder(false)"
+                        class="px-3 py-1.5 text-sm text-gray-600 hover:text-gray-800"
+                    >
+                        Cancelar
+                    </button>
+                    <button
+                        data-test="confirmar-si"
+                        @click="responder(true)"
+                        class="rounded-lg bg-red-600 px-3 py-1.5 text-sm text-white hover:bg-red-700"
+                    >
+                        Eliminar
+                    </button>
+                </div>
+            </div>
+        </dialog>
     </div>
 </template>

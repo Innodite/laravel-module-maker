@@ -10,35 +10,49 @@
  * back, y este formulario solo lo reparte por campo. Duplicar las reglas en el navegador crea dos
  * verdades que se separan a la primera.
  */
-import { ref } from 'vue'
-import { useModuleContext } from '@/Composables/useModuleContext'
-import { usePermissions } from '@/Composables/usePermissions'
-import { useAvisos } from '@/Composables/useAvisos'
+import { computed, ref } from 'vue'
+import { usePage } from '@inertiajs/vue3'
 import InnoditeModal from '@/Components/InnoditeModal.vue'
 
 const emit = defineEmits(['guardado', 'cerrar'])
 
 /**
- * Las rutas se piden **por su nombre**, nunca escribiendo la dirección: el nombre lo resuelve
- * Ziggy con el mapa que publica el servidor, así que cambiar un prefijo en el archivo de rutas no
- * obliga a tocar ni una vista. `contextRoute()` le antepone el contexto activo.
+ * Los permisos del usuario, tal y como el backend los comparte por Inertia.
  *
- * Va por `window.` por lo mismo que `window.axios`: la directiva `@routes` del layout define
- * `route` y `Ziggy` en el ámbito global del navegador, y ese es el único punto de entrada que vale
- * igual en las dos versiones de Ziggy. Importarlo de `ziggy-js` solo funciona en la v2.
+ * Van escritos aquí, en la propia pantalla, y no importados de un composable del generador. Son
+ * tres líneas que no cambian nunca, y a cambio esta vista **no depende de ningún archivo que el
+ * paquete tenga que dejar en tu proyecto** — uno copiado deja de actualizarse el día que se copia.
  *
- * ⛔ Si la pantalla muere al abrirse con `route is not defined`, no falta nada de este módulo:
- * falta Ziggy, o falta `@routes` en el layout. `php artisan innodite:doctor` lo dice con su arreglo.
+ * Si prefieres tu propio composable, sustitúyelas: esto es un punto de partida, no una jaula.
+ * Lo único imprescindible es que `HandleInertiaRequests` comparta `auth.permissions`; el
+ * diagnóstico del paquete lo exige y da el bloque exacto (`php artisan innodite:doctor`).
  */
-const { contextRoute } = useModuleContext()
-const { can }          = usePermissions()
+const permisos = computed(() => usePage().props?.auth?.permissions ?? [])
+const can = (permiso) => permisos.value.includes(permiso)
 
 /**
  * Los avisos no se pintan aquí: el componente que los muestra vive en el listado y el estado es
  * compartido. Por eso un mensaje lanzado desde este formulario sigue en pantalla después de que el
  * modal se cierre — que es exactamente cuando hay algo que contar.
  */
-const { exito, error: avisarError, mensajeDeError } = useAvisos()
+/**
+ * Los mensajes de la pantalla, sin `alert()` y sin depender de ningún componente externo.
+ *
+ * `error` es el fallo que impide ver los datos y se queda escrito; `aviso` es la confirmación de
+ * que algo salió bien. Son dos cosas distintas y por eso conviven — un fallo que deja la tabla
+ * vacía no es un mensaje que se desvanece.
+ */
+const aviso = ref(null)
+
+function avisar(mensaje) {
+    aviso.value = mensaje
+    setTimeout(() => (aviso.value = null), 5000)
+}
+
+/** El mensaje que venga del servidor, y si no viene, el nuestro. */
+function mensajeDeError(err, porDefecto) {
+    return err?.response?.data?.message ?? porDefecto
+}
 
 const form     = ref({})
 const errors   = ref({})
@@ -64,8 +78,8 @@ async function submit() {
     errors.value = {}
 
     try {
-        await window.axios.post(window.route(contextRoute('{{{ routeBase }}}.store')), form.value)
-        exito('Registro creado.')
+        await window.axios.post(window.route('{{{ routeName }}}.store'), form.value)
+        avisar('Registro creado.')
         emit('guardado')
     } catch (err) {
         if (err.response?.status === 422) {
@@ -73,7 +87,7 @@ async function submit() {
             // que diga «revisa el formulario» obliga a buscar cuál.
             errors.value = err.response.data.errors ?? {}
         } else {
-            avisarError(mensajeDeError(err, 'Error al guardar el registro.'))
+            error.value = mensajeDeError(err, 'Error al guardar el registro.')
         }
         console.error('[{{{ vueComponentName }}}]', err)
     } finally {
