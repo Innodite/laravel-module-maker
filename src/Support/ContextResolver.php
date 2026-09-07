@@ -10,9 +10,15 @@ use Innodite\LaravelModuleMaker\Exceptions\ContextNotFoundException;
 /**
  * Resuelve la configuración de contextos del proyecto desde contexts.json.
  *
- * Arquitectura v3.5.0 - Búsqueda Híbrida por ID:
- *   - central, shared, tenant_shared: Objetos directos (acceso O(1))
- *   - tenant: Array de objetos (búsqueda con Collection->firstWhere)
+ * **Cada contexto es un objeto, y se accede por su clave.** Hasta la 4.x el catálogo era híbrido:
+ * `central`, `shared` y `tenant_shared` eran objetos, y `tenant` una LISTA de inquilinos nombrados
+ * que había que recorrer. Esa lista es la que hacía que el modo de inquilinos iguales generara
+ * `Tenant/TenantOne/` —el nombre del primer cliente del catálogo, en un modo que existe para que no
+ * haya clientes nombrados— y la que hacía que un módulo declarara rutas hacia controladores que
+ * nadie escribió.
+ *
+ * Ahora los contextos son dos: `central` y `tenant`. Un proyecto que necesite otro lo declara en su
+ * propio catálogo, y como todos tienen la misma forma, declararlo no pide ningún caso especial.
  *
  * Prioridad de resolución:
  *   1. module-maker-config/contexts.json (project root)
@@ -28,15 +34,9 @@ class ContextResolver
     private static ?array $data = null;
 
     /**
-     * Retorna un contexto por su ID usando búsqueda híbrida.
+     * Retorna un contexto por su clave, comprobando que su id es el esperado.
      *
-     * Para contextos de objeto único (central, shared, tenant_shared):
-     *   - Acceso directo O(1)
-     *
-     * Para contexto tenant (array de tenants):
-     *   - Búsqueda con Collection->firstWhere('id', $id)
-     *
-     * @param  string  $contextKey  Clave del contexto (central|shared|tenant_shared|tenant)
+     * @param  string  $contextKey  Clave del contexto (central|tenant, o la que declare el proyecto)
      * @param  string  $id          ID del contexto a buscar
      * @return array<string, mixed>
      *
@@ -52,26 +52,12 @@ class ContextResolver
 
         $context = $all[$contextKey];
 
-        // Contextos de objeto único (central, shared, tenant_shared)
         if (is_array($context) && isset($context['id'])) {
             if ($context['id'] === $id) {
                 return $context;
             }
 
             throw ContextNotFoundException::forId($contextKey, $id, [$context['id']]);
-        }
-
-        // Contexto tenant (array de objetos)
-        if (is_array($context) && !isset($context['id'])) {
-            $collection = collect($context);
-            $found = $collection->firstWhere('id', $id);
-
-            if ($found !== null) {
-                return $found;
-            }
-
-            $availableIds = $collection->pluck('id')->filter()->toArray();
-            throw ContextNotFoundException::forId($contextKey, $id, $availableIds);
         }
 
         throw ContextNotFoundException::contextKeyNotFound($contextKey, array_keys($all));
@@ -100,44 +86,30 @@ class ContextResolver
         }
 
         throw new \InvalidArgumentException(
-            "[ContextResolver] El contexto '{$contextKey}' no es un objeto único. " .
-            "Usa resolveById() para contextos con múltiples items."
+            "[ContextResolver] El contexto '{$contextKey}' no tiene la forma de un contexto: "
+            . 'se esperaba un objeto con su `id`. Revisa module-maker-config/contexts.json.'
         );
     }
 
     /**
-     * Busca un contexto por su campo 'id' en toda la estructura híbrida.
+     * Busca un contexto por su campo 'id', mire la clave que mire.
      *
-     * Búsqueda Híbrida:
-     *   - central, shared, tenant_shared: acceso directo por clave, verifica que 'id' coincide
-     *   - tenant: itera el array con Collection->firstWhere('id', $id)
+     * Recorre el catálogo entero en vez de consultar una lista de claves conocidas: esa lista era
+     * lo que dejaba fuera cualquier contexto que declarase el proyecto y no estuviera escrito aquí.
      *
-     * @param  string  $id  ID del contexto a buscar (ej: 'central', 'tenant-one')
+     * @param  string  $id  ID del contexto a buscar (ej: 'central', 'tenant')
      * @return array<string, mixed>
      *
      * @throws ContextNotFoundException Si no se encuentra ningún contexto con ese ID
      */
     public static function find(string $id): array
     {
-        $all = self::all();
-
-        // 1. Acceso directo a contextos de objeto único (O(1))
-        foreach (['central', 'shared', 'tenant_shared'] as $key) {
-            if (isset($all[$key]) && is_array($all[$key]) && ($all[$key]['id'] ?? null) === $id) {
-                return $all[$key];
+        foreach (self::allItems() as $item) {
+            if (($item['id'] ?? null) === $id) {
+                return $item;
             }
         }
 
-        // 2. Búsqueda por iteración en el array de tenants
-        $tenants = $all['tenant'] ?? [];
-        if (is_array($tenants) && !isset($tenants['id'])) {
-            $found = collect($tenants)->firstWhere('id', $id);
-            if ($found !== null) {
-                return $found;
-            }
-        }
-
-        // 3. No encontrado → excepción descriptiva
         $available = collect(self::allItems())->pluck('id')->filter()->values()->toArray();
         throw ContextNotFoundException::forId('*', $id, $available);
     }
@@ -175,19 +147,6 @@ class ContextResolver
     }
 
     /**
-     * Retorna un tenant por su ID. Alias de resolveById('tenant', $id).
-     *
-     * @param  string  $id  ID del tenant
-     * @return array<string, mixed>
-     *
-     * @throws ContextNotFoundException Si el tenant no existe
-     */
-    public static function resolveTenant(string $id): array
-    {
-        return self::resolveById('tenant', $id);
-    }
-
-    /**
      * Retorna todos los contextos arquitectónicos.
      *
      * @return array<string, array|array<int, array>>
@@ -198,7 +157,11 @@ class ContextResolver
     }
 
     /**
-     * Retorna el array de tenants del proyecto.
+     * Los inquilinos NOMBRADOS que declare el catálogo.
+     *
+     * ⚠️ Con el catálogo de fábrica esto devuelve **vacío**, y es lo correcto: `tenant` es un
+     * contexto, no una lista de clientes. Sigue aquí porque un proyecto puede declarar su propia
+     * lista, y porque el generador de rutas todavía la consulta — eso se cierra al reescribirlo.
      *
      * @return array<int, array<string, mixed>>
      */
@@ -211,30 +174,17 @@ class ContextResolver
     }
 
     /**
-     * Retorna TODOS los contextos (central, shared, tenant_shared + todos los tenants)
-     * en un array plano para iteración.
+     * Todos los contextos del catálogo, en un array plano para iterar.
      *
      * @return array<int, array<string, mixed>>
      */
     public static function allItems(): array
     {
-        $all = self::all();
         $items = [];
 
-        foreach ($all as $key => $value) {
-            // Contexto de objeto único
+        foreach (self::all() as $value) {
             if (is_array($value) && isset($value['id'])) {
                 $items[] = $value;
-                continue;
-            }
-
-            // Contexto tenant (array de objetos)
-            if ($key === 'tenant' && is_array($value)) {
-                foreach ($value as $tenant) {
-                    if (is_array($tenant) && isset($tenant['id'])) {
-                        $items[] = $tenant;
-                    }
-                }
             }
         }
 

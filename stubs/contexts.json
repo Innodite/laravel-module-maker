@@ -1,9 +1,10 @@
 {
-    "_readme": "Plantilla de contextos v3.5.0. Configuración manual, explícita y limpia de middleware/permisos.",
+    "_readme": "El catálogo de contextos del proyecto. En multiinquilino hay DOS y solo dos: la aplicación central y el inquilino. Un proyecto que necesite otro lo declara aquí; el paquete no trae ninguno más de fábrica.",
 
     "contexts": {
         "central": {
             "id": "central",
+            "is_tenant": false,
             "tenancy_strategy": "manual",
             "connection_key": "central",
             "class_prefix": "Central",
@@ -14,57 +15,21 @@
             "route_name": "central.",
             "permission_prefix": "",
             "permission_middleware": "",
-            "route_middleware":[]
+            "route_middleware": []
         },
 
-        "shared": {
-            "id": "shared",
-            "class_prefix": "Shared",
-            "folder": "Shared",
-            "namespace_path": "Shared",
-            "route_prefix": "shared",
-            "route_name": "shared."
-        },
-
-        "tenant_shared": {
-            "id": "tenant-shared",
-            "class_prefix": "TenantShared",
-            "folder": "Tenant/Shared",
-            "namespace_path": "Tenant\\Shared",
+        "tenant": {
+            "id": "tenant",
+            "is_tenant": true,
+            "class_prefix": "Tenant",
+            "folder": "Tenant",
+            "namespace_path": "Tenant",
             "route_file": "tenant.php",
-            "route_prefix": "",
-            "route_name": ""
-        },
-
-        "tenant": [
-            {
-                "id": "tenant-one",
-                "tenancy_strategy": "manual",
-                "connection_key": "tenant_one",
-                "class_prefix": "TenantOne",
-                "folder": "Tenant/TenantOne",
-                "namespace_path": "Tenant\\TenantOne",
-                "route_file": "tenant.php",
-                "route_prefix": "tenant-one",
-                "route_name": "tenant-one.",
-                "permission_prefix": "",
-                "permission_middleware": "",
-                "route_middleware":[]
-            },
-            {
-                "id": "tenant-two",
-                "tenancy_strategy": "manual",
-                "connection_key": "tenant_two",
-                "class_prefix": "TenantTwo",
-                "folder": "Tenant/TenantTwo",
-                "namespace_path": "Tenant\\TenantTwo",
-                "route_file": "tenant.php",
-                "route_prefix": "tenant-two",
-                "route_name": "tenant-two.",
-                "permission_prefix": "",
-                "permission_middleware": "",
-                "route_middleware":[]
-            }
-        ]
+            "route_prefix": "tenant",
+            "route_name": "tenant.",
+            "permission_prefix": "",
+            "permission_middleware": "",
+            "route_middleware": []
+        }
     }
 }
