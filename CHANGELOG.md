@@ -6,7 +6,11 @@ Todo cambio que afecte a quien usa el paquete. El formato sigue
 
 ## [Sin publicar]
 
-### ⛔ Cambio que rompe — pide una versión mayor
+### Cambiado
+
+> **Nota de versión.** La v4 **todavía no se ha publicado ni está en uso**, así que estos cambios
+> entran en la propia 4.x en vez de esperar a una mayor. Lo que se describe abajo como «qué se
+> rompe» aplica a quien hubiera generado módulos con una 4.x preliminar.
 
 - **Retirado el trait `RendersInertiaModule`.** El controlador generado llama ahora a
   `Inertia::render()` con la ruta literal de su vista, como cualquier controlador de Laravel.
@@ -26,10 +30,10 @@ Todo cambio que afecte a quien usa el paquete. El formato sigue
   Inertia::render('Invoice::Tenant/TenantOne/Invoice/TenantOneInvoiceIndex');
   ```
 
-  ⚠️ **Qué se rompe al actualizar.** Los controladores **ya generados** con 4.x importan el trait. Al
+  ⚠️ **Qué se rompe.** Los controladores generados con una 4.x preliminar importan el trait. Al
   retirarlo, esas clases dejan de resolver y el proveedor del módulo revienta **en el arranque**: no
   es una pantalla caída, es la aplicación entera sin responder, incluido el `artisan` con el que se
-  arreglaría.
+  arreglaría. Se regeneran o se migran a mano con las cuatro líneas de abajo.
 
   **Cómo se migra**, controlador a controlador: quitar el `use` del trait y el `use
   RendersInertiaModule;` del cuerpo, añadir `use Inertia\Inertia;`, y sustituir
