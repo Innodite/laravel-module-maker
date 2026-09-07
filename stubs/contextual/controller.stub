@@ -7,8 +7,8 @@ namespace {{{ namespace }}};
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Routing\Controller;
+use Inertia\Inertia;
 use Inertia\Response as InertiaResponse;
-use Innodite\LaravelModuleMaker\Traits\RendersInertiaModule;
 use {{{ serviceInterfaceNamespace }}};
 use {{{ storeRequestNamespace }}};
 use {{{ updateRequestNamespace }}};
@@ -35,8 +35,6 @@ use {{{ updateRequestNamespace }}};
  */
 class {{{ controllerName }}} extends Controller
 {
-    use RendersInertiaModule;
-
     public function __construct(
         private readonly {{{ serviceInterface }}} ${{{ serviceInstance }}},
     ) {}
@@ -44,7 +42,7 @@ class {{{ controllerName }}} extends Controller
     /** La pantalla. Lo único que devuelve Inertia; todo lo demás de aquí responde JSON. */
     public function index(): InertiaResponse
     {
-        return $this->renderModule('{{{ module }}}', '{{{ viewName }}}');
+        return Inertia::render('{{{ module }}}::{{{ viewName }}}');
     }
 
     /** Los datos que la pantalla pide al montarse. Su permiso es distinto del de `index`. */

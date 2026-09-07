@@ -63,7 +63,24 @@ class ControllerGenerator extends AbstractComponentGenerator
         // `Pages/{Contexto}/{SubFuncionalidad}/`, y pedir solo el nombre del archivo hacía que el
         // trait buscara en `Pages/{Contexto}/` — un archivo que no está ahí. Ninguna prueba lo veía
         // porque todas comprobaban que la vista se GENERA, no que se RESUELVA.
-        $viewName           = $this->subFeatureName() . '/' . $this->prefixClass("{$this->modelName}Index");
+        // La ruta de la vista se resuelve AQUÍ, en generación, no en tiempo de ejecución.
+        //
+        // Antes la componía a medias un trait del paquete, que en cada petición leía `contexts.json`,
+        // deducía la carpeta del prefijo del nombre del componente y comprobaba que el archivo
+        // existiera. Eso mezclaba los dos modos en una sola pieza —tenía que preguntar si el
+        // proyecto tenía eje de contexto para decidir si exigir prefijo— y trasladaba a producción
+        // un cálculo cuya respuesta ya se conoce al generar: el generador **sabe** en qué contexto
+        // está escribiendo, porque es él quien elige la carpeta donde deja el `.vue`.
+        //
+        // Así que escribe la ruta entera y el controlador llama a `Inertia::render()` como cualquier
+        // controlador de Laravel. Sin trait, sin lectura de configuración por petición, y sin un
+        // `if` de modo en el camino de una pantalla.
+        $carpetaDeContexto  = $this->getContextFolder();
+        $viewName           = implode('/', array_filter([
+            $carpetaDeContexto,
+            $this->subFeatureName(),
+            $this->prefixClass("{$this->modelName}Index"),
+        ]));
 
         // Los dos FormRequests que reciben `store()` y `update()`. El nombre lo decide
         // `RequestNames`, que es de donde lo lee también el generador que los escribe: componerlo
