@@ -46,26 +46,28 @@ class ModuleMasterSeederGenerator extends AbstractComponentGenerator
     }
 
     /**
-     * `Database/Seeders/{Contexto}/Application/` — el contexto sí, la subfuncionalidad no.
+     * `Database/Seeders/Application/{Contexto}/` — el contexto sí, la subfuncionalidad no.
      *
-     * No se usa `buildPath()` porque ese añade la subfuncionalidad como último tramo, y un maestro no
-     * pertenece a ninguna: pertenece al módulo.
+     * No se usa `buildPath()` porque ese mete la subfuncionalidad como PRIMER tramo del módulo, y un
+     * maestro no pertenece a ninguna: pertenece al módulo y las recorre todas. Por eso vive junto a
+     * `Docs/`, `Routes/` y `Providers/`, al nivel del módulo, y no dentro de una subfuncionalidad
+     * cualquiera — que sería elegir una de ellas como dueña de algo que es de todas.
      */
     protected function masterDirectory(): string
     {
-        $base   = $this->getComponentBasePath() . '/Database/Seeders';
+        $base   = $this->getComponentBasePath() . '/Database/Seeders/' . SeederNames::MASTER_FOLDER;
         $folder = $this->getContextFolder();
 
-        return ($folder ? "{$base}/{$folder}" : $base) . '/' . SeederNames::MASTER_FOLDER;
+        return $folder ? "{$base}/{$folder}" : $base;
     }
 
     /** El namespace que espeja esa carpeta. */
     protected function masterNamespace(): string
     {
-        $base  = "Modules\\{$this->moduleName}\\Database\\Seeders";
+        $base  = "Modules\\{$this->moduleName}\\Database\\Seeders\\" . SeederNames::MASTER_FOLDER;
         $ctxNs = $this->getContextNamespacePath();
 
-        return ($ctxNs ? "{$base}\\{$ctxNs}" : $base) . '\\' . SeederNames::MASTER_FOLDER;
+        return $ctxNs ? "{$base}\\{$ctxNs}" : $base;
     }
 
     protected function writeMaster(string $directorio, string $pieza, string $className): void

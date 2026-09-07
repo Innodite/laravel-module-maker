@@ -273,19 +273,15 @@ class TestGenerator extends AbstractComponentGenerator
             $this->putFile(
                 $destino,
                 $this->getStubContent($stub, $this->isClean, $placeholders),
-                "Prueba de vista '{$archivo}' creada en Modules/{$this->moduleName}/resources/js/__tests__."
+                'Prueba de vista creada: ' . $this->rutaVisible($destino)
             );
         }
     }
 
-    /** `resources/js/__tests__/{Ctx}/{SubFunc}` — el espejo de la carpeta de la vista. */
+    /** `{SubFunc}/resources/js/__tests__/{Ctx}` — el espejo de la carpeta de la vista. */
     protected function rutaDePruebasJs(): string
     {
-        $contexto = $this->getContextFolder();
-
-        return $this->getComponentBasePath() . '/resources/js/__tests__'
-            . ($contexto ? "/{$contexto}" : '')
-            . '/' . $this->getSubFeatureFolder();
+        return $this->buildPath('resources/js/__tests__');
     }
 
     /**
@@ -425,7 +421,7 @@ PHP;
         $this->putFile(
             $destino,
             $this->getStubContent($stub, $this->isClean, $extra + $comunes),
-            "{$etiqueta} '{$nombre}' creada en Modules/{$this->moduleName}/Tests/Feature."
+            "{$etiqueta} '{$nombre}' creada: " . $this->rutaVisible($destino)
         );
     }
 

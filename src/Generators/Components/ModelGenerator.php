@@ -117,7 +117,7 @@ class ModelGenerator extends AbstractComponentGenerator
             'ulidTrait'  => $this->ulidTrait(),
         ]);
 
-        $this->putFile("{$modelDirectoryPath}/{$className}.php", $stubContent, "Modelo '{$className}' creado en Modules/{$this->moduleName}/Models");
+        $this->putFile("{$modelDirectoryPath}/{$className}.php", $stubContent, "Modelo '{$className}' creado: " . $this->rutaVisible("{$modelDirectoryPath}/{$className}.php"));
     }
 
     /**

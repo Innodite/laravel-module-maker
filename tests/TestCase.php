@@ -112,11 +112,11 @@ abstract class TestCase extends Orchestra
         $app->useDatabasePath($this->tempBase . '/database');
 
         // El modo se declara aquí porque sin modo el paquete se niega a generar, y eso es
-        // deliberado. Se fija `multitenant-per-tenant` porque es el escenario que describe el
-        // contexts.json de ejemplo —con tenant-one y tenant-two nombrados—, así que las pruebas
-        // heredadas siguen midiendo lo mismo que medían. Las que comprueban otro modo lo cambian
-        // con withMode().
-        $app['config']->set('make-module.mode', ModuleMode::MultitenantPerTenant->value);
+        // deliberado. Se fija `multitenant` porque es el escenario que describe el contexts.json de
+        // ejemplo —central e inquilino— y porque es el que tiene eje de contexto, que es lo que la
+        // mayoría de estas pruebas mide. Las que comprueban aplicación única lo cambian con
+        // withMode().
+        $app['config']->set('make-module.mode', ModuleMode::Multitenant->value);
     }
 
     /**

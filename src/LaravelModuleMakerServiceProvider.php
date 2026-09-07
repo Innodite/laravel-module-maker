@@ -99,11 +99,8 @@ class LaravelModuleMakerServiceProvider extends ServiceProvider
         foreach (File::directories($modulesPath) as $modulePath) {
             $moduleName = Str::studly(basename($modulePath));
 
-            // ── Service Provider del módulo ───────────────────────────────────
-            $providerClass = "Modules\\{$moduleName}\\Providers\\{$moduleName}ServiceProvider";
-            if (class_exists($providerClass)) {
-                $this->app->register($providerClass);
-            }
+            // ── Service Providers del módulo ──────────────────────────────────
+            $this->registerModuleProviders($modulePath, $moduleName);
 
             // ── Rutas v3.0.0 ─────────────────────────────────────────────────
             // Ahora en Routes/ (capital) con archivos fijos por tipo de contexto
@@ -152,6 +149,41 @@ class LaravelModuleMakerServiceProvider extends ServiceProvider
      * @param  string  $modulePath  Ruta absoluta al directorio del módulo
      * @return void
      */
+    /**
+     * Registra los Service Providers que el módulo tenga escritos, sean uno o varios.
+     *
+     * En multiinquilino hay **uno por contexto** —`Providers/Central/CentralUserServiceProvider`,
+     * `Providers/Tenant/TenantUserServiceProvider`— y en aplicación única uno solo, sin carpeta.
+     * Antes se componía un único nombre fijo, `{Módulo}\Providers\{Módulo}ServiceProvider`, así
+     * que en cuanto hubiera más de uno el paquete registraba ninguno: `class_exists()` fallaba en
+     * silencio y el módulo se quedaba **sin sus bindings**, con las interfaces sin implementación
+     * y el error apareciendo en la primera petición, lejos de aquí.
+     *
+     * Por eso se recorre la carpeta en vez de adivinar el nombre: lo que se registra es lo que hay.
+     */
+    private function registerModuleProviders(string $modulePath, string $moduleName): void
+    {
+        $carpeta = "{$modulePath}/Providers";
+
+        if (! File::isDirectory($carpeta)) {
+            return;
+        }
+
+        foreach (File::allFiles($carpeta) as $archivo) {
+            if (! str_ends_with($archivo->getFilename(), 'ServiceProvider.php')) {
+                continue;
+            }
+
+            $relativa = str_replace('\\', '/', $archivo->getRelativePathname());
+            $clase    = "Modules\\{$moduleName}\\Providers\\"
+                . str_replace('/', '\\', substr($relativa, 0, -strlen('.php')));
+
+            if (class_exists($clase)) {
+                $this->app->register($clase);
+            }
+        }
+    }
+
     private function loadModuleRoutes(string $modulePath): void
     {
         // Prioridad 1: Routes/ (v3.0.0+) — uppercase

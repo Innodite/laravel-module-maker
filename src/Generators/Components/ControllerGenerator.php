@@ -106,11 +106,10 @@ class ControllerGenerator extends AbstractComponentGenerator
             'updateRequestNamespace'   => "{$requestsNs}\\{$requests['update']}",
         ]);
 
-        $relativePath = "Http/Controllers/{$this->getContextFolder()}/{$controllerName}.php";
         $this->putFile(
             "{$controllerDir}/{$controllerName}.php",
             $stub,
-            "Controlador creado: Modules/{$this->moduleName}/{$relativePath}"
+            'Controlador creado: ' . $this->rutaVisible("{$controllerDir}/{$controllerName}.php")
         );
     }
 }

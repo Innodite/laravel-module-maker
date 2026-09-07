@@ -77,7 +77,7 @@ class ServiceGenerator extends AbstractComponentGenerator
         $this->putFile(
             "{$contractsDir}/{$interfaceName}.php",
             $stub,
-            "Interfaz creada: Modules/{$this->moduleName}/Services/Contracts/{$this->getContextFolder()}/{$interfaceName}.php"
+            'Interfaz creada: ' . $this->rutaVisible("{$contractsDir}/{$interfaceName}.php")
         );
     }
 
@@ -112,7 +112,7 @@ class ServiceGenerator extends AbstractComponentGenerator
         $this->putFile(
             "{$serviceDir}/{$serviceName}.php",
             $stub,
-            "Servicio creado: Modules/{$this->moduleName}/Services/{$this->getContextFolder()}/{$serviceName}.php"
+            'Servicio creado: ' . $this->rutaVisible("{$serviceDir}/{$serviceName}.php")
         );
     }
 }

@@ -156,15 +156,17 @@ abstract class AbstractComponentGenerator
      */
     protected function namespaceForComponent(string $componentType, array $config, bool $contracts = false): string
     {
-        $base  = "Modules\\{$this->moduleName}\\{$componentType}" . ($contracts ? '\\Contracts' : '');
         $ctxNs = $this->mode()->hasContextAxis()
             ? ($this->resolveContextFor($config)['namespace_path'] ?? '')
             : '';
         $sub   = $config['subFeature'] ?? '';
 
-        $ns = $ctxNs ? "{$base}\\{$ctxNs}" : $base;
+        $ns = "Modules\\{$this->moduleName}";
+        $ns .= $sub ? "\\{$sub}" : '';
+        $ns .= "\\{$componentType}";
+        $ns .= $contracts ? '\\Contracts' : '';
 
-        return $sub ? "{$ns}\\{$sub}" : $ns;
+        return $ctxNs ? "{$ns}\\{$ctxNs}" : $ns;
     }
 
     /**
@@ -276,78 +278,124 @@ abstract class AbstractComponentGenerator
 
     /**
      * Construye el namespace completo para un tipo de componente dentro del módulo.
-     * Patrón: Modules\{Module}\{Type}\{ContextNs}\{Entity}
-     * Ej: buildNamespace('Http\\Controllers') → 'Modules\Products\Http\Controllers\Tenant\Alpha\Product'
+     *
+     * Patrón: `Modules\{Module}\{SubFeature}\{Type}\{ContextNs}`
+     * Ej: buildNamespace('Http\\Controllers') → 'Modules\User\Role\Http\Controllers\Central'
+     *
+     * ⛔ El orden importa y hasta la 4.x estaba al revés — `{Type}\{ContextNs}\{SubFeature}`—, con
+     * dos consecuencias. Una, que el árbol se leía por capas y no por funcionalidad: para ver qué
+     * tiene `Role` había que abrir doce carpetas. Y dos, la que costaba de verdad: con el contexto
+     * por delante, cada capa duplicaba su rama entera por contexto.
+     *
+     * Ahora cada subfuncionalidad es autocontenida y el contexto es la hoja. En aplicación única
+     * ese último tramo no existe y el resto es idéntico, que es lo que permite que los dos modos
+     * compartan estructura en vez de parecerse.
      *
      * @param  string  $componentType  Tipo de componente (ej: 'Http\\Controllers', 'Services', 'Models')
      * @return string
      */
     protected function buildNamespace(string $componentType): string
     {
-        $base   = "Modules\\{$this->moduleName}\\{$componentType}";
-        $ctxNs  = $this->getContextNamespacePath();
-        $entity = $this->getSubFeatureFolder();
-
-        $ns = $ctxNs ? "{$base}\\{$ctxNs}" : $base;
-
-        return $entity ? "{$ns}\\{$entity}" : $ns;
+        return $this->componerNamespace($componentType, contracts: false);
     }
 
     /**
      * Construye el namespace de la carpeta Contracts para un tipo de componente.
-     * Patrón: Modules\{Module}\{Type}\Contracts\{ContextNs}\{Entity}
-     * Ej: buildContractsNamespace('Services') → 'Modules\User\Services\Contracts\Tenant\INNODITE\Role'
+     *
+     * Patrón: `Modules\{Module}\{SubFeature}\{Type}\Contracts\{ContextNs}`
+     * Ej: buildContractsNamespace('Services') → 'Modules\User\Role\Services\Contracts\Tenant'
      *
      * @param  string  $componentType  Tipo de componente (ej: 'Services', 'Repositories')
      * @return string
      */
     protected function buildContractsNamespace(string $componentType): string
     {
-        $base   = "Modules\\{$this->moduleName}\\{$componentType}\\Contracts";
-        $ctxNs  = $this->getContextNamespacePath();
-        $entity = $this->getSubFeatureFolder();
+        return $this->componerNamespace($componentType, contracts: true);
+    }
 
-        $ns = $ctxNs ? "{$base}\\{$ctxNs}" : $base;
+    /**
+     * El namespace, con la subfuncionalidad delante y el contexto detrás.
+     *
+     * Uno solo para los dos casos: el `Contracts` es un tramo más de la capa, no otra regla. Cuando
+     * eran dos métodos con el mismo cálculo copiado, arreglar el orden en uno y no en el otro dejaba
+     * la interfaz en una carpeta y su implementación en otra — con el `use` apuntando a la que no
+     * era, que es la familia de defecto que este paquete lleva doce apariciones persiguiendo.
+     */
+    private function componerNamespace(string $componentType, bool $contracts): string
+    {
+        $sub   = $this->getSubFeatureFolder();
+        $ctxNs = $this->getContextNamespacePath();
 
-        return $entity ? "{$ns}\\{$entity}" : $ns;
+        $ns = "Modules\\{$this->moduleName}";
+        $ns .= $sub ? "\\{$sub}" : '';
+        $ns .= "\\{$componentType}";
+        $ns .= $contracts ? '\\Contracts' : '';
+
+        return $ctxNs ? "{$ns}\\{$ctxNs}" : $ns;
     }
 
     /**
      * Construye la ruta absoluta de carpeta para un tipo de componente dentro del módulo.
-     * Patrón: {ModulePath}/{Type}/{ContextFolder}/{Entity}/
-     * Ej: buildPath('Http/Controllers') → '.../Products/Http/Controllers/Tenant/Alpha/Product'
+     *
+     * Patrón: `{ModulePath}/{SubFeature}/{Type}/{ContextFolder}/`
+     * Ej: buildPath('Http/Controllers') → '.../User/Role/Http/Controllers/Central'
+     *
+     * Espeja a {@see self::buildNamespace()}, y tiene que hacerlo tramo a tramo: PSR-4 busca la
+     * clase por su carpeta, así que una discrepancia entre los dos no da error de sintaxis — da una
+     * clase que no se autocarga.
      *
      * @param  string  $componentType  Tipo de componente (ej: 'Http/Controllers', 'Services', 'Models')
      * @return string
      */
     protected function buildPath(string $componentType): string
     {
-        $base   = $this->getComponentBasePath() . "/{$componentType}";
-        $folder = $this->getContextFolder();
-        $entity = $this->getSubFeatureFolder();
-
-        $path = $folder ? "{$base}/{$folder}" : $base;
-
-        return $entity ? "{$path}/{$entity}" : $path;
+        return $this->componerRuta($componentType, contracts: false);
     }
 
     /**
      * Construye la ruta absoluta a la carpeta Contracts para un tipo de componente.
-     * Patrón: {ModulePath}/{Type}/Contracts/{ContextFolder}/{Entity}/
-     * Ej: buildContractsPath('Services') → '.../User/Services/Contracts/Tenant/INNODITE/Role'
+     *
+     * Patrón: `{ModulePath}/{SubFeature}/{Type}/Contracts/{ContextFolder}/`
+     * Ej: buildContractsPath('Services') → '.../User/Role/Services/Contracts/Tenant'
      *
      * @param  string  $componentType  Tipo de componente (ej: 'Services', 'Repositories')
      * @return string
      */
     protected function buildContractsPath(string $componentType): string
     {
-        $base   = $this->getComponentBasePath() . "/{$componentType}/Contracts";
+        return $this->componerRuta($componentType, contracts: true);
+    }
+
+    /** La ruta, con la subfuncionalidad delante y el contexto detrás. El espejo de componerNamespace(). */
+    private function componerRuta(string $componentType, bool $contracts): string
+    {
+        $sub    = $this->getSubFeatureFolder();
         $folder = $this->getContextFolder();
-        $entity = $this->getSubFeatureFolder();
 
-        $path = $folder ? "{$base}/{$folder}" : $base;
+        $path = $this->getComponentBasePath();
+        $path .= $sub ? "/{$sub}" : '';
+        $path .= "/{$componentType}";
+        $path .= $contracts ? '/Contracts' : '';
 
-        return $entity ? "{$path}/{$entity}" : $path;
+        return $folder ? "{$path}/{$folder}" : $path;
+    }
+
+    /**
+     * La ruta de un archivo escrito, tal como se le enseña al usuario: `Modules/User/Role/Models/…`
+     *
+     * Sale de la ruta REAL, no de recomponerla. Cada generador la componía a mano en su mensaje
+     * —`"Modules/{$module}/Services/{$contexto}/{$nombre}.php"`— y trece de ellos quedaron mintiendo
+     * el día que cambió el orden del árbol: decían una carpeta y el archivo estaba en otra. Un
+     * mensaje equivocado no rompe nada, y por eso nadie lo arregla; solo enseña a desconfiar de lo
+     * que dice el generador.
+     */
+    protected function rutaVisible(string $absoluta): string
+    {
+        $base = $this->getComponentBasePath();
+
+        return str_starts_with($absoluta, $base)
+            ? "Modules/{$this->moduleName}" . substr($absoluta, strlen($base))
+            : $absoluta;
     }
 
     /**

@@ -80,7 +80,7 @@ class RepositoryGenerator extends AbstractComponentGenerator
         $this->putFile(
             "{$contractsDir}/{$interfaceName}.php",
             $stub,
-            "Interfaz creada: Modules/{$this->moduleName}/Repositories/Contracts/{$this->getContextFolder()}/{$interfaceName}.php"
+            'Interfaz creada: ' . $this->rutaVisible("{$contractsDir}/{$interfaceName}.php")
         );
     }
 
@@ -119,7 +119,7 @@ class RepositoryGenerator extends AbstractComponentGenerator
         $this->putFile(
             "{$repoDir}/{$repoName}.php",
             $stub,
-            "Repositorio creado: Modules/{$this->moduleName}/Repositories/{$this->getContextFolder()}/{$repoName}.php"
+            'Repositorio creado: ' . $this->rutaVisible("{$repoDir}/{$repoName}.php")
         );
     }
 }
