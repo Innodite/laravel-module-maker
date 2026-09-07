@@ -13,7 +13,7 @@ use Innodite\LaravelModuleMaker\Support\Disk;
 /**
  * Exporta las plantillas del paquete al proyecto, para quien quiera personalizar lo que se genera.
  *
- * **Por qué es un comando aparte y no parte de instalar.** Lo era, y publicaba las 37 de golpe. El
+ * **Por qué es un comando aparte y no parte de instalar.** Lo era, y las publicaba todas de golpe. El
  * problema no es el número: es que **una plantilla copiada deja de actualizarse**. Quien instalara
  * una versión nueva del paquete seguiría generando con las plantillas del día que instaló, sin un
  * solo aviso — el módulo sale completo, compila, y está escrito con la forma vieja.
@@ -29,7 +29,7 @@ class PublishStubsCommand extends Command
 
     protected $signature = 'innodite:publish-stubs
         {stub?* : Plantillas concretas (ej: vue-index controller). Sin ninguna, las lista todas}
-        {--all : Exporta las 37 de golpe — solo si de verdad las vas a personalizar todas}
+        {--all : Exporta todas de golpe — solo si de verdad las vas a personalizar todas}
         {--force : Sobreescribe las que ya estén exportadas}';
 
     protected $description = 'Exporta plantillas al proyecto para personalizar lo que se genera.';

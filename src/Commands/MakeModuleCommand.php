@@ -14,6 +14,7 @@ use Innodite\LaravelModuleMaker\Generators\Components\ModuleGenerator;
 use Innodite\LaravelModuleMaker\Services\EventLog;
 use Innodite\LaravelModuleMaker\Support\ContextOption;
 use Innodite\LaravelModuleMaker\Support\ContextResolver;
+use Innodite\LaravelModuleMaker\Support\Frontend;
 use Innodite\LaravelModuleMaker\Support\ModuleMode;
 use Innodite\LaravelModuleMaker\Support\StubsDeVendor;
 use Innodite\LaravelModuleMaker\Support\Ziggy;
@@ -626,9 +627,48 @@ class MakeModuleCommand extends Command
         $this->line("       (o una sola migración con <comment>innodite:migrate-one</comment>).");
         $this->newLine();
 
+        $this->avisarSiLasVistasNoSonLasQueSePidieron();
         $this->decirQuienAportoLosStubs();
         $this->avisarSiElModuloNoVaACargar($moduleName);
         $this->avisarSiLaPantallaNoVaAAbrir();
+    }
+
+    /**
+     * ⚠️ Se pidió la biblioteca de interfaz y nadie la aporta: las vistas salieron genéricas.
+     *
+     * **Es el aviso que convierte un interruptor mudo en uno que habla.** El proyecto declaró
+     * `frontend.modo = innodite`, así que espera pantallas escritas con los componentes de esa
+     * biblioteca. Si ningún paquete instalado aporta sus plantillas, el generador escribe las
+     * genéricas — y el comando termina en verde.
+     *
+     * Sin decirlo aquí, el usuario pidió una cosa y tiene otra, y **no se entera hasta abrir la
+     * pantalla**: para entonces puede llevar varios módulos generados con la forma equivocada.
+     *
+     * ⛔ Y no se arregla trayendo esas plantillas dentro: este paquete es público, y la forma de una
+     * biblioteca de la casa no se publica en un repositorio abierto. Las aporta quien las tiene.
+     */
+    private function avisarSiLasVistasNoSonLasQueSePidieron(): void
+    {
+        if (! Frontend::pidioBibliotecaQueNadieAporta()) {
+            return;
+        }
+
+        $this->components->warn('Las vistas se generaron genéricas, no con la biblioteca que pediste.');
+
+        $this->line(
+            '  <fg=yellow>FALLA:</> el proyecto declara <comment>frontend.modo = innodite</comment>, '
+            . 'y ningún paquete instalado aporta las plantillas de esa biblioteca.'
+        );
+        $this->line(
+            '  <fg=green>FIX:</> instala la biblioteca en el proyecto, o cambia el modo a '
+            . '<comment>default</comment> si estas vistas te sirven:'
+        );
+        $this->line('       <comment>MODULE_MAKER_FRONTEND=default</comment> en el .env');
+        $this->line(
+            '  <fg=gray>Un paquete aporta sus plantillas trayendo stubs/module-maker/contextual/ '
+            . 'en su raíz; el generador las usa sin configurar nada.</>'
+        );
+        $this->newLine();
     }
 
     /**

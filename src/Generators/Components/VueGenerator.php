@@ -6,6 +6,7 @@ namespace Innodite\LaravelModuleMaker\Generators\Components;
 
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Str;
+use Innodite\LaravelModuleMaker\Support\Frontend;
 use Innodite\LaravelModuleMaker\Support\ModuleMode;
 use Innodite\LaravelModuleMaker\Support\SubFeaturePermissions;
 
@@ -117,10 +118,44 @@ class VueGenerator extends AbstractComponentGenerator
             // rutas—, así que resolverlo aquí evita un composable, una lectura por petición y un
             // `if` de modo delante de cada llamada.
             'routeName'          => ($this->getContext()['route_name'] ?? '') . $this->getFunctionality(),
+            ...$this->buildLayout(),
             'subFeaturePlural'   => Str::kebab(Str::plural(Str::snake($this->modelName))),
             'subFeatureSingular' => Str::kebab(Str::snake($this->modelName)),
             'subFeatureLabel'    => $this->modelName,
             ...$this->buildViewPermissions(),
+        ];
+    }
+
+    /**
+     * El layout que envuelve la pantalla, si el proyecto declara uno.
+     *
+     * Va por `defineOptions({ layout })`, que es como Inertia declara un layout persistente: dos
+     * líneas y **ni una sola modificación del `<template>`**. Envolverlo a mano habría obligado a
+     * reindentar la plantilla entera y a que el generador supiera dónde empieza y acaba — un
+     * trabajo frágil para conseguir lo mismo.
+     *
+     * Sin layout declarado los dos placeholders salen vacíos y la vista se dibuja suelta. Es lo
+     * correcto mientras el proyecto no diga cuál es el suyo: la ruta y el nombre del layout son de
+     * cada proyecto, así que inventar uno produce una vista que no compila, y ese error aparece en
+     * el navegador del usuario, no al generar.
+     *
+     * ⛔ Solo lo lleva el listado. Las otras tres vistas son modales que viven **dentro** de esa
+     * pantalla: darles layout propio dibujaría la aplicación entera dentro de una ventana.
+     *
+     * @return array<string, string>
+     */
+    private function buildLayout(): array
+    {
+        if (! Frontend::tieneLayout()) {
+            return ['layoutImport' => '', 'layoutOption' => ''];
+        }
+
+        $nombre = Frontend::nombreDelLayout();
+        $ruta   = Frontend::layout();
+
+        return [
+            'layoutImport' => "import {$nombre} from '{$ruta}'\n",
+            'layoutOption' => "\ndefineOptions({ layout: {$nombre} })\n",
         ];
     }
 

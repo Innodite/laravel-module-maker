@@ -6,6 +6,42 @@ Todo cambio que afecte a quien usa el paquete. El formato sigue
 
 ## [Sin publicar]
 
+### Añadido
+
+- **El modo del frontend deja de ser un interruptor mudo.** `--frontend=innodite` escribía una clave
+  que **ningún generador leía**: elegirlo producía exactamente lo mismo que `default`.
+
+  Ahora `make-module` **avisa** cuando el proyecto declara `innodite` y ningún paquete instalado
+  aporta esas plantillas, en vez de escribir las genéricas y terminar en verde. Es el peor resultado
+  posible el que se evita: pedir una cosa, obtener otra, y descubrirlo al abrir la pantalla con
+  varios módulos ya generados. El `doctor` lo comprueba también, como punto 5 de su etapa 2.
+
+  ⛔ El paquete **no trae** las plantillas de ninguna biblioteca: es público, y esa forma no se
+  publica en un repositorio abierto. Las aporta quien las tiene, por el punto de extensión.
+
+- **`frontend.layout`** ya se usa. Si el proyecto lo declara, la pantalla generada lo importa y lo
+  declara con `defineOptions({ layout })` — dos líneas, **sin tocar el `<template>`**, que es como
+  Inertia declara un layout persistente. Solo lo lleva el listado: las otras tres vistas son modales
+  que viven dentro de él, y darles layout propio dibujaría la aplicación dentro de una ventana.
+
+- **Dos accesos de despliegue con nombre propio**, en `database/seeders/`:
+  `InnoditeStageSeeder` e `InnoditeProductionSeeder`.
+
+  ```bash
+  php artisan db:seed --class=InnoditeStageSeeder
+  ```
+
+  **Por qué.** El motor recibe la pieza por parámetro, lo cual está bien para el comando —que la
+  pide explícitamente— y mal para `db:seed` y para el `DatabaseSeeder`: hay que acordarse de
+  escribirla, y una llamada sin ella **despliega producción** creyendo que se pidió otra cosa. Con
+  dos archivos, el nombre es la respuesta.
+
+  ⛔ **No repiten la lista de módulos.** Cada uno declara su pieza y llama al motor; los módulos y su
+  orden siguen saliendo de `config/make-module.php`, que es el único sitio donde se declaran —y
+  donde `make-module` y `add-entity` registran cada subfuncionalidad al generarla. Escribir aquí las
+  llamadas a cada maestro daría el mismo resultado hoy y **dos listas mañana**, de las que el día del
+  módulo siguiente solo se actualizaría una.
+
 ### Cambiado
 
 > **Nota de versión.** La v4 **todavía no se ha publicado ni está en uso**, así que estos cambios

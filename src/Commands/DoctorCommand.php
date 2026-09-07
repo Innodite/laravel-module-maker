@@ -11,6 +11,7 @@ use Innodite\LaravelModuleMaker\LaravelModuleMakerServiceProvider;
 use Innodite\LaravelModuleMaker\Commands\Concerns\ReportsFailures;
 use Innodite\LaravelModuleMaker\Services\EventLog;
 use Innodite\LaravelModuleMaker\Support\ModuleMode;
+use Innodite\LaravelModuleMaker\Support\Frontend;
 use Innodite\LaravelModuleMaker\Support\StubPlaceholder;
 use Innodite\LaravelModuleMaker\Support\Ziggy;
 use Throwable;
@@ -62,6 +63,7 @@ class DoctorCommand extends Command
         'HandleInertiaRequests comparte auth.permissions y auth.context',
         'InnoditeContextBridge está registrado en el grupo web',
         'Ziggy está instalado y el layout publica el mapa con @routes',
+        'El frontend declarado tiene quien lo aporte',
     ];
 
     /** Resolved once: every check that depends on the mode reads it from here. */
@@ -695,6 +697,8 @@ class DoctorCommand extends Command
         $this->newLine();
         $ok = $this->comprobarZiggy() && $ok;
         $this->newLine();
+        $ok = $this->comprobarFrontend() && $ok;
+        $this->newLine();
 
         return $ok;
     }
@@ -950,6 +954,56 @@ class DoctorCommand extends Command
             'Ziggy',
             "<fg=green>OK — instalado, y @routes en {$layout}</>"
         );
+
+        return true;
+    }
+
+    /**
+     * El frontend declarado, y si lo que se pidió está realmente disponible.
+     *
+     * ⚠️ **El fallo que evita no da ningún error.** Un proyecto que declara `frontend.modo =
+     * innodite` espera pantallas escritas con los componentes de esa biblioteca. Si nadie aporta sus
+     * plantillas, el generador escribe las genéricas y termina en verde: el usuario pidió una cosa,
+     * tiene otra, y lo descubre al abrir la pantalla — con varios módulos ya generados.
+     */
+    private function comprobarFrontend(): bool
+    {
+        $this->line('  <fg=cyan;options=bold>5. El frontend declarado tiene quien lo aporte</>');
+
+        if (! Frontend::esInnodite()) {
+            $this->components->twoColumnDetail(
+                'frontend',
+                '<fg=green>default</> — vistas autónomas, sin depender de ninguna biblioteca'
+            );
+            $this->line(
+                '  <fg=gray>Recuerda que auth.permissions es imprescindible: es de donde la vista '
+                . 'saca lo que el usuario puede hacer (comprobado arriba).</>'
+            );
+
+            return true;
+        }
+
+        $quienes = Frontend::quienAportaVistas();
+
+        if ($quienes === []) {
+            $this->fallo(
+                'el proyecto declara «innodite» y ningún paquete instalado aporta esas plantillas.',
+                'instala la biblioteca, o pon MODULE_MAKER_FRONTEND=default si las vistas genéricas te sirven.',
+                'Lo que se genere mientras tanto saldrá con las vistas genéricas, sin error y sin '
+                . 'parecerse a lo que pediste.'
+            );
+
+            return false;
+        }
+
+        $this->components->twoColumnDetail(
+            'frontend',
+            '<fg=green>innodite</> — lo aporta ' . implode(', ', $quienes)
+        );
+
+        Frontend::tieneLayout()
+            ? $this->components->twoColumnDetail('Layout de las pantallas', '<fg=green>' . Frontend::layout() . '</>')
+            : $this->components->twoColumnDetail('Layout de las pantallas', '<fg=cyan>sin declarar — se dibujan sueltas</>');
 
         return true;
     }
