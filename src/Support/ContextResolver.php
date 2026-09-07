@@ -64,7 +64,7 @@ class ContextResolver
     }
 
     /**
-     * Retorna el contexto único para claves de objeto (central, shared, tenant_shared).
+     * Retorna el contexto único de una clave del catálogo: 'central' o 'tenant'.
      *
      * @param  string  $contextKey  Clave del contexto
      * @return array<string, mixed>
@@ -122,8 +122,8 @@ class ContextResolver
      * a derivarlo del nombre de un archivo, que fue exactamente de donde salía el contexto cuando lo
      * decidía el manifiesto JSON.
      *
-     * La comparación ignora mayúsculas y barras sobrantes: la carpeta se escribe `Tenant/Shared` en
-     * `contexts.json` y llega `tenant/shared` desde una coordenada normalizada.
+     * La comparación ignora mayúsculas y barras sobrantes: la carpeta se escribe `Tenant` en
+     * `contexts.json` y llega `tenant` desde una coordenada normalizada.
      *
      * @return array<string, mixed>|null
      */

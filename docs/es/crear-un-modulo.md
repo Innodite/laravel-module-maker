@@ -10,12 +10,16 @@ En multiinquilino hay que decir dónde vive:
 
 ```bash
 php artisan innodite:make-module Invoice --context=central
-php artisan innodite:make-module Invoice --context=tenant_shared
+php artisan innodite:make-module Invoice --context=tenant
 ```
 
 ⛔ **Sin contexto, en un proyecto multiinquilino, no se genera nada** y el comando dice por qué. Lo
 que escribiría sin saberlo sería plausible y equivocado: rutas en el archivo que no toca, protegidas
 por un permiso que no corresponde.
+
+Y lo que sale es **la misma estructura en los dos modos**: 37 archivos, con la subfuncionalidad por
+delante y el contexto como hoja. La forma completa, con el árbol de un módulo real, está en
+[la ficha del árbol](la-forma-del-arbol.md).
 
 ## Añadir una entidad a un módulo que ya existe
 

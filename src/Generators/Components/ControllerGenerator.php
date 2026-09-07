@@ -13,10 +13,10 @@ use Innodite\LaravelModuleMaker\Support\RequestNames;
  * El nombre de la clase y la carpeta de destino se derivan automáticamente
  * del campo 'context' en la configuración del componente.
  *
- * Ejemplos de salida según contexto:
- *   central        → Http/Controllers/Central/CentralUserController.php
- *   tenant_shared  → Http/Controllers/Tenant/Shared/TenantSharedUserController.php
- *   tenant_alpha   → Http/Controllers/Tenant/Alpha/TenantAlphaUserController.php
+ * Ejemplos de salida, con la subfuncionalidad por delante y el contexto como hoja:
+ *   central          → User/Http/Controllers/Central/CentralUserController.php
+ *   tenant           → User/Http/Controllers/Tenant/TenantUserController.php
+ *   aplicación única → User/Http/Controllers/UserController.php
  */
 class ControllerGenerator extends AbstractComponentGenerator
 {

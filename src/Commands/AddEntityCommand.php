@@ -41,7 +41,7 @@ class AddEntityCommand extends Command
     protected $signature = 'innodite:add-entity
         {module                : Nombre del módulo existente (ej: UserManagement)}
         {entity                : Nombre de la nueva entidad en singular (ej: Role)}
-        {--context=            : Contexto donde se genera, en multitenant: central | shared | tenant_shared | id del tenant}
+        {--context=            : Contexto donde se genera, en multitenant: central | tenant. En aplicación única no se pasa}
         {--M|model             : Solo añade el modelo}
         {--C|controller        : Solo añade el controlador}
         {--S|service           : Solo añade el servicio e interface}
