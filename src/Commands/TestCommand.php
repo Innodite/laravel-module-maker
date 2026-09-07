@@ -47,7 +47,7 @@ class TestCommand extends Command
     protected $signature = 'innodite:test
         {module      : Módulo al que pertenece (ej: Invoice)}
         {subfeature  : Subfuncionalidad cuyo contrato se ejecuta (ej: Payment)}
-        {--context=  : Contexto donde vive, en multitenant: central | shared | tenant_shared | id del tenant}
+        {--context=  : Contexto donde vive, en multitenant: central | tenant. En aplicación única no se pasa}
         {--filter=   : Patrón de PHPUnit, para acotar dentro de una pieza}
         {--continuar : Ejecuta el grupo entero aunque una pieza falle, sin corte temprano}
         {--reclonar : Rehace la base de pruebas antes de empezar, sin mirar en qué estado está}

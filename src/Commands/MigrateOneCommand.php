@@ -74,7 +74,7 @@ class MigrateOneCommand extends Command
             $this->fallo(
                 $e->getMessage(),
                 'declara esa conexión en config/database.php, o fuerza el contexto de ejecución con '
-                . '--context=<central|shared|tenant_shared|id del tenant>.',
+                . '--context=<central|tenant>.',
             );
 
             return self::FAILURE;

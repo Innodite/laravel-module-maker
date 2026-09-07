@@ -47,7 +47,7 @@ class MakeModuleCommand extends Command
 
     protected $signature = 'innodite:make-module
         {name                  : Nombre de la entidad en singular (se convierte a PascalCase)}
-        {--context=            : Contexto donde se genera, en multitenant: central | shared | tenant_shared | id del tenant}
+        {--context=            : Contexto donde se genera, en multitenant: central | tenant. En aplicación única no se pasa}
         {--json                : Usa module-maker-config/{module}.json como fuente de configuración}
         {--M|model             : Solo añade el modelo}
         {--C|controller        : Solo añade el controlador}
