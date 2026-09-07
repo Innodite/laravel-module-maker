@@ -20,10 +20,10 @@
  */
 import { computed, ref, onMounted } from 'vue'
 import { usePage } from '@inertiajs/vue3'
-import {{{ vueComponentBase }}}Create from './{{{ vueComponentBase }}}Create.vue'
+{{{ layoutImport }}}import {{{ vueComponentBase }}}Create from './{{{ vueComponentBase }}}Create.vue'
 import {{{ vueComponentBase }}}Edit from './{{{ vueComponentBase }}}Edit.vue'
 import {{{ vueComponentBase }}}Show from './{{{ vueComponentBase }}}Show.vue'
-
+{{{ layoutOption }}}
 /**
  * Los permisos del usuario, tal y como el backend los comparte por Inertia.
  *
