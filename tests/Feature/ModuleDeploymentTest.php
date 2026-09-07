@@ -480,7 +480,7 @@ it('en multitenant cada despliegue levanta lo suyo, y no lo del otro', function 
     // una sola base de datos, y nadie enterándose hasta que dos clientes comparten la misma fila.
     requiereBaseDeDatos();
 
-    $this->withMode(ModuleMode::MultitenantPerTenant);
+    $this->withMode(ModuleMode::Multitenant);
 
     conexionSqlite('central');
     conexionSqlite('tenant_one');
@@ -488,8 +488,8 @@ it('en multitenant cada despliegue levanta lo suyo, y no lo del otro', function 
     tablasDeLaConvencionEn('central');
     tablasDeLaConvencionEn('tenant_one');
 
-    $ledger = moduloEnElProyecto('Ledger', ModuleMode::MultitenantPerTenant, 'central');
-    $meter  = moduloEnElProyecto('Meter', ModuleMode::MultitenantPerTenant, 'tenant-one');
+    $ledger = moduloEnElProyecto('Ledger', ModuleMode::Multitenant, 'central');
+    $meter  = moduloEnElProyecto('Meter', ModuleMode::Multitenant, 'tenant-one');
 
     Artisan::call('innodite:module-setup', ['--mode' => 'multitenant-per-tenant', '--tenancy' => 'stancl', '--no-interaction' => true]);
 
@@ -550,7 +550,7 @@ it('con tenants iguales no despliega sin decir a cuál', function () {
     // defecto al entrar en el contexto, y en HTTP eso lo hace el middleware de identificación. En
     // consola no hay middleware, así que el despliegue corría contra la conexión por defecto —la
     // central— creyendo que escribía en la base del cliente. Sin error y sin aviso.
-    $this->withMode(ModuleMode::MultitenantShared);
+    $this->withMode(ModuleMode::Multitenant);
 
     Artisan::call('innodite:module-setup', ['--mode' => 'multitenant-shared', '--tenancy' => 'stancl', '--no-interaction' => true]);
 
@@ -570,7 +570,7 @@ it('con tenants iguales avisa si no sabe entrar en el contexto', function () {
     // Sin un paquete de tenencia que el generador sepa inicializar, la única alternativa a fallar es
     // desplegar contra la base por defecto — que es exactamente el fallo que se está cerrando. Se
     // dice, y no se despliega.
-    $this->withMode(ModuleMode::MultitenantShared);
+    $this->withMode(ModuleMode::Multitenant);
 
     Artisan::call('innodite:module-setup', ['--mode' => 'multitenant-shared', '--no-interaction' => true]);
 

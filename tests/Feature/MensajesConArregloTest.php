@@ -85,7 +85,7 @@ it('el FIX de cada comando nombra algo que se puede escribir', function (
 it('el FIX dice qué hacer, no repite el fallo con otras palabras', function () {
     // El error que hace inútil al estándar: «el contexto no existe · FIX: usa un contexto que
     // exista». Aquí se comprueba que el arreglo nombra algo accionable — el catálogo real.
-    config()->set('make-module.mode', ModuleMode::MultitenantPerTenant->value);
+    config()->set('make-module.mode', ModuleMode::Multitenant->value);
 
     $salida = salidaDelFallo('innodite:deploy', ['environment' => 'production']);
 

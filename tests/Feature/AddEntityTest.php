@@ -35,7 +35,7 @@ function agregarEntidad(string $modulo, string $entidad, ?string $contexto = nul
 }
 
 it('agrega una entidad a un módulo existente sin romperse', function () {
-    $modulo = $this->generateModule('Invoice', ModuleMode::MultitenantPerTenant, 'central');
+    $modulo = $this->generateModule('Invoice', ModuleMode::Multitenant, 'central');
 
     [$codigo, $salida] = agregarEntidad($modulo->name, 'Payment', 'central');
 
@@ -48,7 +48,7 @@ it('agrega una entidad a un módulo existente sin romperse', function () {
 });
 
 it('la entidad agregada nace con las seis piezas del contrato de pruebas', function () {
-    $modulo = $this->generateModule('Invoice', ModuleMode::MultitenantPerTenant, 'central');
+    $modulo = $this->generateModule('Invoice', ModuleMode::Multitenant, 'central');
 
     [$codigo, $salida] = agregarEntidad($modulo->name, 'Payment', 'central');
 
@@ -95,7 +95,7 @@ it('ni make-module ni add-entity vuelven a emitir las piezas que no están en el
         );
     }
 
-    $modulo = $this->generateModule('Invoice', ModuleMode::MultitenantPerTenant, 'central');
+    $modulo = $this->generateModule('Invoice', ModuleMode::Multitenant, 'central');
 
     [$codigo, $salida] = agregarEntidad($modulo->name, 'Payment', 'central');
 
@@ -116,7 +116,7 @@ it('los permisos de la entidad agregada son los suyos, no los del módulo', func
     // entidad principal da igual —módulo y subfuncionalidad son lo mismo—, pero al agregar la
     // segunda, sus permisos y sus rutas saldrían con el nombre de la primera. Dos subfuncionalidades
     // pidiendo el mismo permiso: quien abra una, abre la otra.
-    $modulo = $this->generateModule('Invoice', ModuleMode::MultitenantPerTenant, 'central');
+    $modulo = $this->generateModule('Invoice', ModuleMode::Multitenant, 'central');
 
     [$codigo, $salida] = agregarEntidad($modulo->name, 'Payment', 'central');
 
@@ -152,7 +152,7 @@ it('los permisos de la entidad agregada son los suyos, no los del módulo', func
 // abrirlo — cada archivo por separado está bien escrito.
 
 it('en multitenant no genera sin contexto: lo exige y lista el catálogo', function () {
-    $modulo = $this->generateModule('Invoice', ModuleMode::MultitenantPerTenant, 'central');
+    $modulo = $this->generateModule('Invoice', ModuleMode::Multitenant, 'central');
 
     [$codigo, $salida] = agregarEntidad($modulo->name, 'Payment');
 

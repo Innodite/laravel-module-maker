@@ -339,7 +339,7 @@ it('cuando todo lo generado está declarado, no avisa de nada', function () {
 it('la carpeta de los maestros no cuenta como subfuncionalidad', function () {
     // Sus archivos también terminan en `Seeder.php` —`…ApplicationStageSeeder`—, así que contarla
     // declararía como subfuncionalidad al módulo entero.
-    $this->generateModule('Invoice', ModuleMode::MultitenantPerTenant, 'central');
+    $this->generateModule('Invoice', ModuleMode::Multitenant, 'central');
 
     expect(Innodite\LaravelModuleMaker\Support\DeployCoverage::onDisk())
         ->toBe(['Invoice/Central/Invoice']);

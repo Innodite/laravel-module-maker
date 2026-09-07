@@ -19,7 +19,7 @@ use Innodite\LaravelModuleMaker\Support\SeederNames;
 it('el trait se genera con las otras piezas de seeder, no en la carpeta de migraciones', function () {
     $modulo = $this->generateModule('Invoice', ModuleMode::SingleApp);
 
-    expect($modulo->has('Database/Seeders/Invoice/InvoiceInvoiceMigrationsList.php'))->toBeTrue(
+    expect($modulo->has('Invoice/Database/Seeders/InvoiceInvoiceMigrationsList.php'))->toBeTrue(
         'Es una de las seis piezas de la subfuncionalidad (norma §6), así que vive con ellas. '
         . "Lo generado fue:\n  - " . implode("\n  - ", $modulo->tree())
     );
@@ -34,13 +34,13 @@ it('el nombre del trait sale de SeederNames, no de una segunda convención', fun
 
     $modulo = $this->generateModule('Invoice', ModuleMode::SingleApp);
 
-    expect($modulo->has('Database/Seeders/Invoice/InvoiceInvoiceMigrationsList.php'))->toBeTrue();
+    expect($modulo->has('Invoice/Database/Seeders/InvoiceInvoiceMigrationsList.php'))->toBeTrue();
 });
 
 it('la lista nombra exactamente las migraciones que hay en la carpeta', function () {
     $modulo = $this->generateModule('Invoice', ModuleMode::SingleApp);
 
-    $trait = $modulo->contents('Database/Seeders/Invoice/InvoiceInvoiceMigrationsList.php');
+    $trait = $modulo->contents('Invoice/Database/Seeders/InvoiceInvoiceMigrationsList.php');
 
     preg_match_all("/'(Modules\/[^']+\.php)'/", $trait, $encontrados);
 
@@ -68,7 +68,7 @@ it('las rutas de la lista existen de verdad, tal como están escritas', function
     // pasa igual con `--path`.
     $modulo = $this->generateModule('Invoice', ModuleMode::SingleApp);
 
-    $trait = $modulo->contents('Database/Seeders/Invoice/InvoiceInvoiceMigrationsList.php');
+    $trait = $modulo->contents('Invoice/Database/Seeders/InvoiceInvoiceMigrationsList.php');
 
     preg_match_all("/'(Modules\/[^']+\.php)'/", $trait, $encontrados);
 
@@ -81,9 +81,9 @@ it('las rutas de la lista existen de verdad, tal como están escritas', function
 });
 
 it('en multitenant el trait lleva el prefijo de su contexto', function () {
-    $modulo = $this->generateModule('Invoice', ModuleMode::MultitenantPerTenant, 'central');
+    $modulo = $this->generateModule('Invoice', ModuleMode::Multitenant, 'central');
 
-    expect($modulo->has('Database/Seeders/Central/Invoice/CentralInvoiceInvoiceMigrationsList.php'))
+    expect($modulo->has('Invoice/Database/Seeders/Central/CentralInvoiceInvoiceMigrationsList.php'))
         ->toBeTrue(
             'En multitenant hay una lista por contexto y sin prefijo colisionarían. '
             . "Lo generado fue:\n  - " . implode("\n  - ", $modulo->tree())

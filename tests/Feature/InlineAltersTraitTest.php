@@ -17,7 +17,7 @@ use Innodite\LaravelModuleMaker\Support\ModuleMode;
 it('el trait se genera con las otras piezas, con el nombre de la convención', function () {
     $modulo = $this->generateModule('Invoice', ModuleMode::SingleApp);
 
-    expect($modulo->has('Database/Seeders/Invoice/InvoiceInvoiceInlineAlters.php'))->toBeTrue(
+    expect($modulo->has('Invoice/Database/Seeders/InvoiceInvoiceInlineAlters.php'))->toBeTrue(
         "Es una de las seis piezas de la subfuncionalidad.\nLo generado fue:\n  - "
         . implode("\n  - ", $modulo->tree())
     );
@@ -27,7 +27,7 @@ it('nace vacío, y eso es lo correcto', function () {
     // Un módulo recién generado no tiene cambios posteriores: su esquema entero está en la `_final`.
     // Emitir deltas inventados sería B3 otra vez — una pieza que aparenta contenido y no hace nada.
     $trait = $this->generateModule('Invoice', ModuleMode::SingleApp)
-        ->contents('Database/Seeders/Invoice/InvoiceInvoiceInlineAlters.php');
+        ->contents('Invoice/Database/Seeders/InvoiceInvoiceInlineAlters.php');
 
     expect($trait)->toContain('public function runInlineAlters(): void');
 
@@ -43,7 +43,7 @@ it('lleva escrito el patrón de la guardia, con la tabla real del módulo', func
     // Sin la guardia, el método falla en el segundo despliegue con «duplicate column»: se ejecuta
     // en cada uno. Que el ejemplo nombre la tabla real es lo que hace que se copie bien.
     $trait = $this->generateModule('Invoice', ModuleMode::SingleApp)
-        ->contents('Database/Seeders/Invoice/InvoiceInvoiceInlineAlters.php');
+        ->contents('Invoice/Database/Seeders/InvoiceInvoiceInlineAlters.php');
 
     expect(str_contains($trait, "Schema::hasTable('invoices')"))->toBeTrue(
         'El patrón documentado debe nombrar la tabla de esta subfuncionalidad, no un ejemplo genérico.'
@@ -53,7 +53,7 @@ it('lleva escrito el patrón de la guardia, con la tabla real del módulo', func
 
 it('no se reescribe si ya existe: dentro vive código del desarrollador', function () {
     $modulo = $this->generateModule('Invoice', ModuleMode::SingleApp);
-    $ruta   = $modulo->path('Database/Seeders/Invoice/InvoiceInvoiceInlineAlters.php');
+    $ruta   = $modulo->path('Invoice/Database/Seeders/InvoiceInvoiceInlineAlters.php');
 
     file_put_contents($ruta, str_replace(
         'public function runInlineAlters(): void',
@@ -71,5 +71,5 @@ it('no se reescribe si ya existe: dentro vive código del desarrollador', functi
 });
 
 it('el módulo con sus dos traits sigue siendo coherente', function () {
-    $this->generateModule('Invoice', ModuleMode::MultitenantPerTenant, 'central')->assertCoherent();
+    $this->generateModule('Invoice', ModuleMode::Multitenant, 'central')->assertCoherent();
 });

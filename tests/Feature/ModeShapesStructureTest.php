@@ -44,7 +44,7 @@ it('en single-app la subfuncionalidad va directa bajo la capa, sin contexto ni p
 });
 
 it('en multitenant el contexto entra en la carpeta y en el nombre', function () {
-    $this->withMode(ModuleMode::MultitenantPerTenant);
+    $this->withMode(ModuleMode::Multitenant);
 
     $modulePath = $this->tempPath('Modules/UserManagement');
     File::ensureDirectoryExists($modulePath);
@@ -79,15 +79,15 @@ it('el modo responde si el modelo declara conexión, y son tres respuestas disti
     expect(ModuleMode::SingleApp->declaresModelConnection())->toBeFalse(
         'Una sola base de datos: no hay nada que conmutar.'
     );
-    expect(ModuleMode::MultitenantShared->declaresModelConnection('central'))->toBeTrue(
+    expect(ModuleMode::Multitenant->declaresModelConnection('central'))->toBeTrue(
         'La app central siempre declara su conexión.'
     );
-    expect(ModuleMode::MultitenantShared->declaresModelConnection('tenant_shared'))->toBeFalse(
+    expect(ModuleMode::Multitenant->declaresModelConnection('tenant_shared'))->toBeFalse(
         'Un tenant que hace lo mismo que los demás NO declara conexión: la conmuta stancl al '
         . 'inicializar el contexto y el aislamiento lo garantiza la ruta. Nombrarla aquí ataría el '
         . 'modelo a un solo tenant, que es lo contrario de lo que protege.'
     );
-    expect(ModuleMode::MultitenantPerTenant->declaresModelConnection('tenant'))->toBeTrue(
+    expect(ModuleMode::Multitenant->declaresModelConnection('tenant'))->toBeTrue(
         'Un tenant con lógica propia sí declara la suya.'
     );
 });
@@ -101,11 +101,11 @@ it('el modo rechaza un contexto que no le corresponde', function () {
     // El `tenant` genérico SÍ se admite en tenants iguales: es el eje del modo —misma lógica, una
     // base por tenant— y es como lo declaran los proyectos reales. Lo que ese modo no tiene son
     // tenants NOMBRADOS: generar para uno produciría la copia por tenant que existe para evitar.
-    expect(ModuleMode::MultitenantShared->supportsContext('tenant'))->toBeTrue();
+    expect(ModuleMode::Multitenant->supportsContext('tenant'))->toBeTrue();
 
-    expect(ModuleMode::MultitenantShared->supportsContext('tenant_acme'))->toBeFalse(
+    expect(ModuleMode::Multitenant->supportsContext('tenant_acme'))->toBeFalse(
         'Un tenant nombrado no cabe en el modo de tenants iguales.'
     );
-    expect(ModuleMode::MultitenantShared->supportsContext('tenant_shared'))->toBeTrue();
-    expect(ModuleMode::MultitenantPerTenant->supportsContext('tenant'))->toBeTrue();
+    expect(ModuleMode::Multitenant->supportsContext('tenant_shared'))->toBeTrue();
+    expect(ModuleMode::Multitenant->supportsContext('tenant'))->toBeTrue();
 });

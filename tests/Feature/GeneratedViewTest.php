@@ -29,7 +29,7 @@ use Innodite\LaravelModuleMaker\Support\ModuleMode;
 it('la vista pide exactamente los nombres de ruta que el módulo declara', function () {
     $modulo = $this->generateModule('Invoice', ModuleMode::SingleApp);
 
-    $vista = $modulo->contents('resources/js/Pages/Invoice/InvoiceIndex.vue');
+    $vista = $modulo->contents('Invoice/resources/js/Pages/InvoiceIndex.vue');
     $rutas = $modulo->contents('Routes/web.php');
 
     // Cada `window.route('algo.accion')` de la vista tiene que existir como ruta con ese nombre.
@@ -59,7 +59,7 @@ it('el listado pide el endpoint de datos, no la pantalla', function () {
     // Inertia y la segunda los datos. Pedir la primera con axios responde 200 —con el HTML— y deja
     // la tabla vacía sin un solo error en consola.
     $vista = $this->generateModule('Invoice', ModuleMode::SingleApp)
-        ->contents('resources/js/Pages/Invoice/InvoiceIndex.vue');
+        ->contents('Invoice/resources/js/Pages/InvoiceIndex.vue');
 
     expect(str_contains($vista, "axios.get(window.route('invoices.list')"))->toBeTrue(
         'FALLA: el listado no pide `list`. · FIX: `index` devuelve la pantalla; los datos están en '
@@ -98,7 +98,7 @@ it('las tres acciones ocurren en modales sobre el listado, sin navegar', functio
     // así que se le pasó el permiso. Las tres acciones se resuelven aquí mismo.
     $modulo = $this->generateModule('Invoice', ModuleMode::SingleApp);
 
-    $index = $modulo->contents('resources/js/Pages/Invoice/InvoiceIndex.vue');
+    $index = $modulo->contents('Invoice/resources/js/Pages/InvoiceIndex.vue');
 
     expect(str_contains($index, 'router.visit'))->toBeFalse(
         'FALLA: la pantalla navega a otra ruta. · FIX: de las seis rutas generadas solo `index` '
@@ -152,7 +152,7 @@ it('el listado avisa y confirma sin depender de ningún componente externo', fun
     // Así la vista generada no depende de un archivo que el paquete tenga que dejar en el proyecto
     // — y uno copiado deja de actualizarse el día que se copia.
     $index = $this->generateModule('Invoice', ModuleMode::SingleApp)
-        ->contents('resources/js/Pages/Invoice/InvoiceIndex.vue');
+        ->contents('Invoice/resources/js/Pages/InvoiceIndex.vue');
 
     expect(substr_count($index, '<dialog ref='))->toBe(1,
         'FALLA: el listado no monta exactamente un <dialog>. · FIX: la confirmación de borrado va '

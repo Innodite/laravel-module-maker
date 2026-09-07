@@ -60,7 +60,7 @@ function maestroDePrueba(string $piece, ?string $context = null, string $module 
 }
 
 it('los tres maestros se generan en su carpeta, aparte de las subfuncionalidades', function () {
-    $modulo = $this->generateModule('Invoice', ModuleMode::MultitenantPerTenant, 'central');
+    $modulo = $this->generateModule('Invoice', ModuleMode::Multitenant, 'central');
 
     $esperados = array_map(
         static fn (string $maestro): string => "Database/Seeders/Central/Application/{$maestro}.php",
@@ -193,5 +193,5 @@ it('sin orden declarado avisa, en vez de desplegar nada en silencio', function (
 });
 
 it('el módulo con sus maestros sigue siendo coherente', function () {
-    $this->generateModule('Invoice', ModuleMode::MultitenantPerTenant, 'central')->assertCoherent();
+    $this->generateModule('Invoice', ModuleMode::Multitenant, 'central')->assertCoherent();
 });

@@ -20,7 +20,7 @@ use Innodite\LaravelModuleMaker\Support\ModuleMode;
 it('en tenants iguales no se exige connection_key: migra sobre la conexión activa', function () {
     // `Tenant/Shared` es el contexto que fallaba: en el contexts.json de ejemplo NO declara
     // `connection_key` ni `tenancy_strategy`, porque en ese modo no le corresponde declararlos.
-    $this->withMode(ModuleMode::MultitenantShared);
+    $this->withMode(ModuleMode::Multitenant);
 
     $conexion = (new MigrationTargetService())->resolveExecutionConnection(
         'Tenant/Shared',
@@ -38,7 +38,7 @@ it('en tenants iguales no se exige connection_key: migra sobre la conexión acti
 it('el mismo contexto, en el modo de lógica propia, sí exige la conexión', function () {
     // La corrección no relaja la validación: la condiciona al modo. Con lógica propia por tenant,
     // la conexión es parte de su identidad y no declararla es un error de configuración de verdad.
-    $this->withMode(ModuleMode::MultitenantPerTenant);
+    $this->withMode(ModuleMode::Multitenant);
 
     expect(fn () => (new MigrationTargetService())->resolveExecutionConnection('Tenant/Shared', true))
         ->toThrow(InvalidArgumentException::class);
@@ -47,7 +47,7 @@ it('el mismo contexto, en el modo de lógica propia, sí exige la conexión', fu
 it('la app central pasa por la validación de siempre', function () {
     // La excepción es solo para el tenant del modo compartido. La central declara su conexión
     // siempre: si aquí se relajara, el despliegue central acabaría en la base equivocada.
-    $this->withMode(ModuleMode::MultitenantShared);
+    $this->withMode(ModuleMode::Multitenant);
 
     $conexion = (new MigrationTargetService())->resolveExecutionConnection('central', true);
 
@@ -55,10 +55,10 @@ it('la app central pasa por la validación de siempre', function () {
 });
 
 it('el modo con lógica propia por tenant sigue exigiendo la conexión', function () {
-    expect(ModuleMode::MultitenantPerTenant->requiresTenantConnectionKey())->toBeTrue(
+    expect(ModuleMode::Multitenant->requiresTenantConnectionKey())->toBeTrue(
         'Un tenant con lógica propia sí declara la suya: ahí la conexión es parte de su identidad.'
     );
-    expect(ModuleMode::MultitenantShared->requiresTenantConnectionKey())->toBeFalse();
+    expect(ModuleMode::Multitenant->requiresTenantConnectionKey())->toBeFalse();
     expect(ModuleMode::SingleApp->requiresTenantConnectionKey())->toBeFalse(
         'Y en una aplicación única no hay tenant al que exigirle nada.'
     );

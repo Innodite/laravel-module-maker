@@ -47,8 +47,8 @@ it('el módulo generado trae el manifiesto de su subfuncionalidad', function (Mo
         . 'la carpeta de la subfuncionalidad.'
     );
 })->with([
-    'single-app'  => [ModuleMode::SingleApp, null, 'Tests/Feature/Invoice/InvoiceContract.php'],
-    'multitenant' => [ModuleMode::MultitenantPerTenant, 'central', 'Tests/Feature/Central/Invoice/CentralInvoiceContract.php'],
+    'single-app'  => [ModuleMode::SingleApp, null, 'Invoice/Tests/Feature/InvoiceContract.php'],
+    'multitenant' => [ModuleMode::Multitenant, 'central', 'Invoice/Tests/Feature/Central/CentralInvoiceContract.php'],
 ]);
 
 it('el manifiesto carga y declara lo que la subfuncionalidad es', function () {
@@ -162,7 +162,7 @@ it('cada pieza del andamiaje apunta a algo que el módulo escribió', function (
     );
 })->with([
     'single-app'  => [ModuleMode::SingleApp, null, 'Tests/Feature/Invoice', 'Modules\Invoice\Tests\Feature\Invoice\InvoiceContract'],
-    'multitenant' => [ModuleMode::MultitenantPerTenant, 'central', 'Tests/Feature/Central/Invoice', 'Modules\Invoice\Tests\Feature\Central\Invoice\CentralInvoiceContract'],
+    'multitenant' => [ModuleMode::Multitenant, 'central', 'Tests/Feature/Central/Invoice', 'Modules\Invoice\Tests\Feature\Central\Invoice\CentralInvoiceContract'],
 ]);
 
 it('no enumera lo que se deriva del código', function () {
@@ -171,7 +171,7 @@ it('no enumera lo que se deriva del código', function () {
     // segunda verdad, y el día que alguien añada una acción solo se actualizaría una de las dos.
     $modulo = $this->generateModule('Invoice', ModuleMode::SingleApp);
 
-    $contenido = $modulo->contents('Tests/Feature/Invoice/InvoiceContract.php');
+    $contenido = $modulo->contents('Invoice/Tests/Feature/InvoiceContract.php');
 
     // Se afirma sobre el booleano y no con `not->toContain($permiso, $mensaje)`: ese segundo
     // argumento no es el mensaje —`toContain()` recibe valores—, así que la negación acabaría
@@ -190,5 +190,5 @@ it('el módulo entero sigue coherente con el manifiesto dentro', function (Modul
     $this->generateModule('Invoice', $modo, $contexto)->assertCoherent();
 })->with([
     'single-app'  => [ModuleMode::SingleApp, null],
-    'multitenant' => [ModuleMode::MultitenantPerTenant, 'central'],
+    'multitenant' => [ModuleMode::Multitenant, 'central'],
 ]);

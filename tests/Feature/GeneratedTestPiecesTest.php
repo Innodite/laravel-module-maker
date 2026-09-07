@@ -68,7 +68,7 @@ it('el módulo generado trae las piezas del contrato, con su techo de pruebas', 
     );
 })->with([
     'single-app'  => [ModuleMode::SingleApp, null, 'Tests/Feature/Invoice', 'Invoice'],
-    'multitenant' => [ModuleMode::MultitenantPerTenant, 'central', 'Tests/Feature/Central/Invoice', 'CentralInvoice'],
+    'multitenant' => [ModuleMode::Multitenant, 'central', 'Tests/Feature/Central/Invoice', 'CentralInvoice'],
 ]);
 
 it('ninguna pieza generada es un placebo', function () {
@@ -96,8 +96,8 @@ it('ninguna pieza generada es un placebo', function () {
 it('las piezas recorren el manifiesto en vez de enumerar', function () {
     $modulo = $this->generateModule('Invoice', ModuleMode::SingleApp);
 
-    $scaffold = $modulo->contents('Tests/Feature/Invoice/InvoiceScaffoldTest.php');
-    $schema   = $modulo->contents('Tests/Feature/Invoice/InvoiceSchemaTest.php');
+    $scaffold = $modulo->contents('Invoice/Tests/Feature/InvoiceScaffoldTest.php');
+    $schema   = $modulo->contents('Invoice/Tests/Feature/InvoiceSchemaTest.php');
 
     expect(str_contains($scaffold, 'InvoiceContract::SCAFFOLD'))->toBeTrue(
         'FALLA: el tema 0 no recorre el andamiaje del manifiesto. · FIX: recorrerlo es lo que hace '
@@ -127,7 +127,7 @@ it('el esquema se levanta con el seeder, no con RefreshDatabase', function () {
     // RefreshDatabase, y nombrarlo no es usarlo. Es la misma lección de la fase 3 — se prohíbe la
     // operación, no la palabra; si no, el archivo generado tiene que callar justo lo que más falta
     // hace entender.
-    $schema = soloCodigo($modulo->contents('Tests/Feature/Invoice/InvoiceSchemaTest.php'));
+    $schema = soloCodigo($modulo->contents('Invoice/Tests/Feature/InvoiceSchemaTest.php'));
 
     expect(str_contains($schema, 'RefreshDatabase'))->toBeFalse(
         'FALLA: el test del esquema usa RefreshDatabase. · FIX: levanta la subfuncionalidad con su '
@@ -140,7 +140,7 @@ it('el esquema se levanta con el seeder, no con RefreshDatabase', function () {
         . 'setUp() la levanta con el mismo seeder que corre en el servidor.'
     );
 
-    expect(str_contains($modulo->contents('Tests/Feature/Invoice/InvoiceTestCase.php'), "seed(InvoiceContract::SCAFFOLD['stage_seeder'])"))->toBeTrue(
+    expect(str_contains($modulo->contents('Invoice/Tests/Feature/InvoiceTestCase.php'), "seed(InvoiceContract::SCAFFOLD['stage_seeder'])"))->toBeTrue(
         'FALLA: la base no ejecuta el seeder de stage de la subfuncionalidad. · FIX: es lo que crea '
         . 'sus tablas; sin eso no hay esquema que comprobar.'
     );
@@ -161,7 +161,7 @@ it('las piezas cuelgan de la base del grupo, no del TestCase del proyecto', func
     }
 })->with([
     'single-app'  => [ModuleMode::SingleApp, null, 'Tests/Feature/Invoice', 'Invoice'],
-    'multitenant' => [ModuleMode::MultitenantPerTenant, 'central', 'Tests/Feature/Central/Invoice', 'CentralInvoice'],
+    'multitenant' => [ModuleMode::Multitenant, 'central', 'Tests/Feature/Central/Invoice', 'CentralInvoice'],
 ]);
 
 it('el tema 7 no tiene techo, pero sí borde', function () {
@@ -170,7 +170,7 @@ it('el tema 7 no tiene techo, pero sí borde', function () {
     // redundantes, y a que la suite dejara de correrse.
     $modulo = $this->generateModule('Invoice', ModuleMode::SingleApp);
 
-    $http = soloCodigo($modulo->contents('Tests/Feature/Invoice/InvoiceHttpTest.php'));
+    $http = soloCodigo($modulo->contents('Invoice/Tests/Feature/InvoiceHttpTest.php'));
 
     expect(metodosDePrueba($http))->toBeGreaterThan(
         3,
@@ -194,14 +194,14 @@ it('el aislamiento entre tenants solo se genera donde puede fallar', function ()
     // En una aplicación sin tenants no hay otro inquilino del que aislarse: esa prueba no podría
     // fallar nunca, y una prueba que no puede fallar es ruido que se acaba ignorando.
     $single = $this->generateModule('Invoice', ModuleMode::SingleApp);
-    $multi  = $this->generateModule('Billing', ModuleMode::MultitenantPerTenant, 'central');
+    $multi  = $this->generateModule('Billing', ModuleMode::Multitenant, 'central');
 
-    expect(str_contains($single->contents('Tests/Feature/Invoice/InvoiceHttpTest.php'), 'otro_contexto'))->toBeFalse(
+    expect(str_contains($single->contents('Invoice/Tests/Feature/InvoiceHttpTest.php'), 'otro_contexto'))->toBeFalse(
         'FALLA: single-app genera la prueba de aislamiento entre contextos. · FIX: la decide el '
         . 'modo; sin eje de contexto no hay de quién aislarse.'
     );
 
-    expect(str_contains($multi->contents('Tests/Feature/Central/Billing/CentralBillingHttpTest.php'), 'otro_contexto'))->toBeTrue(
+    expect(str_contains($multi->contents('Billing/Tests/Feature/Central/CentralBillingHttpTest.php'), 'otro_contexto'))->toBeTrue(
         'FALLA: multitenant NO genera la prueba de aislamiento. · FIX: sin ella el multitenant no '
         . 'está probado — todo puede estar en verde y un usuario leer los datos de otro inquilino.'
     );
@@ -231,7 +231,7 @@ it('la vista tiene su prueba de permisos, con su manifiesto propio', function (M
     );
 })->with([
     'single-app'  => [ModuleMode::SingleApp, null, 'resources/js/__tests__/Invoice', 'Invoice'],
-    'multitenant' => [ModuleMode::MultitenantPerTenant, 'central', 'resources/js/__tests__/Central/Invoice', 'CentralInvoice'],
+    'multitenant' => [ModuleMode::Multitenant, 'central', 'resources/js/__tests__/Central/Invoice', 'CentralInvoice'],
 ]);
 
 it('el import de la prueba de vista apunta al componente que existe', function (ModuleMode $modo, ?string $contexto, string $carpeta, string $componente, string $vista) {
@@ -253,8 +253,8 @@ it('el import de la prueba de vista apunta al componente que existe', function (
         . "tener dos segmentos.\n\nLo generado fue:\n  - " . implode("\n  - ", $modulo->tree())
     );
 })->with([
-    'single-app'  => [ModuleMode::SingleApp, null, 'resources/js/__tests__/Invoice', 'Invoice', 'resources/js/Pages/Invoice/InvoiceIndex.vue'],
-    'multitenant' => [ModuleMode::MultitenantPerTenant, 'central', 'resources/js/__tests__/Central/Invoice', 'CentralInvoice', 'resources/js/Pages/Central/Invoice/CentralInvoiceIndex.vue'],
+    'single-app'  => [ModuleMode::SingleApp, null, 'resources/js/__tests__/Invoice', 'Invoice', 'Invoice/resources/js/Pages/InvoiceIndex.vue'],
+    'multitenant' => [ModuleMode::Multitenant, 'central', 'resources/js/__tests__/Central/Invoice', 'CentralInvoice', 'Invoice/resources/js/Pages/Central/CentralInvoiceIndex.vue'],
 ]);
 
 it('la vista lleva el ancla que la prueba busca', function () {
@@ -262,8 +262,8 @@ it('la vista lleva el ancla que la prueba busca', function () {
     // divergen, la prueba dice que el botón no se ve —y pasa la mitad que no debía pasar.
     $modulo = $this->generateModule('Invoice', ModuleMode::SingleApp);
 
-    $vista     = $modulo->contents('resources/js/Pages/Invoice/InvoiceIndex.vue');
-    $manifiesto = $modulo->contents('resources/js/__tests__/Invoice/InvoiceContract.js');
+    $vista     = $modulo->contents('Invoice/resources/js/Pages/InvoiceIndex.vue');
+    $manifiesto = $modulo->contents('Invoice/resources/js/__tests__/InvoiceContract.js');
 
     preg_match_all("/ancla: '([^']+)'/", $manifiesto, $anclas);
 
@@ -288,7 +288,7 @@ it('la prueba de la vista monta el listado con datos, no vacío', function () {
     // —que en el proyecto es global, no un import—, el de `route`, y la espera a que la petición de
     // `onMounted` se resuelva antes de mirar el DOM.
     $prueba = $this->generateModule('Invoice', ModuleMode::SingleApp)
-        ->contents('resources/js/__tests__/Invoice/InvoiceIndex.test.js');
+        ->contents('Invoice/resources/js/__tests__/InvoiceIndex.test.js');
 
     expect(str_contains($prueba, 'globalThis.axios'))->toBeTrue(
         'FALLA: la prueba de la vista no declara el doble de axios. · FIX: en el proyecto es una '
@@ -311,5 +311,5 @@ it('el módulo entero sigue coherente con las piezas dentro', function (ModuleMo
     $this->generateModule('Invoice', $modo, $contexto)->assertCoherent();
 })->with([
     'single-app'  => [ModuleMode::SingleApp, null],
-    'multitenant' => [ModuleMode::MultitenantPerTenant, 'central'],
+    'multitenant' => [ModuleMode::Multitenant, 'central'],
 ]);

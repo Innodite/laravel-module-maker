@@ -116,9 +116,9 @@ it('no revisa la sintaxis de lo que no es PHP', function () {
 });
 
 it('el factory generado compila y apunta al modelo con su prefijo de contexto', function () {
-    $modulo = $this->generateModule('Permission', ModuleMode::MultitenantPerTenant, 'central');
+    $modulo = $this->generateModule('Permission', ModuleMode::Multitenant, 'central');
 
-    $content = $modulo->contents('Database/Factories/Central/Permission/CentralPermissionFactory.php');
+    $content = $modulo->contents('Permission/Database/Factories/Central/CentralPermissionFactory.php');
 
     // La regresión de B13: el stub pedía modelNamespace y attributes, el generador entregaba
     // modelUses y definitionAttributes. Los dos quedaban literales y el archivo no cargaba.

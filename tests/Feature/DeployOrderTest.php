@@ -253,7 +253,7 @@ it('generar un módulo lo declara en el orden de despliegue', function () {
 it('en multitenant se declara con su contexto, carpeta incluida', function () {
     $archivo = publicarConfig($this->tempBase);
 
-    $this->generateModule('Invoice', ModuleMode::MultitenantPerTenant, 'central');
+    $this->generateModule('Invoice', ModuleMode::Multitenant, 'central');
 
     $contenido = File::get($archivo);
 

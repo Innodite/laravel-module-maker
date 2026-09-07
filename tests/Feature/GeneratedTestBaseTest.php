@@ -37,14 +37,14 @@ it('el módulo generado trae la base de su grupo de pruebas', function (ModuleMo
         . 'cinco piezas repiten el mismo cálculo cinco veces.'
     );
 })->with([
-    'single-app'  => [ModuleMode::SingleApp, null, 'Tests/Feature/Invoice/InvoiceTestCase.php'],
-    'multitenant' => [ModuleMode::MultitenantPerTenant, 'central', 'Tests/Feature/Central/Invoice/CentralInvoiceTestCase.php'],
+    'single-app'  => [ModuleMode::SingleApp, null, 'Invoice/Tests/Feature/InvoiceTestCase.php'],
+    'multitenant' => [ModuleMode::Multitenant, 'central', 'Invoice/Tests/Feature/Central/CentralInvoiceTestCase.php'],
 ]);
 
 it('la base lee el manifiesto en vez de declarar nada por su cuenta', function () {
     $modulo = $this->generateModule('Invoice', ModuleMode::SingleApp);
 
-    $base = $modulo->contents('Tests/Feature/Invoice/InvoiceTestCase.php');
+    $base = $modulo->contents('Invoice/Tests/Feature/InvoiceTestCase.php');
 
     // `toContain()` recibe VALORES, no un mensaje: pasarle el texto de ayuda como segundo argumento
     // le pide comprobar que el archivo también contiene esa frase — y una comprobación que nadie
@@ -99,7 +99,7 @@ it('el prefijo del manifiesto encuentra de verdad las rutas generadas', function
     );
 })->with([
     'single-app'  => [ModuleMode::SingleApp, null, 'Tests/Feature/Invoice', 'Modules\Invoice\Tests\Feature\Invoice\InvoiceContract'],
-    'multitenant' => [ModuleMode::MultitenantPerTenant, 'central', 'Tests/Feature/Central/Invoice', 'Modules\Invoice\Tests\Feature\Central\Invoice\CentralInvoiceContract'],
+    'multitenant' => [ModuleMode::Multitenant, 'central', 'Tests/Feature/Central/Invoice', 'Modules\Invoice\Tests\Feature\Central\Invoice\CentralInvoiceContract'],
 ]);
 
 it('el alias del permiso que escriben las rutas es el que la base sabe leer', function (ModuleMode $modo, ?string $contexto) {
@@ -131,14 +131,14 @@ it('el alias del permiso que escriben las rutas es el que la base sabe leer', fu
     }
 })->with([
     'single-app'  => [ModuleMode::SingleApp, null],
-    'multitenant' => [ModuleMode::MultitenantPerTenant, 'central'],
+    'multitenant' => [ModuleMode::Multitenant, 'central'],
 ]);
 
 it('el módulo entero sigue coherente con la base dentro', function (ModuleMode $modo, ?string $contexto) {
     $this->generateModule('Invoice', $modo, $contexto)->assertCoherent();
 })->with([
     'single-app'  => [ModuleMode::SingleApp, null],
-    'multitenant' => [ModuleMode::MultitenantPerTenant, 'central'],
+    'multitenant' => [ModuleMode::Multitenant, 'central'],
 ]);
 
 it('la base de un tenant aparta la identificación por dominio', function () {
@@ -148,9 +148,9 @@ it('la base de un tenant aparta la identificación por dominio', function () {
     // la puerta del permiso; quién es el tenant es infraestructura del proyecto, probada aparte.
     config()->set('make-module.tenancy.package', 'stancl');
 
-    $modulo = $this->generateModule('Invoice', ModuleMode::MultitenantPerTenant, 'tenant-one');
+    $modulo = $this->generateModule('Invoice', ModuleMode::Multitenant, 'tenant-one');
 
-    $base = $modulo->contents('Tests/Feature/Tenant/TenantOne/Invoice/TenantOneInvoiceTestCase.php');
+    $base = $modulo->contents('Invoice/Tests/Feature/Tenant/TenantOneInvoiceTestCase.php');
 
     expect($base)->toContain('protected function setUp(): void')
         ->and($base)->toContain('$this->withoutMiddleware([')
@@ -162,9 +162,9 @@ it('la base de la aplicación central no aparta nada', function () {
     // una puerta abierta en la prueba que nadie pidió.
     config()->set('make-module.tenancy.package', 'stancl');
 
-    $modulo = $this->generateModule('Invoice', ModuleMode::MultitenantPerTenant, 'central');
+    $modulo = $this->generateModule('Invoice', ModuleMode::Multitenant, 'central');
 
-    $base = $modulo->contents('Tests/Feature/Central/Invoice/CentralInvoiceTestCase.php');
+    $base = $modulo->contents('Invoice/Tests/Feature/Central/CentralInvoiceTestCase.php');
 
     expect(str_contains($base, 'withoutMiddleware'))->toBeFalse(
         'FALLA: la base de la central aparta middlewares que allí no estorban.'

@@ -132,7 +132,7 @@ it('el prefijo se normaliza venga como venga, porque llega escrito de dos formas
 it('el generador de rutas escribe los permisos que dice RoutePermissions, no los suyos', function () {
     // La prueba que cierra el par de verdad: no compara dos funciones de la misma clase, compara la
     // clase contra el ARCHIVO que el paquete acaba de escribir.
-    $modulo = $this->generateModule('Invoice', ModuleMode::MultitenantShared, 'central');
+    $modulo = $this->generateModule('Invoice', ModuleMode::Multitenant, 'central');
 
     $rutas = collect($modulo->phpFiles())
         ->first(fn (string $f): bool => str_contains($f, 'Routes/'));

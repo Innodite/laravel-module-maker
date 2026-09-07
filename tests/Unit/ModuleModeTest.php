@@ -35,11 +35,11 @@ it('el middleware de permiso es el que corresponde al modo', function () {
         'permission',
         'En aplicación única el alias es "permission" a secas. Revisa ModuleMode::permissionMiddleware().'
     );
-    expect(ModuleMode::MultitenantShared->permissionMiddleware('central'))->toBe(
+    expect(ModuleMode::Multitenant->permissionMiddleware('central'))->toBe(
         'central-permission',
         'La app central de un multitenant protege con "central-permission".'
     );
-    expect(ModuleMode::MultitenantShared->permissionMiddleware('tenant_shared'))->toBe(
+    expect(ModuleMode::Multitenant->permissionMiddleware('tenant_shared'))->toBe(
         'tenant-permission',
         'Todo lo que no es central protege con "tenant-permission".'
     );
@@ -50,15 +50,15 @@ it('el prefijo del permiso sale de la misma lógica que el nombre del archivo', 
         '',
         'Single-app: invoices_index, sin prefijo. Revisa ModuleMode::permissionPrefix().'
     );
-    expect(ModuleMode::MultitenantShared->permissionPrefix('tenant_shared'))->toBe(
+    expect(ModuleMode::Multitenant->permissionPrefix('tenant_shared'))->toBe(
         'tenant_',
         'Tenants iguales: el prefijo es el CONTEXTO — tenant_roles_index.'
     );
-    expect(ModuleMode::MultitenantShared->permissionPrefix('central'))->toBe(
+    expect(ModuleMode::Multitenant->permissionPrefix('central'))->toBe(
         'central_',
         'El contexto central siempre lleva prefijo central_.'
     );
-    expect(ModuleMode::MultitenantPerTenant->permissionPrefix('tenant', 'energy-spain'))->toBe(
+    expect(ModuleMode::Multitenant->permissionPrefix('tenant', 'energy-spain'))->toBe(
         'energy_spain_',
         'Un tenant con lógica propia se nombra: energy_spain_settlements_index. '
         . 'Y el id llega con guiones, que hay que convertir a snake_case.'
@@ -66,21 +66,21 @@ it('el prefijo del permiso sale de la misma lógica que el nombre del archivo', 
 });
 
 it('un tenant solo declara conexión propia cuando tiene lógica propia', function () {
-    expect(ModuleMode::MultitenantShared->requiresTenantConnectionKey())->toBeFalse(
+    expect(ModuleMode::Multitenant->requiresTenantConnectionKey())->toBeFalse(
         'Si todos los tenants hacen lo mismo, el paquete de tenancy conmuta la conexión al '
         . 'inicializar el contexto y el aislamiento lo garantiza la ruta. Exigir connection_key '
         . 'ahí ata el modelo a un solo tenant.'
     );
-    expect(ModuleMode::MultitenantPerTenant->requiresTenantConnectionKey())->toBeTrue(
+    expect(ModuleMode::Multitenant->requiresTenantConnectionKey())->toBeTrue(
         'Un tenant con lógica propia sí declara la suya.'
     );
 });
 
 it('un tenant solo se nombra si tiene lógica propia', function () {
-    expect(ModuleMode::MultitenantShared->namesTenant())->toBeFalse(
+    expect(ModuleMode::Multitenant->namesTenant())->toBeFalse(
         'Nombrar un tenant que hace lo mismo que los demás produce código duplicado con etiqueta.'
     );
-    expect(ModuleMode::MultitenantPerTenant->namesTenant())->toBeTrue();
+    expect(ModuleMode::Multitenant->namesTenant())->toBeTrue();
 });
 
 it('las claves de contexto exigidas dependen del modo, no de una lista fija', function () {
@@ -88,12 +88,12 @@ it('las claves de contexto exigidas dependen del modo, no de una lista fija', fu
     // y el mensaje se limitaba a nombrar el modo, así que la distinción existía solo en pantalla: a
     // un proyecto de tenants iguales se le reclamaba un contexto para lógica repartida por tenant,
     // que es exactamente lo que ese modo no tiene.
-    expect(ModuleMode::MultitenantShared->requiredContextKeys())->toBe(
+    expect(ModuleMode::Multitenant->requiredContextKeys())->toBe(
         ['central', 'tenant'],
         'Con tenants iguales la lógica es una y cada tenant tiene su base: el eje es el `tenant` '
         . 'genérico, y no hay `tenant_shared` que declarar.'
     );
-    expect(ModuleMode::MultitenantPerTenant->requiredContextKeys())->toBe(
+    expect(ModuleMode::Multitenant->requiredContextKeys())->toBe(
         ['central', 'tenant_shared'],
         'Con lógica por tenant, `tenant_shared` es lo que comparten; los tenants NOMBRADOS salen del '
         . 'catálogo del proyecto, que el paquete no puede conocer.'

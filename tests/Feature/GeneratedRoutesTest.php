@@ -78,7 +78,7 @@ it('en un modo con eje de contexto, sin contexto no se escribe ninguna ruta', fu
     // por su cuenta** cuando no se le pasa (ver la nota de la fase: asume `central`). Esta guarda
     // es la de más abajo, la que protege a los otros llamadores — `add-entity` y la generación por
     // configuración dinámica— de escribir un archivo verosímil y equivocado.
-    config()->set('make-module.mode', ModuleMode::MultitenantPerTenant->value);
+    config()->set('make-module.mode', ModuleMode::Multitenant->value);
 
     $rutasDir = $this->tempPath('Modules/Sin/Routes');
 
@@ -107,7 +107,7 @@ it('las rutas de la aplicación central no acaban en el archivo de los tenants',
     //
     // Nadie lo veía porque el archivo es correcto: parsea, las rutas existen y sus permisos son los
     // que dicen ser. Solo estaban en el sitio equivocado.
-    $modulo = $this->generateModule('Invoice', ModuleMode::MultitenantPerTenant, 'central');
+    $modulo = $this->generateModule('Invoice', ModuleMode::Multitenant, 'central');
 
     expect($modulo->has('Routes/tenant.php'))->toBeFalse(
         'FALLA: el contexto central escribió rutas en tenant.php. · FIX: cada contexto escribe en el '
@@ -126,7 +126,7 @@ it('el marcador que el generador escribe es el que el inyector busca', function 
     // existe. Componían la clave por separado y no coincidían —`{{CENTRAL_END}}` contra
     // `CENTRAL_ROUTES_END`—, así que el bloque nuevo acababa pegado al final del archivo, fuera del
     // grupo que le da dominio y middleware. Sin error, y sin protección.
-    $rutas = $this->generateModule('Invoice', ModuleMode::MultitenantPerTenant, 'central')
+    $rutas = $this->generateModule('Invoice', ModuleMode::Multitenant, 'central')
         ->contents('Routes/web.php');
 
     $marcador = RouteMarkers::comment('central', 'web.php');
@@ -153,7 +153,7 @@ it('el archivo de rutas de un tenant es PHP de verdad, no un bloque suelto', fun
     // El chequeo de salida no los vio por el mismo motivo por el que `php -l` tampoco: un archivo
     // que no abre PHP siempre «parsea». Se descubrieron al **ejecutar** el contrato del módulo en
     // un contexto de tenant.
-    $rutas = $this->generateModule('Meter', ModuleMode::MultitenantPerTenant, 'tenant-one')
+    $rutas = $this->generateModule('Meter', ModuleMode::Multitenant, 'tenant-one')
         ->contents('Routes/tenant.php');
 
     expect(str_starts_with(trim($rutas), '<?php'))->toBeTrue(
@@ -186,7 +186,7 @@ it('con stancl, las rutas de la central se sirven solo en los dominios centrales
     config()->set('make-module.tenancy.package', 'stancl');
 
     $rutas = soloCodigo(
-        $this->generateModule('Invoice', ModuleMode::MultitenantPerTenant, 'central')
+        $this->generateModule('Invoice', ModuleMode::Multitenant, 'central')
             ->contents('Routes/web.php')
     );
 
@@ -205,7 +205,7 @@ it('con stancl, las rutas de la central se sirven solo en los dominios centrales
 it('con stancl, las rutas de un tenant lo identifican antes de responder', function () {
     config()->set('make-module.tenancy.package', 'stancl');
 
-    $rutas = $this->generateModule('Meter', ModuleMode::MultitenantPerTenant, 'tenant-one')
+    $rutas = $this->generateModule('Meter', ModuleMode::Multitenant, 'tenant-one')
         ->contents('Routes/tenant.php');
 
     $codigo = soloCodigo($rutas);
@@ -237,7 +237,7 @@ it('sin paquete de tenencia declarado no se inventa envoltura: el archivo dice d
     // válido — un fallo ruidoso y recuperable en vez de uno que lo tumba todo.
     config()->set('make-module.tenancy.package', 'none');
 
-    $rutas = $this->generateModule('Invoice', ModuleMode::MultitenantPerTenant, 'central')
+    $rutas = $this->generateModule('Invoice', ModuleMode::Multitenant, 'central')
         ->contents('Routes/web.php');
 
     expect(str_contains(soloCodigo($rutas), 'central_domains'))->toBeFalse(
@@ -286,7 +286,7 @@ it('varios tenants escriben en el mismo archivo sin pegarle otro archivo dentro'
     // de generación — anotado como pendiente al cerrar la fase anterior.
     config()->set('make-module.tenancy.package', 'stancl');
 
-    $rutas = $this->generateModule('Meter', ModuleMode::MultitenantShared, 'tenant_shared')
+    $rutas = $this->generateModule('Meter', ModuleMode::Multitenant, 'tenant_shared')
         ->contents('Routes/tenant.php');
 
     expect(substr_count($rutas, '<?php'))->toBe(
@@ -324,7 +324,7 @@ it('en single-app no hay envoltura de tenencia que declarar', function () {
 });
 
 it('en multitenant las rutas llevan el prefijo y el middleware de su contexto', function () {
-    $rutas = $this->generateModule('Invoice', ModuleMode::MultitenantPerTenant, 'central')
+    $rutas = $this->generateModule('Invoice', ModuleMode::Multitenant, 'central')
         ->contents('Routes/web.php');
 
     expect(str_contains($rutas, "Route::prefix('central-invoices')"))->toBeTrue(
@@ -366,7 +366,7 @@ it('generar un módulo no escribe una sola línea en el routes/web.php del proye
 
     File::put($webPhp, $original);
 
-    $this->generateModule('Invoice', ModuleMode::MultitenantPerTenant, 'central');
+    $this->generateModule('Invoice', ModuleMode::Multitenant, 'central');
 
     expect(File::get($webPhp))->toBe(
         $original,

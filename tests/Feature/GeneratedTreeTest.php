@@ -25,12 +25,12 @@ it('en single-app el árbol no lleva contexto en ningún sitio', function () {
 });
 
 it('en multitenant el contexto entra en la carpeta y en el nombre', function () {
-    $this->generateModule('Invoice', ModuleMode::MultitenantPerTenant, 'central')
+    $this->generateModule('Invoice', ModuleMode::Multitenant, 'central')
         ->assertContextAxis('Central', 'Central');
 });
 
 it('la carpeta de los tres maestros Application existe en cada contexto', function () {
-    $modulo = $this->generateModule('Invoice', ModuleMode::MultitenantPerTenant, 'central');
+    $modulo = $this->generateModule('Invoice', ModuleMode::Multitenant, 'central');
 
     expect(is_dir($modulo->path('Database/Seeders/Central/Application')))->toBeTrue(
         'Los 3 maestros del módulo son el punto de entrada único de su contexto, así que tienen '
@@ -65,28 +65,28 @@ it('la migración lleva el sufijo _final, que dice que trae el esquema completo'
 
 it('en single-app cada capa cuelga de la carpeta de su subfuncionalidad', function () {
     $this->generateModule('Invoice', ModuleMode::SingleApp)->assertTreeHas([
-        'Models/Invoice/Invoice.php',
-        'Http/Controllers/Invoice/InvoiceController.php',
-        'Services/Invoice/InvoiceService.php',
-        'Services/Contracts/Invoice/InvoiceServiceInterface.php',
-        'Repositories/Invoice/InvoiceRepository.php',
-        'Repositories/Contracts/Invoice/InvoiceRepositoryInterface.php',
-        'Http/Requests/Invoice/InvoiceStoreRequest.php',
-        'Database/Factories/Invoice/InvoiceFactory.php',
-        'resources/js/Pages/Invoice/InvoiceIndex.vue',
-        'Tests/Feature/Invoice/InvoiceScaffoldTest.php',
+        'Invoice/Models/Invoice.php',
+        'Invoice/Http/Controllers/InvoiceController.php',
+        'Invoice/Services/InvoiceService.php',
+        'Invoice/Services/Contracts/InvoiceServiceInterface.php',
+        'Invoice/Repositories/InvoiceRepository.php',
+        'Invoice/Repositories/Contracts/InvoiceRepositoryInterface.php',
+        'Invoice/Http/Requests/InvoiceStoreRequest.php',
+        'Invoice/Database/Factories/InvoiceFactory.php',
+        'Invoice/resources/js/Pages/InvoiceIndex.vue',
+        'Invoice/Tests/Feature/InvoiceScaffoldTest.php',
     ], 'la subfuncionalidad es carpeta en TODAS las capas, tests y vistas incluidos.');
 });
 
 it('en multitenant el contexto aparece en la carpeta y en el nombre de cada capa', function () {
-    $this->generateModule('Invoice', ModuleMode::MultitenantPerTenant, 'central')->assertTreeHas([
-        'Models/Central/Invoice/CentralInvoice.php',
-        'Http/Controllers/Central/Invoice/CentralInvoiceController.php',
-        'Services/Central/Invoice/CentralInvoiceService.php',
-        'Repositories/Central/Invoice/CentralInvoiceRepository.php',
-        'Database/Factories/Central/Invoice/CentralInvoiceFactory.php',
-        'resources/js/Pages/Central/Invoice/CentralInvoiceIndex.vue',
-        'Tests/Feature/Central/Invoice/CentralInvoiceScaffoldTest.php',
+    $this->generateModule('Invoice', ModuleMode::Multitenant, 'central')->assertTreeHas([
+        'Invoice/Models/Central/CentralInvoice.php',
+        'Invoice/Http/Controllers/Central/CentralInvoiceController.php',
+        'Invoice/Services/Central/CentralInvoiceService.php',
+        'Invoice/Repositories/Central/CentralInvoiceRepository.php',
+        'Invoice/Database/Factories/Central/CentralInvoiceFactory.php',
+        'Invoice/resources/js/Pages/Central/CentralInvoiceIndex.vue',
+        'Invoice/Tests/Feature/Central/CentralInvoiceScaffoldTest.php',
     ], 'En multitenant sí hay contextos que separar, así que entran en la carpeta Y en el nombre.');
 });
 
@@ -96,7 +96,7 @@ it('la misma subfuncionalidad genera dos árboles distintos según el modo', fun
 
     File::deleteDirectory($this->tempPath('Modules/Invoice'));
 
-    $multi = $this->generateModule('Invoice', ModuleMode::MultitenantPerTenant, 'central')->tree();
+    $multi = $this->generateModule('Invoice', ModuleMode::Multitenant, 'central')->tree();
 
     expect($single)->not->toBe(
         $multi,
@@ -116,7 +116,7 @@ it('el módulo generado se sostiene entero: nada sin resolver, nada apuntando al
     $this->generateModule('Invoice', $modo, $contexto)->assertCoherent();
 })->with([
     'single-app'  => [ModuleMode::SingleApp, null],
-    'multitenant' => [ModuleMode::MultitenantPerTenant, 'central'],
+    'multitenant' => [ModuleMode::Multitenant, 'central'],
 ]);
 
 it('el provider registra clases que existen, con la carpeta de la subfuncionalidad', function () {

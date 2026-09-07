@@ -85,7 +85,7 @@ it('el seeder de permisos siembra exactamente los permisos que exigen las rutas'
     // Cuando estos dos conjuntos se separaron, la pantalla generada cargaba sin un solo botón.
     $modulo = $this->generateModule('Invoice', ModuleMode::SingleApp);
 
-    $seeder = $modulo->contents('Database/Seeders/Invoice/InvoiceInvoicePermissionsSeeder.php');
+    $seeder = $modulo->contents('Invoice/Database/Seeders/InvoiceInvoicePermissionsSeeder.php');
 
     foreach (SubFeaturePermissions::routes('', 'invoices') as $ruta) {
         expect($seeder)->toContain("'{$ruta['permission']}'");
@@ -100,7 +100,7 @@ it('cada permiso del seeder llega con su descripción en español', function () 
     // Es lo único que ve quien asigna permisos a un rol: sin ella, esa pantalla es una lista de
     // claves indescifrables.
     $seeder = $this->generateModule('Invoice', ModuleMode::SingleApp)
-        ->contents('Database/Seeders/Invoice/InvoiceInvoicePermissionsSeeder.php');
+        ->contents('Invoice/Database/Seeders/InvoiceInvoicePermissionsSeeder.php');
 
     expect($seeder)->toContain('Acceder a la pantalla de')
         ->and($seeder)->toContain('Sin este permiso,')
@@ -108,7 +108,7 @@ it('cada permiso del seeder llega con su descripción en español', function () 
 });
 
 it('en multitenant las piezas llevan el prefijo del contexto y su carpeta', function () {
-    $modulo = $this->generateModule('Invoice', ModuleMode::MultitenantPerTenant, 'central');
+    $modulo = $this->generateModule('Invoice', ModuleMode::Multitenant, 'central');
 
     $esperadas = array_map(
         static fn (string $pieza): string => "Database/Seeders/Central/Invoice/{$pieza}.php",
@@ -121,10 +121,10 @@ it('en multitenant las piezas llevan el prefijo del contexto y su carpeta', func
 it('el seeder declara la conexión del contexto, la misma que el modelo', function () {
     // Un modelo leyendo de una base y su seeder sembrando en otra es lo que pasa cuando cada uno
     // calcula la conexión por su cuenta.
-    $modulo = $this->generateModule('Invoice', ModuleMode::MultitenantPerTenant, 'central');
+    $modulo = $this->generateModule('Invoice', ModuleMode::Multitenant, 'central');
 
-    $stage = $modulo->contents('Database/Seeders/Central/Invoice/CentralInvoiceInvoiceStageSeeder.php');
-    $model = $modulo->contents('Models/Central/Invoice/CentralInvoice.php');
+    $stage = $modulo->contents('Invoice/Database/Seeders/Central/CentralInvoiceInvoiceStageSeeder.php');
+    $model = $modulo->contents('Invoice/Models/Central/CentralInvoice.php');
 
     expect($stage)->toContain("protected ?string \$connection = 'central';")
         ->and($model)->toContain("protected \$connection = 'central';");
@@ -132,7 +132,7 @@ it('el seeder declara la conexión del contexto, la misma que el modelo', functi
 
 it('en single-app no declara conexión: no hay nada que conmutar', function () {
     $stage = $this->generateModule('Invoice', ModuleMode::SingleApp)
-        ->contents('Database/Seeders/Invoice/InvoiceInvoiceStageSeeder.php');
+        ->contents('Invoice/Database/Seeders/InvoiceInvoiceStageSeeder.php');
 
     expect($stage)->toContain('protected ?string $connection = null;');
 });
@@ -141,7 +141,7 @@ it('los seeders nombran la tabla que crea la migración', function () {
     // Si divergen, el seeder valida una tabla que no existe mientras la real queda sin comprobar.
     $modulo = $this->generateModule('Invoice', ModuleMode::SingleApp);
 
-    $stage = $modulo->contents('Database/Seeders/Invoice/InvoiceInvoiceStageSeeder.php');
+    $stage = $modulo->contents('Invoice/Database/Seeders/InvoiceInvoiceStageSeeder.php');
 
     expect($stage)->toContain("'invoices',");
 
@@ -155,7 +155,7 @@ it('el trait de datos nace vacío, con su estructura', function () {
     // El paquete no conoce los datos del negocio. Rellenarlo con filas de ejemplo sería repetir el
     // defecto que esta fase cierra: una pieza que aparenta contenido.
     $data = $this->generateModule('Invoice', ModuleMode::SingleApp)
-        ->contents('Database/Seeders/Invoice/InvoiceInvoiceData.php');
+        ->contents('Invoice/Database/Seeders/InvoiceInvoiceData.php');
 
     expect($data)->toContain('protected function upsertCanonicalData(): void')
         ->and($data)->toContain('protected function seedCanonicalData(): void');
@@ -174,7 +174,7 @@ it('volver a generar sobre un módulo existente no pisa lo que se escribió a ma
     // El camino que puede reescribirlas es el de añadir componentes a un módulo que ya existe, que
     // es como llega `add-entity`: `make-module` sobre un módulo existente se niega antes de empezar.
     $modulo = $this->generateModule('Invoice', ModuleMode::SingleApp);
-    $ruta   = $modulo->path('Database/Seeders/Invoice/InvoiceInvoiceStageSeeder.php');
+    $ruta   = $modulo->path('Invoice/Database/Seeders/InvoiceInvoiceStageSeeder.php');
 
     file_put_contents($ruta, str_replace(
         'public function run(): void',
@@ -206,7 +206,7 @@ it('la pieza de producción no trae una sola operación que borre', function () 
     // SOLO el código: las tres palabras están en el comentario que dice que no se usan.
     $codigo = soloCodigo(
         $this->generateModule('Invoice', ModuleMode::SingleApp)
-            ->contents('Database/Seeders/Invoice/InvoiceInvoiceProductionSeeder.php')
+            ->contents('Invoice/Database/Seeders/InvoiceInvoiceProductionSeeder.php')
     );
 
     foreach (['truncate', '->delete(', 'dropIfExists', 'Schema::drop'] as $destructiva) {
@@ -222,8 +222,8 @@ it('la pieza de producción no conoce el modo destructivo: no hay nada que habil
     // el trait, exportar SEEDER_DESTRUCTIVE=true en el servidor no enciende nada en este archivo.
     $modulo = $this->generateModule('Invoice', ModuleMode::SingleApp);
 
-    $produccion = soloCodigo($modulo->contents('Database/Seeders/Invoice/InvoiceInvoiceProductionSeeder.php'));
-    $stage      = soloCodigo($modulo->contents('Database/Seeders/Invoice/InvoiceInvoiceStageSeeder.php'));
+    $produccion = soloCodigo($modulo->contents('Invoice/Database/Seeders/InvoiceInvoiceProductionSeeder.php'));
+    $stage      = soloCodigo($modulo->contents('Invoice/Database/Seeders/InvoiceInvoiceStageSeeder.php'));
 
     expect(str_contains($produccion, 'ResolvesSeederDestructiveMode'))->toBeFalse(
         'Producción no usa el trait del modo destructivo: no hay modo que resolver.'
@@ -246,7 +246,7 @@ it('la pieza de producción mezcla los datos, no los siembra desde cero', functi
     // Producción solo puede usar la primera.
     $codigo = soloCodigo(
         $this->generateModule('Invoice', ModuleMode::SingleApp)
-            ->contents('Database/Seeders/Invoice/InvoiceInvoiceProductionSeeder.php')
+            ->contents('Invoice/Database/Seeders/InvoiceInvoiceProductionSeeder.php')
     );
 
     expect(str_contains($codigo, 'upsertCanonicalData'))->toBeTrue(
@@ -262,7 +262,7 @@ it('la pieza de producción comprueba las tablas después de migrar', function (
     // de un usuario, no.
     $codigo = soloCodigo(
         $this->generateModule('Invoice', ModuleMode::SingleApp)
-            ->contents('Database/Seeders/Invoice/InvoiceInvoiceProductionSeeder.php')
+            ->contents('Invoice/Database/Seeders/InvoiceInvoiceProductionSeeder.php')
     );
 
     expect($codigo)->toContain('validateTables')
@@ -274,19 +274,19 @@ it('la pieza de producción declara la conexión de su contexto, igual que stage
     // La simetría que faltaba: la conexión de stage estaba vigilada y la de producción no, siendo
     // la que corre contra la base del cliente. Un seeder sembrando en la base que no era es el
     // fallo que esta línea existe para impedir.
-    $produccion = $this->generateModule('Invoice', ModuleMode::MultitenantPerTenant, 'central')
-        ->contents('Database/Seeders/Central/Invoice/CentralInvoiceInvoiceProductionSeeder.php');
+    $produccion = $this->generateModule('Invoice', ModuleMode::Multitenant, 'central')
+        ->contents('Invoice/Database/Seeders/Central/CentralInvoiceInvoiceProductionSeeder.php');
 
     expect($produccion)->toContain("protected ?string \$connection = 'central';");
 });
 
 it('en single-app la pieza de producción tampoco declara conexión', function () {
     $produccion = $this->generateModule('Invoice', ModuleMode::SingleApp)
-        ->contents('Database/Seeders/Invoice/InvoiceInvoiceProductionSeeder.php');
+        ->contents('Invoice/Database/Seeders/InvoiceInvoiceProductionSeeder.php');
 
     expect($produccion)->toContain('protected ?string $connection = null;');
 });
 
 it('el módulo con sus seis piezas sigue siendo coherente', function () {
-    $this->generateModule('Invoice', ModuleMode::MultitenantPerTenant, 'central')->assertCoherent();
+    $this->generateModule('Invoice', ModuleMode::Multitenant, 'central')->assertCoherent();
 });
