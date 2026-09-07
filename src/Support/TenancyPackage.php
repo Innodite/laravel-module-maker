@@ -62,6 +62,51 @@ enum TenancyPackage: string
             );
     }
 
+    /**
+     * ¿Conmuta este paquete la conexión de base de datos al identificar al inquilino?
+     *
+     * Es la pregunta que decide si el modelo del inquilino puede salir **sin** `$connection`. Con
+     * stancl la respuesta es sí: su bootstrapper reconfigura la conexión reservada `tenant` y la
+     * pone por defecto en cuanto el middleware identifica al inquilino, así que el modelo que no
+     * nombra ninguna acaba en la base del cliente correcto — y el que nombra una, no.
+     *
+     * Con `none` la respuesta es no, y ahí el modelo generado **tampoco** declara conexión: declara
+     * una NOTA. Inventarle un nombre de conexión al proyecto sería adivinar cuál de las suyas es, y
+     * el error se cobra escribiendo en la base equivocada, en silencio. La nota se ve al abrir el
+     * archivo y se corrige en un minuto; es la misma asimetría por la que {@see self::None} es el
+     * valor por defecto y no `stancl`.
+     */
+    public function switchesConnection(): bool
+    {
+        return $this === self::Stancl;
+    }
+
+    /**
+     * La nota que ocupa el sitio de la conexión que este paquete no va a conmutar.
+     *
+     * Hermana de {@see self::missingWrapperNote()}, y por el mismo motivo: lo que el paquete no
+     * puede escribir por el proyecto se dice **en el archivo**, no se calla ni se inventa.
+     */
+    public function missingConnectionNote(): string
+    {
+        if ($this->switchesConnection()) {
+            return '';
+        }
+
+        return <<<PHP
+        // ⛔ ESTE MODELO NO DECLARA CONEXIÓN, Y NADIE LA VA A CONMUTAR POR TI: el proyecto declara
+        //    que no usa ninguno de los paquetes de tenencia soportados (`tenancy.package` en
+        //    config/make-module.php).
+        //    FIX: haz que tu tenencia conmute la conexión por defecto al identificar al inquilino,
+        //    antes de que este modelo consulte. Con stancl/tenancy lo hace su
+        //    DatabaseTenancyBootstrapper al inicializar el contexto.
+        //    ⛔ No escribas aquí `protected \$connection`: eso ataría el modelo a UN cliente, que es
+        //    justo lo que el eje del inquilino existe para evitar.
+
+
+        PHP;
+    }
+
     /** Does this package know how to wrap the generated route files? */
     public function wrapsRoutes(): bool
     {

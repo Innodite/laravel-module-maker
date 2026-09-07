@@ -240,6 +240,31 @@ class ContextResolver
     }
 
     /**
+     * ¿Este contexto es el del inquilino?
+     *
+     * Se mira la FORMA del contexto, no una lista de nombres: el catálogo lo declara con
+     * `is_tenant`, y si no está, la carpeta lo dice. Una lista de nombres conocidos envejece en
+     * cuanto alguien llama a su contexto de otra manera.
+     *
+     * Vive aquí, y no en quien pregunta, porque lo preguntan dos: el servicio que decide contra qué
+     * conexión se ejecuta una migración y el generador que decide si el modelo declara `$connection`.
+     * Con un cálculo en cada sitio, el día que uno cambie el modelo leerá de una base y su migración
+     * escribirá en otra.
+     *
+     * @param  array<string, mixed>  $context
+     */
+    public static function esDeInquilino(array $context): bool
+    {
+        if (array_key_exists('is_tenant', $context)) {
+            return (bool) $context['is_tenant'];
+        }
+
+        $folder = (string) ($context['folder'] ?? '');
+
+        return $folder === 'Tenant' || str_starts_with($folder, 'Tenant/');
+    }
+
+    /**
      * Limpia el cache. Útil en tests.
      *
      * @return void
