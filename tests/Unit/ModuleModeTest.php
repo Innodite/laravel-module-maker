@@ -39,7 +39,7 @@ it('el middleware de permiso es el que corresponde al modo', function () {
         'central-permission',
         'La app central de un multitenant protege con "central-permission".'
     );
-    expect(ModuleMode::Multitenant->permissionMiddleware('tenant_shared'))->toBe(
+    expect(ModuleMode::Multitenant->permissionMiddleware('tenant'))->toBe(
         'tenant-permission',
         'Todo lo que no es central protege con "tenant-permission".'
     );
@@ -50,53 +50,73 @@ it('el prefijo del permiso sale de la misma lógica que el nombre del archivo', 
         '',
         'Single-app: invoices_index, sin prefijo. Revisa ModuleMode::permissionPrefix().'
     );
-    expect(ModuleMode::Multitenant->permissionPrefix('tenant_shared'))->toBe(
+    expect(ModuleMode::Multitenant->permissionPrefix('tenant'))->toBe(
         'tenant_',
-        'Tenants iguales: el prefijo es el CONTEXTO — tenant_roles_index.'
+        'El prefijo es el CONTEXTO — tenant_roles_index.'
     );
     expect(ModuleMode::Multitenant->permissionPrefix('central'))->toBe(
         'central_',
         'El contexto central siempre lleva prefijo central_.'
     );
-    expect(ModuleMode::Multitenant->permissionPrefix('tenant', 'energy-spain'))->toBe(
-        'energy_spain_',
-        'Un tenant con lógica propia se nombra: energy_spain_settlements_index. '
-        . 'Y el id llega con guiones, que hay que convertir a snake_case.'
+});
+
+it('el permiso del inquilino NUNCA lleva el nombre de un cliente', function () {
+    // Un permiso `energy_spain_settlements_index` hay que sembrarlo por cliente y renombrarlo el día
+    // que el cliente se renombre. `tenant_settlements_index` se siembra una vez, dentro de la base de
+    // cada inquilino, donde ya es inequívoco: el aislamiento lo da la base, no el nombre.
+    expect(ModuleMode::Multitenant->permissionPrefix('tenant'))->toBe('tenant_');
+
+    $firma = new ReflectionMethod(ModuleMode::class, 'permissionPrefix');
+
+    expect($firma->getNumberOfParameters())->toBe(
+        1,
+        'permissionPrefix() recibe SOLO el contexto. Un segundo parámetro con el id del inquilino '
+        . 'es la puerta por la que vuelve el permiso con nombre de cliente.'
     );
 });
 
-it('un tenant solo declara conexión propia cuando tiene lógica propia', function () {
-    expect(ModuleMode::Multitenant->requiresTenantConnectionKey())->toBeFalse(
-        'Si todos los tenants hacen lo mismo, el paquete de tenancy conmuta la conexión al '
-        . 'inicializar el contexto y el aislamiento lo garantiza la ruta. Exigir connection_key '
-        . 'ahí ata el modelo a un solo tenant.'
+it('el modelo del inquilino no declara conexión, y el central sí', function () {
+    expect(ModuleMode::Multitenant->declaresModelConnection('central'))->toBeTrue(
+        'La aplicación central tiene su propia base y su modelo la nombra.'
     );
-    expect(ModuleMode::Multitenant->requiresTenantConnectionKey())->toBeTrue(
-        'Un tenant con lógica propia sí declara la suya.'
+    expect(ModuleMode::Multitenant->declaresModelConnection('tenant'))->toBeFalse(
+        'El paquete de tenencia conmuta la conexión al identificar al inquilino, y el aislamiento lo '
+        . 'garantiza la ruta. Nombrarla aquí ata el modelo a UN cliente y rompe lo que protege.'
+    );
+    expect(ModuleMode::SingleApp->declaresModelConnection())->toBeFalse(
+        'Una sola base: no hay nada que conmutar ni que nombrar.'
     );
 });
 
-it('un tenant solo se nombra si tiene lógica propia', function () {
-    expect(ModuleMode::Multitenant->namesTenant())->toBeFalse(
-        'Nombrar un tenant que hace lo mismo que los demás produce código duplicado con etiqueta.'
+it('ningún contexto nombra a un inquilino', function () {
+    // El modo `multitenant-per-tenant` existía para eso y se retiró: nombrar a un cliente multiplica
+    // lógica idéntica por cliente, y declararle conexión ata el modelo a su base.
+    expect(array_column(ModuleMode::cases(), 'value'))->toBe(
+        ['single-app', 'multitenant'],
+        'Dos modos, y solo dos.'
     );
-    expect(ModuleMode::Multitenant->namesTenant())->toBeTrue();
+    expect(ModuleMode::Multitenant->supportedContextKeys())->toBe(
+        ['central', 'tenant'],
+        'Dos contextos de fábrica. Un contexto propio lo declara el proyecto en SU catálogo.'
+    );
 });
 
-it('las claves de contexto exigidas dependen del modo, no de una lista fija', function () {
-    // Cada modo exige SU catálogo. Antes los dos exigían el mismo —`central, shared, tenant_shared`—
-    // y el mensaje se limitaba a nombrar el modo, así que la distinción existía solo en pantalla: a
-    // un proyecto de tenants iguales se le reclamaba un contexto para lógica repartida por tenant,
-    // que es exactamente lo que ese modo no tiene.
+it('lo que el catálogo debe declarar es lo mismo que el modo acepta', function () {
+    // Eran dos preguntas distintas mientras un modo exigía `tenant_shared` y el otro `tenant`. Con un
+    // solo modo multiinquilino y un solo contexto de inquilino, la respuesta es la misma lista — y
+    // mantener dos formas de calcularla es como se separan las mitades de este paquete.
     expect(ModuleMode::Multitenant->requiredContextKeys())->toBe(
         ['central', 'tenant'],
-        'Con tenants iguales la lógica es una y cada tenant tiene su base: el eje es el `tenant` '
-        . 'genérico, y no hay `tenant_shared` que declarar.'
+        'La aplicación central y el inquilino. Nada más.'
     );
     expect(ModuleMode::Multitenant->requiredContextKeys())->toBe(
-        ['central', 'tenant_shared'],
-        'Con lógica por tenant, `tenant_shared` es lo que comparten; los tenants NOMBRADOS salen del '
-        . 'catálogo del proyecto, que el paquete no puede conocer.'
+        ModuleMode::Multitenant->supportedContextKeys(),
+        'Un solo cálculo para las dos preguntas.'
+    );
+    expect(ModuleMode::SingleApp->requiredContextKeys())->toBe(
+        [],
+        'Una aplicación única no tiene inquilinos que declarar: exigirle una clave la obligaría a '
+        . 'inventarse un contexto para pasar un diagnóstico que no le aplica.'
     );
 });
 
@@ -128,8 +148,31 @@ it('sin modo elegido se niega a generar, y el error dice cómo elegirlo', functi
     // el mensaje trae la instrucción, no solo el diagnóstico.
     expect($message)->toContain('innodite:module-setup');
     expect($message)->toContain('single-app');
-    expect($message)->toContain('multitenant-shared');
-    expect($message)->toContain('multitenant-per-tenant');
+    expect($message)->toContain('multitenant');
+});
+
+it('un modo RETIRADO se rechaza diciendo qué escribir, no como si fuera una errata', function () {
+    // La configuración dice algo que era legítimo la semana pasada. «El modo no existe» se leería
+    // como un typo, y traducirlo en silencio a `multitenant` sería peor: ese proyecto eligió
+    // inquilinos nombrados con conexión propia, y las dos cosas ya no existen.
+    foreach (['multitenant-shared', 'multitenant-per-tenant'] as $retirado) {
+        config()->set('make-module.mode', $retirado);
+
+        $message = null;
+
+        try {
+            ModuleMode::current();
+        } catch (ModeNotConfiguredException $e) {
+            $message = $e->getMessage();
+        }
+
+        expect($message)->not->toBeNull("El modo retirado '{$retirado}' debe rechazarse.");
+        // El mensaje nombra el modo que el proyecto declara, dice exactamente qué escribir, y da la
+        // salida para quien sí necesita un contexto propio.
+        expect($message)->toContain($retirado);
+        expect($message)->toContain("escribe 'multitenant'");
+        expect($message)->toContain('contexts.json');
+    }
 });
 
 it('un modo desconocido falla nombrando el valor mal escrito', function () {

@@ -27,7 +27,7 @@ it('un módulo generado tiene las seis piezas, con los nombres de la convención
     $modulo = $this->generateModule('Invoice', ModuleMode::SingleApp);
 
     $esperadas = array_map(
-        static fn (string $pieza): string => "Database/Seeders/Invoice/{$pieza}.php",
+        static fn (string $pieza): string => "Invoice/Database/Seeders/{$pieza}.php",
         piezasEsperadas('', 'Invoice', 'Invoice')
     );
 
@@ -50,7 +50,7 @@ it('ninguna de más: el seeder plano de antes ya no se escribe', function () {
     $sobrantes = array_values(array_diff(
         $seeders,
         array_map(
-            static fn (string $pieza): string => "Database/Seeders/Invoice/{$pieza}.php",
+            static fn (string $pieza): string => "Invoice/Database/Seeders/{$pieza}.php",
             piezasEsperadas('', 'Invoice', 'Invoice')
         )
     ));
@@ -111,7 +111,7 @@ it('en multitenant las piezas llevan el prefijo del contexto y su carpeta', func
     $modulo = $this->generateModule('Invoice', ModuleMode::Multitenant, 'central');
 
     $esperadas = array_map(
-        static fn (string $pieza): string => "Database/Seeders/Central/Invoice/{$pieza}.php",
+        static fn (string $pieza): string => "Invoice/Database/Seeders/Central/{$pieza}.php",
         piezasEsperadas('Central', 'Invoice', 'Invoice')
     );
 

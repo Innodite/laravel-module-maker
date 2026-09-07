@@ -132,7 +132,7 @@ it('solo el listado lleva layout: los otros tres son modales dentro de él', fun
     $modulo = $this->generateModule('Invoice', ModuleMode::SingleApp);
 
     foreach (['Create', 'Edit', 'Show'] as $modal) {
-        expect($modulo->contents("resources/js/Pages/Invoice/Invoice{$modal}.vue"))
+        expect($modulo->contents("Invoice/resources/js/Pages/Invoice{$modal}.vue"))
             ->not->toContain('defineOptions');
     }
 });

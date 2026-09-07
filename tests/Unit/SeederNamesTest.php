@@ -56,12 +56,12 @@ it('la cadena no se cruza: cada maestro llama a su misma pieza', function () {
     );
 });
 
-it('los maestros viven en su propia carpeta dentro del contexto', function () {
+it('los maestros viven en su propia carpeta, al nivel del módulo', function () {
     expect(SeederNames::MASTER_FOLDER)->toBe(
         'Application',
         'Tienen carpeta propia porque son el punto de entrada único del módulo en su contexto: '
         . 'deploy-{contexto} los llama, y ellos hacen fan-out a las seis piezas de cada '
-        . 'subfuncionalidad. No son «una subfuncionalidad más».'
+        . 'subfuncionalidad. No son «una subfuncionalidad más», y por eso no bajan a ninguna.'
     );
 });
 
@@ -71,11 +71,11 @@ it('la carpeta declarada resuelve también al maestro que la despliega', functio
     // ella — y eso es justo lo que permite deduplicar dos rutas del mismo módulo sin razonar sobre
     // módulos.
     expect(SeederNames::masterFromPath('UserManagement/Central/Role', 'Stage'))->toBe(
-        'Modules\UserManagement\Database\Seeders\Central\Application\CentralUserManagementApplicationStageSeeder'
+        'Modules\UserManagement\Database\Seeders\Application\Central\CentralUserManagementApplicationStageSeeder'
     );
 
-    expect(SeederNames::masterFromPath('Invoice/Tenant/Shared/Invoice', 'Permissions'))->toBe(
-        'Modules\Invoice\Database\Seeders\Tenant\Shared\Application\TenantSharedInvoiceApplicationPermissionsSeeder'
+    expect(SeederNames::masterFromPath('Invoice/Tenant/Invoice', 'Permissions'))->toBe(
+        'Modules\Invoice\Database\Seeders\Application\Tenant\TenantInvoiceApplicationPermissionsSeeder'
     );
 
     // Sin eje de contexto: dos segmentos, y el nombre sin prefijo.

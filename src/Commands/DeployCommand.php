@@ -10,6 +10,7 @@ use Innodite\LaravelModuleMaker\Commands\Concerns\PrintsHeader;
 use Innodite\LaravelModuleMaker\Commands\Concerns\ReportsFailures;
 use Innodite\LaravelModuleMaker\Commands\Concerns\RehearsesChanges;
 use Innodite\LaravelModuleMaker\Exceptions\ModeNotConfiguredException;
+use Innodite\LaravelModuleMaker\Contracts\TenantContext;
 use Innodite\LaravelModuleMaker\Services\DeploymentRunner;
 use Innodite\LaravelModuleMaker\Support\ModuleMode;
 use Innodite\LaravelModuleMaker\Support\SeederNames;
@@ -258,15 +259,26 @@ class DeployCommand extends Command
             return self::FAILURE;
         }
 
-        $tenancy = TenancyPackage::current();
+        // ⛔ Quien responde si se puede entrar en el contexto es el CONTRATO, no una función global.
+        //
+        // Aquí se preguntaba a `TenancyPackage::initialisesContext()`, que además de mirar el modo
+        // comprueba que exista la función `tenancy()` de stancl. Con eso, un proyecto que implemente
+        // `Contracts\TenantContext` con su propia tenencia —que es para lo que ese contrato existe—
+        // no podía desplegar: el comando le decía que no declara paquete de tenencia mientras tenía
+        // uno inyectado y usable.
+        //
+        // El contrato sabe la respuesta: `usable()`. Y su implementación de serie es la de stancl,
+        // que responde exactamente lo que respondía la comprobación anterior — así que el caso
+        // normal no cambia y el caso propio deja de estar cerrado.
+        if (! $this->runner()->tenantContextUsable()) {
+            $tenancy = TenancyPackage::current();
 
-        if (! $tenancy->initialisesContext()) {
             $this->fallo(
-                "el proyecto no declara un paquete de tenencia que el generador sepa inicializar "
-                . "(hoy: {$tenancy->label()}).",
-                'declara `tenancy_package` en config/make-module.php, o despliega cada tenant desde '
-                . 'tu propio comando envolviendo el seeder en el contexto del cliente.',
-                'Sin inicializar el contexto, el seeder escribe en la base por defecto —la central— '
+                'no hay forma de entrar en el contexto de un cliente '
+                . "(paquete declarado: {$tenancy->label()}).",
+                'declara `tenancy.package` en config/make-module.php, o registra tu propia '
+                . 'implementación de Contracts\\TenantContext en el contenedor.',
+                'Sin entrar en el contexto, el seeder escribe en la base por defecto —la central— '
                 . 'creyendo que escribe en la del cliente.'
             );
 
@@ -574,6 +586,15 @@ class DeployCommand extends Command
     /** El runner, con este comando dentro para que el seeder pueda seguir hablando por pantalla. */
     private function runner(): DeploymentRunner
     {
-        return new DeploymentRunner($this->laravel, $this);
+        // El contrato del contenedor si el proyecto registró el suyo; si no, el runner usa el de
+        // stancl de serie. Construirlo sin mirar el contenedor dejaba muerto el punto de extensión:
+        // un proyecto podía registrar su `TenantContext` y el despliegue seguía sin verlo.
+        return new DeploymentRunner(
+            $this->laravel,
+            $this,
+            $this->laravel->bound(TenantContext::class)
+                ? $this->laravel->make(TenantContext::class)
+                : null,
+        );
     }
 }

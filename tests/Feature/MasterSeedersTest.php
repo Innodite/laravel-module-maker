@@ -63,7 +63,7 @@ it('los tres maestros se generan en su carpeta, aparte de las subfuncionalidades
     $modulo = $this->generateModule('Invoice', ModuleMode::Multitenant, 'central');
 
     $esperados = array_map(
-        static fn (string $maestro): string => "Database/Seeders/Central/Application/{$maestro}.php",
+        static fn (string $maestro): string => "Database/Seeders/Application/Central/{$maestro}.php",
         SeederNames::masterPieces('Central', 'Invoice')
     );
 

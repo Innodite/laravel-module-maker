@@ -76,7 +76,7 @@ it('ninguna pieza generada es un placebo', function () {
     $modulo = $this->generateModule('Invoice', ModuleMode::SingleApp);
 
     foreach (['InvoiceScaffoldTest', 'InvoiceSchemaTest', 'InvoicePermissionsTest', 'InvoiceDeploymentTest', 'InvoiceHttpTest'] as $pieza) {
-        $contenido = $modulo->contents("Tests/Feature/Invoice/{$pieza}.php");
+        $contenido = $modulo->contents("Invoice/Tests/Feature/{$pieza}.php");
 
         // Sobre el código sin comentarios: el docblock del tema 7 explica por qué un assertTrue(true)
         // sería cobertura fingida, y nombrarlo no es escribirlo. Es la tercera vez en esta fase que

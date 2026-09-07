@@ -49,7 +49,7 @@ it('rechaza un modo que no existe, y dice cuáles hay', function () {
 
     $salida = Artisan::output();
 
-    expect($salida)->toContain('multitenant-shared');
+    expect($salida)->toContain('multitenant');
     expect(str_contains($salida, 'no existe'))->toBeTrue(
         'el error dice qué está mal y cuáles son los valores válidos.'
     );
@@ -62,11 +62,11 @@ it('sin .env dice exactamente qué línea añadir, en vez de anunciar que lo hiz
         File::delete($env);
     }
 
-    Artisan::call('innodite:module-setup', ['--mode' => 'multitenant-shared', '--no-interaction' => true]);
+    Artisan::call('innodite:module-setup', ['--mode' => 'multitenant', '--no-interaction' => true]);
 
     $salida = Artisan::output();
 
-    expect($salida)->toContain('MODULE_MAKER_MODE=multitenant-shared');
+    expect($salida)->toContain('MODULE_MAKER_MODE=multitenant');
     expect(str_contains($salida, 'no se ha escrito'))->toBeTrue(
         'La lección de A15: el comando anunciaba «DatabaseSeeder modificado» aunque no hubiera '
         . 'tocado nada, y el usuario se quedaba creyendo que estaba configurado. Un éxito que no '
@@ -93,7 +93,7 @@ it('en multitenant escribe también el paquete de tenencia en el .env', function
     File::put($env, "APP_NAME=Testbench\nAPP_ENV=testing\n");
 
     Artisan::call('innodite:module-setup', [
-        '--mode'           => 'multitenant-shared',
+        '--mode'           => 'multitenant',
         '--tenancy'        => 'stancl',
         '--no-interaction' => true,
     ]);
@@ -123,7 +123,7 @@ it('en multitenant no sigue adelante sin elegir el paquete de tenencia', functio
     //
     // «none» es respuesta válida, pero elegida: es distinto de no responder.
     Artisan::call('innodite:module-setup', [
-        '--mode'           => 'multitenant-per-tenant',
+        '--mode'           => 'multitenant',
         '--no-interaction' => true,
     ]);
 
@@ -138,7 +138,7 @@ it('en multitenant no sigue adelante sin elegir el paquete de tenencia', functio
 
 it('rechaza un paquete de tenencia que no soporta, y dice cuáles hay', function () {
     Artisan::call('innodite:module-setup', [
-        '--mode'           => 'multitenant-shared',
+        '--mode'           => 'multitenant',
         '--tenancy'        => 'tenancy-for-laravel',
         '--no-interaction' => true,
     ]);
@@ -151,13 +151,12 @@ it('rechaza un paquete de tenencia que no soporta, y dice cuáles hay', function
     );
 });
 
-it('los tres modos que ofrece el instalador son los tres del enum', function () {
-    // Si alguien añade un cuarto modo al enum y no aparece en el instalador, el proyecto no podría
+it('los modos que ofrece el instalador son los del enum, y son dos', function () {
+    // Si alguien añade un tercer modo al enum y no aparece en el instalador, el proyecto no podría
     // elegirlo al instalar — que es el único momento en que la norma permite elegirlo.
     expect(array_column(ModuleMode::cases(), 'value'))->toBe([
         'single-app',
-        'multitenant-shared',
-        'multitenant-per-tenant',
+        'multitenant',
     ]);
 });
 

@@ -73,7 +73,7 @@ it('ningún route() de la vista recibe el nombre de un permiso', function () {
     $modulo = $this->generateModule('Invoice', ModuleMode::SingleApp);
 
     foreach (['Index', 'Create', 'Edit', 'Show'] as $pieza) {
-        $vista = $modulo->contents("resources/js/Pages/Invoice/Invoice{$pieza}.vue");
+        $vista = $modulo->contents("Invoice/resources/js/Pages/Invoice{$pieza}.vue");
 
         preg_match_all("/window\.route\('([^']+)'/", $vista, $encontrados);
 
@@ -115,7 +115,7 @@ it('las tres acciones ocurren en modales sobre el listado, sin navegar', functio
     // Y los tres avisan al índice en vez de decidir por su cuenta: el estado de «qué registro estoy
     // mirando» vive en un solo sitio.
     foreach (['Create', 'Edit'] as $pieza) {
-        expect(str_contains($modulo->contents("resources/js/Pages/Invoice/Invoice{$pieza}.vue"), "emit('guardado')"))
+        expect(str_contains($modulo->contents("Invoice/resources/js/Pages/Invoice{$pieza}.vue"), "emit('guardado')"))
             ->toBeTrue("FALLA: Invoice{$pieza} no avisa de que guardó. · FIX: emite `guardado`, y el "
                 . 'índice cierra el modal y recarga la tabla.');
     }
@@ -129,7 +129,7 @@ it('ninguna pantalla generada avisa con alert() ni pregunta con confirm()', func
     $modulo = $this->generateModule('Invoice', ModuleMode::SingleApp);
 
     foreach (['Index', 'Create', 'Edit', 'Show'] as $pieza) {
-        $codigo = sinComentarios($modulo->contents("resources/js/Pages/Invoice/Invoice{$pieza}.vue"));
+        $codigo = sinComentarios($modulo->contents("Invoice/resources/js/Pages/Invoice{$pieza}.vue"));
 
         expect(preg_match('/\balert\s*\(/', $codigo))->toBe(
             0,
@@ -177,7 +177,7 @@ it('crear, ver y editar se dibujan como modal y no como pantalla suelta', functi
     $modulo = $this->generateModule('Invoice', ModuleMode::SingleApp);
 
     foreach (['Create', 'Edit', 'Show'] as $pieza) {
-        $vista = $modulo->contents("resources/js/Pages/Invoice/Invoice{$pieza}.vue");
+        $vista = $modulo->contents("Invoice/resources/js/Pages/Invoice{$pieza}.vue");
 
         expect(str_contains($vista, '<InnoditeModal'))->toBeTrue(
             "FALLA: Invoice{$pieza}.vue no se dibuja dentro de InnoditeModal. · FIX: las tres "
@@ -198,7 +198,7 @@ it('el formulario reparte los campos en rejilla, que es lo que evita el scroll',
     $modulo = $this->generateModule('Invoice', ModuleMode::SingleApp);
 
     foreach (['Create', 'Edit'] as $pieza) {
-        $vista = $modulo->contents("resources/js/Pages/Invoice/Invoice{$pieza}.vue");
+        $vista = $modulo->contents("Invoice/resources/js/Pages/Invoice{$pieza}.vue");
 
         expect(preg_match('/:columnas="\d+"/', $vista))->toBe(
             1,

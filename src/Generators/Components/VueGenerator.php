@@ -22,11 +22,14 @@ use Innodite\LaravelModuleMaker\Support\SubFeaturePermissions;
  *   resources/js/Pages/Central/CentralUserIndex.vue   → la pantalla: lista paginada
  *   resources/js/Pages/Central/CentralUserShow.vue    → modal de detalle, montado por el índice
  *
- * **Dos, y no cuatro.** Se generaban también `…Create.vue` y `…Edit.vue`, y **ninguna ruta las
- * renderizaba**: de las ocho rutas que escribe el paquete, `index` devuelve la pantalla, `show`
- * devuelve el detalle y las demás devuelven datos — no hay `create` ni `edit` en el controlador
- * porque el alta y la edición ocurren en un modal sobre el listado. Dos archivos por
- * subfuncionalidad y por contexto que nadie montaba y que había que borrar a mano.
+ * **Cuatro archivos y UNA pantalla.** De las ocho rutas que escribe el paquete solo `index` devuelve
+ * una pantalla; `create`, `edit` y `show` **no tienen ruta y no la necesitan**: son modales que el
+ * índice importa y monta sobre la tabla. Que no aparezcan en `routes` no significa que sobren —
+ * significa que no se navega a ellos.
+ *
+ * ⛔ Se llegaron a retirar `Create` y `Edit` por «ninguna ruta los renderiza», y el índice se quedó
+ * importando dos componentes inexistentes: la pantalla entera dejaba de compilar. Lo cazó
+ * `GeneratedViewTest`, que es exactamente para lo que está.
  */
 class VueGenerator extends AbstractComponentGenerator
 {
@@ -34,6 +37,8 @@ class VueGenerator extends AbstractComponentGenerator
 
     private const VIEWS = [
         'index'  => 'vue-index.stub',
+        'create' => 'vue-create.stub',
+        'edit'   => 'vue-edit.stub',
         'show'   => 'vue-show.stub',
     ];
 

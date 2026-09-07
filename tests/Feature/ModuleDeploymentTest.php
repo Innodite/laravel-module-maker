@@ -172,7 +172,7 @@ function prepararDespliegue(GeneratedModule $modulo, string $subFeature): void
     cargarSeederDelProyecto('WebmasterSeeder');
     cargarSeederDelProyecto('InnoditeDeploySeeder');
 
-    cargarPiezas($modulo, "Database/Seeders/{$subFeature}", SeederNames::subFeaturePieces('', $modulo->name, $subFeature));
+    cargarPiezas($modulo, "{$subFeature}/Database/Seeders", SeederNames::subFeaturePieces('', $modulo->name, $subFeature));
     cargarPiezas($modulo, 'Database/Seeders/Application', SeederNames::masterPieces('', $modulo->name));
 
     config()->set('make-module.deploy', ["{$modulo->name}/{$subFeature}"]);
@@ -446,13 +446,13 @@ function tablasDeLaConvencionEn(string $conexion): void
  *
  * @return array{0: int, 1: string}
  */
-function desplegarContexto(string $contexto, string $entorno = 'stage'): array
+function desplegarContexto(string $contexto, string $entorno = 'stage', array $extra = []): array
 {
     $buffer = new BufferedOutput();
 
     $codigo = Artisan::call(
         'innodite:deploy',
-        ['environment' => $entorno, '--context' => $contexto, '--no-interaction' => true],
+        ['environment' => $entorno, '--context' => $contexto, '--no-interaction' => true] + $extra,
         $buffer,
     );
 
@@ -483,29 +483,29 @@ it('en multitenant cada despliegue levanta lo suyo, y no lo del otro', function 
     $this->withMode(ModuleMode::Multitenant);
 
     conexionSqlite('central');
-    conexionSqlite('tenant_one');
+    conexionSqlite('tenant');
 
     tablasDeLaConvencionEn('central');
-    tablasDeLaConvencionEn('tenant_one');
+    tablasDeLaConvencionEn('tenant');
 
     $ledger = moduloEnElProyecto('Ledger', ModuleMode::Multitenant, 'central');
-    $meter  = moduloEnElProyecto('Meter', ModuleMode::Multitenant, 'tenant-one');
+    $meter  = moduloEnElProyecto('Meter', ModuleMode::Multitenant, 'tenant');
 
-    Artisan::call('innodite:module-setup', ['--mode' => 'multitenant-per-tenant', '--tenancy' => 'stancl', '--no-interaction' => true]);
+    Artisan::call('innodite:module-setup', ['--mode' => 'multitenant', '--tenancy' => 'stancl', '--no-interaction' => true]);
 
     cargarSeederDelProyecto('WebmasterSeeder');
     cargarSeederDelProyecto('InnoditeCentralDeploySeeder');
     cargarSeederDelProyecto('InnoditeTenantDeploySeeder');
 
-    cargarPiezas($ledger, 'Database/Seeders/Central/Ledger', SeederNames::subFeaturePieces('Central', 'Ledger', 'Ledger'));
-    cargarPiezas($ledger, 'Database/Seeders/Central/Application', SeederNames::masterPieces('Central', 'Ledger'));
+    cargarPiezas($ledger, 'Ledger/Database/Seeders/Central', SeederNames::subFeaturePieces('Central', 'Ledger', 'Ledger'));
+    cargarPiezas($ledger, 'Database/Seeders/Application/Central', SeederNames::masterPieces('Central', 'Ledger'));
 
-    cargarPiezas($meter, 'Database/Seeders/Tenant/TenantOne/Meter', SeederNames::subFeaturePieces('TenantOne', 'Meter', 'Meter'));
-    cargarPiezas($meter, 'Database/Seeders/Tenant/TenantOne/Application', SeederNames::masterPieces('TenantOne', 'Meter'));
+    cargarPiezas($meter, 'Meter/Database/Seeders/Tenant', SeederNames::subFeaturePieces('Tenant', 'Meter', 'Meter'));
+    cargarPiezas($meter, 'Database/Seeders/Application/Tenant', SeederNames::masterPieces('Tenant', 'Meter'));
 
     config()->set('make-module.deploy', [
         'central' => ['Ledger/Central/Ledger'],
-        'tenant'  => ['Meter/Tenant/TenantOne/Meter'],
+        'tenant'  => ['Meter/Tenant/Meter'],
     ]);
 
     // ── Los dos despliegues, contra sus dos bases ──────────────────────────────────────────
@@ -513,7 +513,18 @@ it('en multitenant cada despliegue levanta lo suyo, y no lo del otro', function 
 
     expect($codigoCentral)->toBe(0, "El despliegue central falló.\n\n{$salidaCentral}");
 
-    [$codigoTenant, $salidaTenant] = desplegarContexto('tenant');
+    // El eje del inquilino exige decir a cuál: hay una base por cliente. Se le da el modelo de
+    // tenant del proyecto y un contexto de mentira que apunta lo que le piden — la conmutación real
+    // es asunto de stancl, y lo que aquí se mide es que el seeder acabe en la base del inquilino.
+    config()->set('tenancy.tenant_model', \Innodite\LaravelModuleMaker\Tests\Support\TenantModeloDeMentira::class);
+    config()->set('make-module.tenancy.package', 'stancl');
+    app()->instance(
+        \Innodite\LaravelModuleMaker\Contracts\TenantContext::class,
+        new \Innodite\LaravelModuleMaker\Tests\Support\ContextoDeMentira()
+    );
+    config()->set('database.default', 'tenant');
+
+    [$codigoTenant, $salidaTenant] = desplegarContexto('tenant', 'stage', ['--tenant' => 'acme']);
 
     expect($codigoTenant)->toBe(0, "El despliegue del inquilino falló.\n\n{$salidaTenant}");
 
@@ -522,14 +533,14 @@ it('en multitenant cada despliegue levanta lo suyo, y no lo del otro', function 
         'FALLA: el despliegue central no creó su tabla en la conexión central.'
     );
 
-    expect(Schema::connection('tenant_one')->hasTable('meters'))->toBeTrue(
+    expect(Schema::connection('tenant')->hasTable('meters'))->toBeTrue(
         'FALLA: el despliegue del inquilino no creó su tabla en la conexión del inquilino.'
     );
 
     // ── Y NADA de lo del otro ──────────────────────────────────────────────────────────────
     // Esta es la mitad que importa: la de arriba pasaría igual si ambos despliegues escribieran
     // en la misma base.
-    expect(Schema::connection('tenant_one')->hasTable('ledgers'))->toBeFalse(
+    expect(Schema::connection('tenant')->hasTable('ledgers'))->toBeFalse(
         'FALLA: la tabla del contexto central apareció en la base del inquilino. · FIX: el seeder '
         . 'declara su conexión en `$connection`, y sale del contexto con el que se generó. Si es '
         . 'null donde debía decir «central», siembra contra la conexión por defecto — que en un '

@@ -12,7 +12,7 @@ BASE_STUBS=(
   request.stub request-store.stub request-update.stub
   route-web.stub route-api.stub route-tenant.stub
   test.stub test-unit.stub test-support.stub
-  vue-index.stub vue-show.stub
+  vue-index.stub vue-create.stub vue-edit.stub vue-show.stub
   provider.stub
 )
 
