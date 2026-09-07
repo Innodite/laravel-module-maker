@@ -46,16 +46,18 @@ it('una coordenada que no apunta a ningún archivo se rechaza diciendo dónde se
 });
 
 it('el contexto se puede forzar, y entonces manda sobre el de la coordenada', function () {
-    // Para el caso legítimo de una migración compartida que hay que aplicar en otra base.
+    // Para el caso legítimo de una migración que hay que aplicar en la otra base. Se fuerza el eje
+    // del inquilino: ahí la conexión es la ACTIVA —la que conmutó la tenencia al entrar en el
+    // cliente—, no una nombrada en el catálogo.
     migracionEn('Modules/Probe/Database/Migrations/Central/2026_01_01_000001_crea_cosas.php');
 
     $this->artisan('innodite:migrate-one', [
         'coordinate' => 'Probe:Central/2026_01_01_000001_crea_cosas.php',
-        '--context'  => 'tenant-one',
+        '--context'  => 'tenant',
         '--force'    => true,
         '--dry-run'  => true,
     ])
-        ->expectsOutputToContain('Conexión:      tenant_one')
+        ->expectsOutputToContain('Conexión:      ' . config('database.default'))
         ->assertSuccessful();
 });
 

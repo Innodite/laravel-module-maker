@@ -230,8 +230,8 @@ it('la vista tiene su prueba de permisos, con su manifiesto propio', function (M
         . '«Editar» por «Modificar» es un cambio de copy y no puede romper una prueba de permisos.'
     );
 })->with([
-    'single-app'  => [ModuleMode::SingleApp, null, 'resources/js/__tests__/Invoice', 'Invoice'],
-    'multitenant' => [ModuleMode::Multitenant, 'central', 'resources/js/__tests__/Central/Invoice', 'CentralInvoice'],
+    'single-app'  => [ModuleMode::SingleApp, null, 'Invoice/resources/js/__tests__', 'Invoice'],
+    'multitenant' => [ModuleMode::Multitenant, 'central', 'Invoice/resources/js/__tests__/Central', 'CentralInvoice'],
 ]);
 
 it('el import de la prueba de vista apunta al componente que existe', function (ModuleMode $modo, ?string $contexto, string $carpeta, string $componente, string $vista) {
@@ -253,8 +253,8 @@ it('el import de la prueba de vista apunta al componente que existe', function (
         . "tener dos segmentos.\n\nLo generado fue:\n  - " . implode("\n  - ", $modulo->tree())
     );
 })->with([
-    'single-app'  => [ModuleMode::SingleApp, null, 'resources/js/__tests__/Invoice', 'Invoice', 'Invoice/resources/js/Pages/InvoiceIndex.vue'],
-    'multitenant' => [ModuleMode::Multitenant, 'central', 'resources/js/__tests__/Central/Invoice', 'CentralInvoice', 'Invoice/resources/js/Pages/Central/CentralInvoiceIndex.vue'],
+    'single-app'  => [ModuleMode::SingleApp, null, 'Invoice/resources/js/__tests__', 'Invoice', 'Invoice/resources/js/Pages/InvoiceIndex.vue'],
+    'multitenant' => [ModuleMode::Multitenant, 'central', 'Invoice/resources/js/__tests__/Central', 'CentralInvoice', 'Invoice/resources/js/Pages/Central/CentralInvoiceIndex.vue'],
 ]);
 
 it('la vista lleva el ancla que la prueba busca', function () {

@@ -242,21 +242,18 @@ it('el ensayo no dice que escribió lo que no escribió', function () {
     );
 });
 
-it('cada modo multitenant exige SU catálogo, no el mismo para los dos', function () {
-    // El diagnóstico pedía `shared` y `tenant_shared` a los dos modos: el mensaje nombraba el modo y
-    // luego exigía lo mismo de cualquiera, así que la distinción existía solo en pantalla. Y a un
-    // proyecto de tenants iguales —misma lógica, una base por tenant— le reclamaba un contexto para
-    // lógica repartida por tenant, que es justo lo que ese modo NO tiene.
+it('el diagnóstico exige el catálogo del modo, y en multiinquilino son dos contextos', function () {
+    // El diagnóstico pedía `shared` y `tenant_shared` a los dos modos multiinquilino que había: el
+    // mensaje nombraba el modo y luego exigía lo mismo de cualquiera, así que la distinción existía
+    // solo en pantalla. Con un solo modo y dos contextos, lo que se exige es exactamente lo que hay.
     expect(ModuleMode::Multitenant->requiredContextKeys())
         ->toBe(['central', 'tenant']);
 
-    expect(ModuleMode::Multitenant->requiredContextKeys())
-        ->toBe(['central', 'tenant_shared']);
-
-    expect(ModuleMode::Multitenant->requiredContextKeys())
-        ->not->toBe(ModuleMode::Multitenant->requiredContextKeys());
-
-    expect(ModuleMode::SingleApp->requiredContextKeys())->toBe([]);
+    expect(ModuleMode::SingleApp->requiredContextKeys())->toBe(
+        [],
+        'Una aplicación única no tiene contextos que declarar: exigirle uno la obliga a inventárselo '
+        . 'para pasar un diagnóstico que no le aplica.'
+    );
 });
 
 it('lo que se admite en --context es más ancho que lo que hay que declarar', function () {
@@ -265,7 +262,7 @@ it('lo que se admite en --context es más ancho que lo que hay que declarar', fu
     // exigiera.
     expect(ModuleMode::Multitenant->supportsContext('tenant'))->toBeTrue();
     expect(ModuleMode::Multitenant->supportsContext('central'))->toBeTrue();
-    expect(ModuleMode::Multitenant->supportsContext('tenant_shared'))->toBeTrue();
+    expect(ModuleMode::Multitenant->supportsContext('tenant_shared'))->toBeFalse();
 
     expect(ModuleMode::SingleApp->supportsContext('central'))->toBeFalse(
         'FALLA: una aplicación única no tiene eje de contexto.'

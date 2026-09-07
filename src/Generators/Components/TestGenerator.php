@@ -293,13 +293,16 @@ class TestGenerator extends AbstractComponentGenerator
      */
     protected function rutaRelativaAlComponente(string $componente): string
     {
-        $contexto  = $this->getContextFolder();
-        $segmentos = 1 + ($contexto === '' ? 0 : count(explode('/', $contexto))) + 1;
+        // Se cuenta desde las DOS rutas reales —la de la prueba y la de la vista—, no se escribe a
+        // mano: las dos las decide `buildPath()`, así que el import no puede quedarse atrás el día
+        // que el árbol cambie de forma. Un import roto en JavaScript no lo ve ningún chequeo de PHP.
+        $desde = $this->buildPath('resources/js/__tests__');
+        $hasta = $this->buildPath('resources/js/Pages');
 
-        return str_repeat('../', $segmentos) . 'Pages'
-            . ($contexto ? "/{$contexto}" : '')
-            . '/' . $this->getSubFeatureFolder()
-            . "/{$componente}.vue";
+        $arriba = substr_count(trim(str_replace($this->getComponentBasePath(), '', $desde), '/'), '/') + 1;
+        $bajada = trim(str_replace($this->getComponentBasePath(), '', $hasta), '/');
+
+        return str_repeat('../', $arriba) . $bajada . "/{$componente}.vue";
     }
 
     /**

@@ -148,9 +148,9 @@ it('la base de un tenant aparta la identificación por dominio', function () {
     // la puerta del permiso; quién es el tenant es infraestructura del proyecto, probada aparte.
     config()->set('make-module.tenancy.package', 'stancl');
 
-    $modulo = $this->generateModule('Invoice', ModuleMode::Multitenant, 'tenant-one');
+    $modulo = $this->generateModule('Invoice', ModuleMode::Multitenant, 'tenant');
 
-    $base = $modulo->contents('Invoice/Tests/Feature/Tenant/TenantOneInvoiceTestCase.php');
+    $base = $modulo->contents('Invoice/Tests/Feature/Tenant/TenantInvoiceTestCase.php');
 
     expect($base)->toContain('protected function setUp(): void')
         ->and($base)->toContain('$this->withoutMiddleware([')

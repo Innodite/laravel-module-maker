@@ -424,8 +424,12 @@ class ModuleGenerator
 
             Disk::ensureDirectory($ruta);
 
+            // Por `Disk::put()` y no por `File::put()`: es lo que respeta el ensayo. Escribiendo
+            // directo, `--dry-run` reventaba al no existir la carpeta que el ensayo no llegó a
+            // crear — un ensayo que falla es peor que no tenerlo, porque el fallo no dice nada del
+            // módulo que se iba a generar.
             if (! File::exists("{$ruta}/.gitkeep")) {
-                File::put("{$ruta}/.gitkeep", '');
+                Disk::put("{$ruta}/.gitkeep", '');
             }
         }
     }

@@ -54,7 +54,7 @@ it('la entidad agregada nace con las seis piezas del contrato de pruebas', funct
 
     expect($codigo)->toBe(0, "El comando falló antes de poder mirar las pruebas.\n\n{$salida}");
 
-    $grupo = "{$modulo->path}/Tests/Feature/Central/Payment";
+    $grupo = "{$modulo->path}/Payment/Tests/Feature/Central";
 
     $piezas = [
         'CentralPaymentContract.php'    => 'el manifiesto: sin él las otras cinco no tienen de dónde derivar',
@@ -74,7 +74,7 @@ it('la entidad agregada nace con las seis piezas del contrato de pruebas', funct
         );
     }
 
-    $vue = "{$modulo->path}/resources/js/__tests__/Central/Payment";
+    $vue = "{$modulo->path}/Payment/resources/js/__tests__/Central";
 
     expect(File::exists("{$vue}/CentralPaymentIndex.test.js"))->toBeTrue(
         'FALLA: `add-entity` no escribió la prueba de la vista (tema 6). · FIX: es la que comprueba '
@@ -122,7 +122,7 @@ it('los permisos de la entidad agregada son los suyos, no los del módulo', func
 
     expect($codigo)->toBe(0, "El comando falló antes de poder mirar el contrato.\n\n{$salida}");
 
-    $contrato = File::get("{$modulo->path}/Tests/Feature/Central/Payment/CentralPaymentContract.php");
+    $contrato = File::get("{$modulo->path}/Payment/Tests/Feature/Central/CentralPaymentContract.php");
 
     // `toContain()` no acepta mensaje: cada argumento suyo es otra aguja. Y el mensaje es justo lo
     // que hace útil un fallo, así que la comprobación se hace fuera y se afirma sobre el booleano.

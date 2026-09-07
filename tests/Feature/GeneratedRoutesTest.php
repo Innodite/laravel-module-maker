@@ -153,7 +153,7 @@ it('el archivo de rutas de un tenant es PHP de verdad, no un bloque suelto', fun
     // El chequeo de salida no los vio por el mismo motivo por el que `php -l` tampoco: un archivo
     // que no abre PHP siempre «parsea». Se descubrieron al **ejecutar** el contrato del módulo en
     // un contexto de tenant.
-    $rutas = $this->generateModule('Meter', ModuleMode::Multitenant, 'tenant-one')
+    $rutas = $this->generateModule('Meter', ModuleMode::Multitenant, 'tenant')
         ->contents('Routes/tenant.php');
 
     expect(str_starts_with(trim($rutas), '<?php'))->toBeTrue(
@@ -162,7 +162,7 @@ it('el archivo de rutas de un tenant es PHP de verdad, no un bloque suelto', fun
         . "archivo ya existe.\nEl archivo dice:\n" . $rutas
     );
 
-    expect(str_contains($rutas, 'use Modules\\Meter\\Http\\Controllers\\Tenant\\TenantOne\\Meter\\TenantOneMeterController;'))->toBeTrue(
+    expect(str_contains($rutas, 'use Modules\\Meter\\Meter\\Http\\Controllers\\Tenant\\TenantMeterController;'))->toBeTrue(
         "FALLA: el archivo no importa el controlador al que apuntan sus rutas. · FIX: sin el `use`, "
         . "cada ruta referencia una clase que no existe en ese espacio de nombres.\nEl archivo "
         . "dice:\n" . $rutas
@@ -205,7 +205,7 @@ it('con stancl, las rutas de la central se sirven solo en los dominios centrales
 it('con stancl, las rutas de un tenant lo identifican antes de responder', function () {
     config()->set('make-module.tenancy.package', 'stancl');
 
-    $rutas = $this->generateModule('Meter', ModuleMode::Multitenant, 'tenant-one')
+    $rutas = $this->generateModule('Meter', ModuleMode::Multitenant, 'tenant')
         ->contents('Routes/tenant.php');
 
     $codigo = soloCodigo($rutas);
@@ -274,20 +274,22 @@ it('un paquete de tenencia que no existe es un error, no un archivo sin envoltur
     }
 });
 
-it('varios tenants escriben en el mismo archivo sin pegarle otro archivo dentro', function () {
-    // El defecto que este caso fija: `tenant_shared` escribe **un bloque por tenant** en el mismo
-    // `tenant.php`, cada uno con su propio marcador. El primero creaba el archivo; el segundo no
-    // encontraba el suyo y se anexaba el archivo ENTERO —con su `<?php`— dentro del que ya existía.
-    // El resultado no parsea, el chequeo de salida lo rechaza y la generación aborta: el contexto
-    // principal de `multitenant-shared` no podía generar en cuanto el proyecto tenía dos tenants,
-    // que es su caso normal.
+it('dos subfuncionalidades escriben en el mismo archivo sin pegarle otro archivo dentro', function () {
+    // El defecto que este caso fija: al ampliar `tenant.php` con la segunda subfuncionalidad, si no
+    // se encuentra el marcador se anexa el archivo ENTERO —con su `<?php`— dentro del que ya
+    // existía. El resultado no parsea, el chequeo de salida lo rechaza y la generación aborta.
     //
-    // Llevaba ahí desde que existe ese camino, oculto porque `tenant_shared` no tenía ni una prueba
-    // de generación — anotado como pendiente al cerrar la fase anterior.
+    // Antes el marcador llevaba el id del inquilino y había uno por cada uno; hoy lo decide el
+    // ARCHIVO, así que las dos secciones comparten el suyo y crecen en el mismo sitio.
     config()->set('make-module.tenancy.package', 'stancl');
 
-    $rutas = $this->generateModule('Meter', ModuleMode::Multitenant, 'tenant_shared')
-        ->contents('Routes/tenant.php');
+    $modulo = $this->generateModule('Meter', ModuleMode::Multitenant, 'tenant');
+
+    Illuminate\Support\Facades\Artisan::call('innodite:add-entity', [
+        'module' => 'Meter', 'entity' => 'Reading', '--context' => 'tenant', '--no-interaction' => true,
+    ]);
+
+    $rutas = $modulo->contents('Routes/tenant.php');
 
     expect(substr_count($rutas, '<?php'))->toBe(
         1,
@@ -295,11 +297,17 @@ it('varios tenants escriben en el mismo archivo sin pegarle otro archivo dentro'
         . "anexa la SECCIÓN, no el contenido de un archivo nuevo.\nEl archivo dice:\n" . $rutas
     );
 
-    foreach (['TENANT_ONE_END', 'TENANT_TWO_END'] as $marcador) {
-        expect(str_contains($rutas, "// {{{$marcador}}}"))->toBeTrue(
-            "FALLA: falta el bloque de un tenant (marcador {$marcador}). · FIX: cada tenant escribe "
-            . 'su sección con su marcador, para que la subfuncionalidad siguiente entre dentro de su '
-            . "grupo.\nEl archivo dice:\n" . $rutas
+    expect(substr_count($rutas, '// {{TENANT_ROUTES_END}}'))->toBe(
+        1,
+        "FALLA: el marcador del archivo no está, o está repetido. · FIX: cada archivo de rutas tiene "
+        . "UNA sección y un solo sitio donde crece; la siguiente subfuncionalidad entra ahí, dentro "
+        . "del grupo que le da dominio y middleware.\nEl archivo dice:\n" . $rutas
+    );
+
+    foreach (['tenant-meters', 'tenant-readings'] as $prefijo) {
+        expect(str_contains($rutas, "Route::prefix('{$prefijo}')"))->toBeTrue(
+            "FALLA: falta el bloque de {$prefijo}. · FIX: cada subfuncionalidad escribe el suyo "
+            . "dentro del mismo grupo.\nEl archivo dice:\n" . $rutas
         );
     }
 

@@ -65,10 +65,10 @@ it('las seis se instancian de verdad, no solo parsean', function () {
 
     $piezas = piezasEsperadas('', 'Invoice', 'Invoice');
 
-    cargarPiezas($modulo, 'Database/Seeders/Invoice', $piezas);
+    cargarPiezas($modulo, 'Invoice/Database/Seeders', $piezas);
 
     foreach ($piezas as $pieza) {
-        $fqcn = "Modules\\Invoice\\Database\\Seeders\\Invoice\\{$pieza}";
+        $fqcn = "Modules\\Invoice\\Invoice\\Database\\Seeders\\{$pieza}";
 
         expect(class_exists($fqcn) || trait_exists($fqcn))->toBeTrue(
             "PSR-4 no encuentra {$fqcn}: el archivo se llama {$pieza}.php pero la clase de dentro no."

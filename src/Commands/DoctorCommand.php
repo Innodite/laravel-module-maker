@@ -494,38 +494,59 @@ class DoctorCommand extends Command
      */
     private function migracionesDuplicadas(string $directorio, string $modulo): array
     {
-        $carpeta = "{$directorio}/Database/Migrations";
-
-        if (! File::isDirectory($carpeta)) {
-            return [];
-        }
-
+        // Las migraciones viven **dentro de cada subfuncionalidad** —
+        // `{Módulo}/{SubFuncionalidad}/Database/Migrations/{Contexto}/`—, así que se recorre el
+        // módulo entero y se recogen todas sus carpetas de migraciones. Mirar solo
+        // `{Módulo}/Database/Migrations` dejaba al diagnóstico sin ver **ninguna**: la comprobación
+        // pasaba siempre, y una tabla creada dos veces en el mismo contexto llegaba a producción.
         $encontradas = [];
         $duplicadas  = [];
 
-        foreach (File::allFiles($carpeta) as $archivo) {
-            $nombre = preg_replace(
-                '/^\d{4}_\d{2}_\d{2}_\d+_/',
-                '',
-                $archivo->getFilenameWithoutExtension()
-            );
+        foreach ($this->carpetasDeMigraciones($directorio) as $carpeta) {
+            foreach (File::allFiles($carpeta) as $archivo) {
+                $nombre = preg_replace(
+                    '/^\d{4}_\d{2}_\d{2}_\d+_/',
+                    '',
+                    $archivo->getFilenameWithoutExtension()
+                );
 
-            if (! $nombre) {
-                continue;
+                if (! $nombre) {
+                    continue;
+                }
+
+                $contexto = $this->contextoDeLaMigracion($carpeta, $archivo->getPathname());
+                $clave    = "{$contexto}\0{$nombre}";
+
+                if (in_array($clave, $encontradas, true)) {
+                    $donde        = $contexto === '' ? '' : " en {$contexto}";
+                    $duplicadas[] = "{$modulo} → migración duplicada{$donde}: {$nombre}";
+                }
+
+                $encontradas[] = $clave;
             }
-
-            $contexto = $this->contextoDeLaMigracion($carpeta, $archivo->getPathname());
-            $clave    = "{$contexto}\0{$nombre}";
-
-            if (in_array($clave, $encontradas, true)) {
-                $donde        = $contexto === '' ? '' : " en {$contexto}";
-                $duplicadas[] = "{$modulo} → migración duplicada{$donde}: {$nombre}";
-            }
-
-            $encontradas[] = $clave;
         }
 
         return $duplicadas;
+    }
+
+    /**
+     * Todas las carpetas `Database/Migrations` del módulo, sea cual sea la subfuncionalidad.
+     *
+     * @return array<int, string>
+     */
+    private function carpetasDeMigraciones(string $directorio): array
+    {
+        $carpetas = [];
+
+        foreach (array_merge([$directorio], File::directories($directorio)) as $base) {
+            $candidata = "{$base}/Database/Migrations";
+
+            if (File::isDirectory($candidata)) {
+                $carpetas[] = $candidata;
+            }
+        }
+
+        return $carpetas;
     }
 
     /**

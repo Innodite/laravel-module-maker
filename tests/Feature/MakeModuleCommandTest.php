@@ -91,12 +91,15 @@ it('genera el ServiceProvider del módulo con namespace correcto', function () {
         '--context'   => 'central',
     ])->assertSuccessful();
 
-    $providerFile = $this->tempPath('Modules/Permission/Providers/PermissionServiceProvider.php');
+    // Uno por contexto: `Providers/{Ctx}/{Ctx}{Módulo}ServiceProvider.php`. Con uno solo para los
+    // dos, ese archivo era el único sitio del módulo donde los contextos se mezclaban — y es el que
+    // decide qué implementación se inyecta.
+    $providerFile = $this->tempPath('Modules/Permission/Providers/Central/CentralPermissionServiceProvider.php');
 
     expect(File::exists($providerFile))->toBeTrue();
 
     $content = File::get($providerFile);
-    expect($content)->toContain('namespace Modules\\Permission\\Providers');
+    expect($content)->toContain('namespace Modules\\Permission\\Providers\\Central');
 });
 
 it('lee correctamente el contexts.json y valida el contexto', function () {

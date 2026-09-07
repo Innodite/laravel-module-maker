@@ -81,7 +81,7 @@ it('el modelo generado se puede cargar, con sus traits resueltos', function () {
 
     require_once $ruta;
 
-    $clase = 'Modules\\Invoice\\Models\\Invoice\\Invoice';
+    $clase = 'Modules\\Invoice\\Invoice\\Models\\Invoice';
 
     expect(class_exists($clase))->toBeTrue(
         'La clase debe existir tras incluir el archivo: si no, el namespace no espeja la carpeta.'
