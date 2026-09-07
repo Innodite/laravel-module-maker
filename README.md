@@ -133,22 +133,23 @@ php artisan vendor:publish --tag=module-maker-frontend
 
 ---
 
-## 🗺️ Tabla comparativa de contextos
+## 🗺️ Los dos contextos
 
-Los 4 contextos disponibles cubren todos los escenarios de un proyecto multi-tenant:
+En multiinquilino hay **dos contextos y solo dos**. Un proyecto que necesite otro lo declara en su
+`module-maker-config/contexts.json`; el paquete no trae ninguno más de fábrica.
 
-| Contexto key | Prefijo de clase | Carpeta PHP | Carpeta Vue | Archivo de rutas | Nombre de ruta ejemplo | Archivos generados |
+| Contexto | Prefijo de clase | Carpeta | Archivo de rutas | Prefijo de URL | Nombre de ruta | Conexión del modelo |
 |---|---|---|---|---|---|---|
-| `central` | `Central` | `Central/` | `Pages/Central/` | `routes/web.php` | `central.users.index` | 24 |
-| `shared` | `Shared` | `Shared/` | `Pages/Shared/` | `web.php` + `tenant.php` | `central.shared.invoices.index` | 16 |
-| `tenant_shared` | `TenantShared` | `Tenant/Shared/` | `Pages/Tenant/Shared/` | `routes/tenant.php` | `roles.index` (sin prefijo) | 17 |
-| `tenant` (ej: INNODITE) | `TenantINNODITE` | `Tenant/INNODITE/` | `Pages/Tenant/INNODITE/` | `routes/tenant.php` | `innodite.products.index` | 20 |
+| `central` | `Central` | `…/Central/` | `Routes/web.php` | `central-users` | `central.users.index` | `$connection = 'central'` |
+| `tenant` | `Tenant` | `…/Tenant/` | `Routes/tenant.php` | `tenant-users` | `tenant.users.index` | **ninguna** — la conmuta la tenencia |
 
-> **Descripción rápida de cada contexto:**
-> - `central` → Panel administrativo global. Rutas en `web.php`. Prefijo `Central`.
-> - `shared` → Código híbrido accesible tanto desde el panel central como desde el panel tenant. Inyecta rutas en DOS archivos simultáneamente.
-> - `tenant_shared` → Estándar para todos los tenants. Sin prefijo de URL ni de nombre de ruta.
-> - `tenant` → Tenants específicos del proyecto (INNODITE, ACME, etc.). Un array en `contexts.json`, cada entrada genera su propio espacio aislado.
+> ⛔ **Ningún archivo lleva el nombre de un cliente.** Una carpeta y una conexión por cliente
+> producen una copia por cliente de lógica idéntica, permisos que hay que sembrar y renombrar uno a
+> uno, y rutas servidas bajo el prefijo de un cliente concreto.
+>
+> ⛔ **Y el modelo del inquilino no declara conexión, nunca.** La conmuta el paquete de tenencia al
+> identificar la ruta; nombrarla ata el modelo a un cliente. Si el proyecto declara
+> `tenancy.package = none`, el modelo sale con una **nota** que dice quién tiene que conmutarla.
 
 ---
 
@@ -234,7 +235,7 @@ php artisan innodite:make-module User --json
 | `-S` / `--service` | Servicio + Interface en `Services/Contracts/` |
 | `-R` / `--repository` | Repositorio + Interface en `Repositories/Contracts/` |
 | `-G` / `--migration` | Migración anónima contextualizada |
-| `-Q` / `--request` | Form Request validado (Store y Update para Central/Tenant, uno para Shared/TenantShared) |
+| `-Q` / `--request` | Form Request validado — el de alta y el de edición |
 
 **Validaciones de seguridad:**
 - Nombres no PascalCase son rechazados
@@ -346,19 +347,15 @@ Consulta al proveedor de reglas configurado y lista sus hallazgos.
 
 ---
 
-### `innodite:publish-frontend` — Composables Vue 3
+### `innodite:publish-frontend` — ⛔ RETIRADO en la v4
 
-```bash
-php artisan innodite:publish-frontend
-php artisan innodite:publish-frontend --force  # sobreescribir
-```
+El paquete **no configura el frontend de tu proyecto**: no publica composables ni componentes, y
+no toca `app.js` ni el middleware de Inertia. Solo **genera** las vistas de cada subfuncionalidad,
+y lo hace sin depender de ninguna biblioteca — el `can()` va escrito en la propia pantalla.
 
-Publica en `resources/js/Composables/`:
-- `useModuleContext.js`
-- `usePermissions.js`
+Contra qué se generan lo decide `--frontend=default|innodite` en el instalador.
 
 ---
-
 ### `innodite:migrate-plan` — ⛔ RETIRADO en la v4
 
 Aplicaba las migraciones del proyecto recorriendo el árbol. **Usa `innodite:deploy`**, que aplica el
@@ -519,313 +516,87 @@ comprueba nada es peor que una que dice que no corrió. **Escribe tus reglas y c
 > sin ellos, y puedes borrarlos cuando hayas comprobado que no te falta nada de ellos.
 ---
 
-## 📁 Archivos generados por contexto
+## 📁 La forma de lo generado
 
-Esta sección muestra la lista exacta de archivos que el paquete genera para el módulo `User` en cada uno de los 4 contextos.
+```
+Modules/<Módulo>/<SubFuncionalidad>/<Capa>/<Contexto>/<Archivo>
+```
 
----
-
-### Contexto `central` — 24 archivos
+**La subfuncionalidad manda, la capa va dentro de ella y el contexto es la hoja.** En aplicación
+única ese último tramo no existe y el resto es idéntico: los dos modos comparten estructura en vez
+de parecerse.
 
 ```
 Modules/User/
-├── Http/Controllers/Central/User/CentralUserController.php
-├── Http/Requests/Central/User/CentralUserStoreRequest.php
-├── Http/Requests/Central/User/CentralUserUpdateRequest.php
-├── Services/Central/User/CentralUserService.php
-├── Services/Contracts/Central/User/CentralUserServiceInterface.php
-├── Repositories/Central/User/CentralUserRepository.php
-├── Repositories/Contracts/Central/User/CentralUserRepositoryInterface.php
-├── Models/Central/User/CentralUser.php
-├── Database/Migrations/Central/User/XXXX_create_users_table.php
-├── Database/Seeders/Central/User/CentralUserSeeder.php
-├── Database/Factories/Central/User/CentralUserFactory.php
-├── Tests/Feature/Central/User/CentralUserContract.php
-├── Tests/Feature/Central/User/CentralUserTestCase.php
-├── Tests/Feature/Central/User/CentralUserScaffoldTest.php
-├── Tests/Feature/Central/User/CentralUserSchemaTest.php
-├── Tests/Feature/Central/User/CentralUserPermissionsTest.php
-├── Tests/Feature/Central/User/CentralUserDeploymentTest.php
-├── Tests/Feature/Central/User/CentralUserHttpTest.php
-├── Resources/js/Pages/Central/CentralUserIndex.vue
-├── Resources/js/Pages/Central/CentralUserCreate.vue
-├── Resources/js/Pages/Central/CentralUserEdit.vue
-├── Resources/js/Pages/Central/CentralUserShow.vue
-├── Jobs/Central/CentralUserExportJob.php
-├── Notifications/Central/CentralUserWelcomeNotification.php
-├── Console/Commands/Central/CentralUserCleanupCommand.php
-├── Exceptions/Central/CentralUserNotFoundException.php
-├── Providers/UserServiceProvider.php
-└── Routes/web.php
+├── Docs/  architecture.md · history.md · schema.md          ← del MÓDULO
+├── Routes/web.php · tenant.php                              ← del MÓDULO, uno por contexto
+├── Providers/Central/CentralUserServiceProvider.php         ← del MÓDULO, uno por contexto
+│             Tenant/TenantUserServiceProvider.php
+├── Database/Seeders/Application/                            ← del MÓDULO: los 3 maestros
+│       ├── Central/CentralUserApplication{Stage,Production,Permissions}Seeder.php
+│       └── Tenant/TenantUserApplication…
+│
+├── User/                                                    ← SUBFUNCIONALIDAD, autocontenida
+│   ├── Models/Central/CentralUser.php  ·  Tenant/TenantUser.php
+│   ├── Http/Controllers/{Ctx}/{Ctx}UserController.php
+│   │     Requests/{Ctx}/{Ctx}User{Store,Update}Request.php
+│   ├── Services/{Ctx}/…  +  Services/Contracts/{Ctx}/…
+│   ├── Repositories/{Ctx}/…  +  Repositories/Contracts/{Ctx}/…
+│   ├── Database/Factories/{Ctx}/ · Migrations/{Ctx}/ · Seeders/{Ctx}/   (las 6 piezas)
+│   ├── Tests/Feature/{Ctx}/                                 (las 6 piezas + TestCase)
+│   ├── resources/js/Pages/{Ctx}/ · __tests__/{Ctx}/
+│   └── Jobs/{Ctx}/ · Notifications/{Ctx}/ · Console/Commands/{Ctx}/ · Exceptions/{Ctx}/
+│                                                            ← vacías, con .gitkeep
+└── Role/                                                    ← la misma forma
 ```
 
-> **v3.5.x** — Los componentes principales (Model, Controller, Requests, Service, Repository, Migration) se generan dentro de una subcarpeta con el nombre de la entidad: `{Tipo}/{Contexto}/{Entidad}/`. Las vistas Vue, Tests, Jobs, Notifications y Commands mantienen su estructura anterior (sin subcarpeta de entidad).
+**Qué vive dónde:** si la pieza recorre **todas** las subfuncionalidades —`Docs/`, `Routes/`,
+`Providers/` y los tres maestros—, vive al nivel del módulo. Todo lo demás baja a la suya.
+
+**Las cuentas, medidas generando de verdad:**
+
+| | |
+|---|---|
+| Módulo `User` con 2 subfuncionalidades × 2 contextos | **129 archivos + 16 carpetas** |
+| El mismo en aplicación única | **66 archivos + 8 carpetas** |
+| Una subfuncionalidad en un solo contexto | 29 archivos |
 
 ---
 
-### Contexto `shared` — 16 archivos
-
-```
-Modules/User/
-├── Http/Controllers/Shared/User/SharedUserController.php
-├── Http/Requests/Shared/User/SharedUserRequest.php
-├── Services/Shared/User/SharedUserService.php
-├── Services/Contracts/Shared/User/SharedUserServiceInterface.php
-├── Repositories/Shared/User/SharedUserRepository.php
-├── Repositories/Contracts/Shared/User/SharedUserRepositoryInterface.php
-├── Models/Shared/User/SharedUser.php
-├── Database/Migrations/Shared/User/XXXX_create_users_table.php
-├── Database/Seeders/Shared/User/SharedUserSeeder.php
-├── Database/Factories/Shared/User/SharedUserFactory.php
-├── Tests/Feature/Shared/User/SharedUserContract.php
-├── Tests/Feature/Shared/User/SharedUserTestCase.php
-├── Tests/Feature/Shared/User/SharedUserScaffoldTest.php
-├── Tests/Feature/Shared/User/SharedUserSchemaTest.php
-├── Tests/Feature/Shared/User/SharedUserPermissionsTest.php
-├── Tests/Feature/Shared/User/SharedUserDeploymentTest.php
-├── Tests/Feature/Shared/User/SharedUserHttpTest.php
-├── Resources/js/Pages/Shared/SharedUserIndex.vue
-├── Resources/js/Pages/Shared/SharedUserCreate.vue
-├── Resources/js/Pages/Shared/SharedUserEdit.vue
-└── Resources/js/Pages/Shared/SharedUserShow.vue
-```
-
----
-
-### Contexto `tenant_shared` — 17 archivos
-
-```
-Modules/User/
-├── Http/Controllers/Tenant/Shared/User/TenantSharedUserController.php
-├── Http/Requests/Tenant/Shared/User/TenantSharedUserRequest.php
-├── Services/Tenant/Shared/User/TenantSharedUserService.php
-├── Services/Contracts/Tenant/Shared/User/TenantSharedUserServiceInterface.php
-├── Repositories/Tenant/Shared/User/TenantSharedUserRepository.php
-├── Repositories/Contracts/Tenant/Shared/User/TenantSharedUserRepositoryInterface.php
-├── Models/Tenant/Shared/User/TenantSharedUser.php
-├── Database/Migrations/Tenant/Shared/User/XXXX_create_users_table.php
-├── Database/Seeders/Tenant/Shared/User/TenantSharedUserSeeder.php
-├── Database/Factories/Tenant/Shared/User/TenantSharedUserFactory.php
-├── Tests/Feature/Tenant/Shared/User/TenantSharedUserContract.php
-├── Tests/Feature/Tenant/Shared/User/TenantSharedUserTestCase.php
-├── Tests/Feature/Tenant/Shared/User/TenantSharedUserScaffoldTest.php
-├── Tests/Feature/Tenant/Shared/User/TenantSharedUserSchemaTest.php
-├── Tests/Feature/Tenant/Shared/User/TenantSharedUserPermissionsTest.php
-├── Tests/Feature/Tenant/Shared/User/TenantSharedUserDeploymentTest.php
-├── Tests/Feature/Tenant/Shared/User/TenantSharedUserHttpTest.php
-├── Resources/js/Pages/Tenant/Shared/TenantSharedUserIndex.vue
-├── Resources/js/Pages/Tenant/Shared/TenantSharedUserCreate.vue
-├── Resources/js/Pages/Tenant/Shared/TenantSharedUserEdit.vue
-├── Resources/js/Pages/Tenant/Shared/TenantSharedUserShow.vue
-└── Jobs/Tenant/Shared/TenantSharedUserReportJob.php
-```
-
----
-
-### Contexto `tenant` (ej: INNODITE) — 20 archivos
-
-```
-Modules/User/
-├── Http/Controllers/Tenant/INNODITE/User/TenantINNODITEUserController.php
-├── Http/Requests/Tenant/INNODITE/User/TenantINNODITEUserStoreRequest.php
-├── Http/Requests/Tenant/INNODITE/User/TenantINNODITEUserUpdateRequest.php
-├── Services/Tenant/INNODITE/User/TenantINNODITEUserService.php
-├── Services/Contracts/Tenant/INNODITE/User/TenantINNODITEUserServiceInterface.php
-├── Repositories/Tenant/INNODITE/User/TenantINNODITEUserRepository.php
-├── Repositories/Contracts/Tenant/INNODITE/User/TenantINNODITEUserRepositoryInterface.php
-├── Models/Tenant/INNODITE/User/TenantINNODITEUser.php
-├── Database/Migrations/Tenant/INNODITE/User/XXXX_create_users_table.php
-├── Database/Seeders/Tenant/INNODITE/User/TenantINNODITEUserSeeder.php
-├── Database/Factories/Tenant/INNODITE/User/TenantINNODITEUserFactory.php
-├── Tests/Feature/Tenant/INNODITE/User/TenantINNODITEUserContract.php
-├── Tests/Feature/Tenant/INNODITE/User/TenantINNODITEUserTestCase.php
-├── Tests/Feature/Tenant/INNODITE/User/TenantINNODITEUserScaffoldTest.php
-├── Tests/Feature/Tenant/INNODITE/User/TenantINNODITEUserSchemaTest.php
-├── Tests/Feature/Tenant/INNODITE/User/TenantINNODITEUserPermissionsTest.php
-├── Tests/Feature/Tenant/INNODITE/User/TenantINNODITEUserDeploymentTest.php
-├── Tests/Feature/Tenant/INNODITE/User/TenantINNODITEUserHttpTest.php
-├── Resources/js/Pages/Tenant/INNODITE/TenantINNODITEUserIndex.vue
-├── Resources/js/Pages/Tenant/INNODITE/TenantINNODITEUserCreate.vue
-├── Resources/js/Pages/Tenant/INNODITE/TenantINNODITEUserEdit.vue
-├── Resources/js/Pages/Tenant/INNODITE/TenantINNODITEUserShow.vue
-├── Jobs/Tenant/INNODITE/TenantINNODITEUserReportJob.php
-├── Notifications/Tenant/INNODITE/TenantINNODITEUserCustomAlert.php
-└── Console/Commands/Tenant/INNODITE/TenantINNODITEUserImportCommand.php
-```
-
----
-
-## 🔄 Flujo completo por contexto
-
-Esta sección documenta el flujo de generación completo para cada contexto: qué archivos crea, dónde los ubica y cómo inyecta las rutas.
-
----
-
-### Contexto `central`
+## 🔄 El ciclo, de principio a fin
 
 ```bash
+# 1 · Configurar el proyecto — se elige el modo UNA vez
+php artisan innodite:module-setup --mode=multitenant --tenancy=stancl --frontend=default
+
+# 2 · El primer módulo, en el contexto que sea
 php artisan innodite:make-module User --context=central
+
+# 3 · Las demás subfuncionalidades, y el otro contexto
+php artisan innodite:add-entity User Role --context=central
+php artisan innodite:add-entity User User --context=tenant
+
+# 4 · Levantar
+php artisan innodite:deploy stage --context=central
+php artisan innodite:deploy stage --context=tenant --all
+
+# 5 · El contrato de pruebas
+php artisan innodite:test User Role --context=central
 ```
 
-#### Ruta inyectada en `routes/web.php`
-
-```php
-// Bloque generado para: User (Contexto: App Central)
-Route::prefix('central')->name('central.')->middleware(['web','auth'])->group(function () {
-    Route::prefix('users')->name('users.')->group(function () {
-        Route::get('/',          [CentralUserController::class, 'index'])->name('index');
-        Route::get('/create',    [CentralUserController::class, 'create'])->name('create');
-        Route::post('/',         [CentralUserController::class, 'store'])->name('store');
-        Route::get('/{id}',      [CentralUserController::class, 'show'])->name('show');
-        Route::get('/{id}/edit', [CentralUserController::class, 'edit'])->name('edit');
-        Route::put('/{id}',      [CentralUserController::class, 'update'])->name('update');
-        Route::delete('/{id}',   [CentralUserController::class, 'destroy'])->name('destroy');
-    });
-});
-// {{CENTRAL_ROUTES_END}}
-```
-
-#### Resolución de `contextRoute()`
-
-```js
-contextRoute('users.index')
-// Resuelve: 'central.users.index'
-```
-
----
-
-### Contexto `shared`
-
-```bash
-php artisan innodite:make-module Invoice --context=shared
-```
-
-#### Dualidad de rutas — inyección simultánea en DOS archivos
-
-El contexto `shared` es único: sus rutas son accesibles tanto desde el panel central como desde el panel tenant. El generador inyecta rutas en **dos archivos simultáneamente**.
-
-**En `routes/web.php`** (acceso desde el panel central):
-
-```php
-// Bloque generado para: Invoice (Contexto: Shared — panel central)
-Route::prefix('central/shared')->name('central.shared.')->middleware(['web','auth'])->group(function () {
-    Route::prefix('invoices')->name('invoices.')->group(function () {
-        Route::get('/',          [SharedInvoiceController::class, 'index'])->name('index');
-        Route::get('/create',    [SharedInvoiceController::class, 'create'])->name('create');
-        Route::post('/',         [SharedInvoiceController::class, 'store'])->name('store');
-        Route::get('/{id}',      [SharedInvoiceController::class, 'show'])->name('show');
-        Route::get('/{id}/edit', [SharedInvoiceController::class, 'edit'])->name('edit');
-        Route::put('/{id}',      [SharedInvoiceController::class, 'update'])->name('update');
-        Route::delete('/{id}',   [SharedInvoiceController::class, 'destroy'])->name('destroy');
-    });
-});
-// {{CENTRAL_ROUTES_END}}
-```
-
-**En `routes/tenant.php`** (acceso desde el panel tenant):
-
-```php
-// Bloque generado para: Invoice (Contexto: Shared — panel tenant)
-Route::prefix('tenant/shared')->name('tenant.shared.')->middleware(['web','auth'])->group(function () {
-    Route::prefix('invoices')->name('invoices.')->group(function () {
-        Route::get('/',          [SharedInvoiceController::class, 'index'])->name('index');
-        Route::get('/create',    [SharedInvoiceController::class, 'create'])->name('create');
-        Route::post('/',         [SharedInvoiceController::class, 'store'])->name('store');
-        Route::get('/{id}',      [SharedInvoiceController::class, 'show'])->name('show');
-        Route::get('/{id}/edit', [SharedInvoiceController::class, 'edit'])->name('edit');
-        Route::put('/{id}',      [SharedInvoiceController::class, 'update'])->name('update');
-        Route::delete('/{id}',   [SharedInvoiceController::class, 'destroy'])->name('destroy');
-    });
-});
-// {{TENANT_SHARED_ROUTES_END}}
-```
-
-#### Resolución de `contextRoute()` en `shared`
-
-El mismo componente Vue resuelve diferente según el panel activo, gracias a `auth.context.route_prefix` inyectada por `InnoditeContextBridge`:
-
-```js
-// Desde el panel central (route_prefix = 'central.shared')
-contextRoute('invoices.index')
-// Resuelve: 'central.shared.invoices.index'
-
-// Desde el panel tenant (route_prefix = 'tenant.shared')
-contextRoute('invoices.index')
-// Resuelve: 'tenant.shared.invoices.index'
-```
-
-Las vistas Vue no cambian — el composable adapta la ruta automáticamente según el contexto activo en sesión.
-
----
-
-### Contexto `tenant_shared`
-
-```bash
-php artisan innodite:make-module Role --context=tenant_shared
-```
-
-#### Ruta inyectada en `routes/tenant.php`
-
-El contexto `tenant_shared` tiene `route_prefix: null` — las rutas se definen sin prefijo URL para que cada tenant acceda directamente bajo su propio dominio.
-
-```php
-// Bloque generado para: Role (Contexto: Tenant Shared)
-Route::middleware(['web','auth'])->group(function () {
-    Route::prefix('roles')->name('roles.')->group(function () {
-        Route::get('/',          [TenantSharedRoleController::class, 'index'])->name('index');
-        Route::get('/create',    [TenantSharedRoleController::class, 'create'])->name('create');
-        Route::post('/',         [TenantSharedRoleController::class, 'store'])->name('store');
-        Route::get('/{id}',      [TenantSharedRoleController::class, 'show'])->name('show');
-        Route::get('/{id}/edit', [TenantSharedRoleController::class, 'edit'])->name('edit');
-        Route::put('/{id}',      [TenantSharedRoleController::class, 'update'])->name('update');
-        Route::delete('/{id}',   [TenantSharedRoleController::class, 'destroy'])->name('destroy');
-    });
-});
-// {{TENANT_SHARED_ROUTES_END}}
-```
-
-> **Nota:** Sin `route_prefix`, el nombre de ruta tampoco lleva prefijo de contexto. `contextRoute('roles.index')` devuelve simplemente `'roles.index'`.
-
----
-
-### Contexto `tenant` (tenant específico — ej: INNODITE)
-
-```bash
-php artisan innodite:make-module Product --context=innodite
-```
-
-El paquete resuelve `innodite` buscando en el array `tenant` de `contexts.json` por `name`, `class_prefix` o slug derivado del nombre.
-
-#### Ruta inyectada en `routes/tenant.php`
-
-```php
-// Bloque generado para: Product (Contexto: INNODITE)
-Route::prefix('innodite')->name('innodite.')->middleware(['web','auth','tenant-auth'])->group(function () {
-    Route::prefix('products')->name('products.')->group(function () {
-        Route::get('/',          [TenantINNODITEProductController::class, 'index'])->name('index');
-        Route::get('/create',    [TenantINNODITEProductController::class, 'create'])->name('create');
-        Route::post('/',         [TenantINNODITEProductController::class, 'store'])->name('store');
-        Route::get('/{id}',      [TenantINNODITEProductController::class, 'show'])->name('show');
-        Route::get('/{id}/edit', [TenantINNODITEProductController::class, 'edit'])->name('edit');
-        Route::put('/{id}',      [TenantINNODITEProductController::class, 'update'])->name('update');
-        Route::delete('/{id}',   [TenantINNODITEProductController::class, 'destroy'])->name('destroy');
-    });
-});
-// {{TENANT_INNODITE_ROUTES_END}}
-```
-
-#### Resolución de `contextRoute()`
-
-```js
-contextRoute('products.index')
-// Resuelve: 'innodite.products.index'
-```
+⛔ **`add-entity` deja exactamente lo mismo que `make-module`**: las cuatro capas, la migración, las
+seis piezas de seeder, la factory, las pantallas, **las rutas**, el provider de su contexto y el
+grupo de pruebas. Las dos puertas por las que aparece una subfuncionalidad emiten lo mismo.
 
 ---
 
 ## 🧩 Composables Vue 3
 
-Los composables se publican con `php artisan innodite:publish-frontend` en `resources/js/Composables/`.
+⛔ **El paquete ya no publica composables.** Se retiraron en la 4.x junto con
+`innodite:publish-frontend`: montar el andamiaje del frontend es del proyecto, o de la biblioteca de
+interfaz que use. Lo que sigue describe **el contrato que la vista generada espera** de tu proyecto,
+por si prefieres implementarlo con composables propios; la pantalla que genera el paquete no importa
+ninguno — lleva su `can()` de dos líneas escrito dentro.
 
 ### `useModuleContext` — Detección automática de contexto
 
@@ -1120,172 +891,46 @@ class User extends Authenticatable implements InnoditeUserPermissions
 
 ---
 
-## ⚙️ Estructura de contextos (`contexts.json`)
+## ⚙️ El catálogo de contextos (`contexts.json`)
+
+Lo publica el instalador en `module-maker-config/contexts.json`, y en multiinquilino trae **dos**:
 
 ```json
 {
     "contexts": {
-        "central": [{
-            "name": "App Central",
+        "central": {
+            "id": "central",
+            "is_tenant": false,
+            "tenancy_strategy": "manual",
+            "connection_key": "central",
             "class_prefix": "Central",
             "folder": "Central",
             "namespace_path": "Central",
             "route_file": "web.php",
             "route_prefix": "central",
-            "route_name": "central.",
-            "permission_prefix": "central",
-            "route_middleware": ["web", "auth"]
-        }],
-        "shared": [{
-            "name": "Shared",
-            "class_prefix": "Shared",
-            "folder": "Shared",
-            "namespace_path": "Shared",
-            "route_file": ["web.php", "tenant.php"],
-            "web_route_prefix": "central.shared",
-            "web_route_name": "central.shared.",
-            "tenant_route_prefix": "tenant.shared",
-            "tenant_route_name": "tenant.shared.",
-            "route_middleware": []
-        }],
-        "tenant_shared": [{
-            "name": "Tenant Shared",
-            "class_prefix": "TenantShared",
-            "folder": "Tenant/Shared",
-            "namespace_path": "Tenant\\Shared",
+            "route_name": "central."
+        },
+
+        "tenant": {
+            "id": "tenant",
+            "is_tenant": true,
+            "class_prefix": "Tenant",
+            "folder": "Tenant",
+            "namespace_path": "Tenant",
             "route_file": "tenant.php",
-            "route_prefix": null,
-            "route_name": null,
-            "permission_prefix": "tenant",
-            "route_middleware": []
-        }],
-        "tenant": [
-            {
-                "name": "INNODITE",
-                "class_prefix": "TenantINNODITE",
-                "folder": "Tenant/INNODITE",
-                "namespace_path": "Tenant\\INNODITE",
-                "route_file": "tenant.php",
-                "route_prefix": "innodite",
-                "route_name": "innodite.",
-                "permission_prefix": "innodite",
-                "route_middleware": ["web", "auth", "tenant-auth"]
-            },
-            {
-                "name": "ACME",
-                "class_prefix": "TenantACME",
-                "folder": "Tenant/ACME",
-                "namespace_path": "Tenant\\ACME",
-                "route_file": "tenant.php",
-                "route_prefix": "acme",
-                "route_name": "acme.",
-                "permission_prefix": "acme",
-                "route_middleware": ["web", "auth", "tenant-auth"]
-            }
-        ]
+            "route_prefix": "tenant",
+            "route_name": "tenant."
+        }
     }
 }
 ```
 
-> El array `tenant` puede contener **múltiples entradas**, una por cada tenant específico del proyecto. Cada entrada genera su propio espacio de nombres, carpetas y marcador de rutas aislado.
+⛔ **El inquilino no declara `connection_key`, y no es un olvido**: la conmuta el paquete de tenencia
+al identificar la ruta. Nombrarla ataría cada modelo a un cliente.
 
-### Claves del contexto `tenant_shared` con `route_prefix: null`
-
-Es el único contexto sin prefijo de URL ni de nombre de ruta. `contextRoute('roles.index')` devuelve simplemente `'roles.index'` — diseñado para código estándar que se ejecuta bajo el dominio de cada tenant.
-
----
-
-## 🌳 Estructura de árbol de un módulo generado
-
-El siguiente árbol corresponde a `innodite:make-module User --context=central` (módulo completo, 24 archivos).
-
-**Patrón v3.5.x:** Los componentes principales siguen `{Tipo}/{Contexto}/{Entidad}/{Archivo}`.
-
-```
-Modules/
-└── User/
-    ├── Http/
-    │   ├── Controllers/
-    │   │   └── Central/
-    │   │       └── User/
-    │   │           └── CentralUserController.php      (RendersInertiaModule + JSON)
-    │   └── Requests/
-    │       └── Central/
-    │           └── User/
-    │               ├── CentralUserStoreRequest.php
-    │               └── CentralUserUpdateRequest.php
-    ├── Models/
-    │   └── Central/
-    │       └── User/
-    │           └── CentralUser.php                    (con $table definida)
-    ├── Services/
-    │   ├── Central/
-    │   │   └── User/
-    │   │       └── CentralUserService.php
-    │   └── Contracts/
-    │       └── Central/
-    │           └── User/
-    │               └── CentralUserServiceInterface.php
-    ├── Repositories/
-    │   ├── Central/
-    │   │   └── User/
-    │   │       └── CentralUserRepository.php
-    │   └── Contracts/
-    │       └── Central/
-    │           └── User/
-    │               └── CentralUserRepositoryInterface.php
-    ├── Providers/
-    │   └── UserServiceProvider.php                (binding automático Interface↔Implementation)
-    ├── Database/
-    │   ├── Migrations/
-    │   │   └── Central/
-    │   │       └── User/
-    │   │           └── *_create_users_table.php   (migración anónima)
-    │   ├── Seeders/
-    │   │   └── Central/
-    │   │       └── User/
-    │   │           └── CentralUserSeeder.php
-    │   └── Factories/
-    │       └── Central/
-    │           └── User/
-    │               └── CentralUserFactory.php
-    ├── Tests/
-    │   └── Feature/
-    │       └── Central/
-    │           └── User/
-    │               ├── CentralUserContract.php
-    │               ├── CentralUserTestCase.php
-    │               ├── CentralUserScaffoldTest.php
-    │               ├── CentralUserSchemaTest.php
-    │               ├── CentralUserPermissionsTest.php
-    │               ├── CentralUserDeploymentTest.php
-    │               └── CentralUserHttpTest.php
-    ├── Resources/
-    │   └── js/
-    │       └── Pages/
-    │           └── Central/
-    │               ├── CentralUserIndex.vue       (lista paginada, axios.get)
-    │               ├── CentralUserCreate.vue      (formulario, axios.post)
-    │               ├── CentralUserEdit.vue        (formulario, axios.get + axios.put)
-    │               └── CentralUserShow.vue        (detalle, axios.get)
-    ├── Jobs/
-    │   └── Central/
-    │       └── CentralUserExportJob.php
-    ├── Notifications/
-    │   └── Central/
-    │       └── CentralUserWelcomeNotification.php
-    ├── Console/
-    │   └── Commands/
-    │       └── Central/
-    │           └── CentralUserCleanupCommand.php
-    ├── Exceptions/
-    │   └── Central/
-    │       └── CentralUserNotFoundException.php
-    └── Routes/
-        └── web.php                                (rutas CRUD — referencia local)
-```
-
-Con `innodite:add-entity User Role --context=central`, se añade dentro de `Modules/User/` una subcarpeta `Role/` paralela a `User/` en cada tipo de componente.
+**Un contexto propio** —una segunda central, un almacén aparte— se declara aquí con su carpeta, su
+prefijo y su archivo de rutas, y el generador lo acepta. Ese sí tiene que declarar su conexión: no
+la conmuta nadie.
 
 ---
 
@@ -1294,9 +939,8 @@ Con `innodite:add-entity User Role --context=central`, se añade dentro de `Modu
 | Contexto | Prefijo de clase | Ejemplo Vue | Ejemplo PHP |
 |---|---|---|---|
 | `central` | `Central` | `CentralUserIndex.vue` | `CentralUserController.php` |
-| `shared` | `Shared` | `SharedInvoiceIndex.vue` | `SharedInvoiceService.php` |
-| `tenant_shared` | `TenantShared` | `TenantSharedRoleIndex.vue` | `TenantSharedRoleRepository.php` |
-| `tenant` (INNODITE) | `TenantINNODITE` | `TenantINNODITEUserIndex.vue` | `TenantINNODITEUserController.php` |
+| `tenant` | `Tenant` | `TenantUserIndex.vue` | `TenantUserController.php` |
+| aplicación única | — | `UserIndex.vue` | `UserController.php` |
 
 **Reglas adicionales:**
 - El nombre del módulo siempre va en PascalCase (ej: `User`, `InvoiceItem`, `TaxReport`)
@@ -1311,20 +955,18 @@ Con `innodite:add-entity User Role --context=central`, se añade dentro de `Modu
 ### Marcadores en `routes/web.php`
 
 ```php
-// Al final del archivo, por contexto central y shared-web:
 // {{CENTRAL_ROUTES_END}}
 ```
 
 ### Marcadores en `routes/tenant.php`
 
 ```php
-// Por contexto tenant_shared y shared-tenant:
-// {{TENANT_SHARED_ROUTES_END}}
-
-// Por cada tenant específico (uno por tenant, basado en class_prefix):
-// {{TENANT_INNODITE_ROUTES_END}}
-// {{TENANT_ACME_ROUTES_END}}
+// {{TENANT_ROUTES_END}}
 ```
+
+**Lo decide el ARCHIVO, no el contexto.** Cada archivo de rutas sirve a un contexto y solo a uno, así
+que dentro hay **una** sección y un solo sitio donde crece: ahí entra la siguiente subfuncionalidad,
+dentro del grupo que le da dominio y middleware.
 
 ### Proceso interno de inyección
 
@@ -1366,7 +1008,7 @@ Con `innodite:add-entity User Role --context=central`, se añade dentro de `Modu
 | `innodite:module-setup` | Inicializa configuración del paquete en el proyecto |
 | `innodite:doctor` | Diagnóstico en cascada: entorno del generador, contrato del proyecto y criterio |
 | `innodite:crear-bd-test` | Clona el esquema real en la base `_test`, sin una sola fila |
-| `innodite:publish-frontend` | Publica composables Vue 3 (`useModuleContext`, `usePermissions`) |
+| `innodite:publish-stubs` | Exporta las plantillas que quieras personalizar |
 | ~~`innodite:migrate-plan`~~ | **Retirado en la v4** — usa `innodite:deploy` |
 | `innodite:migrate-one` | Ejecuta una migración puntual por coordenada |
 | `innodite:deploy {stage\|production}` | Levanta el proyecto: esquema, datos, permisos y webmaster |
