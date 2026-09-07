@@ -25,7 +25,7 @@ it('un módulo recién generado pasa los tres contrastes', function () {
 it('caza un placeholder que nadie resolvió, aunque el archivo ya esté escrito', function () {
     $modulo = $this->generateModule('Invoice', ModuleMode::SingleApp);
 
-    File::append($modulo->path('Services/Invoice/InvoiceService.php'), "\n// {{{ claveHuerfana }}}\n");
+    File::append($modulo->path('Invoice/Services/InvoiceService.php'), "\n// {{{ claveHuerfana }}}\n");
 
     try {
         $modulo->assertEveryFileWouldBeAccepted();
@@ -39,7 +39,7 @@ it('caza un placeholder que nadie resolvió, aunque el archivo ya esté escrito'
 it('caza una clase que no se llama como su archivo', function () {
     $modulo = $this->generateModule('Invoice', ModuleMode::SingleApp);
 
-    $ruta = $modulo->path('Repositories/Invoice/InvoiceRepository.php');
+    $ruta = $modulo->path('Invoice/Repositories/InvoiceRepository.php');
     File::put($ruta, str_replace('class InvoiceRepository', 'class InvoiceRepositorio', File::get($ruta)));
 
     try {
@@ -56,7 +56,7 @@ it('caza un import que apunta a una clase que nadie escribió', function () {
     // generada era `CentralPermission`. Sintaxis impecable, parser contento, clase inexistente.
     $modulo = $this->generateModule('Invoice', ModuleMode::SingleApp);
 
-    $ruta = $modulo->path('Http/Controllers/Invoice/InvoiceController.php');
+    $ruta = $modulo->path('Invoice/Http/Controllers/InvoiceController.php');
     File::put($ruta, str_replace(
         '<?php',
         "<?php\n\nuse Modules\\Invoice\\Models\\Invoice\\InvoiceQueNadieEscribio;",

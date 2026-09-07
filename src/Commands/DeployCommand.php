@@ -10,6 +10,7 @@ use Innodite\LaravelModuleMaker\Commands\Concerns\PrintsHeader;
 use Innodite\LaravelModuleMaker\Commands\Concerns\ReportsFailures;
 use Innodite\LaravelModuleMaker\Commands\Concerns\RehearsesChanges;
 use Innodite\LaravelModuleMaker\Exceptions\ModeNotConfiguredException;
+use Innodite\LaravelModuleMaker\Contracts\TenantContext;
 use Innodite\LaravelModuleMaker\Services\DeploymentRunner;
 use Innodite\LaravelModuleMaker\Support\ModuleMode;
 use Innodite\LaravelModuleMaker\Support\SeederNames;
@@ -131,10 +132,9 @@ class DeployCommand extends Command
         // el seeder corría contra la base por defecto —la central— creyendo que escribía en la del
         // cliente, y sin un solo aviso.
         //
-        // ⛔ No aplica cuando cada tenant tiene su propia lógica: ahí la estructura es distinta por
-        // cliente, el contexto declara su `connection_key` y el seeder generado la lleva escrita. El
-        // destino ya está resuelto en el archivo, y entrar en el contexto no añade nada.
-        if ($contexto === 'tenant' && ! $mode->requiresTenantConnectionKey()) {
+        // Y aplica SIEMPRE que el contexto sea el del inquilino, porque el inquilino ya no declara
+        // conexión en ningún caso: quien la conmuta es el paquete de tenencia.
+        if ($contexto === 'tenant') {
             return $this->deployTenants($fqcn, $pieza);
         }
 
@@ -200,8 +200,9 @@ class DeployCommand extends Command
     /**
      * Las rutas del orden de despliegue que son de este módulo, en el contexto pedido.
      *
-     * ⚠️ **El despliegue de `tenant` cubre tres claves** —`tenant`, `tenant_shared` y `shared`—,
-     * como el del proyecto: son la misma base de datos vista desde tres formas de compartir lógica.
+     * Una clave por contexto, y ya está. Aquí `tenant` cubría **tres** —`tenant`, `tenant_shared` y
+     * `shared`—, que eran la misma base de datos vista desde tres formas de compartir lógica. Con
+     * dos contextos, cada uno es el suyo.
      *
      * @return array<int, string>
      */
@@ -213,11 +214,7 @@ class DeployCommand extends Command
             return [];
         }
 
-        $claves = match ($contexto) {
-            'tenant' => ['tenant', 'tenant_shared', 'shared'],
-            null     => null,
-            default  => [$contexto],
-        };
+        $claves = $contexto === null ? null : [$contexto];
 
         $rutas = [];
 
@@ -262,15 +259,26 @@ class DeployCommand extends Command
             return self::FAILURE;
         }
 
-        $tenancy = TenancyPackage::current();
+        // ⛔ Quien responde si se puede entrar en el contexto es el CONTRATO, no una función global.
+        //
+        // Aquí se preguntaba a `TenancyPackage::initialisesContext()`, que además de mirar el modo
+        // comprueba que exista la función `tenancy()` de stancl. Con eso, un proyecto que implemente
+        // `Contracts\TenantContext` con su propia tenencia —que es para lo que ese contrato existe—
+        // no podía desplegar: el comando le decía que no declara paquete de tenencia mientras tenía
+        // uno inyectado y usable.
+        //
+        // El contrato sabe la respuesta: `usable()`. Y su implementación de serie es la de stancl,
+        // que responde exactamente lo que respondía la comprobación anterior — así que el caso
+        // normal no cambia y el caso propio deja de estar cerrado.
+        if (! $this->runner()->tenantContextUsable()) {
+            $tenancy = TenancyPackage::current();
 
-        if (! $tenancy->initialisesContext()) {
             $this->fallo(
-                "el proyecto no declara un paquete de tenencia que el generador sepa inicializar "
-                . "(hoy: {$tenancy->label()}).",
-                'declara `tenancy_package` en config/make-module.php, o despliega cada tenant desde '
-                . 'tu propio comando envolviendo el seeder en el contexto del cliente.',
-                'Sin inicializar el contexto, el seeder escribe en la base por defecto —la central— '
+                'no hay forma de entrar en el contexto de un cliente '
+                . "(paquete declarado: {$tenancy->label()}).",
+                'declara `tenancy.package` en config/make-module.php, o registra tu propia '
+                . 'implementación de Contracts\\TenantContext en el contenedor.',
+                'Sin entrar en el contexto, el seeder escribe en la base por defecto —la central— '
                 . 'creyendo que escribe en la del cliente.'
             );
 
@@ -455,8 +463,8 @@ class DeployCommand extends Command
             $this->fallo(
                 "'{$opcion}' no es un despliegue.",
                 'usa ' . implode(' | ', self::DESPLIEGUES) . '.',
-                'No es la clave del orden de despliegue, sino la base que se llena: el despliegue de '
-                . "tenant cubre 'tenant', 'tenant_shared' y 'shared'."
+                'No es la clave del orden de despliegue, sino la base que se llena: la de la '
+                . 'aplicación central, o la de cada inquilino.'
             );
 
             return false;
@@ -578,6 +586,15 @@ class DeployCommand extends Command
     /** El runner, con este comando dentro para que el seeder pueda seguir hablando por pantalla. */
     private function runner(): DeploymentRunner
     {
-        return new DeploymentRunner($this->laravel, $this);
+        // El contrato del contenedor si el proyecto registró el suyo; si no, el runner usa el de
+        // stancl de serie. Construirlo sin mirar el contenedor dejaba muerto el punto de extensión:
+        // un proyecto podía registrar su `TenantContext` y el despliegue seguía sin verlo.
+        return new DeploymentRunner(
+            $this->laravel,
+            $this,
+            $this->laravel->bound(TenantContext::class)
+                ? $this->laravel->make(TenantContext::class)
+                : null,
+        );
     }
 }

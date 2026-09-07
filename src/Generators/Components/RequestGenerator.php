@@ -62,7 +62,7 @@ class RequestGenerator extends AbstractComponentGenerator
             $this->putFile(
                 "{$requestDir}/{$className}.php",
                 $stub,
-                "Request {$className}.php creado en Modules/{$this->moduleName}/Http/Requests/{$this->getContextFolder()}"
+                'Request creado: ' . $this->rutaVisible("{$requestDir}/{$className}.php")
             );
         }
     }

@@ -96,7 +96,7 @@ it('en modo default no avisa nunca, aunque nadie aporte nada', function () {
 
 it('sin layout declarado la pantalla se dibuja suelta', function () {
     $vista = $this->generateModule('Invoice', ModuleMode::SingleApp)
-        ->contents('resources/js/Pages/Invoice/InvoiceIndex.vue');
+        ->contents('Invoice/resources/js/Pages/InvoiceIndex.vue');
 
     expect($vista)->not->toContain('defineOptions')
         ->and($vista)->not->toContain('{{{');
@@ -106,7 +106,7 @@ it('el layout declarado se importa y se declara, sin tocar el template', functio
     config()->set('make-module.frontend.layout', '@/Layouts/AppLayout.vue');
 
     $vista = $this->generateModule('Invoice', ModuleMode::SingleApp)
-        ->contents('resources/js/Pages/Invoice/InvoiceIndex.vue');
+        ->contents('Invoice/resources/js/Pages/InvoiceIndex.vue');
 
     expect($vista)->toContain("import AppLayout from '@/Layouts/AppLayout.vue'")
         ->and($vista)->toContain('defineOptions({ layout: AppLayout })');
@@ -132,7 +132,7 @@ it('solo el listado lleva layout: los otros tres son modales dentro de él', fun
     $modulo = $this->generateModule('Invoice', ModuleMode::SingleApp);
 
     foreach (['Create', 'Edit', 'Show'] as $modal) {
-        expect($modulo->contents("resources/js/Pages/Invoice/Invoice{$modal}.vue"))
+        expect($modulo->contents("Invoice/resources/js/Pages/Invoice{$modal}.vue"))
             ->not->toContain('defineOptions');
     }
 });

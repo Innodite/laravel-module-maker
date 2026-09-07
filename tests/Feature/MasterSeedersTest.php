@@ -60,10 +60,10 @@ function maestroDePrueba(string $piece, ?string $context = null, string $module 
 }
 
 it('los tres maestros se generan en su carpeta, aparte de las subfuncionalidades', function () {
-    $modulo = $this->generateModule('Invoice', ModuleMode::MultitenantPerTenant, 'central');
+    $modulo = $this->generateModule('Invoice', ModuleMode::Multitenant, 'central');
 
     $esperados = array_map(
-        static fn (string $maestro): string => "Database/Seeders/Central/Application/{$maestro}.php",
+        static fn (string $maestro): string => "Database/Seeders/Application/Central/{$maestro}.php",
         SeederNames::masterPieces('Central', 'Invoice')
     );
 
@@ -93,14 +93,14 @@ it('cada maestro invoca su propia pieza y ninguna otra', function (string $pieza
 it('la carpeta resuelve a la clase de la pieza que pide quien pregunta', function () {
     // El mismo camino que sigue el maestro en ejecución, aislado: carpeta + pieza → clase.
     expect(SeederNames::classFromPath('Invoice/Central/Invoice', 'Production'))
-        ->toBe('Modules\Invoice\Database\Seeders\Central\Invoice\CentralInvoiceInvoiceProductionSeeder');
+        ->toBe('Modules\Invoice\Invoice\Database\Seeders\Central\CentralInvoiceInvoiceProductionSeeder');
 
-    expect(SeederNames::classFromPath('UserManagement/Tenant/Shared/Role', 'Stage'))
-        ->toBe('Modules\UserManagement\Database\Seeders\Tenant\Shared\Role\TenantSharedUserManagementRoleStageSeeder');
+    expect(SeederNames::classFromPath('UserManagement/Tenant/Role', 'Stage'))
+        ->toBe('Modules\UserManagement\Role\Database\Seeders\Tenant\TenantUserManagementRoleStageSeeder');
 
     // Sin eje de contexto: la ruta trae dos segmentos y el nombre no lleva prefijo.
     expect(SeederNames::classFromPath('Invoice/Invoice', 'Permissions'))
-        ->toBe('Modules\Invoice\Database\Seeders\Invoice\InvoiceInvoicePermissionsSeeder');
+        ->toBe('Modules\Invoice\Invoice\Database\Seeders\InvoiceInvoicePermissionsSeeder');
 });
 
 it('una ruta que no nombra una subfuncionalidad se rechaza diciendo qué se esperaba', function () {
@@ -113,7 +113,7 @@ it('el maestro despliega en el orden declarado, y solo lo de su módulo', functi
     // porque una tabla con clave foránea no puede sembrarse antes que aquella a la que apunta.
     $modulo = $this->generateModule('Invoice', ModuleMode::SingleApp);
 
-    cargarPiezas($modulo, 'Database/Seeders/Invoice', SeederNames::subFeaturePieces('', 'Invoice', 'Invoice'));
+    cargarPiezas($modulo, 'Invoice/Database/Seeders', SeederNames::subFeaturePieces('', 'Invoice', 'Invoice'));
 
     config()->set('make-module.deploy', [
         'Payment/Payment',      // de otro módulo: no es cosa de este maestro
@@ -124,7 +124,7 @@ it('el maestro despliega en el orden declarado, y solo lo de su módulo', functi
     $maestro->desplegar();
 
     expect(array_column($maestro->llamados, 'clase'))
-        ->toBe(['Modules\Invoice\Database\Seeders\Invoice\InvoiceInvoiceProductionSeeder']);
+        ->toBe(['Modules\Invoice\Invoice\Database\Seeders\InvoiceInvoiceProductionSeeder']);
 });
 
 it('solo el maestro de permisos propaga el modo destructivo', function () {
@@ -133,7 +133,7 @@ it('solo el maestro de permisos propaga el modo destructivo', function () {
     // está tomada dentro.
     $modulo = $this->generateModule('Invoice', ModuleMode::SingleApp);
 
-    cargarPiezas($modulo, 'Database/Seeders/Invoice', SeederNames::subFeaturePieces('', 'Invoice', 'Invoice'));
+    cargarPiezas($modulo, 'Invoice/Database/Seeders', SeederNames::subFeaturePieces('', 'Invoice', 'Invoice'));
 
     config()->set('make-module.deploy', ['Invoice/Invoice']);
 
@@ -151,7 +151,7 @@ it('un hijo que falla no detiene a los que vienen detrás', function () {
     // Sin esto, un despliegue de diez subfuncionalidades se arregla a un despliegue por fallo.
     $modulo = $this->generateModule('Invoice', ModuleMode::SingleApp);
 
-    cargarPiezas($modulo, 'Database/Seeders/Invoice', SeederNames::subFeaturePieces('', 'Invoice', 'Invoice'));
+    cargarPiezas($modulo, 'Invoice/Database/Seeders', SeederNames::subFeaturePieces('', 'Invoice', 'Invoice'));
 
     config()->set('make-module.deploy', [
         'Invoice/NoGenerada',   // esta revienta: nadie la generó
@@ -163,7 +163,7 @@ it('un hijo que falla no detiene a los que vienen detrás', function () {
 
     // La segunda se desplegó igual, pese a que la primera falló.
     expect(array_column($maestro->llamados, 'clase'))
-        ->toBe(['Modules\Invoice\Database\Seeders\Invoice\InvoiceInvoiceStageSeeder']);
+        ->toBe(['Modules\Invoice\Invoice\Database\Seeders\InvoiceInvoiceStageSeeder']);
 
     // Y al cerrar, el fallo sigue estando: acumular no es tragar.
     expect(fn () => $maestro->cerrar())
@@ -193,5 +193,5 @@ it('sin orden declarado avisa, en vez de desplegar nada en silencio', function (
 });
 
 it('el módulo con sus maestros sigue siendo coherente', function () {
-    $this->generateModule('Invoice', ModuleMode::MultitenantPerTenant, 'central')->assertCoherent();
+    $this->generateModule('Invoice', ModuleMode::Multitenant, 'central')->assertCoherent();
 });

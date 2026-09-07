@@ -232,12 +232,18 @@ class TestCommand extends Command
         ];
     }
 
-    /** `Modules/{Modulo}/Tests/Feature/{contexto}/{SubFuncion}` */
+    /**
+     * `Modules/{Modulo}/{SubFuncion}/Tests/Feature/{contexto}` — donde el generador las escribe.
+     *
+     * El orden del árbol: la subfuncionalidad manda, la capa va dentro y el contexto es la hoja. Es
+     * el mismo que compone `AbstractComponentGenerator::buildPath()` al generarlas; si los dos
+     * dejan de coincidir, el comando anuncia que «no hay grupo de pruebas» sobre una subfuncionalidad
+     * que lo tiene entero.
+     */
     protected function carpetaDelGrupo(string $modulo, string $carpetaContexto, string $subFuncion): string
     {
-        return base_path("Modules/{$modulo}/Tests/Feature")
-            . ($carpetaContexto !== '' ? '/' . $carpetaContexto : '')
-            . '/' . $subFuncion;
+        return base_path("Modules/{$modulo}/{$subFuncion}/Tests/Feature")
+            . ($carpetaContexto !== '' ? '/' . $carpetaContexto : '');
     }
 
     /**

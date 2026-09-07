@@ -41,8 +41,8 @@ it('la misma migración en dos contextos no es una colisión', function () {
     $modulo  = "{$modulos}/Facturacion";
 
     moduloConMigraciones($modulo, [
-        'Database/Migrations/Central/Cobros/2026_01_01_000000_create_users_final.php',
-        'Database/Migrations/Tenant/Cobros/2026_01_02_000000_create_users_final.php',
+        'Cobros/Database/Migrations/Central/2026_01_01_000000_create_users_final.php',
+        'Cobros/Database/Migrations/Tenant/2026_01_02_000000_create_users_final.php',
     ]);
 
     try {
@@ -65,8 +65,8 @@ it('la misma migración DOS veces en un contexto sí lo es', function () {
     $modulo  = "{$modulos}/Facturacion";
 
     moduloConMigraciones($modulo, [
-        'Database/Migrations/Central/Cobros/2026_01_01_000000_create_users_final.php',
-        'Database/Migrations/Central/Otros/2026_01_02_000000_create_users_final.php',
+        'Cobros/Database/Migrations/Central/2026_01_01_000000_create_users_final.php',
+        'Otros/Database/Migrations/Central/2026_01_02_000000_create_users_final.php',
     ]);
 
     try {
@@ -242,30 +242,27 @@ it('el ensayo no dice que escribió lo que no escribió', function () {
     );
 });
 
-it('cada modo multitenant exige SU catálogo, no el mismo para los dos', function () {
-    // El diagnóstico pedía `shared` y `tenant_shared` a los dos modos: el mensaje nombraba el modo y
-    // luego exigía lo mismo de cualquiera, así que la distinción existía solo en pantalla. Y a un
-    // proyecto de tenants iguales —misma lógica, una base por tenant— le reclamaba un contexto para
-    // lógica repartida por tenant, que es justo lo que ese modo NO tiene.
-    expect(ModuleMode::MultitenantShared->requiredContextKeys())
+it('el diagnóstico exige el catálogo del modo, y en multiinquilino son dos contextos', function () {
+    // El diagnóstico pedía `shared` y `tenant_shared` a los dos modos multiinquilino que había: el
+    // mensaje nombraba el modo y luego exigía lo mismo de cualquiera, así que la distinción existía
+    // solo en pantalla. Con un solo modo y dos contextos, lo que se exige es exactamente lo que hay.
+    expect(ModuleMode::Multitenant->requiredContextKeys())
         ->toBe(['central', 'tenant']);
 
-    expect(ModuleMode::MultitenantPerTenant->requiredContextKeys())
-        ->toBe(['central', 'tenant_shared']);
-
-    expect(ModuleMode::MultitenantShared->requiredContextKeys())
-        ->not->toBe(ModuleMode::MultitenantPerTenant->requiredContextKeys());
-
-    expect(ModuleMode::SingleApp->requiredContextKeys())->toBe([]);
+    expect(ModuleMode::SingleApp->requiredContextKeys())->toBe(
+        [],
+        'Una aplicación única no tiene contextos que declarar: exigirle uno la obliga a inventárselo '
+        . 'para pasar un diagnóstico que no le aplica.'
+    );
 });
 
 it('lo que se admite en --context es más ancho que lo que hay que declarar', function () {
     // Son dos preguntas distintas, y responderlas con una sola lista es lo que cruzó los catálogos.
     // Generar en un contexto que el proyecto declaró no es un error porque el diagnóstico no lo
     // exigiera.
-    expect(ModuleMode::MultitenantShared->supportsContext('tenant'))->toBeTrue();
-    expect(ModuleMode::MultitenantShared->supportsContext('central'))->toBeTrue();
-    expect(ModuleMode::MultitenantPerTenant->supportsContext('tenant_shared'))->toBeTrue();
+    expect(ModuleMode::Multitenant->supportsContext('tenant'))->toBeTrue();
+    expect(ModuleMode::Multitenant->supportsContext('central'))->toBeTrue();
+    expect(ModuleMode::Multitenant->supportsContext('tenant_shared'))->toBeFalse();
 
     expect(ModuleMode::SingleApp->supportsContext('central'))->toBeFalse(
         'FALLA: una aplicación única no tiene eje de contexto.'

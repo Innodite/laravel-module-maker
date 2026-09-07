@@ -18,12 +18,12 @@ use Innodite\LaravelModuleMaker\Support\ModuleMode;
  */
 
 it('en tenants iguales no se exige connection_key: migra sobre la conexión activa', function () {
-    // `Tenant/Shared` es el contexto que fallaba: en el contexts.json de ejemplo NO declara
+    // `Tenant` es el contexto que fallaba: en el contexts.json NO declara
     // `connection_key` ni `tenancy_strategy`, porque en ese modo no le corresponde declararlos.
-    $this->withMode(ModuleMode::MultitenantShared);
+    $this->withMode(ModuleMode::Multitenant);
 
     $conexion = (new MigrationTargetService())->resolveExecutionConnection(
-        'Tenant/Shared',
+        'Tenant',
         dryRun: true
     );
 
@@ -35,31 +35,35 @@ it('en tenants iguales no se exige connection_key: migra sobre la conexión acti
     );
 });
 
-it('el mismo contexto, en el modo de lógica propia, sí exige la conexión', function () {
-    // La corrección no relaja la validación: la condiciona al modo. Con lógica propia por tenant,
-    // la conexión es parte de su identidad y no declararla es un error de configuración de verdad.
-    $this->withMode(ModuleMode::MultitenantPerTenant);
+it('un contexto propio del proyecto sí tiene que declarar su conexión', function () {
+    // La excepción es para el eje del inquilino, no para cualquier contexto: uno que el proyecto
+    // declare por su cuenta —una segunda central, un almacén aparte— no lo conmuta nadie, así que
+    // sin `connection_key` la migración iría a la base por defecto.
+    $this->withMode(ModuleMode::Multitenant);
 
-    expect(fn () => (new MigrationTargetService())->resolveExecutionConnection('Tenant/Shared', true))
+    expect(fn () => (new MigrationTargetService())->resolveExecutionConnection('Reporting', true))
         ->toThrow(InvalidArgumentException::class);
 });
 
 it('la app central pasa por la validación de siempre', function () {
     // La excepción es solo para el tenant del modo compartido. La central declara su conexión
     // siempre: si aquí se relajara, el despliegue central acabaría en la base equivocada.
-    $this->withMode(ModuleMode::MultitenantShared);
+    $this->withMode(ModuleMode::Multitenant);
 
     $conexion = (new MigrationTargetService())->resolveExecutionConnection('central', true);
 
     expect($conexion)->toBe('central');
 });
 
-it('el modo con lógica propia por tenant sigue exigiendo la conexión', function () {
-    expect(ModuleMode::MultitenantPerTenant->requiresTenantConnectionKey())->toBeTrue(
-        'Un tenant con lógica propia sí declara la suya: ahí la conexión es parte de su identidad.'
+it('el inquilino no declara conexión en ningún modo', function () {
+    expect(ModuleMode::Multitenant->declaresModelConnection('tenant'))->toBeFalse(
+        'La conmuta el paquete de tenencia al identificar la ruta. Nombrarla ata el modelo a UN '
+        . 'cliente, que es lo contrario de lo que el eje protege.'
     );
-    expect(ModuleMode::MultitenantShared->requiresTenantConnectionKey())->toBeFalse();
-    expect(ModuleMode::SingleApp->requiresTenantConnectionKey())->toBeFalse(
-        'Y en una aplicación única no hay tenant al que exigirle nada.'
+    expect(ModuleMode::Multitenant->declaresModelConnection('central'))->toBeTrue(
+        'La central sí: tiene su propia base y no la conmuta nadie.'
+    );
+    expect(ModuleMode::SingleApp->declaresModelConnection())->toBeFalse(
+        'Y en una aplicación única no hay nada que conmutar ni que nombrar.'
     );
 });

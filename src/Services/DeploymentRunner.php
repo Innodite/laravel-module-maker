@@ -50,6 +50,18 @@ class DeploymentRunner
     }
 
     /**
+     * ¿Se puede entrar en el contexto de un cliente?
+     *
+     * La pregunta la responde el contrato —el inyectado, o el de stancl de serie—, y no una función
+     * global: es lo que permite que un proyecto con su propia tenencia despliegue igual. Vive aquí
+     * porque el contexto es privado y quien decide si sigue adelante es el comando.
+     */
+    public function tenantContextUsable(): bool
+    {
+        return $this->context()->usable();
+    }
+
+    /**
      * Ejecuta el seeder contra la conexión que esté activa.
      *
      * **Acepta una clase o varias.** El despliegue del proyecto es un seeder; el de un módulo suelto

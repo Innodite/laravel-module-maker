@@ -39,10 +39,10 @@ function vistaQuePide(string $controlador): string
 it('en una aplicación única la pantalla generada existe donde el controlador la pide', function () {
     $modulo = $this->generateModule('Invoice', ModuleMode::SingleApp);
 
-    $ruta = vistaQuePide($modulo->contents('Http/Controllers/Invoice/InvoiceController.php'));
+    $ruta = vistaQuePide($modulo->contents('Invoice/Http/Controllers/InvoiceController.php'));
 
-    expect($ruta)->toBe('Invoice/InvoiceIndex');
-    expect(File::exists($modulo->path() . "/resources/js/Pages/{$ruta}.vue"))->toBeTrue(
+    expect($ruta)->toBe('Invoice/resources/js/Pages/InvoiceIndex');
+    expect(File::exists($modulo->path() . "/{$ruta}.vue"))->toBeTrue(
         "FALLA: el controlador pide '{$ruta}' y ahí no hay ninguna vista. · FIX: la ruta la compone "
         . 'ControllerGenerator con la carpeta de contexto, la subfuncionalidad y el componente — el '
         . 'mismo trío con el que VueGenerator elige dónde escribir el archivo.'
@@ -52,12 +52,12 @@ it('en una aplicación única la pantalla generada existe donde el controlador l
 it('en multitenant la carpeta del contexto y la de la subfuncionalidad van las dos', function () {
     // Faltando cualquiera de las dos, la ruta apunta a un archivo que no está. Es exactamente el
     // fallo que tenía parado un proyecto real: la pantalla existía y el controlador miraba al lado.
-    $modulo = $this->generateModule('Invoice', ModuleMode::MultitenantPerTenant, 'central');
+    $modulo = $this->generateModule('Invoice', ModuleMode::Multitenant, 'central');
 
-    $ruta = vistaQuePide($modulo->contents('Http/Controllers/Central/Invoice/CentralInvoiceController.php'));
+    $ruta = vistaQuePide($modulo->contents('Invoice/Http/Controllers/Central/CentralInvoiceController.php'));
 
-    expect($ruta)->toBe('Central/Invoice/CentralInvoiceIndex');
-    expect(File::exists($modulo->path() . "/resources/js/Pages/{$ruta}.vue"))->toBeTrue(
+    expect($ruta)->toBe('Invoice/resources/js/Pages/Central/CentralInvoiceIndex');
+    expect(File::exists($modulo->path() . "/{$ruta}.vue"))->toBeTrue(
         "FALLA: el controlador pide '{$ruta}' y ahí no hay ninguna vista."
     );
 });
@@ -68,7 +68,7 @@ it('la ruta se resuelve al generar, sin leer nada en tiempo de ejecución', func
     // mezclaba los dos modos en un solo camino y ponía un `if` de configuración delante de cada
     // pantalla — un fallo de configuración se convertía en una pantalla que no abre.
     $controlador = $this->generateModule('Invoice', ModuleMode::SingleApp)
-        ->contents('Http/Controllers/Invoice/InvoiceController.php');
+        ->contents('Invoice/Http/Controllers/InvoiceController.php');
 
     expect(str_contains($controlador, 'RendersInertiaModule'))->toBeFalse(
         'FALLA: el controlador generado vuelve a depender del trait de resolución. · FIX: la ruta la '
@@ -83,19 +83,19 @@ it('la ruta se resuelve al generar, sin leer nada en tiempo de ejecución', func
 it('las cuatro vistas se generan bajo la misma carpeta que pide el controlador', function () {
     // La coherencia entre las dos mitades: quien escribe el .vue y quien lo pide tienen que estar
     // usando el mismo trío —carpeta de contexto, subfuncionalidad, componente—.
-    foreach ([[ModuleMode::SingleApp, null], [ModuleMode::MultitenantPerTenant, 'central']] as [$modo, $ctx]) {
+    foreach ([[ModuleMode::SingleApp, null], [ModuleMode::Multitenant, 'central']] as [$modo, $ctx]) {
         // El generador se niega a regenerar encima —y hace bien—, así que cada vuelta parte de cero.
         File::deleteDirectory($this->tempPath('Modules/Invoice'));
 
         $modulo = $this->generateModule('Invoice', $modo, $ctx);
 
-        $controlador = collect(File::allFiles($modulo->path() . '/Http/Controllers'))
+        $controlador = collect(File::allFiles($modulo->path()))
             ->first(fn ($f) => str_ends_with($f->getFilename(), 'Controller.php'));
 
         $ruta    = vistaQuePide((string) File::get($controlador->getPathname()));
         $carpeta = dirname($ruta);
 
-        $vistas = File::glob($modulo->path() . "/resources/js/Pages/{$carpeta}/*.vue");
+        $vistas = File::glob($modulo->path() . "/{$carpeta}/*.vue");
 
         expect(count($vistas))->toBe(4,
             "FALLA: bajo Pages/{$carpeta}/ hay " . count($vistas) . ' vistas, y son cuatro. · FIX: '

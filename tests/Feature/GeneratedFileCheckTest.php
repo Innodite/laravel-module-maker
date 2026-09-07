@@ -116,15 +116,15 @@ it('no revisa la sintaxis de lo que no es PHP', function () {
 });
 
 it('el factory generado compila y apunta al modelo con su prefijo de contexto', function () {
-    $modulo = $this->generateModule('Permission', ModuleMode::MultitenantPerTenant, 'central');
+    $modulo = $this->generateModule('Permission', ModuleMode::Multitenant, 'central');
 
-    $content = $modulo->contents('Database/Factories/Central/Permission/CentralPermissionFactory.php');
+    $content = $modulo->contents('Permission/Database/Factories/Central/CentralPermissionFactory.php');
 
     // La regresión de B13: el stub pedía modelNamespace y attributes, el generador entregaba
     // modelUses y definitionAttributes. Los dos quedaban literales y el archivo no cargaba.
     expect(fn () => token_get_all($content, TOKEN_PARSE))->not->toThrow(ParseError::class);
 
-    expect(str_contains($content, 'Modules\Permission\Models\Central\Permission\CentralPermission'))->toBeTrue(
+    expect(str_contains($content, 'Modules\Permission\Permission\Models\Central\CentralPermission'))->toBeTrue(
         'El factory debe importar el modelo REAL, con el prefijo del contexto. Apuntar a '
         . '"Permission" cuando la clase generada es "CentralPermission" es una clase que no existe.'
     );

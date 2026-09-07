@@ -273,19 +273,15 @@ class TestGenerator extends AbstractComponentGenerator
             $this->putFile(
                 $destino,
                 $this->getStubContent($stub, $this->isClean, $placeholders),
-                "Prueba de vista '{$archivo}' creada en Modules/{$this->moduleName}/resources/js/__tests__."
+                'Prueba de vista creada: ' . $this->rutaVisible($destino)
             );
         }
     }
 
-    /** `resources/js/__tests__/{Ctx}/{SubFunc}` — el espejo de la carpeta de la vista. */
+    /** `{SubFunc}/resources/js/__tests__/{Ctx}` — el espejo de la carpeta de la vista. */
     protected function rutaDePruebasJs(): string
     {
-        $contexto = $this->getContextFolder();
-
-        return $this->getComponentBasePath() . '/resources/js/__tests__'
-            . ($contexto ? "/{$contexto}" : '')
-            . '/' . $this->getSubFeatureFolder();
+        return $this->buildPath('resources/js/__tests__');
     }
 
     /**
@@ -297,13 +293,16 @@ class TestGenerator extends AbstractComponentGenerator
      */
     protected function rutaRelativaAlComponente(string $componente): string
     {
-        $contexto  = $this->getContextFolder();
-        $segmentos = 1 + ($contexto === '' ? 0 : count(explode('/', $contexto))) + 1;
+        // Se cuenta desde las DOS rutas reales —la de la prueba y la de la vista—, no se escribe a
+        // mano: las dos las decide `buildPath()`, así que el import no puede quedarse atrás el día
+        // que el árbol cambie de forma. Un import roto en JavaScript no lo ve ningún chequeo de PHP.
+        $desde = $this->buildPath('resources/js/__tests__');
+        $hasta = $this->buildPath('resources/js/Pages');
 
-        return str_repeat('../', $segmentos) . 'Pages'
-            . ($contexto ? "/{$contexto}" : '')
-            . '/' . $this->getSubFeatureFolder()
-            . "/{$componente}.vue";
+        $arriba = substr_count(trim(str_replace($this->getComponentBasePath(), '', $desde), '/'), '/') + 1;
+        $bajada = trim(str_replace($this->getComponentBasePath(), '', $hasta), '/');
+
+        return str_repeat('../', $arriba) . $bajada . "/{$componente}.vue";
     }
 
     /**
@@ -425,7 +424,7 @@ PHP;
         $this->putFile(
             $destino,
             $this->getStubContent($stub, $this->isClean, $extra + $comunes),
-            "{$etiqueta} '{$nombre}' creada en Modules/{$this->moduleName}/Tests/Feature."
+            "{$etiqueta} '{$nombre}' creada: " . $this->rutaVisible($destino)
         );
     }
 
@@ -550,11 +549,10 @@ PHP;
      */
     protected function rutaEnElModulo(string $tipo): string
     {
-        $contexto   = $this->getContextFolder();
-        $subFeature = $this->getSubFeatureFolder();
-
-        return "Modules/{$this->moduleName}/{$tipo}"
-            . ($contexto ? "/{$contexto}" : '')
-            . ($subFeature ? "/{$subFeature}" : '');
+        // Por `buildPath()`, que es quien decide dónde se escribe de verdad. Recomponerla aquí a
+        // mano —como se hacía— es tener dos cálculos de la misma ruta: el manifiesto acaba
+        // apuntando a una carpeta y el archivo escrito en otra, y lo que falla no es el generador
+        // sino la prueba del proyecto que lo usa.
+        return $this->rutaVisible($this->buildPath($tipo));
     }
 }

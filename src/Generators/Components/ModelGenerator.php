@@ -6,7 +6,9 @@ namespace Innodite\LaravelModuleMaker\Generators\Components;
 
 use Illuminate\Support\Str;
 use Innodite\LaravelModuleMaker\Generators\Concerns\HasStubs;
+use Innodite\LaravelModuleMaker\Support\ContextResolver;
 use Innodite\LaravelModuleMaker\Support\PrimaryKeyMode;
+use Innodite\LaravelModuleMaker\Support\TenancyPackage;
 use InvalidArgumentException;
 
 class ModelGenerator extends AbstractComponentGenerator
@@ -117,7 +119,7 @@ class ModelGenerator extends AbstractComponentGenerator
             'ulidTrait'  => $this->ulidTrait(),
         ]);
 
-        $this->putFile("{$modelDirectoryPath}/{$className}.php", $stubContent, "Modelo '{$className}' creado en Modules/{$this->moduleName}/Models");
+        $this->putFile("{$modelDirectoryPath}/{$className}.php", $stubContent, "Modelo '{$className}' creado: " . $this->rutaVisible("{$modelDirectoryPath}/{$className}.php"));
     }
 
     /**
@@ -190,16 +192,36 @@ class ModelGenerator extends AbstractComponentGenerator
      *
      * Aquí solo se decide la **forma**: cadena vacía cuando no toca, para que el modelo generado no
      * lleve una línea muerta.
+     *
+     * Y hay un tercer caso, el que faltaba: el contexto del inquilino **cuando el proyecto no
+     * declara paquete de tenencia**. Ahí no se escribe conexión —ataría el modelo a un cliente— pero
+     * tampoco se calla, porque entonces nadie conmuta nada y el modelo acaba consultando la base
+     * central sin un solo aviso. Se escribe una nota que dice quién tiene que conmutarla.
      */
     protected function getConnectionProperty(): string
     {
         $connection = $this->connectionKey();
 
-        if ($connection === null) {
+        if ($connection !== null) {
+            return "protected \$connection = '{$connection}';\n\n    ";
+        }
+
+        return $this->notaDeTenencia();
+    }
+
+    /**
+     * La nota del inquilino sin paquete de tenencia — vacía en cualquier otro caso.
+     *
+     * En aplicación única no hay nada que conmutar, y en el contexto central la conexión va escrita
+     * arriba: la nota solo tiene sentido donde se esperaba una conexión que va a poner otro.
+     */
+    private function notaDeTenencia(): string
+    {
+        if (! $this->mode()->hasContextAxis() || ! ContextResolver::esDeInquilino($this->getContext())) {
             return '';
         }
 
-        return "protected \$connection = '{$connection}';\n\n    ";
+        return TenancyPackage::current()->missingConnectionNote();
     }
 
     /**

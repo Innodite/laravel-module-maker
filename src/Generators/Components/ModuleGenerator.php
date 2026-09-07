@@ -7,11 +7,7 @@ namespace Innodite\LaravelModuleMaker\Generators\Components;
 use Innodite\LaravelModuleMaker\Support\Disk;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Str;
-use Innodite\LaravelModuleMaker\Generators\Components\ConsoleCommandGenerator;
-use Innodite\LaravelModuleMaker\Generators\Components\ExceptionGenerator;
 use Innodite\LaravelModuleMaker\Generators\Components\Factory\FactoryGenerator;
-use Innodite\LaravelModuleMaker\Generators\Components\JobGenerator;
-use Innodite\LaravelModuleMaker\Generators\Components\NotificationGenerator;
 use Innodite\LaravelModuleMaker\Support\ContextResolver;
 use Innodite\LaravelModuleMaker\Support\ModuleMode;
 use Innodite\LaravelModuleMaker\Support\SeederNames;
@@ -234,39 +230,18 @@ class ModuleGenerator
         // ── Vistas Vue (axios + Inertia solo para navegación) ─────────────────
         $this->run(new VueGenerator($this->moduleName, $this->modulePath, true, $modelName, $componentConfig));
 
-        // ── Generadores extendidos según tipo de contexto ─────────────────────
-        $isCentral      = ($contextKey === 'central');
-        $isTenantShared = ($contextKey === 'tenant_shared');
-        $isTenantSpecific = ($contextKey === 'tenant');
-
-        // Resolver el array de contexto para pasarlo a los nuevos generadores
-        try {
-            $resolvedContext = $contextId !== null
-                ? ContextResolver::resolveById($contextKey, $contextId)
-                : ContextResolver::resolve($contextKey);
-        } catch (\InvalidArgumentException) {
-            $resolvedContext = [];
-        }
-
-        // Jobs (Central, TenantShared, TenantName)
-        if (($isCentral || $isTenantShared || $isTenantSpecific) && !empty($resolvedContext)) {
-            $this->run(new JobGenerator($resolvedContext, $this->modulePath, $this->moduleName));
-        }
-
-        // Notifications (Central, TenantName)
-        if (($isCentral || $isTenantSpecific) && !empty($resolvedContext)) {
-            $this->run(new NotificationGenerator($resolvedContext, $this->modulePath, $this->moduleName));
-        }
-
-        // Console Commands (Central, TenantName)
-        if (($isCentral || $isTenantSpecific) && !empty($resolvedContext)) {
-            $this->run(new ConsoleCommandGenerator($resolvedContext, $this->modulePath, $this->moduleName));
-        }
-
-        // Exceptions (solo Central)
-        if ($isCentral && !empty($resolvedContext)) {
-            $this->run(new ExceptionGenerator($resolvedContext, $this->modulePath, $this->moduleName));
-        }
+        // ── Las carpetas de lo que el módulo puede necesitar, vacías ─────────
+        //
+        // `Jobs/`, `Notifications/`, `Console/Commands/` y `Exceptions/` se crean **sin un solo
+        // archivo dentro**: la estructura enseña dónde va cada cosa, y el generador no siembra un
+        // ejemplo que nadie pidió.
+        //
+        // ⛔ Antes se escribía un archivo de cada, y con un criterio distinto por contexto sin
+        // motivo escrito: la central se llevaba las cuatro, el inquilino tres y otro contexto solo
+        // una. Eran cuatro `if` a mano de los que ninguno explicaba por qué la central merecía una
+        // excepción — y el resultado era un módulo con cuatro clases de ejemplo que había que
+        // borrar a mano en cada subfuncionalidad de cada proyecto.
+        $this->crearCarpetasDeApoyo($componentConfig);
 
         // Las rutas ya quedaron escritas por RouteGenerator, dentro del módulo. Aquí se inyectaba
         // además una segunda copia en el `routes/web.php` del proyecto —y se hacía **sin mirar
@@ -377,19 +352,46 @@ class ModuleGenerator
             $this->run(new RequestGenerator($this->moduleName, $this->modulePath, true, $componentConfig));
         }
 
-        // ── El grupo de pruebas de la subfuncionalidad ────────────────────────
+        // ── Lo que completa la subfuncionalidad ───────────────────────────────
         //
         // Solo cuando la entidad nace **entera**. Con flags parciales —`-M` a secas, por ejemplo—
         // lo generado no es una subfuncionalidad todavía: es una pieza suelta, y su grupo de
         // pruebas nacería rojo señalando lo que el usuario aún no pidió. Una suite que arranca en
         // rojo por diseño es una suite que el equipo aprende a ignorar.
         //
-        // Y cuando sí nace entera, va: es el mismo grupo que emite `make-module`, porque las dos
+        // Y cuando sí nace entera, va **todo**: es lo mismo que emite `make-module`, porque las dos
         // puertas por las que aparece una subfuncionalidad tienen que dejar lo mismo detrás. Si una
         // emite menos, el módulo termina con subfuncionalidades de primera y de segunda clase — y
         // lo que falta no da error, simplemente no está.
+        //
+        // ⛔ Aquí faltaban cuatro piezas, y tres se notaban en cuanto alguien intentaba usar la
+        // subfuncionalidad:
+        //
+        //   · **Las rutas.** Sin ellas el controlador es inalcanzable: existe, está bien escrito y
+        //     no hay una sola URL que llegue a él. Y es el caso NORMAL, no el raro: en un módulo de
+        //     varias subfuncionalidades la primera entra por `make-module` y **todas las demás por
+        //     aquí**.
+        //   · **La vista.** No se escribía… pero la PRUEBA de la vista sí, y la importa. El grupo
+        //     nacía rojo apuntando a un archivo que nadie había creado.
+        //   · **El provider del contexto.** Sin él, los bindings de esta subfuncionalidad no se
+        //     registran: la interfaz se resuelve sola y revienta en la primera petición.
+        //   · **La factory**, que usan las pruebas para crear registros.
         if (! in_array(false, $flags, true)) {
+            $modelo = $modelName;
+
             $this->run(new TestGenerator($this->moduleName, $this->modulePath, true, $componentConfig));
+            $this->run(new FactoryGenerator($this->moduleName, $this->modulePath, true, $modelo, $modelo, $componentConfig));
+            $this->run(new VueGenerator($this->moduleName, $this->modulePath, true, $modelo, $componentConfig));
+            $this->run(new RouteGenerator($this->moduleName, $this->modulePath, true, $modelo, $componentConfig));
+            $this->run(new ProviderGenerator(
+                $this->moduleName,
+                $this->modulePath,
+                true,
+                [$componentConfig + ['name' => $modelo]],
+                $componentConfig
+            ));
+
+            $this->crearCarpetasDeApoyo($componentConfig);
         }
 
         if ($this->command) {
@@ -398,6 +400,53 @@ class ModuleGenerator
     }
 
     // ─── Helpers privados ────────────────────────────────────────────────────
+
+    /**
+     * Las carpetas que una subfuncionalidad puede necesitar, creadas vacías.
+     *
+     * Van **dentro de la subfuncionalidad y de su contexto**, como el resto de sus capas: un job
+     * exporta *esos* registros y una excepción es de *esa* entidad, así que no pertenecen al módulo
+     * entero.
+     *
+     * Llevan un `.gitkeep` porque una carpeta vacía no llega a un repositorio Git, y entonces la
+     * estructura —que es justo lo que se quiere enseñar— no la vería nadie más que quien generó.
+     */
+    private function crearCarpetasDeApoyo(array $componentConfig): void
+    {
+        $sub    = (string) ($componentConfig['subFeature'] ?? '');
+        $folder = $this->carpetaDeContexto((string) ($componentConfig['context'] ?? ''));
+
+        foreach (['Jobs', 'Notifications', 'Console/Commands', 'Exceptions'] as $carpeta) {
+            $ruta = $this->modulePath
+                . ($sub !== '' ? "/{$sub}" : '')
+                . "/{$carpeta}"
+                . ($folder !== '' ? "/{$folder}" : '');
+
+            Disk::ensureDirectory($ruta);
+
+            // Por `Disk::put()` y no por `File::put()`: es lo que respeta el ensayo. Escribiendo
+            // directo, `--dry-run` reventaba al no existir la carpeta que el ensayo no llegó a
+            // crear — un ensayo que falla es peor que no tenerlo, porque el fallo no dice nada del
+            // módulo que se iba a generar.
+            if (! File::exists("{$ruta}/.gitkeep")) {
+                Disk::put("{$ruta}/.gitkeep", '');
+            }
+        }
+    }
+
+    /** La carpeta del contexto —`Central`, `Tenant`— o cadena vacía si el modo no tiene eje. */
+    private function carpetaDeContexto(string $contextKey): string
+    {
+        if ($contextKey === '' || ! ModuleMode::current()->hasContextAxis()) {
+            return '';
+        }
+
+        try {
+            return (string) (ContextResolver::resolve($contextKey)['folder'] ?? '');
+        } catch (\Throwable) {
+            return '';
+        }
+    }
 
     /**
      * Crea las subcarpetas de contexto base dentro de un tipo de componente — **si el modo las tiene**.

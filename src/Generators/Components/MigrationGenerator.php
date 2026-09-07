@@ -149,7 +149,7 @@ class MigrationGenerator extends AbstractComponentGenerator
 
         $contextFolder = $this->getContextFolder();
         $contextLabel  = $contextFolder ? "Database/Migrations/{$contextFolder}" : 'Database/Migrations';
-        $this->putFile("{$migrationDirectoryPath}/{$fileName}", $stubContent, "Migración '{$tableName}' creada en Modules/{$this->moduleName}/{$contextLabel}");
+        $this->putFile("{$migrationDirectoryPath}/{$fileName}", $stubContent, "Migración '{$tableName}' creada: " . $this->rutaVisible("{$migrationDirectoryPath}/{$fileName}"));
 
         $this->writeMigrationsListTrait($migrationDirectoryPath);
     }

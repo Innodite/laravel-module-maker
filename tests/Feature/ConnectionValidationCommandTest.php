@@ -47,20 +47,23 @@ function migracionDeclaradaEn(string $carpeta, string $modulo, string $archivo):
     );
 }
 
-it('falla nombrando la conexión y el contexto cuando la del tenant no está configurada', function () {
-    // tenant-one declara connection_key 'tenant_one' en contexts.json y el proyecto no la tiene.
-    migracionDeclaradaEn('Tenant/TenantOne', 'User', '2026_01_01_000001_crea_usuarios.php');
+it('el eje del inquilino NO exige conexión: la conmuta la tenencia', function () {
+    // El contexto `tenant` no declara `connection_key` a propósito, así que la migración se ejecuta
+    // contra la conexión activa —la que conmutó el paquete de tenencia al entrar en el cliente—.
+    // Exigirle una dejaría el eje entero sin poder migrar.
+    // Se mide en el servicio que decide, no lanzando el comando entero: lo que aquí importa es que
+    // el contexto del inquilino RESUELVE su destino sin `connection_key`, y no que una migración de
+    // mentira llegue a ejecutarse.
+    config()->set('make-module.mode', 'multitenant');
 
-    [$codigo, $salida] = migracionSuelta([
-        'coordinate' => 'User:Tenant/TenantOne/2026_01_01_000001_crea_usuarios.php',
-        // El id del contexto, explícito: sin él se deriva de la carpeta y el mensaje diría
-        // 'tenant/tenantone'. Se nombra el mismo contexto que escribió quien lanzó el comando.
-        '--context' => 'tenant-one',
-        '--force' => true,
-    ]);
+    $conexion = (new \Innodite\LaravelModuleMaker\Services\MigrationTargetService())
+        ->resolveExecutionConnection('tenant', true);
 
-    expect($salida)->toContain("'tenant_one' del contexto 'tenant-one'");
-    expect($codigo)->not->toBe(0);
+    expect($conexion)->toBe(
+        (string) config('database.default'),
+        'El inquilino migra contra la conexión ACTIVA —la que conmutó la tenencia al entrar en el '
+        . 'cliente—. Exigirle un connection_key dejaría el eje entero sin poder migrar.'
+    );
 });
 
 it('falla igual cuando la que falta es la de la aplicación central', function () {

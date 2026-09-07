@@ -40,7 +40,7 @@ it('un paquete instalado que aporta un stub le gana al del propio paquete', func
     paqueteQueAporta('acme/interfaz', 'vue-index.stub', '<template>LA VISTA DE ACME · {{{ subFeatureLabel }}}</template>');
 
     $vista = $this->generateModule('Invoice', ModuleMode::SingleApp)
-        ->contents('resources/js/Pages/Invoice/InvoiceIndex.vue');
+        ->contents('Invoice/resources/js/Pages/InvoiceIndex.vue');
 
     expect($vista)->toContain('LA VISTA DE ACME');
 
@@ -60,7 +60,7 @@ it('el override del proyecto le gana al paquete que aporta', function () {
     File::put("{$delProyecto}/vue-index.stub", '<template>LO QUE DICE EL PROYECTO</template>');
 
     $vista = $this->generateModule('Invoice', ModuleMode::SingleApp)
-        ->contents('resources/js/Pages/Invoice/InvoiceIndex.vue');
+        ->contents('Invoice/resources/js/Pages/InvoiceIndex.vue');
 
     expect($vista)->toContain('LO QUE DICE EL PROYECTO')
         ->and($vista)->not->toContain('ACME');
@@ -72,7 +72,7 @@ it('sin nadie que aporte nada, lo generado es exactamente lo del paquete', funct
     expect(StubsDeVendor::carpetas())->toBe([]);
 
     $vista = $this->generateModule('Invoice', ModuleMode::SingleApp)
-        ->contents('resources/js/Pages/Invoice/InvoiceIndex.vue');
+        ->contents('Invoice/resources/js/Pages/InvoiceIndex.vue');
 
     expect($vista)->toContain("window.route('")
         ->and($vista)->toContain('usePage');
@@ -88,7 +88,7 @@ it('con dos paquetes aportando el mismo stub gana el primero por orden alfabéti
         ->and(StubsDeVendor::paquetesQueAportan('vue-index.stub'))->toBe(['acme/interfaz', 'zeta/interfaz']);
 
     $vista = $this->generateModule('Invoice', ModuleMode::SingleApp)
-        ->contents('resources/js/Pages/Invoice/InvoiceIndex.vue');
+        ->contents('Invoice/resources/js/Pages/InvoiceIndex.vue');
 
     expect($vista)->toContain('ACME')->and($vista)->not->toContain('ZETA');
 });

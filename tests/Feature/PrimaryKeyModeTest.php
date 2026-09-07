@@ -108,14 +108,14 @@ it('el módulo generado sale coherente en los dos modos, de la migración a las 
         // 3 · el modelo lleva el trait solo cuando le toca. Con `HasUlids` sobre una tabla
         //     autoincremental, el modelo genera la clave en PHP y la base la ignora: el registro se
         //     guarda con un id y el modelo cree tener otro.
-        $modelo = $modulo->contents('Models/Invoice/Invoice.php');
+        $modelo = $modulo->contents('Invoice/Models/Invoice.php');
         expect(str_contains($modelo, 'use HasUlids;'))->toBe($conTrait);
         expect(str_contains($modelo, 'Concerns\HasUlids;'))->toBe($conTrait);
 
         // 4 · y las pruebas generadas fabrican un id inexistente que su tabla puede tener. La
         //     respuesta que se olvida — sin ella las otras tres siguen de acuerdo y el contrato
         //     falla igual.
-        $http = $modulo->contents('Tests/Feature/Invoice/InvoiceHttpTest.php');
+        $http = $modulo->contents('Invoice/Tests/Feature/InvoiceHttpTest.php');
         expect(str_contains($http, 'Str::ulid()'))->toBe($conTrait);
         expect(str_contains($http, 'use Illuminate\Support\Str;'))->toBe($conTrait);
 

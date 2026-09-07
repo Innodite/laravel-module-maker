@@ -125,5 +125,5 @@ it('el módulo entero sigue coherente tras el cambio de esquema', function (Modu
     $this->generateModule('Invoice', $modo, $contexto)->assertCoherent();
 })->with([
     'single-app'  => [ModuleMode::SingleApp, null],
-    'multitenant' => [ModuleMode::MultitenantPerTenant, 'central'],
+    'multitenant' => [ModuleMode::Multitenant, 'central'],
 ]);

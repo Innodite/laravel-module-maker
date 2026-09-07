@@ -62,7 +62,7 @@ it('las cuatro vistas piden sus rutas por el nombre, nunca escribiendo la direcc
     $modulo = $this->generateModule('Invoice', ModuleMode::SingleApp);
 
     foreach (['Index', 'Create', 'Edit', 'Show'] as $pieza) {
-        $vista = $modulo->contents("resources/js/Pages/Invoice/Invoice{$pieza}.vue");
+        $vista = $modulo->contents("Invoice/resources/js/Pages/Invoice{$pieza}.vue");
 
         expect(str_contains($vista, "window.route('"))->toBeTrue(
             "FALLA: Invoice{$pieza}.vue ya no pide sus rutas por el nombre. · FIX: la vista llama a "
@@ -87,7 +87,7 @@ it('la llamada va por window.route, que es lo que define la directiva del layout
     $modulo = $this->generateModule('Invoice', ModuleMode::SingleApp);
 
     foreach (['Index', 'Create', 'Edit', 'Show'] as $pieza) {
-        $vista = $modulo->contents("resources/js/Pages/Invoice/Invoice{$pieza}.vue");
+        $vista = $modulo->contents("Invoice/resources/js/Pages/Invoice{$pieza}.vue");
 
         preg_match_all("/(?<!window\.)\broute\('/", $vista, $sueltas);
 

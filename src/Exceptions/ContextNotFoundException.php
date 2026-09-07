@@ -17,7 +17,7 @@ class ContextNotFoundException extends InvalidArgumentException
     /**
      * Crea excepción para ID no encontrado en un contexto.
      *
-     * @param  string  $contextKey  Clave del contexto (central|shared|tenant_shared|tenant)
+     * @param  string  $contextKey  Clave del contexto (central|tenant, o la que declare el proyecto)
      * @param  string  $id          ID buscado
      * @param  array<int, string>  $availableIds  IDs disponibles en el contexto
      * @return self

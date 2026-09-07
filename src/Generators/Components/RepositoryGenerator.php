@@ -12,10 +12,10 @@ use Illuminate\Support\Str;
  * El repositorio es el único archivo con acceso directo al Model (Eloquent).
  * Ningún controller, service ni otro archivo puede tocar el Model directamente.
  *
- * Ejemplos de salida según contexto:
- *   central        → Repositories/Central/CentralUserRepository.php
- *   tenant_shared  → Repositories/Tenant/Shared/TenantSharedUserRepository.php
- *   tenant_alpha   → Repositories/Tenant/TenantAlpha/TenantTenantAlphaUserRepository.php
+ * Ejemplos de salida, con el módulo User y la subfuncionalidad Role:
+ *   central   → User/Role/Repositories/Central/CentralRoleRepository.php
+ *   tenant    → User/Role/Repositories/Tenant/TenantRoleRepository.php
+ *   sin eje   → User/Role/Repositories/RoleRepository.php
  */
 class RepositoryGenerator extends AbstractComponentGenerator
 {
@@ -80,7 +80,7 @@ class RepositoryGenerator extends AbstractComponentGenerator
         $this->putFile(
             "{$contractsDir}/{$interfaceName}.php",
             $stub,
-            "Interfaz creada: Modules/{$this->moduleName}/Repositories/Contracts/{$this->getContextFolder()}/{$interfaceName}.php"
+            'Interfaz creada: ' . $this->rutaVisible("{$contractsDir}/{$interfaceName}.php")
         );
     }
 
@@ -119,7 +119,7 @@ class RepositoryGenerator extends AbstractComponentGenerator
         $this->putFile(
             "{$repoDir}/{$repoName}.php",
             $stub,
-            "Repositorio creado: Modules/{$this->moduleName}/Repositories/{$this->getContextFolder()}/{$repoName}.php"
+            'Repositorio creado: ' . $this->rutaVisible("{$repoDir}/{$repoName}.php")
         );
     }
 }

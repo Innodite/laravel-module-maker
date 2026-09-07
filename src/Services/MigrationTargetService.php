@@ -40,17 +40,13 @@ class MigrationTargetService
         $contextId = trim($context);
         $context   = $this->findContext($contextId);
 
-        // El modo decide ANTES que el contexto: sin modo no se sabe si hay eje de contexto siquiera.
+        // **El contexto de inquilino no declara conexión, nunca**: la conmuta el paquete de
+        // tenencia al identificar al inquilino, así que la ejecución va sobre la conexión activa.
+        // Exigirle `connection_key` y `tenancy_strategy='manual'` dejaría al eje entero sin poder
+        // migrar: la funcionalidad existiría y no habría forma de desplegarla.
         //
-        // En `multitenant-shared` los tenants comparten funcionalidad y **ninguno declara conexión**:
-        // la conmuta la tenancy al identificar al inquilino, y nombrarla en el contexto ataría el
-        // módulo a uno solo. Exigirle `connection_key` y `tenancy_strategy='manual'` sin mirar el
-        // modo dejaba a ese modo entero **sin poder migrar**: la funcionalidad existía y no había
-        // forma de desplegarla.
-        //
-        // Con la conexión ya conmutada, la ejecución va sobre la activa, que es lo que ese modo
-        // necesita. La app central no entra por aquí: esa sí declara la suya siempre.
-        if (! ModuleMode::current()->requiresTenantConnectionKey() && $this->isTenantContext($context)) {
+        // La app central no entra por aquí: esa sí declara la suya siempre.
+        if ($this->isTenantContext($context)) {
             return (string) config('database.default');
         }
 
@@ -129,23 +125,17 @@ class MigrationTargetService
     }
 
     /**
-     * ¿Este contexto es de tenant?
+     * ¿Este contexto es de inquilino? Lo responde {@see ContextResolver::esDeInquilino()}.
      *
-     * Se mira la forma del contexto, no una lista de nombres: `contexts.json` lo declara con
-     * `is_tenant`, y si no está, la carpeta lo dice (`Tenant/Shared`, `Tenant/Acme`). Una lista de
-     * nombres conocidos envejecería en cuanto alguien llame a su contexto de otra manera.
+     * El criterio vive allí y no aquí porque lo pregunta también el generador del modelo, para
+     * decidir si declara `$connection`. Con un cálculo en cada sitio, el día que uno cambie el
+     * modelo lee de una base y su migración escribe en otra.
      *
      * @param  array<string, mixed>  $context
      */
     private function isTenantContext(array $context): bool
     {
-        if (array_key_exists('is_tenant', $context)) {
-            return (bool) $context['is_tenant'];
-        }
-
-        $folder = (string) ($context['folder'] ?? '');
-
-        return $folder === 'Tenant' || str_starts_with($folder, 'Tenant/');
+        return ContextResolver::esDeInquilino($context);
     }
 
     public function resolveDatabaseName(string $connectionName): string

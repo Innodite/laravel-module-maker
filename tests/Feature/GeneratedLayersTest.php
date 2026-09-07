@@ -23,11 +23,11 @@ use Innodite\LaravelModuleMaker\Support\ModuleMode;
 
 /** Las cinco piezas por las que viaja el identificador, en el orden en que lo hace. */
 const CAPAS_SINGLE_APP = [
-    'el controlador'          => 'Http/Controllers/Invoice/InvoiceController.php',
-    'el servicio'             => 'Services/Invoice/InvoiceService.php',
-    'el contrato del servicio' => 'Services/Contracts/Invoice/InvoiceServiceInterface.php',
-    'el repositorio'          => 'Repositories/Invoice/InvoiceRepository.php',
-    'el contrato del repositorio' => 'Repositories/Contracts/Invoice/InvoiceRepositoryInterface.php',
+    'el controlador'          => 'Invoice/Http/Controllers/InvoiceController.php',
+    'el servicio'             => 'Invoice/Services/InvoiceService.php',
+    'el contrato del servicio' => 'Invoice/Services/Contracts/InvoiceServiceInterface.php',
+    'el repositorio'          => 'Invoice/Repositories/InvoiceRepository.php',
+    'el contrato del repositorio' => 'Invoice/Repositories/Contracts/InvoiceRepositoryInterface.php',
 ];
 
 it('ninguna capa declara el identificador como entero', function () {
@@ -70,12 +70,12 @@ it('el identificador tampoco es entero en multitenant', function () {
     // migración escribe el mismo ULID en los tres modos. Si el cambio se hubiera aplicado solo al
     // camino que las pruebas recorren más, este modo se habría quedado atrás — que es exactamente
     // lo que le pasó a `tenant_shared` con el manifiesto del contrato.
-    $modulo = $this->generateModule('Invoice', ModuleMode::MultitenantPerTenant, 'central');
+    $modulo = $this->generateModule('Invoice', ModuleMode::Multitenant, 'central');
 
     $capas = [
-        'el controlador'   => 'Http/Controllers/Central/Invoice/CentralInvoiceController.php',
-        'el servicio'      => 'Services/Central/Invoice/CentralInvoiceService.php',
-        'el repositorio'   => 'Repositories/Central/Invoice/CentralInvoiceRepository.php',
+        'el controlador'   => 'Invoice/Http/Controllers/Central/CentralInvoiceController.php',
+        'el servicio'      => 'Invoice/Services/Central/CentralInvoiceService.php',
+        'el repositorio'   => 'Invoice/Repositories/Central/CentralInvoiceRepository.php',
     ];
 
     foreach ($capas as $quien => $ruta) {
@@ -93,7 +93,7 @@ it('el controlador recibe sus FormRequests, no un Request genérico', function (
     // el archivo es PHP válido, el chequeo de salida lo daba por bueno.
     $modulo = $this->generateModule('Invoice', ModuleMode::SingleApp);
 
-    $controlador = $modulo->contents('Http/Controllers/Invoice/InvoiceController.php');
+    $controlador = $modulo->contents('Invoice/Http/Controllers/InvoiceController.php');
 
     foreach (['store' => 'InvoiceStoreRequest', 'update' => 'InvoiceUpdateRequest'] as $accion => $clase) {
         expect(str_contains($controlador, "public function {$accion}({$clase} \$request"))->toBeTrue(
@@ -102,7 +102,7 @@ it('el controlador recibe sus FormRequests, no un Request genérico', function (
             . "existe y la primera llamada real muere.\nEl controlador dice:\n" . $controlador
         );
 
-        expect(str_contains($controlador, "use Modules\\Invoice\\Http\\Requests\\Invoice\\{$clase};"))->toBeTrue(
+        expect(str_contains($controlador, "use Modules\\Invoice\\Invoice\\Http\\Requests\\{$clase};"))->toBeTrue(
             "El controlador usa {$clase} sin importarlo. · FIX: el import lo escribe el generador, "
             . 'que es quien sabe en qué namespace acaba de escribir la clase.'
         );
@@ -123,7 +123,7 @@ it('los FormRequests que el controlador importa son los que el generador escribe
     $modulo = $this->generateModule('Invoice', ModuleMode::SingleApp);
 
     foreach (['InvoiceStoreRequest', 'InvoiceUpdateRequest'] as $clase) {
-        expect($modulo->has("Http/Requests/Invoice/{$clase}.php"))->toBeTrue(
+        expect($modulo->has("Invoice/Http/Requests/{$clase}.php"))->toBeTrue(
             "El controlador importa {$clase} y el generador no lo escribe. · FIX: los dos leen el "
             . 'nombre de RequestNames; si divergen, es que alguno volvió a componerlo por su cuenta.'
         );
@@ -134,17 +134,17 @@ it('los dos FormRequests se generan también en multitenant, con el prefijo de s
     // El modo que se quedaba atrás: aquí se escribía **un solo** Request genérico, mientras el
     // manifiesto del contrato declaraba siempre …StoreRequest. La prueba del andamiaje generada
     // pedía una clase que en este camino nadie escribía nunca.
-    $modulo = $this->generateModule('Invoice', ModuleMode::MultitenantPerTenant, 'central');
+    $modulo = $this->generateModule('Invoice', ModuleMode::Multitenant, 'central');
 
     foreach (['CentralInvoiceStoreRequest', 'CentralInvoiceUpdateRequest'] as $clase) {
-        expect($modulo->has("Http/Requests/Central/Invoice/{$clase}.php"))->toBeTrue(
+        expect($modulo->has("Invoice/Http/Requests/Central/{$clase}.php"))->toBeTrue(
             "Falta {$clase}. · FIX: los dos FormRequests se generan en los tres modos. Un camino "
             . 'que escriba una pieza distinta es lo que deja al manifiesto apuntando a nada.'
         );
     }
 
     expect(str_contains(
-        $modulo->contents('Http/Controllers/Central/Invoice/CentralInvoiceController.php'),
+        $modulo->contents('Invoice/Http/Controllers/Central/CentralInvoiceController.php'),
         'public function store(CentralInvoiceStoreRequest $request'
     ))->toBeTrue('En multitenant el controlador recibe el FormRequest con el prefijo de su contexto.');
 });
@@ -157,8 +157,8 @@ it('solo el repositorio conoce el modelo', function () {
     $modulo = $this->generateModule('Invoice', ModuleMode::SingleApp);
 
     $sinModelo = [
-        'el controlador'  => 'Http/Controllers/Invoice/InvoiceController.php',
-        'el servicio'     => 'Services/Invoice/InvoiceService.php',
+        'el controlador'  => 'Invoice/Http/Controllers/InvoiceController.php',
+        'el servicio'     => 'Invoice/Services/InvoiceService.php',
     ];
 
     foreach ($sinModelo as $quien => $ruta) {
@@ -170,6 +170,6 @@ it('solo el repositorio conoce el modelo', function () {
         );
     }
 
-    expect(str_contains($modulo->contents('Repositories/Invoice/InvoiceRepository.php'), 'Models\\Invoice'))
+    expect(str_contains($modulo->contents('Invoice/Repositories/InvoiceRepository.php'), 'Models\\Invoice'))
         ->toBeTrue('El repositorio sí importa el modelo: es la única capa que puede.');
 });

@@ -75,12 +75,16 @@ class ControllerGenerator extends AbstractComponentGenerator
         // Así que escribe la ruta entera y el controlador llama a `Inertia::render()` como cualquier
         // controlador de Laravel. Sin trait, sin lectura de configuración por petición, y sin un
         // `if` de modo en el camino de una pantalla.
-        $carpetaDeContexto  = $this->getContextFolder();
-        $viewName           = implode('/', array_filter([
-            $carpetaDeContexto,
-            $this->subFeatureName(),
-            $this->prefixClass("{$this->modelName}Index"),
-        ]));
+        // La ruta sale de `buildPath()`, que es quien decide dónde se escribe el `.vue`, y se da
+        // **relativa al módulo**: con el árbol nuevo hay una carpeta `resources/js/Pages` por
+        // subfuncionalidad, así que lo único que el módulo puede prometer es el camino desde su
+        // raíz. Componerla aquí por separado —el contexto, la subfuncionalidad y el nombre, a
+        // mano— era tener dos cálculos de la misma ruta: el controlador pedía una pantalla y el
+        // archivo estaba en otra carpeta.
+        $viewName = ltrim(
+            str_replace($this->getComponentBasePath(), '', $this->buildPath('resources/js/Pages')),
+            '/'
+        ) . '/' . $this->prefixClass("{$this->modelName}Index");
 
         // Los dos FormRequests que reciben `store()` y `update()`. El nombre lo decide
         // `RequestNames`, que es de donde lo lee también el generador que los escribe: componerlo
@@ -106,11 +110,10 @@ class ControllerGenerator extends AbstractComponentGenerator
             'updateRequestNamespace'   => "{$requestsNs}\\{$requests['update']}",
         ]);
 
-        $relativePath = "Http/Controllers/{$this->getContextFolder()}/{$controllerName}.php";
         $this->putFile(
             "{$controllerDir}/{$controllerName}.php",
             $stub,
-            "Controlador creado: Modules/{$this->moduleName}/{$relativePath}"
+            'Controlador creado: ' . $this->rutaVisible("{$controllerDir}/{$controllerName}.php")
         );
     }
 }

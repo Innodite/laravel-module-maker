@@ -438,37 +438,18 @@ class MakeModuleCommand extends Command
             return $this->askVariant($option, $item);
         }
 
-        // Buscar en tenants por id, class_prefix o slug
-        foreach ($allContexts['tenant'] ?? [] as $item) {
-            if ($this->tenantMatches($option, $item)) {
-                return ['tenant', $item];
-            }
-        }
-
-        // No encontrado → error descriptivo
-        $available = implode(', ', array_keys($allContexts));
-        $tenants   = implode(', ', array_map(
-            fn ($t) => $t['id'] ?? 'unknown',
-            $allContexts['tenant'] ?? []
-        ));
-
+        // Y si no coincide con ninguna clave, se dice qué hay — sin adivinar.
+        //
+        // ⛔ Aquí se recorría además `$allContexts['tenant']` como si fuera una LISTA de inquilinos
+        // nombrados, buscando por id, prefijo o slug. Con el catálogo de dos contextos, `tenant` es
+        // un objeto: ese bucle iteraba sus valores —cadenas— y reventaba con un TypeError. Un
+        // contexto mal escrito dejaba de recibir su mensaje con FIX y recibía el error interno del
+        // generador, que es lo contrario de lo que R30 pide.
         throw new \InvalidArgumentException(self::mensajeDeFallo(
             "el contexto '{$option}' no está en contexts.json.",
-            "usa uno de estos — contextos: {$available} · tenants: {$tenants}",
+            'usa uno de estos — ' . implode(', ', array_keys($allContexts)),
             'El catálogo es la fuente: si el contexto que quieres no está, decláralo ahí primero.'
         ));
-    }
-
-    /**
-     * Verifica si un tenant coincide con el input del usuario.
-     * Acepta: id exacto, class_prefix, o route_prefix.
-     */
-    private function tenantMatches(string $option, array $item): bool
-    {
-        return
-            strcasecmp($option, $item['id'] ?? '')           === 0 ||
-            strcasecmp($option, $item['class_prefix'] ?? '') === 0 ||
-            strcasecmp($option, $item['route_prefix'] ?? '') === 0;
     }
 
     /**

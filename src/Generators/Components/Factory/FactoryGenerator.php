@@ -78,7 +78,7 @@ class FactoryGenerator extends AbstractComponentGenerator
             'definitionAttributes' => $definitionAttributes,
         ]);
 
-        $this->putFile("{$factoryDir}/{$factoryClass}" . self::FACTORY_FILE_SUFFIX, $stub, "Factory {$factoryClass} creada en Modules/{$this->moduleName}/Database/Factories");
+        $this->putFile("{$factoryDir}/{$factoryClass}" . self::FACTORY_FILE_SUFFIX, $stub, "Factory {$factoryClass} creada: " . $this->rutaVisible("{$factoryDir}/{$factoryClass}" . self::FACTORY_FILE_SUFFIX));
     }
 
     protected function generateDefinitionAttributes(): string

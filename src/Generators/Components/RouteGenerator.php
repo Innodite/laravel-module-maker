@@ -109,19 +109,14 @@ class RouteGenerator extends AbstractComponentGenerator
         $contextKey = $this->componentConfig['context'] ?? '';
         $this->ensureDirectoryExists($routesDir);
 
-        // tenant (específico) → siempre un bloque para ese tenant
-        if ($contextKey === 'tenant') {
-            $this->generateSingleTenantRoutes($routesDir, $context);
-            return;
-        }
-
-        // tenant_shared → genera un bloque por CADA tenant del proyecto
-        if ($contextKey === 'tenant_shared') {
-            $this->generateTenantSharedRoutes($routesDir);
-            return;
-        }
-
-        // El resto —`central` y `shared`— escribe donde su contexto declare.
+        // **Un solo camino para todos los contextos**: cada uno escribe en el archivo que declara,
+        // con su prefijo y su permiso. Aquí había dos ramas más —una para el inquilino nombrado y
+        // otra que recorría la lista de inquilinos del catálogo escribiendo un bloque por cada
+        // uno—, y esa segunda es la que dejaba en `tenant.php` referencias a controladores que
+        // nadie había generado: el archivo importaba `TenantOneInvoiceController` y
+        // `TenantTwoInvoiceController` mientras el comando escribía otro.
+        //
+        // Con un inquilino que es un contexto y no una lista, no hay nada que recorrer.
         $this->generateContextRoutes($routesDir, $context, $contextKey);
     }
 
@@ -321,107 +316,6 @@ class RouteGenerator extends AbstractComponentGenerator
         return $archivo === 'web.php'
             ? $tenencia->wrapCentralRoutes($cuerpo)
             : $cuerpo;
-    }
-
-    /**
-     * Genera un bloque de rutas para un tenant específico.
-     *
-     * @param  string  $routesDir  Ruta al directorio de rutas del módulo
-     * @param  array   $context    Configuración del contexto del tenant
-     * @return void
-     */
-    private function generateSingleTenantRoutes(string $routesDir, array $context): void
-    {
-        $classPrefix     = $context['class_prefix'] ?? 'TENANT';
-        $markerKey       = strtoupper(Str::snake($classPrefix));
-        $functionality   = $this->getFunctionality();
-        $controllerClass = $this->buildControllerClass();
-        $controllerFqcn  = $this->buildControllerNamespace() . '\\' . $controllerClass;
-        $permPrefix      = $this->resolvePermissionPrefix($context, $this->componentConfig['context'] ?? null, $context['id'] ?? null);
-        $permMiddleware  = $this->resolvePermissionMiddleware($context, $this->componentConfig['context'] ?? null);
-        $permKey         = SubFeaturePermissions::key($functionality);
-        $middlewareLista = $this->conMiddlewareDeTenencia($context['route_middleware'] ?? []);
-        $label           = $context['id'] ?? $context['label'] ?? $classPrefix;
-        $separator       = str_repeat('─', 74);
-
-        $block = $this->buildRouteBlock(
-            routePrefix:     $context['route_prefix'] . '-' . $functionality,
-            routeName:       $context['route_name'] . $functionality . '.',
-            controllerClass: $controllerClass,
-            permMiddleware:  $permMiddleware,
-            permPrefix:      $permPrefix,
-            permKey:         $permKey,
-            indent:          '    '
-        );
-
-        $titulo = <<<PHP
-        // {$separator}
-        // {$label} — {$this->moduleName}
-        // {$separator}
-        PHP;
-
-        // Sin middlewares declarados no se envuelve nada: el bloque hereda la seguridad del grupo
-        // padre del proyecto, igual que hace el camino compartido. Envolver «por simetría» escribía
-        // un `Route::middleware([])->group(...)` que no aporta y que, con la lista vacía, salía con
-        // una coma suelta dentro de los corchetes.
-        if ($middlewareLista === []) {
-            $section = <<<PHP
-            {$titulo}
-            {$block}
-                // {{{$markerKey}_END}}
-            PHP;
-        } else {
-            $middleware = $this->buildMiddlewareArray($middlewareLista);
-
-            $section = <<<PHP
-            {$titulo}
-            Route::middleware({$middleware})->group(function () {
-
-            {$block}
-                // {{{$markerKey}_END}}
-            });
-            PHP;
-        }
-
-        // La identificación del tenant ya viaja en la lista de middleware cuando hay un paquete
-        // soportado. Cuando no lo hay, el archivo dice dónde va y qué haría stancl — porque un
-        // bloque de rutas de tenant sin identificar es el defecto que no se ve: responde igual, y
-        // contra la base que estuviera conectada.
-        $section = $this->envolverSegunTenencia($section, 'tenant.php');
-
-        // La cabecera solo viaja en el contenido del archivo **nuevo**: si el archivo ya existe,
-        // `writeOrAppend()` inserta el bloque en el marcador y añade el `use` que falte.
-        $this->writeOrAppend(
-            "{$routesDir}/tenant.php",
-            $this->buildFileHeader($controllerFqcn, 'tenant.php') . $section,
-            "{$markerKey}_END",
-            $block,
-            $this->importsDelArchivo($controllerFqcn, 'tenant.php'),
-            $section
-        );
-    }
-
-    /**
-     * Genera bloques de rutas para TODOS los tenants específicos,
-     * apuntando al controlador TenantShared.
-     *
-     * @param  string  $routesDir  Ruta al directorio de rutas del módulo
-     * @return void
-     */
-    private function generateTenantSharedRoutes(string $routesDir): void
-    {
-        $tenants = ContextResolver::allTenants();
-
-        foreach ($tenants as $tenantItem) {
-            // Sustituir temporalmente el context_id para generar cada bloque con los datos del tenant
-            $this->componentConfig['context_id'] = $tenantItem['id'];
-            $this->resolveContextCache($tenantItem);
-            $this->generateSingleTenantRoutes($routesDir, $tenantItem);
-        }
-
-        // Restaurar el contexto original
-        $this->componentConfig['context_id'] = null;
-        $this->resolveContextCache(null);
     }
 
     // ─── De dónde salen el prefijo y el middleware del permiso ───────────────
@@ -737,22 +631,7 @@ class RouteGenerator extends AbstractComponentGenerator
         $this->putFile(
             "{$routesDir}/web.php",
             $content,
-            "Rutas creadas: Modules/{$this->moduleName}/Routes/web.php"
+            'Rutas creadas: ' . $this->rutaVisible("{$routesDir}/web.php")
         );
-    }
-
-    /**
-     * Actualiza el cache del contexto resuelto. Usado internamente por generateTenantSharedRoutes
-     * para iterar los tenants sin tener que reinstanciar el generator.
-     *
-     * @param  array|null  $contextData  Datos del contexto o null para limpiar el cache
-     * @return void
-     */
-    private function resolveContextCache(?array $contextData): void
-    {
-        // Accedemos a la propiedad privada del padre mediante reflexión para limpiar el cache
-        $reflection = new \ReflectionProperty(AbstractComponentGenerator::class, 'resolvedContext');
-        $reflection->setAccessible(true);
-        $reflection->setValue($this, $contextData);
     }
 }

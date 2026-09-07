@@ -55,8 +55,8 @@ class ProviderGenerator extends AbstractComponentGenerator
      */
     public function generate(): void
     {
-        $providerDir  = $this->getComponentBasePath() . '/Providers';
-        $providerFile = "{$providerDir}/{$this->moduleName}ServiceProvider.php";
+        $providerDir  = $this->providerDirectory();
+        $providerFile = "{$providerDir}/{$this->providerClass()}.php";
 
         $this->ensureDirectoryExists($providerDir);
 
@@ -124,8 +124,8 @@ class ProviderGenerator extends AbstractComponentGenerator
     private function createFromStub(string $filePath, string $imports, string $bindings): void
     {
         $stub = $this->getStubContent('provider.stub', $this->isClean, [
-            'namespace'      => "Modules\\{$this->moduleName}\\Providers",
-            'providerName'   => "{$this->moduleName}ServiceProvider",
+            'namespace'      => $this->providerNamespace(),
+            'providerName'   => $this->providerClass(),
             'modelImports'   => trim($imports),
             'modelBindings'  => rtrim($bindings),
             'importsMarker'  => self::IMPORTS_MARKER,
@@ -136,8 +136,44 @@ class ProviderGenerator extends AbstractComponentGenerator
         $this->putFile(
             $filePath,
             $stub,
-            "Provider creado: Modules/{$this->moduleName}/Providers/{$this->moduleName}ServiceProvider.php"
+            'Provider creado: ' . $this->rutaVisible($filePath)
         );
+    }
+
+    // ─── Dónde vive el provider, y cómo se llama ──────────────────────────────
+
+    /**
+     * `Providers/{Contexto}/` — del MÓDULO, y uno por contexto.
+     *
+     * Un provider registra los bindings de las capas de su contexto: la interfaz central apunta a
+     * la implementación central, y la del inquilino a la suya. Con uno solo para los dos, el
+     * archivo acumulaba los bindings de ambos y era el único sitio del módulo donde los contextos
+     * se mezclaban — justo el archivo que decide qué implementación se inyecta.
+     *
+     * No pertenece a ninguna subfuncionalidad, así que no baja a ninguna: vive al nivel del módulo,
+     * junto a `Docs/`, `Routes/` y los seeders maestros.
+     */
+    private function providerDirectory(): string
+    {
+        $base   = $this->getComponentBasePath() . '/Providers';
+        $folder = $this->getContextFolder();
+
+        return $folder ? "{$base}/{$folder}" : $base;
+    }
+
+    /** El namespace que espeja esa carpeta. */
+    private function providerNamespace(): string
+    {
+        $base  = "Modules\\{$this->moduleName}\\Providers";
+        $ctxNs = $this->getContextNamespacePath();
+
+        return $ctxNs ? "{$base}\\{$ctxNs}" : $base;
+    }
+
+    /** `CentralUserServiceProvider` en multiinquilino · `UserServiceProvider` en aplicación única. */
+    private function providerClass(): string
+    {
+        return $this->prefixClass("{$this->moduleName}ServiceProvider");
     }
 
     // ─── Inyección incremental ────────────────────────────────────────────────

@@ -166,7 +166,7 @@ it('el instalador lo escribe, y es uno solo aunque el proyecto sea multitenant',
     // No sabe nada de contextos: recoge los permisos que haya en la base donde se le invoque. En
     // multitenant el despliegue central le da los centrales y el de cada tenant los suyos, con el
     // mismo archivo.
-    Artisan::call('innodite:module-setup', ['--mode' => 'multitenant-shared', '--tenancy' => 'stancl', '--no-interaction' => true]);
+    Artisan::call('innodite:module-setup', ['--mode' => 'multitenant', '--tenancy' => 'stancl', '--no-interaction' => true]);
 
     expect(File::exists(database_path('seeders/WebmasterSeeder.php')))->toBeTrue();
 

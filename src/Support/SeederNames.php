@@ -124,9 +124,12 @@ final class SeederNames
         $subFeature = array_pop($segmentos);
         $contexto   = $segmentos;   // lo que quede en medio; vacío en single-app
 
-        $namespace = 'Modules\\' . $module . '\\Database\\Seeders'
-            . ($contexto === [] ? '' : '\\' . implode('\\', $contexto))
-            . '\\' . $subFeature;
+        // `Modules\{Módulo}\{SubFuncionalidad}\Database\Seeders\{Contexto}` — el orden del árbol:
+        // la subfuncionalidad manda, la capa va dentro y el contexto es la hoja. La coordenada del
+        // orden de despliegue (`Modulo/Contexto/SubFuncionalidad`) es lógica, no una ruta de
+        // carpetas: nombra los tres datos, y esta traducción es la que los pone en su sitio.
+        $namespace = 'Modules\\' . $module . '\\' . $subFeature . '\\Database\\Seeders'
+            . ($contexto === [] ? '' : '\\' . implode('\\', $contexto));
 
         return $namespace . '\\' . self::piece(self::prefijoDeLaCarpeta($contexto), $module, $subFeature, $piece);
     }
@@ -184,9 +187,11 @@ final class SeederNames
         array_pop($segmentos);      // la subfuncionalidad: el maestro es del módulo, no de ella
         $contexto = $segmentos;
 
-        $namespace = 'Modules\\' . $module . '\\Database\\Seeders'
-            . ($contexto === [] ? '' : '\\' . implode('\\', $contexto))
-            . '\\' . self::MASTER_FOLDER;
+        // `Modules\{Módulo}\Database\Seeders\Application\{Contexto}` — el maestro es del MÓDULO y
+        // recorre todas sus subfuncionalidades, así que no baja a ninguna: vive al nivel del módulo
+        // y se separa por contexto en el último tramo.
+        $namespace = 'Modules\\' . $module . '\\Database\\Seeders\\' . self::MASTER_FOLDER
+            . ($contexto === [] ? '' : '\\' . implode('\\', $contexto));
 
         return $namespace . '\\' . self::masterFor(self::prefijoDeLaCarpeta($contexto), $module, $piece);
     }

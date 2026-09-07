@@ -23,7 +23,7 @@ use Innodite\LaravelModuleMaker\Tests\Support\TenantDeMentira;
  * el proyecto anfitrión, que sí lo tiene.
  */
 beforeEach(function () {
-    config()->set('make-module.mode', ModuleMode::MultitenantShared->value);
+    config()->set('make-module.mode', ModuleMode::Multitenant->value);
     config()->set('make-module.deploy', ['tenant' => ['Invoice/Invoice']]);
 });
 

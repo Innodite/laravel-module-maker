@@ -20,15 +20,16 @@ use Innodite\LaravelModuleMaker\Support\SubFeaturePermissions;
  *
  * Archivos generados por contexto (ejemplo central, entidad User):
  *   resources/js/Pages/Central/CentralUserIndex.vue   → la pantalla: lista paginada
- *   resources/js/Pages/Central/CentralUserCreate.vue  → modal de alta, montado por el índice
- *   resources/js/Pages/Central/CentralUserEdit.vue    → modal de edición, montado por el índice
  *   resources/js/Pages/Central/CentralUserShow.vue    → modal de detalle, montado por el índice
  *
- * Los tres últimos **no son pantallas** y no tienen ruta propia: se importan desde el índice y se
- * abren encima de él. Es lo que encaja con las rutas que el paquete genera —de las seis, solo
- * `index` devuelve una pantalla; las otras cinco devuelven datos—, y por eso no existen `create`
- * ni `edit` en el controlador. Describirlos como pantallas aparte fue lo que sostuvo durante toda
- * la v3 un bloque de rutas inyectado que apuntaba a dos métodos inexistentes.
+ * **Cuatro archivos y UNA pantalla.** De las ocho rutas que escribe el paquete solo `index` devuelve
+ * una pantalla; `create`, `edit` y `show` **no tienen ruta y no la necesitan**: son modales que el
+ * índice importa y monta sobre la tabla. Que no aparezcan en `routes` no significa que sobren —
+ * significa que no se navega a ellos.
+ *
+ * ⛔ Se llegaron a retirar `Create` y `Edit` por «ninguna ruta los renderiza», y el índice se quedó
+ * importando dos componentes inexistentes: la pantalla entera dejaba de compilar. Lo cazó
+ * `GeneratedViewTest`, que es exactamente para lo que está.
  */
 class VueGenerator extends AbstractComponentGenerator
 {
@@ -180,7 +181,7 @@ class VueGenerator extends AbstractComponentGenerator
 
         $permPrefix = $context['permission_prefix'] ?? '';
         if ($permPrefix === '') {
-            $permPrefix = ModuleMode::current()->permissionPrefix($contextKey, $context['id'] ?? null);
+            $permPrefix = ModuleMode::current()->permissionPrefix($contextKey);
         }
 
         $elementos = SubFeaturePermissions::viewElements($permPrefix, $this->getFunctionality());

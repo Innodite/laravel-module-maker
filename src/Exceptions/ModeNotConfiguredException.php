@@ -25,9 +25,33 @@ final class ModeNotConfiguredException extends RuntimeException
             . "se genera.\n"
             . "  · FIX: ejecuta php artisan innodite:module-setup\n"
             . "  O define 'mode' en config/make-module.php con uno de estos valores:\n\n"
-            . "    single-app              Aplicación única, sin tenancy\n"
-            . "    multitenant-shared      Todos los tenants comparten funcionalidad\n"
-            . "    multitenant-per-tenant  Cada tenant con lógica de negocio propia\n"
+            . "    single-app   Aplicación única, sin tenancy\n"
+            . "    multitenant  Aplicación central e inquilinos\n"
+        );
+    }
+
+    /**
+     * The declared mode existed until 4.x and does not any more.
+     *
+     * Named on purpose instead of falling through to {@see self::invalid()}: the configuration says
+     * something that was legitimate, so "el modo no existe" would read as a typo. And ⛔ it is not
+     * translated silently either — a project that declared `multitenant-per-tenant` chose named
+     * tenants with their own connection, and both halves of that choice are gone. It has to know.
+     */
+    public static function retired(string $given, string $reemplazo): self
+    {
+        return new self(
+            "FALLA: el modo '{$given}' se retiró en la 4.x.\n"
+            . "  · FIX: escribe '{$reemplazo}' en 'mode' de config/make-module.php "
+            . "(o MODULE_MAKER_MODE en tu .env).\n"
+            . "  Los dos modos multiinquilino se unieron en uno. Su única diferencia era nombrar a "
+            . "cada\n  inquilino y declararle conexión, y las dos cosas resultaron equivocadas: "
+            . "nombrarlo multiplica\n  lógica idéntica por cliente, y declarar la conexión ata el "
+            . "modelo a una base cuando quien la\n  conmuta es el middleware de tenencia en cada "
+            . "petición.\n"
+            . "  Si tu proyecto necesita de verdad un contexto propio para un cliente, decláralo en "
+            . "tu\n  module-maker-config/contexts.json: el paquete lo acepta, y ya no hace falta un "
+            . "modo para eso.\n"
         );
     }
 

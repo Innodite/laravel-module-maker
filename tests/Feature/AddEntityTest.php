@@ -35,7 +35,7 @@ function agregarEntidad(string $modulo, string $entidad, ?string $contexto = nul
 }
 
 it('agrega una entidad a un módulo existente sin romperse', function () {
-    $modulo = $this->generateModule('Invoice', ModuleMode::MultitenantPerTenant, 'central');
+    $modulo = $this->generateModule('Invoice', ModuleMode::Multitenant, 'central');
 
     [$codigo, $salida] = agregarEntidad($modulo->name, 'Payment', 'central');
 
@@ -48,13 +48,13 @@ it('agrega una entidad a un módulo existente sin romperse', function () {
 });
 
 it('la entidad agregada nace con las seis piezas del contrato de pruebas', function () {
-    $modulo = $this->generateModule('Invoice', ModuleMode::MultitenantPerTenant, 'central');
+    $modulo = $this->generateModule('Invoice', ModuleMode::Multitenant, 'central');
 
     [$codigo, $salida] = agregarEntidad($modulo->name, 'Payment', 'central');
 
     expect($codigo)->toBe(0, "El comando falló antes de poder mirar las pruebas.\n\n{$salida}");
 
-    $grupo = "{$modulo->path}/Tests/Feature/Central/Payment";
+    $grupo = "{$modulo->path}/Payment/Tests/Feature/Central";
 
     $piezas = [
         'CentralPaymentContract.php'    => 'el manifiesto: sin él las otras cinco no tienen de dónde derivar',
@@ -74,7 +74,7 @@ it('la entidad agregada nace con las seis piezas del contrato de pruebas', funct
         );
     }
 
-    $vue = "{$modulo->path}/resources/js/__tests__/Central/Payment";
+    $vue = "{$modulo->path}/Payment/resources/js/__tests__/Central";
 
     expect(File::exists("{$vue}/CentralPaymentIndex.test.js"))->toBeTrue(
         'FALLA: `add-entity` no escribió la prueba de la vista (tema 6). · FIX: es la que comprueba '
@@ -95,7 +95,7 @@ it('ni make-module ni add-entity vuelven a emitir las piezas que no están en el
         );
     }
 
-    $modulo = $this->generateModule('Invoice', ModuleMode::MultitenantPerTenant, 'central');
+    $modulo = $this->generateModule('Invoice', ModuleMode::Multitenant, 'central');
 
     [$codigo, $salida] = agregarEntidad($modulo->name, 'Payment', 'central');
 
@@ -116,13 +116,13 @@ it('los permisos de la entidad agregada son los suyos, no los del módulo', func
     // entidad principal da igual —módulo y subfuncionalidad son lo mismo—, pero al agregar la
     // segunda, sus permisos y sus rutas saldrían con el nombre de la primera. Dos subfuncionalidades
     // pidiendo el mismo permiso: quien abra una, abre la otra.
-    $modulo = $this->generateModule('Invoice', ModuleMode::MultitenantPerTenant, 'central');
+    $modulo = $this->generateModule('Invoice', ModuleMode::Multitenant, 'central');
 
     [$codigo, $salida] = agregarEntidad($modulo->name, 'Payment', 'central');
 
     expect($codigo)->toBe(0, "El comando falló antes de poder mirar el contrato.\n\n{$salida}");
 
-    $contrato = File::get("{$modulo->path}/Tests/Feature/Central/Payment/CentralPaymentContract.php");
+    $contrato = File::get("{$modulo->path}/Payment/Tests/Feature/Central/CentralPaymentContract.php");
 
     // `toContain()` no acepta mensaje: cada argumento suyo es otra aguja. Y el mensaje es justo lo
     // que hace útil un fallo, así que la comprobación se hace fuera y se afirma sobre el booleano.
@@ -152,7 +152,7 @@ it('los permisos de la entidad agregada son los suyos, no los del módulo', func
 // abrirlo — cada archivo por separado está bien escrito.
 
 it('en multitenant no genera sin contexto: lo exige y lista el catálogo', function () {
-    $modulo = $this->generateModule('Invoice', ModuleMode::MultitenantPerTenant, 'central');
+    $modulo = $this->generateModule('Invoice', ModuleMode::Multitenant, 'central');
 
     [$codigo, $salida] = agregarEntidad($modulo->name, 'Payment');
 

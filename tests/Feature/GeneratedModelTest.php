@@ -17,7 +17,7 @@ use Innodite\LaravelModuleMaker\Support\ModuleMode;
 it('el modelo trae ULID y borrado lógico, como la tabla que le corresponde', function () {
     $modulo = $this->generateModule('Invoice', ModuleMode::SingleApp);
 
-    $modelo    = $modulo->contents('Models/Invoice/Invoice.php');
+    $modelo    = $modulo->contents('Invoice/Models/Invoice.php');
     $migracion = file_get_contents($modulo->migrations()[0]);
 
     expect(str_contains($migracion, "\$table->ulid('id')->primary();"))->toBeTrue('La tabla usa ULID…');
@@ -38,7 +38,7 @@ it('los imports van fuera de la clase, no dentro', function () {
     // uso de un trait, y el modelo muere con «Trait not found» en cuanto el módulo declara una
     // relación. Sintaxis válida, así que el chequeo de salida lo daba por bueno.
     $modelo = $this->generateModule('Invoice', ModuleMode::SingleApp)
-        ->contents('Models/Invoice/Invoice.php');
+        ->contents('Invoice/Models/Invoice.php');
 
     $cuerpo = substr($modelo, (int) strpos($modelo, 'class '));
 
@@ -58,15 +58,15 @@ it('los imports van fuera de la clase, no dentro', function () {
 
 it('la conexión del modelo la decide el modo, y son tres respuestas distintas', function () {
     $single = $this->generateModule('Invoice', ModuleMode::SingleApp)
-        ->contents('Models/Invoice/Invoice.php');
+        ->contents('Invoice/Models/Invoice.php');
 
     expect(str_contains($single, '$connection'))->toBeFalse(
         'en single-app hay una sola base de datos. Declarar conexión ahí es una línea muerta '
         . 'en cada modelo de cada módulo.'
     );
 
-    $central = $this->generateModule('Payment', ModuleMode::MultitenantPerTenant, 'central')
-        ->contents('Models/Central/Payment/CentralPayment.php');
+    $central = $this->generateModule('Payment', ModuleMode::Multitenant, 'central')
+        ->contents('Payment/Models/Central/CentralPayment.php');
 
     expect(str_contains($central, "protected \$connection = 'central';"))->toBeTrue(
         'la app central declara siempre la suya.'
@@ -77,11 +77,11 @@ it('el modelo generado se puede cargar, con sus traits resueltos', function () {
     // La comprobación que ninguna de las anteriores hace: que el archivo **se pueda ejecutar**. Un
     // `use TraitQueNoExiste;` pasa el parser y revienta al instanciar.
     $modulo = $this->generateModule('Invoice', ModuleMode::SingleApp);
-    $ruta   = $modulo->path('Models/Invoice/Invoice.php');
+    $ruta   = $modulo->path('Invoice/Models/Invoice.php');
 
     require_once $ruta;
 
-    $clase = 'Modules\\Invoice\\Models\\Invoice\\Invoice';
+    $clase = 'Modules\\Invoice\\Invoice\\Models\\Invoice';
 
     expect(class_exists($clase))->toBeTrue(
         'La clase debe existir tras incluir el archivo: si no, el namespace no espeja la carpeta.'

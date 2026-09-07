@@ -91,12 +91,15 @@ it('genera el ServiceProvider del módulo con namespace correcto', function () {
         '--context'   => 'central',
     ])->assertSuccessful();
 
-    $providerFile = $this->tempPath('Modules/Permission/Providers/PermissionServiceProvider.php');
+    // Uno por contexto: `Providers/{Ctx}/{Ctx}{Módulo}ServiceProvider.php`. Con uno solo para los
+    // dos, ese archivo era el único sitio del módulo donde los contextos se mezclaban — y es el que
+    // decide qué implementación se inyecta.
+    $providerFile = $this->tempPath('Modules/Permission/Providers/Central/CentralPermissionServiceProvider.php');
 
     expect(File::exists($providerFile))->toBeTrue();
 
     $content = File::get($providerFile);
-    expect($content)->toContain('namespace Modules\\Permission\\Providers');
+    expect($content)->toContain('namespace Modules\\Permission\\Providers\\Central');
 });
 
 it('lee correctamente el contexts.json y valida el contexto', function () {
@@ -113,7 +116,7 @@ it('en multitenant sin --context no genera nada: lo exige y lista el catálogo',
     // **el primero del catálogo**: `central`. El módulo salía entero en el eje equivocado — rutas en
     // web.php, protegidas con `central-permission`— para una subfuncionalidad pensada para tenants.
     // Perfectamente escrito y completamente mal, que es la forma de defecto que no da la cara.
-    config()->set('make-module.mode', 'multitenant-per-tenant');
+    config()->set('make-module.mode', 'multitenant');
 
     $codigo = Artisan::call('innodite:make-module', [
         'name'             => 'Invoice',

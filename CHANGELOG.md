@@ -6,6 +6,86 @@ Todo cambio que afecte a quien usa el paquete. El formato sigue
 
 ## [Sin publicar]
 
+### Cambiado — ⚠️ ROMPE lo generado con una 4.x anterior
+
+- **El árbol cambia de orden: `Modules/<Módulo>/<SubFuncionalidad>/<Capa>/<Contexto>/<Archivo>`.**
+
+  Antes la capa iba delante y el contexto en medio
+  (`Http/Controllers/Central/User/CentralUserController.php`). Ahora **la subfuncionalidad manda, la
+  capa va dentro de ella y el contexto es la hoja**
+  (`User/Http/Controllers/Central/CentralUserController.php`).
+
+  Con la capa por delante, ver qué tiene una subfuncionalidad pedía abrir doce carpetas; y con el
+  contexto por delante, **cada capa duplicaba su rama entera por contexto**. En aplicación única el
+  último tramo no existe y el resto es idéntico: los dos modos comparten estructura en vez de
+  parecerse.
+
+  Suben al **nivel del módulo** los tres seeders maestros (`Database/Seeders/Application/<Ctx>/`) y
+  el ServiceProvider, que además pasa a ser **uno por contexto**: con uno solo, ese archivo era el
+  único sitio del módulo donde los contextos se mezclaban — justo el que decide qué implementación
+  se inyecta.
+
+- **Un solo modo multiinquilino: `multitenant`.** `multitenant-shared` y `multitenant-per-tenant` se
+  retiran. Toda su diferencia era que el segundo **nombraba** a cada inquilino y le **declaraba
+  conexión**, y las dos mitades resultaron equivocadas: nombrarlo multiplica lógica idéntica por
+  cliente, y declarar la conexión ata el modelo a una base cuando quien la conmuta es el middleware
+  en cada petición.
+
+  Un proyecto que declare un modo retirado **no se traduce en silencio**: los comandos se niegan y
+  dicen qué escribir, por qué, y cómo declarar un contexto propio en su `contexts.json`.
+
+- **Dos contextos de fábrica: `central` y `tenant`.** Se retiran `shared`, `tenant_shared` y la lista
+  de inquilinos nombrados. Un proyecto que necesite otro contexto lo declara en el suyo.
+
+- **El modelo del inquilino ya no declara `$connection`.** El central sí. Y si el proyecto declara
+  `tenancy.package = none`, el del inquilino sale con una **nota** que dice quién tiene que
+  conmutarla — no con una conexión inventada.
+
+- **Las rutas del inquilino** pasan de `tenant-one.invoices.*` a `tenant.users.*`, y el marcador de
+  inyección lo decide el **archivo** (`{{CENTRAL_ROUTES_END}}`, `{{TENANT_ROUTES_END}}`) en vez del id
+  del cliente.
+
+### Corregido
+
+- **`--context=tenant_shared` generaba un módulo inalcanzable.** Su `tenant.php` no nombraba ni una
+  vez al controlador que ese mismo comando escribía: declaraba un bloque por cada cliente del
+  catálogo, importando clases que nadie había generado. La subfuncionalidad quedaba **sin una sola
+  ruta**, y las que había respondían 500 al entrar.
+
+- **`add-entity` dejaba la subfuncionalidad a medias.** No escribía **las rutas** —el controlador
+  quedaba inalcanzable—, ni **la vista**, ni el **provider** de su contexto, ni la factory. Y sí
+  escribía la prueba de esa vista, que la importa: el grupo nacía rojo apuntando a un archivo
+  inexistente. Y es el caso normal: en un módulo de varias subfuncionalidades, todas menos la
+  primera entran por esta puerta.
+
+- **`innodite:deploy` no encontraba ningún seeder** tras el cambio de árbol, y **decidía si podía
+  entrar en el contexto de un cliente preguntando por una función global** en vez de por su propio
+  contrato: un proyecto con su propia implementación de `Contracts\TenantContext` no podía desplegar
+  aunque la tuviera registrada.
+
+- **`innodite:test`** anunciaba «no hay grupo de pruebas» sobre una subfuncionalidad que lo tiene
+  entero.
+
+- **El aviso de «esta subfuncionalidad no la despliega nadie»** dejó de salir: el cruce no encontraba
+  ninguna en disco.
+
+- **`innodite:doctor` no veía ninguna migración**, así que la comprobación de migraciones duplicadas
+  pasaba siempre — y una tabla creada dos veces en el mismo contexto llegaba a producción.
+
+- **Un `--context` mal escrito** reventaba con un error interno del generador en vez del mensaje con
+  su FIX.
+
+- **`--dry-run` escribía de verdad** y fallaba.
+
+- **Trece mensajes** componían a mano la ruta que enseñan y decían una carpeta distinta de donde
+  estaba el archivo. Ahora la derivan del archivo escrito.
+
+### Retirado
+
+- Los **archivos de ejemplo** de `Jobs`, `Notifications`, `Console/Commands` y `Exceptions`. Se crean
+  **las carpetas, vacías**, con un `.gitkeep`: la estructura enseña dónde va cada cosa sin sembrar
+  código que hay que borrar. Con ellos se retiran sus cuatro generadores y sus plantillas.
+
 ### Añadido
 
 - **El modo del frontend deja de ser un interruptor mudo.** `--frontend=innodite` escribía una clave

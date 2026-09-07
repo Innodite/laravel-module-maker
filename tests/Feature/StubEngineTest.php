@@ -26,7 +26,7 @@ function packageStubs(): array
     return glob(dirname(__DIR__, 2) . '/stubs/contextual/*.stub') ?: [];
 }
 
-it('encuentra los 38 stubs del paquete', function () {
+it('encuentra los 34 stubs del paquete', function () {
     // La cuenta sube cuando el paquete aprende a generar una pieza nueva —las últimas son las
     // cuatro del grupo de pruebas: el manifiesto, su base y las piezas de los nueve temas, de la
     // fase 4; antes fueron las tres
@@ -47,8 +47,8 @@ it('encuentra los 38 stubs del paquete', function () {
     // atrás —decía «los 29» mientras exigía 27—, y un título que miente sobre lo que la prueba
     // exige se lee y se cree.
     expect(packageStubs())->toHaveCount(
-        38,
-        'El paquete lleva 38 stubs, una sola copia de cada uno. Si aparecen más sin haber añadido '
+        34,
+        'El paquete lleva 34 stubs, una sola copia de cada uno. Si aparecen más sin haber añadido '
         . 'una pieza, alguien devolvió las copias por contexto; si aparecen menos, falta un stub.'
     );
 });
@@ -116,9 +116,11 @@ it('el marcador de rutas sigue en doble llave, porque debe sobrevivir al generar
     // `{{{ clave }}}` del paquete y de la interpolación `{{ variable }}` de Vue, y lo que hace que
     // el chequeo de salida no lo confunda con algo sin resolver.
     foreach ([
-        ['central', 'web.php', '',           '// {{CENTRAL_ROUTES_END}}'],
-        ['shared', 'tenant.php', '',         '// {{TENANT_SHARED_ROUTES_END}}'],
-        ['tenant', 'tenant.php', 'clinic-one', '// {{TENANT_CLINIC_ONE_ROUTES_END}}'],
+        ['central', 'web.php', '',    '// {{CENTRAL_ROUTES_END}}'],
+        ['tenant', 'tenant.php', '',  '// {{TENANT_ROUTES_END}}'],
+        // Lo decide el ARCHIVO, no el contexto: cada uno sirve a uno solo, así que dentro hay una
+        // sección y un solo sitio donde crece. El id del inquilino ya no entra en la clave.
+        ['tenant', 'tenant.php', 'clinic-one', '// {{TENANT_ROUTES_END}}'],
     ] as [$contexto, $archivo, $id, $esperado]) {
         expect(RouteMarkers::comment($contexto, $archivo, $id))->toBe(
             $esperado,
@@ -148,12 +150,12 @@ it('las cuatro vistas generadas no llevan un solo placeholder dentro', function 
     File::ensureDirectoryExists($modulePath);
 
     // En single-app: sin eje de contexto, sin prefijo, y la subfuncionalidad como carpeta —
-    // resources/js/Pages/Role/RoleIndex.vue, que es lo que describe el patrón.
+    // Role/resources/js/Pages/RoleIndex.vue, que es lo que describe el patrón.
     $this->withMode(ModuleMode::SingleApp);
 
     (new VueGenerator('UserManagement', $modulePath, false, 'Role', ['subFeature' => 'Role']))->generate();
 
-    $views = glob("{$modulePath}/resources/js/Pages/Role/*.vue") ?: [];
+    $views = glob("{$modulePath}/Role/resources/js/Pages/*.vue") ?: [];
 
     expect($views)->toHaveCount(
         4,
@@ -181,7 +183,7 @@ it('la vista generada pide una ruta real, no el nombre del placeholder', functio
     File::ensureDirectoryExists($modulePath);
 
     // En single-app: sin eje de contexto, sin prefijo, y la subfuncionalidad como carpeta —
-    // resources/js/Pages/Role/RoleIndex.vue, que es lo que describe el patrón.
+    // Role/resources/js/Pages/RoleIndex.vue, que es lo que describe el patrón.
     $this->withMode(ModuleMode::SingleApp);
 
     // `functionality` es lo que el comando pasa siempre: es el prefijo del NOMBRE de las rutas, y
@@ -191,7 +193,7 @@ it('la vista generada pide una ruta real, no el nombre del placeholder', functio
         'functionality' => 'roles',
     ]))->generate();
 
-    $index = File::get("{$modulePath}/resources/js/Pages/Role/RoleIndex.vue");
+    $index = File::get("{$modulePath}/Role/resources/js/Pages/RoleIndex.vue");
 
     expect(str_contains($index, "window.route('roles.list')"))->toBeTrue(
         'Aquí es donde B15 dolía de verdad: con el placeholder literal, la vista pedía la ruta '
