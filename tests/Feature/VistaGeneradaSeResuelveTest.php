@@ -41,8 +41,8 @@ it('en una aplicación única la pantalla generada existe donde el controlador l
 
     $ruta = vistaQuePide($modulo->contents('Invoice/Http/Controllers/InvoiceController.php'));
 
-    expect($ruta)->toBe('Invoice/InvoiceIndex');
-    expect(File::exists($modulo->path() . "/resources/js/Pages/{$ruta}.vue"))->toBeTrue(
+    expect($ruta)->toBe('Invoice/resources/js/Pages/InvoiceIndex');
+    expect(File::exists($modulo->path() . "/{$ruta}.vue"))->toBeTrue(
         "FALLA: el controlador pide '{$ruta}' y ahí no hay ninguna vista. · FIX: la ruta la compone "
         . 'ControllerGenerator con la carpeta de contexto, la subfuncionalidad y el componente — el '
         . 'mismo trío con el que VueGenerator elige dónde escribir el archivo.'
@@ -56,8 +56,8 @@ it('en multitenant la carpeta del contexto y la de la subfuncionalidad van las d
 
     $ruta = vistaQuePide($modulo->contents('Invoice/Http/Controllers/Central/CentralInvoiceController.php'));
 
-    expect($ruta)->toBe('Central/Invoice/CentralInvoiceIndex');
-    expect(File::exists($modulo->path() . "/resources/js/Pages/{$ruta}.vue"))->toBeTrue(
+    expect($ruta)->toBe('Invoice/resources/js/Pages/Central/CentralInvoiceIndex');
+    expect(File::exists($modulo->path() . "/{$ruta}.vue"))->toBeTrue(
         "FALLA: el controlador pide '{$ruta}' y ahí no hay ninguna vista."
     );
 });
@@ -89,13 +89,13 @@ it('las cuatro vistas se generan bajo la misma carpeta que pide el controlador',
 
         $modulo = $this->generateModule('Invoice', $modo, $ctx);
 
-        $controlador = collect(File::allFiles($modulo->path() . '/Http/Controllers'))
+        $controlador = collect(File::allFiles($modulo->path()))
             ->first(fn ($f) => str_ends_with($f->getFilename(), 'Controller.php'));
 
         $ruta    = vistaQuePide((string) File::get($controlador->getPathname()));
         $carpeta = dirname($ruta);
 
-        $vistas = File::glob($modulo->path() . "/resources/js/Pages/{$carpeta}/*.vue");
+        $vistas = File::glob($modulo->path() . "/{$carpeta}/*.vue");
 
         expect(count($vistas))->toBe(4,
             "FALLA: bajo Pages/{$carpeta}/ hay " . count($vistas) . ' vistas, y son cuatro. · FIX: '

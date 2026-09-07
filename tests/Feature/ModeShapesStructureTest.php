@@ -28,17 +28,17 @@ it('en single-app la subfuncionalidad va directa bajo la capa, sin contexto ni p
         'context' => 'central',      // aunque se pase un contexto, en single-app no existe el eje
     ]))->generate();
 
-    expect(File::isDirectory("{$modulePath}/resources/js/Pages/Role"))->toBeTrue(
-        'en single-app la ruta es resources/js/Pages/Role/. Si aparece Central/ en medio, '
+    expect(File::isDirectory("{$modulePath}/Role/resources/js/Pages"))->toBeTrue(
+        'en single-app la ruta es Role/resources/js/Pages/. Si aparece Central/ al final, '
         . 'ModuleMode::hasContextAxis() no está mandando sobre getContextFolder().'
     );
 
-    expect(File::exists("{$modulePath}/resources/js/Pages/Role/RoleIndex.vue"))->toBeTrue(
+    expect(File::exists("{$modulePath}/Role/resources/js/Pages/RoleIndex.vue"))->toBeTrue(
         'sin eje de contexto no hay prefijo. "CentralRoleIndex.vue" en un proyecto sin tenants '
         . 'es ruido pegado al nombre de cada archivo de cada módulo.'
     );
 
-    expect(File::exists("{$modulePath}/resources/js/Pages/Central/Role/CentralRoleIndex.vue"))->toBeFalse(
+    expect(File::exists("{$modulePath}/Role/resources/js/Pages/Central/CentralRoleIndex.vue"))->toBeFalse(
         'Y no debe existir la versión con contexto: son dos formas distintas, no dos alternativas.'
     );
 });
@@ -54,9 +54,9 @@ it('en multitenant el contexto entra en la carpeta y en el nombre', function () 
         'context' => 'central',
     ]))->generate();
 
-    expect(File::exists("{$modulePath}/resources/js/Pages/Central/Role/CentralRoleIndex.vue"))->toBeTrue(
-        'En multitenant sí hay dos contextos que separar, así que la carpeta y el prefijo llevan '
-        . 'el contexto: resources/js/Pages/Central/Role/CentralRoleIndex.vue.'
+    expect(File::exists("{$modulePath}/Role/resources/js/Pages/Central/CentralRoleIndex.vue"))->toBeTrue(
+        'En multitenant sí hay dos contextos que separar, así que el contexto entra como ÚLTIMO '
+        . 'tramo de la capa y como prefijo del nombre: Role/resources/js/Pages/Central/CentralRoleIndex.vue.'
     );
 });
 
@@ -68,27 +68,24 @@ it('la carpeta de páginas va en minúscula', function () {
 
     (new VueGenerator('UserManagement', $modulePath, false, 'Role', ['subFeature' => 'Role']))->generate();
 
-    expect(File::isDirectory("{$modulePath}/resources"))->toBeTrue(
+    expect(File::isDirectory("{$modulePath}/Role/resources"))->toBeTrue(
         '`resources` en minúscula. En Linux no es cosmético — el bundler distingue '
         . 'mayúsculas al resolver la ruta de la página, así que Resources/ rompe la vista.'
     );
-    expect(File::isDirectory("{$modulePath}/Resources"))->toBeFalse();
+    expect(File::isDirectory("{$modulePath}/Role/Resources"))->toBeFalse();
 });
 
-it('el modo responde si el modelo declara conexión, y son tres respuestas distintas', function () {
+it('el modo responde si el modelo declara conexión, y son dos respuestas', function () {
     expect(ModuleMode::SingleApp->declaresModelConnection())->toBeFalse(
         'Una sola base de datos: no hay nada que conmutar.'
     );
     expect(ModuleMode::Multitenant->declaresModelConnection('central'))->toBeTrue(
         'La app central siempre declara su conexión.'
     );
-    expect(ModuleMode::Multitenant->declaresModelConnection('tenant_shared'))->toBeFalse(
-        'Un tenant que hace lo mismo que los demás NO declara conexión: la conmuta stancl al '
-        . 'inicializar el contexto y el aislamiento lo garantiza la ruta. Nombrarla aquí ataría el '
-        . 'modelo a un solo tenant, que es lo contrario de lo que protege.'
-    );
-    expect(ModuleMode::Multitenant->declaresModelConnection('tenant'))->toBeTrue(
-        'Un tenant con lógica propia sí declara la suya.'
+    expect(ModuleMode::Multitenant->declaresModelConnection('tenant'))->toBeFalse(
+        'El modelo del inquilino NO declara conexión: la conmuta el paquete de tenencia al '
+        . 'identificar la ruta, y el aislamiento lo garantiza esa ruta. Nombrarla aquí ata el '
+        . 'modelo a UN cliente, que es lo contrario de lo que protege.'
     );
 });
 
@@ -98,14 +95,17 @@ it('el modo rechaza un contexto que no le corresponde', function () {
     );
     expect(ModuleMode::SingleApp->supportsContext(null))->toBeTrue();
 
-    // El `tenant` genérico SÍ se admite en tenants iguales: es el eje del modo —misma lógica, una
-    // base por tenant— y es como lo declaran los proyectos reales. Lo que ese modo no tiene son
-    // tenants NOMBRADOS: generar para uno produciría la copia por tenant que existe para evitar.
+    // Los dos contextos del catálogo de fábrica, y solo esos: un contexto propio lo declara el
+    // proyecto en SU contexts.json, y entonces `ContextOption` lo admite porque está declarado.
+    expect(ModuleMode::Multitenant->supportsContext('central'))->toBeTrue();
     expect(ModuleMode::Multitenant->supportsContext('tenant'))->toBeTrue();
 
     expect(ModuleMode::Multitenant->supportsContext('tenant_acme'))->toBeFalse(
-        'Un tenant nombrado no cabe en el modo de tenants iguales.'
+        'Un inquilino NOMBRADO no cabe: generar para uno produce la copia por cliente de lógica '
+        . 'idéntica que el eje existe para evitar.'
     );
-    expect(ModuleMode::Multitenant->supportsContext('tenant_shared'))->toBeTrue();
-    expect(ModuleMode::Multitenant->supportsContext('tenant'))->toBeTrue();
+    expect(ModuleMode::Multitenant->supportsContext('tenant_shared'))->toBeFalse(
+        'Se retiró con el modo de lógica por cliente: lo que los inquilinos comparten es el eje '
+        . '`tenant` entero.'
+    );
 });

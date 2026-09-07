@@ -102,7 +102,7 @@ it('el controlador recibe sus FormRequests, no un Request genérico', function (
             . "existe y la primera llamada real muere.\nEl controlador dice:\n" . $controlador
         );
 
-        expect(str_contains($controlador, "use Modules\\Invoice\\Http\\Requests\\Invoice\\{$clase};"))->toBeTrue(
+        expect(str_contains($controlador, "use Modules\\Invoice\\Invoice\\Http\\Requests\\{$clase};"))->toBeTrue(
             "El controlador usa {$clase} sin importarlo. · FIX: el import lo escribe el generador, "
             . 'que es quien sabe en qué namespace acaba de escribir la clase.'
         );
@@ -123,7 +123,7 @@ it('los FormRequests que el controlador importa son los que el generador escribe
     $modulo = $this->generateModule('Invoice', ModuleMode::SingleApp);
 
     foreach (['InvoiceStoreRequest', 'InvoiceUpdateRequest'] as $clase) {
-        expect($modulo->has("Http/Requests/Invoice/{$clase}.php"))->toBeTrue(
+        expect($modulo->has("Invoice/Http/Requests/{$clase}.php"))->toBeTrue(
             "El controlador importa {$clase} y el generador no lo escribe. · FIX: los dos leen el "
             . 'nombre de RequestNames; si divergen, es que alguno volvió a componerlo por su cuenta.'
         );
@@ -137,7 +137,7 @@ it('los dos FormRequests se generan también en multitenant, con el prefijo de s
     $modulo = $this->generateModule('Invoice', ModuleMode::Multitenant, 'central');
 
     foreach (['CentralInvoiceStoreRequest', 'CentralInvoiceUpdateRequest'] as $clase) {
-        expect($modulo->has("Http/Requests/Central/Invoice/{$clase}.php"))->toBeTrue(
+        expect($modulo->has("Invoice/Http/Requests/Central/{$clase}.php"))->toBeTrue(
             "Falta {$clase}. · FIX: los dos FormRequests se generan en los tres modos. Un camino "
             . 'que escriba una pieza distinta es lo que deja al manifiesto apuntando a nada.'
         );

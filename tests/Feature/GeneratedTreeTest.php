@@ -51,7 +51,7 @@ it('en single-app los maestros van directos bajo Seeders, sin contexto', functio
 it('la migración lleva el sufijo _final, que dice que trae el esquema completo', function () {
     $modulo = $this->generateModule('Invoice', ModuleMode::SingleApp);
 
-    $migraciones = glob($modulo->path('Database/Migrations/Invoice/*.php')) ?: [];
+    $migraciones = glob($modulo->path('Invoice/Database/Migrations/*.php')) ?: [];
 
     expect($migraciones)->toHaveCount(1);
 
@@ -124,12 +124,12 @@ it('el provider registra clases que existen, con la carpeta de la subfuncionalid
 
     $provider = $modulo->contents('Providers/InvoiceServiceProvider.php');
 
-    expect(str_contains($provider, 'use Modules\Invoice\Services\Invoice\InvoiceService;'))->toBeTrue(
+    expect(str_contains($provider, 'use Modules\Invoice\Invoice\Services\InvoiceService;'))->toBeTrue(
         'El import del provider tiene que coincidir con el namespace del archivo que el generador '
         . 'del servicio escribió — que lleva la subfuncionalidad como última carpeta desde que la '
         . "estructura es {Capa}/{SubFuncionalidad}/. El provider dice:\n" . $provider
     );
-    expect(str_contains($provider, 'use Modules\Invoice\Services\Contracts\Invoice\InvoiceServiceInterface;'))
+    expect(str_contains($provider, 'use Modules\Invoice\Invoice\Services\Contracts\InvoiceServiceInterface;'))
         ->toBeTrue('Y el contrato, que vive en {Capa}/Contracts/{SubFuncionalidad}/.');
     expect(str_contains($provider, '$this->app->bind(InvoiceServiceInterface::class, InvoiceService::class);'))
         ->toBeTrue('El binding usa el nombre corto de las dos clases importadas.');
@@ -140,7 +140,7 @@ it('las rutas apuntan al controlador que se generó, no a uno que no existe', fu
 
     $contenido = $modulo->contents('Routes/web.php');
 
-    expect(str_contains($contenido, 'use Modules\Invoice\Http\Controllers\Invoice\InvoiceController;'))
+    expect(str_contains($contenido, 'use Modules\Invoice\Invoice\Http\Controllers\InvoiceController;'))
         ->toBeTrue(
             "El import se armaba dentro del stub, sin la carpeta de la subfuncionalidad. Rutas "
             . "apuntando a una clase inexistente son errores 500 en el módulo recién generado. "
