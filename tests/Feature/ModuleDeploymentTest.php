@@ -563,7 +563,7 @@ it('con tenants iguales no despliega sin decir a cuál', function () {
     // central— creyendo que escribía en la base del cliente. Sin error y sin aviso.
     $this->withMode(ModuleMode::Multitenant);
 
-    Artisan::call('innodite:module-setup', ['--mode' => 'multitenant-shared', '--tenancy' => 'stancl', '--no-interaction' => true]);
+    Artisan::call('innodite:module-setup', ['--mode' => 'multitenant', '--tenancy' => 'stancl', '--no-interaction' => true]);
 
     cargarSeederDelProyecto('WebmasterSeeder');
     cargarSeederDelProyecto('InnoditeTenantDeploySeeder');
@@ -583,7 +583,7 @@ it('con tenants iguales avisa si no sabe entrar en el contexto', function () {
     // dice, y no se despliega.
     $this->withMode(ModuleMode::Multitenant);
 
-    Artisan::call('innodite:module-setup', ['--mode' => 'multitenant-shared', '--no-interaction' => true]);
+    Artisan::call('innodite:module-setup', ['--mode' => 'multitenant', '--no-interaction' => true]);
 
     cargarSeederDelProyecto('WebmasterSeeder');
     cargarSeederDelProyecto('InnoditeTenantDeploySeeder');

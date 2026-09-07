@@ -98,8 +98,8 @@ it('el prefijo del manifiesto encuentra de verdad las rutas generadas', function
         ))
     );
 })->with([
-    'single-app'  => [ModuleMode::SingleApp, null, 'Tests/Feature/Invoice', 'Modules\Invoice\Tests\Feature\Invoice\InvoiceContract'],
-    'multitenant' => [ModuleMode::Multitenant, 'central', 'Tests/Feature/Central/Invoice', 'Modules\Invoice\Tests\Feature\Central\Invoice\CentralInvoiceContract'],
+    'single-app'  => [ModuleMode::SingleApp, null, 'Invoice/Tests/Feature', 'Modules\Invoice\Invoice\Tests\Feature\InvoiceContract'],
+    'multitenant' => [ModuleMode::Multitenant, 'central', 'Invoice/Tests/Feature/Central', 'Modules\Invoice\Invoice\Tests\Feature\Central\CentralInvoiceContract'],
 ]);
 
 it('el alias del permiso que escriben las rutas es el que la base sabe leer', function (ModuleMode $modo, ?string $contexto) {

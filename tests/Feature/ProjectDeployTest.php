@@ -120,8 +120,8 @@ it('en una aplicación única escribe un solo despliegue', function () {
 it('en multitenant escribe los dos, y cada uno declara los contextos que le tocan', function () {
     // Son dos despliegues contra dos bases de datos distintas, y el de tenant se ejecuta una vez por
     // tenant. Qué claves del orden cubre cada uno queda escrito en el archivo generado, no en el
-    // paquete: en un proyecto donde 'shared' viva en la central, eso hay que poder corregirlo.
-    Artisan::call('innodite:module-setup', ['--mode' => 'multitenant-shared', '--tenancy' => 'stancl', '--no-interaction' => true]);
+    // paquete: un proyecto que declare contextos propios los añade a esa lista.
+    Artisan::call('innodite:module-setup', ['--mode' => 'multitenant', '--tenancy' => 'stancl', '--no-interaction' => true]);
 
     expect(File::exists(database_path('seeders/InnoditeDeploySeeder.php')))->toBeFalse();
 
@@ -129,7 +129,7 @@ it('en multitenant escribe los dos, y cada uno declara los contextos que le toca
         ->toContain("protected array \$contexts = ['central'];");
 
     expect(File::get(database_path('seeders/InnoditeTenantDeploySeeder.php')))
-        ->toContain("protected array \$contexts = ['tenant', 'tenant_shared', 'shared'];");
+        ->toContain("protected array \$contexts = ['tenant'];");
 });
 
 it('no sobreescribe lo que el desarrollador ya tenía', function () {
@@ -205,16 +205,16 @@ it('un run() que no reconoce no se toca, y lo dice con la línea exacta', functi
 it('llama a los maestros en el orden declarado, y solo los de sus contextos', function () {
     config()->set('make-module.deploy', [
         'central' => ['User/Central/Role', 'Invoice/Central/Invoice'],
-        'tenant'  => ['Billing/Tenant/Shared/Plan'],
+        'tenant'  => ['Billing/Tenant/Plan'],
     ]);
 
     expect(despliegueDePrueba(['central'])->maestros('Production'))->toBe([
-        'Modules\User\Database\Seeders\Central\Application\CentralUserApplicationProductionSeeder',
-        'Modules\Invoice\Database\Seeders\Central\Application\CentralInvoiceApplicationProductionSeeder',
+        'Modules\User\Database\Seeders\Application\Central\CentralUserApplicationProductionSeeder',
+        'Modules\Invoice\Database\Seeders\Application\Central\CentralInvoiceApplicationProductionSeeder',
     ]);
 
-    expect(despliegueDePrueba(['tenant', 'tenant_shared', 'shared'])->maestros('Stage'))->toBe([
-        'Modules\Billing\Database\Seeders\Tenant\Shared\Application\TenantSharedBillingApplicationStageSeeder',
+    expect(despliegueDePrueba(['tenant'])->maestros('Stage'))->toBe([
+        'Modules\Billing\Database\Seeders\Application\Tenant\TenantBillingApplicationStageSeeder',
     ]);
 });
 
@@ -232,12 +232,12 @@ it('el mismo módulo en dos contextos son dos maestros distintos', function () {
     // Viven en carpetas distintas y llevan prefijos distintos, y llenan bases de datos distintas.
     config()->set('make-module.deploy', [
         'central' => ['Invoice/Central/Invoice'],
-        'tenant'  => ['Invoice/Tenant/Shared/Invoice'],
+        'tenant'  => ['Invoice/Tenant/Invoice'],
     ]);
 
     expect(despliegueDePrueba(['central', 'tenant'])->maestros('Stage'))->toBe([
-        'Modules\Invoice\Database\Seeders\Central\Application\CentralInvoiceApplicationStageSeeder',
-        'Modules\Invoice\Database\Seeders\Tenant\Shared\Application\TenantSharedInvoiceApplicationStageSeeder',
+        'Modules\Invoice\Database\Seeders\Application\Central\CentralInvoiceApplicationStageSeeder',
+        'Modules\Invoice\Database\Seeders\Application\Tenant\TenantInvoiceApplicationStageSeeder',
     ]);
 });
 

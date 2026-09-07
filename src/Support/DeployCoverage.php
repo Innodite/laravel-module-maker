@@ -45,15 +45,26 @@ final class DeployCoverage
         $rutas = [];
 
         foreach (File::directories($raiz) as $moduloPath) {
-            $modulo   = basename($moduloPath);
-            $seeders  = "{$moduloPath}/Database/Seeders";
+            $modulo = basename($moduloPath);
 
-            if (! File::isDirectory($seeders)) {
-                continue;
-            }
+            // Las subfuncionalidades son las carpetas de PRIMER nivel del módulo, y sus seeders
+            // viven dentro de cada una: `{Módulo}/{SubFuncionalidad}/Database/Seeders/{Contexto}`.
+            // Antes se recorría `{Módulo}/Database/Seeders` entero, que hoy solo contiene los
+            // maestros — y con eso el cruce no encontraba **ninguna** subfuncionalidad en disco:
+            // el aviso de «nadie la despliega» dejaba de salir justo cuando más falta hace.
+            foreach (File::directories($moduloPath) as $subPath) {
+                $sub     = basename($subPath);
+                $seeders = "{$subPath}/Database/Seeders";
 
-            foreach (self::subFeatureFolders($seeders) as $relativa) {
-                $rutas[] = "{$modulo}/{$relativa}";
+                if (! File::isDirectory($seeders)) {
+                    continue;
+                }
+
+                foreach (self::contextFolders($seeders) as $contexto) {
+                    $rutas[] = $contexto === ''
+                        ? "{$modulo}/{$sub}"
+                        : "{$modulo}/{$contexto}/{$sub}";
+                }
             }
         }
 
@@ -116,33 +127,35 @@ final class DeployCoverage
     }
 
     /**
-     * Las carpetas de subfuncionalidad bajo `Database/Seeders/`, relativas a esa raíz.
+     * Los contextos con piezas dentro de `{SubFuncionalidad}/Database/Seeders/`.
      *
-     * @return array<int, string> 'Central/Invoice', 'Tenant/Shared/Role', 'Invoice'…
+     * Devuelve `''` cuando las piezas están sueltas ahí —aplicación única, donde no hay eje— y el
+     * nombre de cada carpeta de contexto cuando lo hay. La coordenada del orden de despliegue se
+     * compone luego como `Módulo/Contexto/SubFuncionalidad`, que es la que declara el proyecto.
+     *
+     * @return array<int, string> '', 'Central', 'Tenant'…
      */
-    private static function subFeatureFolders(string $seedersRoot): array
+    private static function contextFolders(string $seedersRoot): array
     {
-        $encontradas = [];
-        $pendientes  = [$seedersRoot];
-        $corte       = strlen($seedersRoot) + 1;
+        $encontrados = [];
 
-        while ($pendientes !== []) {
-            foreach (File::directories(array_pop($pendientes)) as $dir) {
-                $pendientes[] = $dir;
+        if (self::tienePiezaEjecutable($seedersRoot)) {
+            $encontrados[] = '';
+        }
 
-                if (basename($dir) === SeederNames::MASTER_FOLDER) {
-                    continue;
-                }
+        foreach (File::directories($seedersRoot) as $dir) {
+            if (basename($dir) === SeederNames::MASTER_FOLDER) {
+                continue;
+            }
 
-                if (self::tienePiezaEjecutable($dir)) {
-                    $encontradas[] = str_replace('\\', '/', substr($dir, $corte));
-                }
+            if (self::tienePiezaEjecutable($dir)) {
+                $encontrados[] = basename($dir);
             }
         }
 
-        sort($encontradas);
+        sort($encontrados);
 
-        return $encontradas;
+        return $encontrados;
     }
 
     /** ¿Hay ahí dentro un Stage, un Production o un Permissions? */

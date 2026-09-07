@@ -145,7 +145,7 @@ abstract class TestCase extends Orchestra
      *
      * Es la puerta de entrada de las fases 2 a 6: `$this->generateModule('Invoice')->assertCoherent()`
      * ejecuta el comando real, falla con la salida completa si no generó, y contrasta lo escrito.
-     * Sin modo explícito se usa el de la configuración, que aquí es `multitenant-per-tenant`.
+     * Sin modo explícito se usa el de la configuración, que aquí es `multitenant`.
      *
      * @param array<string, mixed> $options Opciones extra del comando
      */

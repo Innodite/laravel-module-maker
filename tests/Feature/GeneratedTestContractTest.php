@@ -54,9 +54,9 @@ it('el módulo generado trae el manifiesto de su subfuncionalidad', function (Mo
 it('el manifiesto carga y declara lo que la subfuncionalidad es', function () {
     $modulo = $this->generateModule('Invoice', ModuleMode::SingleApp);
 
-    cargarPiezas($modulo, 'Tests/Feature/Invoice', ['InvoiceContract']);
+    cargarPiezas($modulo, 'Invoice/Tests/Feature', ['InvoiceContract']);
 
-    $contrato = 'Modules\Invoice\Tests\Feature\Invoice\InvoiceContract';
+    $contrato = 'Modules\Invoice\Invoice\Tests\Feature\InvoiceContract';
 
     expect($contrato::CONNECTION)->toBeNull(
         'FALLA: en single-app no hay conexión declarada, y el contrato dice otra cosa. · FIX: la '
@@ -99,9 +99,9 @@ it('el andamiaje declara los dos FormRequests, no uno', function () {
     // escribía otra cosa en uno de sus modos.
     $modulo = $this->generateModule('Invoice', ModuleMode::SingleApp);
 
-    cargarPiezas($modulo, 'Tests/Feature/Invoice', ['InvoiceContract']);
+    cargarPiezas($modulo, 'Invoice/Tests/Feature', ['InvoiceContract']);
 
-    $contrato = 'Modules\Invoice\Tests\Feature\Invoice\InvoiceContract';
+    $contrato = 'Modules\Invoice\Invoice\Tests\Feature\InvoiceContract';
 
     expect($contrato::SCAFFOLD)->toHaveKeys(
         ['form_request_store', 'form_request_update'],
@@ -111,12 +111,12 @@ it('el andamiaje declara los dos FormRequests, no uno', function () {
     );
 
     expect($contrato::SCAFFOLD['form_request_store'])->toBe(
-        'Modules\Invoice\Http\Requests\Invoice\InvoiceStoreRequest',
+        'Modules\Invoice\Invoice\Http\Requests\InvoiceStoreRequest',
         'FALLA: el manifiesto apunta a otra clase que la que el generador escribe.'
     );
 
     expect($contrato::SCAFFOLD['form_request_update'])->toBe(
-        'Modules\Invoice\Http\Requests\Invoice\InvoiceUpdateRequest',
+        'Modules\Invoice\Invoice\Http\Requests\InvoiceUpdateRequest',
         'FALLA: el manifiesto apunta a otra clase que la que el generador escribe.'
     );
 });
@@ -161,8 +161,8 @@ it('cada pieza del andamiaje apunta a algo que el módulo escribió', function (
         . "\n\nLo generado fue:\n  - " . implode("\n  - ", $modulo->tree())
     );
 })->with([
-    'single-app'  => [ModuleMode::SingleApp, null, 'Tests/Feature/Invoice', 'Modules\Invoice\Tests\Feature\Invoice\InvoiceContract'],
-    'multitenant' => [ModuleMode::Multitenant, 'central', 'Tests/Feature/Central/Invoice', 'Modules\Invoice\Tests\Feature\Central\Invoice\CentralInvoiceContract'],
+    'single-app'  => [ModuleMode::SingleApp, null, 'Invoice/Tests/Feature', 'Modules\Invoice\Invoice\Tests\Feature\InvoiceContract'],
+    'multitenant' => [ModuleMode::Multitenant, 'central', 'Invoice/Tests/Feature/Central', 'Modules\Invoice\Invoice\Tests\Feature\Central\CentralInvoiceContract'],
 ]);
 
 it('no enumera lo que se deriva del código', function () {

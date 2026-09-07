@@ -113,7 +113,7 @@ it('en multitenant sin --context no genera nada: lo exige y lista el catálogo',
     // **el primero del catálogo**: `central`. El módulo salía entero en el eje equivocado — rutas en
     // web.php, protegidas con `central-permission`— para una subfuncionalidad pensada para tenants.
     // Perfectamente escrito y completamente mal, que es la forma de defecto que no da la cara.
-    config()->set('make-module.mode', 'multitenant-per-tenant');
+    config()->set('make-module.mode', 'multitenant');
 
     $codigo = Artisan::call('innodite:make-module', [
         'name'             => 'Invoice',

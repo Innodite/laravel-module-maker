@@ -67,8 +67,8 @@ it('el módulo generado trae las piezas del contrato, con su techo de pruebas', 
         . 'recorrido de las tres, no como una cuarta.'
     );
 })->with([
-    'single-app'  => [ModuleMode::SingleApp, null, 'Tests/Feature/Invoice', 'Invoice'],
-    'multitenant' => [ModuleMode::Multitenant, 'central', 'Tests/Feature/Central/Invoice', 'CentralInvoice'],
+    'single-app'  => [ModuleMode::SingleApp, null, 'Invoice/Tests/Feature', 'Invoice'],
+    'multitenant' => [ModuleMode::Multitenant, 'central', 'Invoice/Tests/Feature/Central', 'CentralInvoice'],
 ]);
 
 it('ninguna pieza generada es un placebo', function () {
@@ -160,8 +160,8 @@ it('las piezas cuelgan de la base del grupo, no del TestCase del proyecto', func
         );
     }
 })->with([
-    'single-app'  => [ModuleMode::SingleApp, null, 'Tests/Feature/Invoice', 'Invoice'],
-    'multitenant' => [ModuleMode::Multitenant, 'central', 'Tests/Feature/Central/Invoice', 'CentralInvoice'],
+    'single-app'  => [ModuleMode::SingleApp, null, 'Invoice/Tests/Feature', 'Invoice'],
+    'multitenant' => [ModuleMode::Multitenant, 'central', 'Invoice/Tests/Feature/Central', 'CentralInvoice'],
 ]);
 
 it('el tema 7 no tiene techo, pero sí borde', function () {

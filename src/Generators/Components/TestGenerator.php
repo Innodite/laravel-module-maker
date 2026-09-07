@@ -546,11 +546,10 @@ PHP;
      */
     protected function rutaEnElModulo(string $tipo): string
     {
-        $contexto   = $this->getContextFolder();
-        $subFeature = $this->getSubFeatureFolder();
-
-        return "Modules/{$this->moduleName}/{$tipo}"
-            . ($contexto ? "/{$contexto}" : '')
-            . ($subFeature ? "/{$subFeature}" : '');
+        // Por `buildPath()`, que es quien decide dónde se escribe de verdad. Recomponerla aquí a
+        // mano —como se hacía— es tener dos cálculos de la misma ruta: el manifiesto acaba
+        // apuntando a una carpeta y el archivo escrito en otra, y lo que falla no es el generador
+        // sino la prueba del proyecto que lo usa.
+        return $this->rutaVisible($this->buildPath($tipo));
     }
 }

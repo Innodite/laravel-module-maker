@@ -61,7 +61,7 @@ function moduloConGrupo(string $nombre = 'Ledger'): array
         '--no-interaction' => true,
     ]);
 
-    return [$nombre, "{$raiz}/{$nombre}/Tests/Feature/{$nombre}"];
+    return [$nombre, "{$raiz}/{$nombre}/{$nombre}/Tests/Feature"];
 }
 
 afterEach(function (): void {
