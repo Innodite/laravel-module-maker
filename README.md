@@ -755,7 +755,7 @@ module-maker-config/
         ├── vue-create.stub
         ├── vue-edit.stub
         ├── vue-show.stub
-        ├── …                        ← 38 en total
+        ├── …                        ← 34 en total
         │
         └── Central/                 ← OPCIONAL: solo si un contexto necesita algo distinto
             └── controller.stub

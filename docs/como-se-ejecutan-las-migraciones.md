@@ -31,12 +31,12 @@ sort($archivos);   // el orden lo da el nombre, y el nombre empieza por el times
 El resultado es código, y viaja dentro del módulo:
 
 ```php
-trait TenantSharedSaleCartMigrationsList
+trait TenantSaleCartMigrationsList
 {
     public function getMigrationsList(): array
     {
         return [
-            'Modules/Sale/Database/Migrations/Tenant/Shared/Cart/2026_09_05_081231663374_create_carts_table_final.php',
+            'Modules/Sale/Cart/Database/Migrations/Tenant/2026_09_05_081231663374_create_carts_table_final.php',
         ];
     }
 
@@ -62,11 +62,11 @@ se desincroniza sin avisar.
 ```php
 // config/make-module.php
 'deploy' => [
-    'tenant_shared' => [
-        'Sale/Tenant/Shared/Customer',    // primero los padres
-        'Sale/Tenant/Shared/Order',
-        'Sale/Tenant/Shared/Cart',        // carts apunta a customers y a orders: va después
-        // {{DEPLOY_TENANT_SHARED_END}}
+    'tenant' => [
+        'Sale/Customer/Tenant',    // primero los padres
+        'Sale/Order/Tenant',
+        'Sale/Cart/Tenant',        // carts apunta a customers y a orders: va después
+        // {{DEPLOY_TENANT_END}}
     ],
 ],
 ```
@@ -90,7 +90,7 @@ lo sabe el negocio.
 ```
 innodite:deploy stage --context=tenant --all
   └── el seeder de despliegue del proyecto (database/seeders/)
-       └── lee deploy['tenant_shared'] de arriba abajo
+       └── lee deploy['tenant'] de arriba abajo
             └── por cada módulo, su maestro Application{Stage|Production}Seeder
                  └── por cada subfuncionalidad, en el orden declarado:
                       1. runMigrations()      ← el trait MigrationsList: crea el esquema
@@ -115,7 +115,7 @@ que escribe en la del cliente.
 |---|---|
 | `innodite:deploy <stage\|production> --context=…` | **El camino normal.** Esquema, datos y permisos, en el orden declarado. `--dry-run` para ver el plan sin tocar la base |
 | `innodite:migrate-one <Modulo:Contexto/archivo.php>` | Una migración suelta, nombrada a mano. Para reparar algo puntual |
-| ~~`innodite:migrate-plan`~~ | **Retirado en la v4.** Ver abajo |
+| ~~`innodite:migrate-plan`~~ | **Retirado.** Ver abajo |
 
 ### Por qué se retiró el plan de migraciones
 
