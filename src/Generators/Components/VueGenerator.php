@@ -20,15 +20,13 @@ use Innodite\LaravelModuleMaker\Support\SubFeaturePermissions;
  *
  * Archivos generados por contexto (ejemplo central, entidad User):
  *   resources/js/Pages/Central/CentralUserIndex.vue   → la pantalla: lista paginada
- *   resources/js/Pages/Central/CentralUserCreate.vue  → modal de alta, montado por el índice
- *   resources/js/Pages/Central/CentralUserEdit.vue    → modal de edición, montado por el índice
  *   resources/js/Pages/Central/CentralUserShow.vue    → modal de detalle, montado por el índice
  *
- * Los tres últimos **no son pantallas** y no tienen ruta propia: se importan desde el índice y se
- * abren encima de él. Es lo que encaja con las rutas que el paquete genera —de las seis, solo
- * `index` devuelve una pantalla; las otras cinco devuelven datos—, y por eso no existen `create`
- * ni `edit` en el controlador. Describirlos como pantallas aparte fue lo que sostuvo durante toda
- * la v3 un bloque de rutas inyectado que apuntaba a dos métodos inexistentes.
+ * **Dos, y no cuatro.** Se generaban también `…Create.vue` y `…Edit.vue`, y **ninguna ruta las
+ * renderizaba**: de las ocho rutas que escribe el paquete, `index` devuelve la pantalla, `show`
+ * devuelve el detalle y las demás devuelven datos — no hay `create` ni `edit` en el controlador
+ * porque el alta y la edición ocurren en un modal sobre el listado. Dos archivos por
+ * subfuncionalidad y por contexto que nadie montaba y que había que borrar a mano.
  */
 class VueGenerator extends AbstractComponentGenerator
 {
@@ -36,8 +34,6 @@ class VueGenerator extends AbstractComponentGenerator
 
     private const VIEWS = [
         'index'  => 'vue-index.stub',
-        'create' => 'vue-create.stub',
-        'edit'   => 'vue-edit.stub',
         'show'   => 'vue-show.stub',
     ];
 
