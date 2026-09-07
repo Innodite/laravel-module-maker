@@ -377,19 +377,44 @@ class ModuleGenerator
             $this->run(new RequestGenerator($this->moduleName, $this->modulePath, true, $componentConfig));
         }
 
-        // ── El grupo de pruebas de la subfuncionalidad ────────────────────────
+        // ── Lo que completa la subfuncionalidad ───────────────────────────────
         //
         // Solo cuando la entidad nace **entera**. Con flags parciales —`-M` a secas, por ejemplo—
         // lo generado no es una subfuncionalidad todavía: es una pieza suelta, y su grupo de
         // pruebas nacería rojo señalando lo que el usuario aún no pidió. Una suite que arranca en
         // rojo por diseño es una suite que el equipo aprende a ignorar.
         //
-        // Y cuando sí nace entera, va: es el mismo grupo que emite `make-module`, porque las dos
+        // Y cuando sí nace entera, va **todo**: es lo mismo que emite `make-module`, porque las dos
         // puertas por las que aparece una subfuncionalidad tienen que dejar lo mismo detrás. Si una
         // emite menos, el módulo termina con subfuncionalidades de primera y de segunda clase — y
         // lo que falta no da error, simplemente no está.
+        //
+        // ⛔ Aquí faltaban cuatro piezas, y tres se notaban en cuanto alguien intentaba usar la
+        // subfuncionalidad:
+        //
+        //   · **Las rutas.** Sin ellas el controlador es inalcanzable: existe, está bien escrito y
+        //     no hay una sola URL que llegue a él. Y es el caso NORMAL, no el raro: en un módulo de
+        //     varias subfuncionalidades la primera entra por `make-module` y **todas las demás por
+        //     aquí**.
+        //   · **La vista.** No se escribía… pero la PRUEBA de la vista sí, y la importa. El grupo
+        //     nacía rojo apuntando a un archivo que nadie había creado.
+        //   · **El provider del contexto.** Sin él, los bindings de esta subfuncionalidad no se
+        //     registran: la interfaz se resuelve sola y revienta en la primera petición.
+        //   · **La factory**, que usan las pruebas para crear registros.
         if (! in_array(false, $flags, true)) {
+            $modelo = $modelName;
+
             $this->run(new TestGenerator($this->moduleName, $this->modulePath, true, $componentConfig));
+            $this->run(new FactoryGenerator($this->moduleName, $this->modulePath, true, $modelo, $modelo, $componentConfig));
+            $this->run(new VueGenerator($this->moduleName, $this->modulePath, true, $modelo, $componentConfig));
+            $this->run(new RouteGenerator($this->moduleName, $this->modulePath, true, $modelo, $componentConfig));
+            $this->run(new ProviderGenerator(
+                $this->moduleName,
+                $this->modulePath,
+                true,
+                [$componentConfig + ['name' => $modelo]],
+                $componentConfig
+            ));
         }
 
         if ($this->command) {
