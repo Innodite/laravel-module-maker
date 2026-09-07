@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 namespace Innodite\LaravelModuleMaker\Support;
 
-use Illuminate\Support\Str;
-
 /**
  * RouteMarkers — dónde se inserta el siguiente bloque de rutas, decidido en un solo sitio.
  *
@@ -31,20 +29,24 @@ final class RouteMarkers
     /**
      * La clave del marcador de una sección, sin las llaves.
      *
-     * La tabla depende de las dos coordenadas que deciden dónde vive un bloque: **qué contexto** lo
-     * escribe y **en qué archivo**. `shared` necesita las dos porque es el único que vive en los dos
-     * lados, y sus dos bloques no pueden compartir marcador — se pisarían.
+     * **La decide el archivo, no el contexto**, y por una razón que costó un defecto: cada archivo
+     * de rutas sirve a un contexto y solo a uno —`web.php` a la central, `tenant.php` al
+     * inquilino—, así que dentro de un archivo hay una sección y un solo sitio donde crece.
+     *
+     * ⛔ Hasta la 4.x la clave llevaba el **id del inquilino** (`TENANT_ACME_ROUTES_END`), porque el
+     * catálogo declaraba inquilinos nombrados y cada uno pedía su bloque. Eso es lo que hacía que un
+     * módulo escribiera en `tenant.php` un bloque por cliente, importando controladores que nadie
+     * había generado. Con un inquilino que es un contexto y no una lista, el id sobra.
+     *
+     * Un `$contextKey` que no sea de los dos —uno que declare el proyecto— cae en `ROUTES_END`, que
+     * es correcto: su archivo será el suyo.
      */
     public static function key(string $contextKey, string $routeFile, string $contextId = ''): string
     {
-        return match (true) {
-            $contextKey === 'central'                               => 'CENTRAL_ROUTES_END',
-            $contextKey === 'shared' && $routeFile === 'web.php'    => 'CENTRAL_ROUTES_END',
-            $contextKey === 'shared' && $routeFile === 'tenant.php' => 'TENANT_SHARED_ROUTES_END',
-            $contextKey === 'tenant_shared'                         => 'TENANT_SHARED_ROUTES_END',
-            $contextKey === 'tenant' && $contextId !== ''
-                => 'TENANT_' . strtoupper(Str::snake(Str::studly($contextId))) . '_ROUTES_END',
-            default => 'ROUTES_END',
+        return match ($routeFile) {
+            'web.php'    => 'CENTRAL_ROUTES_END',
+            'tenant.php' => 'TENANT_ROUTES_END',
+            default      => 'ROUTES_END',
         };
     }
 

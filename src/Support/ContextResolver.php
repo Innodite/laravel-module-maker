@@ -157,23 +157,6 @@ class ContextResolver
     }
 
     /**
-     * Los inquilinos NOMBRADOS que declare el catálogo.
-     *
-     * ⚠️ Con el catálogo de fábrica esto devuelve **vacío**, y es lo correcto: `tenant` es un
-     * contexto, no una lista de clientes. Sigue aquí porque un proyecto puede declarar su propia
-     * lista, y porque el generador de rutas todavía la consulta — eso se cierra al reescribirlo.
-     *
-     * @return array<int, array<string, mixed>>
-     */
-    public static function allTenants(): array
-    {
-        $all = self::all();
-        $tenants = $all['tenant'] ?? [];
-
-        return is_array($tenants) && !isset($tenants['id']) ? $tenants : [];
-    }
-
-    /**
      * Todos los contextos del catálogo, en un array plano para iterar.
      *
      * @return array<int, array<string, mixed>>
