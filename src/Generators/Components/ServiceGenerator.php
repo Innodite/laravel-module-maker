@@ -14,9 +14,12 @@ use Illuminate\Support\Str;
  *   tenant           → User/Services/Tenant/TenantUserService.php
  *   aplicación única → User/Services/UserService.php
  *
- * El contrato NO lleva contexto: es uno por subfuncionalidad —
- * User/Services/Contracts/UserServiceInterface.php— porque las dos implementaciones cumplen el
- * mismo, que es justo lo que permite inyectar una u otra según dónde corra.
+ * El contrato acompaña a su implementación y lleva el mismo contexto:
+ *   central          → User/Services/Contracts/Central/CentralUserServiceInterface.php
+ *   aplicación única → User/Services/Contracts/UserServiceInterface.php
+ *
+ * `Contracts/` se intercala antes del contexto, no después: la carpeta del contexto es siempre la
+ * hoja del árbol, aquí y en todas las capas.
  */
 class ServiceGenerator extends AbstractComponentGenerator
 {

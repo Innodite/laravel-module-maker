@@ -129,15 +129,18 @@ Crea `module-maker-config/` en la raíz del proyecto con:
 # Configuración make-module.php
 php artisan vendor:publish --tag=module-maker-config
 
-# Stubs PHP y Vue para personalización (4 carpetas contextuales)
+# Todas las plantillas de golpe — solo si de verdad vas a personalizarlas todas
 php artisan vendor:publish --tag=module-maker-stubs
 
 # contexts.json de ejemplo
 php artisan vendor:publish --tag=module-maker-contexts
-
-# Composables Vue 3 (useModuleContext, usePermissions)
-php artisan vendor:publish --tag=module-maker-frontend
 ```
+
+> ⚠️ **Publicar las plantillas tiene un coste que conviene saber antes:** una copia publicada se
+> queda congelada en tu proyecto y deja de actualizarse con el paquete, así que sigue generando la
+> forma antigua sin decir nada. Por eso el instalador ya no las publica y existe
+> `innodite:publish-stubs`, que te deja pedir **solo las que vas a tocar** y sin argumentos se limita
+> a listarlas.
 
 ---
 
@@ -198,7 +201,7 @@ class CentralUserController extends Controller
 ```js
 // Vista Vue — carga sus propios datos al montarse
 onMounted(async () => {
-    const { data } = await axios.get(route(contextRoute('users.index')))
+    const { data } = await window.axios.get(window.route('central.users.list'))
     items.value = data.data
 })
 ```
@@ -215,14 +218,14 @@ Genera backend completo + vistas Vue en un solo comando.
 # Módulo completo (backend + vistas + rutas inyectadas)
 php artisan innodite:make-module User --context=central
 
+# El contexto del inquilino: rutas en tenant.php, permiso tenant-permission
+php artisan innodite:make-module Invoice --context=tenant
+
 # Selección interactiva de contexto
 php artisan innodite:make-module User
 
-# Tenant específico (por name, class_prefix o slug)
-php artisan innodite:make-module Product --context=innodite
-
-# Contexto shared (rutas en web.php Y tenant.php simultáneamente)
-php artisan innodite:make-module Invoice --context=shared
+# En aplicación única no se pasa contexto: no hay eje que elegir
+php artisan innodite:make-module User
 
 # Componentes individuales en módulo existente
 php artisan innodite:make-module User --context=central -S -R   # Service + Repository
@@ -264,8 +267,8 @@ php artisan innodite:add-entity UserManagement Role --context=central
 # Solo componentes específicos
 php artisan innodite:add-entity UserManagement Permission --context=central -M -C -S -R -G -Q
 
-# Para un tenant específico
-php artisan innodite:add-entity UserManagement Role --context=acme
+# La misma entidad, en el contexto del inquilino
+php artisan innodite:add-entity UserManagement Role --context=tenant
 ```
 
 **Firma:**
@@ -278,23 +281,28 @@ innodite:add-entity {module} {entity} {--context=} [-M] [-C] [-S] [-R] [-G] [-Q]
 |---|---|
 | `module` | Nombre del módulo existente (ej: `UserManagement`) |
 | `entity` | Nombre de la entidad nueva (ej: `Role`, `Permission`) |
-| `--context=` | ID del contexto destino (ej: `central`, `acme`) |
+| `--context=` | Contexto destino: `central` o `tenant`. En aplicación única no se pasa |
 | `-M` a `-Q` | Mismos flags que `make-module` (sin flags = genera todos los componentes) |
 
 **Ejemplo de archivos generados** — `add-entity UserManagement Role --context=central`:
 
 ```
 Modules/UserManagement/
-├── Models/Central/Role/CentralRole.php
-├── Http/Controllers/Central/Role/CentralRoleController.php
-├── Http/Requests/Central/Role/CentralRoleStoreRequest.php
-├── Http/Requests/Central/Role/CentralRoleUpdateRequest.php
-├── Services/Central/Role/CentralRoleService.php
-├── Services/Contracts/Central/Role/CentralRoleServiceInterface.php
-├── Repositories/Central/Role/CentralRoleRepository.php
-├── Repositories/Contracts/Central/Role/CentralRoleRepositoryInterface.php
-└── Database/Migrations/Central/Role/..._create_roles_table.php
+└── Role/                                  ← la subfuncionalidad manda
+    ├── Models/Central/CentralRole.php
+    ├── Http/Controllers/Central/CentralRoleController.php
+    ├── Http/Requests/Central/CentralRoleStoreRequest.php
+    ├── Http/Requests/Central/CentralRoleUpdateRequest.php
+    ├── Services/Central/CentralRoleService.php
+    ├── Services/Contracts/Central/CentralRoleServiceInterface.php
+    ├── Repositories/Central/CentralRoleRepository.php
+    ├── Repositories/Contracts/Central/CentralRoleRepositoryInterface.php
+    └── Database/Migrations/Central/..._create_roles_table.php
 ```
+
+**La capa va dentro de la subfuncionalidad, y el contexto es la hoja.** En aplicación única el
+último tramo no existe (`Role/Services/RoleService.php`) y el resto es idéntico: los dos modos
+comparten estructura en vez de parecerse.
 
 **Diferencia con `make-module`:**
 
@@ -606,24 +614,24 @@ interfaz que use. Lo que sigue describe **el contrato que la vista generada espe
 por si prefieres implementarlo con composables propios; la pantalla que genera el paquete no importa
 ninguno — lleva su `can()` de dos líneas escrito dentro.
 
-### `useModuleContext` — Detección automática de contexto
+### El contexto activo, y cómo lo lee la pantalla
 
 Lee `auth.context.route_prefix` desde las props de Inertia compartidas por `InnoditeContextBridge` y antepone automáticamente el prefijo correcto a cualquier clave de ruta.
 
 ```js
-import { useModuleContext } from '@/Composables/useModuleContext'
+// La pantalla generada lee lo que el puente compartió:
+const { route_prefix, permission_prefix } = usePage().props.auth.context
 
-const { contextRoute, routePrefix, permissionPrefix } = useModuleContext()
-
-route(contextRoute('users.index'))
-// Central              → 'central.users.index'
-// Shared (web)         → 'central.shared.users.index'
-// Shared (tenant)      → 'tenant.shared.users.index'
-// TenantShared         → 'users.index'  (sin prefijo)
-// Tenant INNODITE      → 'innodite.users.index'
+// central → 'central'   ·   inquilino → 'tenant'   ·   aplicación única → null
 ```
 
-El mismo componente Vue funciona en cualquier contexto sin cambios — el composable resuelve la ruta correcta según la sesión activa.
+⛔ **El paquete no publica ningún composable para esto.** Lo hizo hasta la 4.x, con
+`useModuleContext`; se retiró junto con el resto del andamiaje de frontend, porque montar el
+frontend es del proyecto o de la biblioteca que lo instale, no del generador.
+
+⭐ **Y el nombre de la ruta ya no hay que resolverlo en cada petición:** el generador lo escribe en
+la pantalla con el prefijo de su contexto ya puesto, porque lo que se sabe al generar no se calcula
+mil veces después. El contexto compartido sigue sirviendo para lo que sí depende de la sesión.
 
 ---
 
@@ -661,36 +669,40 @@ canAll(['users.view', 'users.edit'])         // true si tiene todos
 ### Flujo de datos en las vistas Vue generadas
 
 ```
-Montaje  → axios.get(route(contextRoute('users.index')))    ← carga datos
-Guardar  → axios.post/put(route(...))                       ← muta datos
-Navegar  → router.visit(route(contextRoute('users.xxx')))   ← Inertia solo navega
-Permisos → can('users.edit')                                ← oculta/muestra UI
+Montaje  → axios.get(route('central.users.list'))       ← carga datos
+Guardar  → axios.post/patch(route('central.users.…'))   ← muta datos
+Renderiza→ Inertia, una sola vez, para la pantalla      ← y nada más
+Permisos → can('central.users.edit')                    ← oculta/muestra la UI
 ```
 
 ### Ejemplo — `CentralUserIndex.vue`
 
 ```vue
 <script setup>
-import { ref, onMounted } from 'vue'
-import { router } from '@inertiajs/vue3'
-import { useModuleContext } from '@/Composables/useModuleContext'
-import { usePermissions } from '@/Composables/usePermissions'
+import { computed, ref, onMounted } from 'vue'
+import { usePage } from '@inertiajs/vue3'
+import CentralUserCreate from './CentralUserCreate.vue'
+import CentralUserEdit from './CentralUserEdit.vue'
+import CentralUserShow from './CentralUserShow.vue'
 
-const { contextRoute } = useModuleContext()
-const { can }          = usePermissions()
+// Los permisos van escritos aquí, no importados: la vista no depende de
+// ningún archivo que el paquete deje en tu proyecto.
+const permisos = computed(() => usePage().props?.auth?.permissions ?? [])
+const can = (permiso) => permisos.value.includes(permiso)
 
 const items = ref([])
 const meta  = ref({ current_page: 1, last_page: 1, total: 0 })
 
 async function fetchItems(page = 1) {
-    const { data } = await axios.get(route(contextRoute('users.index')), { params: { page } })
+    // El nombre de la ruta lo escribe el generador con el prefijo de su contexto
+    // ya puesto: lo que se sabe al generar no se resuelve en cada petición.
+    const { data } = await window.axios.get(window.route('central.users.list'), { params: { page } })
     items.value = data.data
     meta.value  = { current_page: data.current_page, last_page: data.last_page, total: data.total }
 }
 
 async function destroy(id) {
-    if (!confirm('¿Eliminar?')) return
-    await axios.delete(route(contextRoute('users.destroy'), { id }))
+    await window.axios.delete(window.route('central.users.destroy', { id }))
     fetchItems(meta.value.current_page)
 }
 
@@ -702,8 +714,8 @@ onMounted(() => fetchItems())
 
 ```vue
 async function submit() {
-    await axios.post(route(contextRoute('users.store')), form.value)
-    router.visit(route(contextRoute('users.index')))  // navega con Inertia
+    await window.axios.post(window.route('central.users.store'), form.value)
+    emit('guardado')   // el índice recarga su tabla; no hay navegación de por medio
 }
 ```
 
@@ -714,13 +726,13 @@ async function submit() {
 
 ```vue
 onMounted(async () => {
-    const { data } = await axios.get(route(contextRoute('users.show'), { id: props.id }))
+    const { data } = await window.axios.get(window.route('central.users.show', { id: props.id }))
     form.value = { ...data }  // rellena el formulario con datos existentes
 })
 
 async function submit() {
-    await axios.put(route(contextRoute('users.update'), { id: props.id }), form.value)
-    router.visit(route(contextRoute('users.index')))
+    await window.axios.patch(window.route('central.users.update', { id: props.id }), form.value)
+    emit('guardado')   // el índice recarga su tabla
 }
 ```
 
@@ -856,8 +868,8 @@ Intercepta cada request e inyecta vía `Inertia::share()`:
 
 | Prop | Valor ejemplo |
 |---|---|
-| `auth.context.route_prefix` | `central`, `innodite`, `central.shared` |
-| `auth.context.permission_prefix` | `central`, `innodite`, `tenant` |
+| `auth.context.route_prefix` | `central`, `tenant` — `null` en aplicación única |
+| `auth.context.permission_prefix` | `central`, `tenant` — `null` en aplicación única |
 | `auth.permissions` | `['central.users.edit', 'users.view', ...]` |
 
 **Cadena de resolución de permisos:**
@@ -998,12 +1010,16 @@ dentro del grupo que le da dominio y middleware.
                           el marcador permanece en su lugar para futuros módulos
 ```
 
-### Contexto `shared` — Dualidad de rutas
+### Un contexto por archivo de rutas
 
-| Archivo destino | Prefijo URL | Nombre de ruta | Marcador |
+| Contexto | Archivo destino | Prefijo URL | Nombre de ruta |
 |---|---|---|---|
-| `routes/web.php` | `central/shared` | `central.shared.` | `{{CENTRAL_ROUTES_END}}` |
-| `routes/tenant.php` | `tenant/shared` | `tenant.shared.` | `{{TENANT_SHARED_ROUTES_END}}` |
+| `central` | `routes/web.php` | `central-{funcionalidad}` | `central.` |
+| `tenant` | `routes/tenant.php` | `tenant-{funcionalidad}` | `tenant.` |
+
+**El archivo declara las rutas de su contexto y de ninguno más.** Hasta la 4.x un archivo podía
+recibir un bloque por cada inquilino del catálogo, importando controladores que nadie había escrito:
+el módulo salía sin una sola ruta utilizable y el fallo no se veía leyendo el código.
 
 ---
 
@@ -1014,17 +1030,19 @@ dentro del grupo que le da dominio y middleware.
 | `innodite:make-module {Name}` | Genera módulo completo con backend, vistas Vue y rutas |
 | `innodite:add-entity {Module} {Entity}` | Agrega una entidad a un módulo existente |
 | `innodite:module-setup` | Inicializa configuración del paquete en el proyecto |
-| `innodite:doctor` | Diagnóstico en cascada: entorno del generador, contrato del proyecto y criterio |
+| `innodite:doctor` | Diagnóstico en cascada: el entorno del generador y el contrato del proyecto |
 | `innodite:crear-bd-test` | Clona el esquema real en la base `_test`, sin una sola fila |
 | `innodite:publish-stubs` | Exporta las plantillas que quieras personalizar |
-| ~~`innodite:migrate-plan`~~ | **Retirado en la v4** — usa `innodite:deploy` |
+| ~~`innodite:migrate-plan`~~ | **Retirado** — el esquema lo aplica `innodite:deploy`, a través de los seeders |
 | `innodite:migrate-one` | Ejecuta una migración puntual por coordenada |
 | `innodite:deploy {stage\|production}` | Levanta el proyecto: esquema, datos, permisos y webmaster |
 | `innodite:test` | Ejecuta el contrato de una subfuncionalidad, en cascada y con corte temprano |
 | `vendor:publish --tag=module-maker-config` | Publica `make-module.php` |
 | `vendor:publish --tag=module-maker-stubs` | Publica stubs contextuales personalizables |
 | `vendor:publish --tag=module-maker-contexts` | Publica `contexts.json` de ejemplo |
-| `vendor:publish --tag=module-maker-frontend` | Publica composables Vue 3 |
+
+> Son **tres** los tags publicables, y son los que el proveedor de servicios declara. El de
+> `module-maker-frontend` que esta tabla listaba **no existe**: se fue con el andamiaje de frontend.
 
 ---
 
