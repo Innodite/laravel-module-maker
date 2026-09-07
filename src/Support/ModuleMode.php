@@ -22,11 +22,37 @@ enum ModuleMode: string
     /** A single application. No tenancy, no context axis, no prefixes. */
     case SingleApp = 'single-app';
 
-    /** Many tenants running the same feature set. The context axis exists; tenants are not named. */
-    case MultitenantShared = 'multitenant-shared';
+    /**
+     * Many tenants. Two contexts and only two: the central application and the tenant.
+     *
+     * ⛔ There used to be two multi-tenant modes — `multitenant-shared` and
+     * `multitenant-per-tenant` — and the whole difference between them was that the second one
+     * NAMED each tenant and gave it its own connection. Both halves of that difference turned out
+     * to be wrong: naming a tenant multiplies identical logic by client, and declaring the
+     * connection binds a model to one database when the tenancy package switches it per request.
+     * With neither half left, the two modes generated the same thing under different labels, and a
+     * choice with no consequence is exactly what rule 5 of this package exists to prevent.
+     *
+     * A project that genuinely needs a context of its own declares it in ITS catalogue. That is a
+     * project's decision, not one of the generator's modes.
+     */
+    case Multitenant = 'multitenant';
 
-    /** Tenants with business logic of their own. Each named tenant gets its own files. */
-    case MultitenantPerTenant = 'multitenant-per-tenant';
+    /**
+     * Modes that used to exist, and what to write instead.
+     *
+     * They are named here on purpose: the alternative is a bare "unknown mode" while the
+     * configuration says something that was legitimate last week. Silently translating them to
+     * {@see self::Multitenant} would be worse — a project declaring `multitenant-per-tenant` chose
+     * named tenants, and it deserves to be told that the answer is now a context of its own,
+     * rather than to discover it in the generated tree.
+     *
+     * @var array<string, string>
+     */
+    public const RETIRADOS = [
+        'multitenant-shared'     => 'multitenant',
+        'multitenant-per-tenant' => 'multitenant',
+    ];
 
     /**
      * The configured mode.
@@ -67,6 +93,10 @@ enum ModuleMode: string
             throw ModeNotConfiguredException::missing();
         }
 
+        if (array_key_exists($configured, self::RETIRADOS)) {
+            throw ModeNotConfiguredException::retired($configured, self::RETIRADOS[$configured]);
+        }
+
         return self::tryFrom($configured)
             ?? throw ModeNotConfiguredException::invalid(
                 $configured,
@@ -97,41 +127,17 @@ enum ModuleMode: string
     }
 
     /**
-     * Does a tenant get named in its class names and folders?
-     *
-     * Only when it has logic of its own. A tenant that does exactly what the others do
-     * would otherwise become duplicated code wearing a label.
-     */
-    public function namesTenant(): bool
-    {
-        return $this === self::MultitenantPerTenant;
-    }
-
-    /**
-     * Must a tenant context declare its own database connection?
-     *
-     * When every tenant shares the same feature set, no: the tenancy package switches
-     * the connection when it initialises the context, and the route guarantees the
-     * isolation. Demanding a connection key there produces a model bound to one tenant.
-     */
-    public function requiresTenantConnectionKey(): bool
-    {
-        return $this === self::MultitenantPerTenant;
-    }
-
-    /**
      * Does the generated model declare `protected $connection`?
      *
      * Three different answers, and the mode is the only thing that knows which applies:
      *
-     *   single-app          no — there is one database and nothing to switch
-     *   central context     yes, always — the central app has its own connection
-     *   shared tenants      no — stancl switches it when it initialises the context, and the
-     *                       route guarantees the isolation. Naming one here would bind the
-     *                       model to a single tenant and break the very thing it protects
-     *   tenant of its own   yes, its own
+     *   single-app       no — there is one database and nothing to switch
+     *   central context  yes, always — the central app has its own connection
+     *   tenant context   NEVER — the tenancy package switches it when the middleware identifies
+     *                    the tenant, and the route guarantees the isolation. Naming one here binds
+     *                    the model to a single client and breaks the very thing it protects
      *
-     * @param  string|null  $contextKey  'central', 'tenant', 'tenant_shared'… — null in single-app
+     * @param  string|null  $contextKey  'central', 'tenant'… — null in single-app
      */
     public function declaresModelConnection(?string $contextKey = null): bool
     {
@@ -139,19 +145,14 @@ enum ModuleMode: string
             return false;
         }
 
-        if ($contextKey === 'central') {
-            return true;
-        }
-
-        return $this->requiresTenantConnectionKey();
+        return $contextKey === 'central';
     }
 
     /**
      * Is this context key legitimate in this mode?
      *
-     * A single application has no contexts at all; a shared-tenant project has no *named*
-     * tenants. Generating for `--context=tenant` under `multitenant-shared` would produce
-     * exactly what that mode exists to avoid: one named copy per tenant of identical logic.
+     * A single application has no contexts at all. A multi-tenant project has the two of the
+     * catalogue plus whatever it declares itself.
      */
     public function supportsContext(?string $contextKey): bool
     {
@@ -173,47 +174,34 @@ enum ModuleMode: string
     public function supportedContextKeys(): array
     {
         return match ($this) {
-            self::SingleApp            => [],
-            self::MultitenantShared    => ['central', 'shared', 'tenant', 'tenant_shared'],
-            self::MultitenantPerTenant => ['central', 'shared', 'tenant_shared', 'tenant'],
+            self::SingleApp    => [],
+            self::Multitenant  => ['central', 'tenant'],
         };
     }
 
     /**
      * Context keys that contexts.json must DECLARE for this mode.
      *
-     * Not the same question as the one above, and answering both with one list is what made the
-     * diagnostic demand `shared` and `tenant_shared` from *both* multitenant modes — the message
-     * named the mode and then asked the same of either, so the distinction existed only on screen.
+     * The same two the mode accepts, because there are only two. This used to be a different
+     * question from {@see self::supportedContextKeys()} — one mode had to declare `tenant_shared`
+     * and the other `tenant`, and telling them apart was most of the reason this method existed.
+     * With one multi-tenant mode and one tenant context, both answers are the same list, and
+     * keeping two ways to compute it is how the two halves of this package usually drift apart.
      *
-     * What each mode actually needs:
-     *
-     *   · **shared tenants** — every tenant runs the SAME logic, each in its own database. There are
-     *     no named tenants, so the axis is the generic `tenant`, and that is the whole catalogue
-     *     besides `central`. Demanding `tenant_shared` here asks a project to declare a context for
-     *     logic split per tenant, which is precisely what this mode does not have.
-     *   · **logic per tenant** — each tenant has its own. `tenant_shared` is what they have in
-     *     common, and the named tenants come from the project's own catalogue: the package cannot
-     *     know how many there are or what they are called.
-     *
-     * A single application has no tenants to declare, so demanding a 'tenant' key would force it to
-     * invent one to pass a diagnostic that does not apply to it.
+     * A single application has no tenants to declare, so demanding a 'tenant' key would force it
+     * to invent one to pass a diagnostic that does not apply to it.
      *
      * @return array<int, string>
      */
     public function requiredContextKeys(): array
     {
-        return match ($this) {
-            self::SingleApp            => [],
-            self::MultitenantShared    => ['central', 'tenant'],
-            self::MultitenantPerTenant => ['central', 'tenant_shared'],
-        };
+        return $this->supportedContextKeys();
     }
 
     /**
      * Permission middleware alias guarding a route in the given context.
      *
-     * @param  string|null  $contextKey  'central', 'tenant', 'tenant_shared'… — null in single-app
+     * @param  string|null  $contextKey  'central', 'tenant'… — null in single-app
      */
     public function permissionMiddleware(?string $contextKey = null): string
     {
@@ -227,17 +215,17 @@ enum ModuleMode: string
     /**
      * Prefix for permission names, snake_case, empty when none applies.
      *
-     * Single app: invoices_index. Shared tenants: the context — tenant_roles_index.
-     * A tenant with its own logic: its name — energy_spain_settlements_index.
+     * Single app: invoices_index. Multi-tenant: the context — central_roles_index,
+     * tenant_roles_index.
+     *
+     * ⛔ Never the tenant's name. A permission called `energy_spain_settlements_index` has to be
+     * seeded once per client and renamed the day the client is renamed; `tenant_settlements_index`
+     * is seeded once, inside each tenant's own database, where it is already unambiguous.
      */
-    public function permissionPrefix(?string $contextKey = null, ?string $tenantId = null): string
+    public function permissionPrefix(?string $contextKey = null): string
     {
         if (! $this->hasContextAxis()) {
             return '';
-        }
-
-        if ($this->namesTenant() && $tenantId !== null && $contextKey !== 'central') {
-            return str_replace('-', '_', $tenantId) . '_';
         }
 
         return $contextKey === 'central' ? 'central_' : 'tenant_';
@@ -247,9 +235,8 @@ enum ModuleMode: string
     public function label(): string
     {
         return match ($this) {
-            self::SingleApp            => 'Aplicación única (sin tenancy)',
-            self::MultitenantShared    => 'Multitenant — todos los tenants comparten funcionalidad',
-            self::MultitenantPerTenant => 'Multitenant — cada tenant con lógica propia',
+            self::SingleApp   => 'Aplicación única (sin tenancy)',
+            self::Multitenant => 'Multiinquilino — aplicación central e inquilinos',
         };
     }
 }

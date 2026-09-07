@@ -180,7 +180,7 @@ class VueGenerator extends AbstractComponentGenerator
 
         $permPrefix = $context['permission_prefix'] ?? '';
         if ($permPrefix === '') {
-            $permPrefix = ModuleMode::current()->permissionPrefix($contextKey, $context['id'] ?? null);
+            $permPrefix = ModuleMode::current()->permissionPrefix($contextKey);
         }
 
         $elementos = SubFeaturePermissions::viewElements($permPrefix, $this->getFunctionality());

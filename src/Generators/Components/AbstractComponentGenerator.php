@@ -401,7 +401,7 @@ abstract class AbstractComponentGenerator
 
         return $delContexto !== ''
             ? $delContexto
-            : $this->mode()->permissionPrefix($contextKey, $tenantId);
+            : $this->mode()->permissionPrefix($contextKey);
     }
 
     /**

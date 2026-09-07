@@ -131,10 +131,9 @@ class DeployCommand extends Command
         // el seeder corría contra la base por defecto —la central— creyendo que escribía en la del
         // cliente, y sin un solo aviso.
         //
-        // ⛔ No aplica cuando cada tenant tiene su propia lógica: ahí la estructura es distinta por
-        // cliente, el contexto declara su `connection_key` y el seeder generado la lleva escrita. El
-        // destino ya está resuelto en el archivo, y entrar en el contexto no añade nada.
-        if ($contexto === 'tenant' && ! $mode->requiresTenantConnectionKey()) {
+        // Y aplica SIEMPRE que el contexto sea el del inquilino, porque el inquilino ya no declara
+        // conexión en ningún caso: quien la conmuta es el paquete de tenencia.
+        if ($contexto === 'tenant') {
             return $this->deployTenants($fqcn, $pieza);
         }
 
