@@ -8,8 +8,8 @@ Todo cambio que afecte a quien usa el paquete. El formato sigue
 
 **Versión MAYOR**, y el motivo es uno solo: **cambia la forma de todo lo que el paquete escribe**.
 Un módulo generado con una 4.x no coincide con lo que genera esta, ni en carpetas ni en namespaces,
-así que actualizar sin mover nada deja el proyecto con dos formas dentro. La 4.2.0 sigue instalable
-para quien no quiera moverse todavía.
+así que actualizar sin mover nada deja el proyecto con dos formas dentro. **Esta es la versión a
+instalar**: las anteriores siguen resolviéndose en Packagist, pero el trabajo va aquí.
 
 ### Cambiado — ⚠️ ROMPE lo generado con una 4.x
 

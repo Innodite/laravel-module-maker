@@ -12,24 +12,19 @@ backend completo, sus rutas con el permiso de cada una y sus vistas Vue 3, con u
 módulo agrupa varias subfuncionalidades, y cada una es autocontenida:
 `Modules/<Módulo>/<SubFuncionalidad>/<Capa>/<Contexto>/`.
 
-## 🔀 ¿Vienes de la v3?
+## 👉 La versión que se instala es la **5.0.0**
 
-**La v5 cambia la FORMA de todo lo generado** —la subfuncionalidad manda, la capa va dentro y el
-contexto es la hoja—, y reduce a dos los modos y los contextos. Un módulo de la 4.x no coincide con
-lo que genera esta. La guía de abajo es la del salto v3 → v4; el cambio de la 5.0 está en el
-[CHANGELOG](CHANGELOG.md).
+```json
+"innodite/laravel-module-maker": "^5.0"
+```
 
-**La v4 fue una major y cambió lo que generaban los comandos que ya usabas**: los nombres de varios de
-ellos, el juego de stubs, y añade una decisión —el modo del proyecto— que antes se adivinaba. Nada de
-eso ocurre solo al actualizar el paquete.
+**Y cambia la forma de todo lo que el paquete escribe.** Un módulo generado con una 4.x no coincide
+con lo que genera esta —ni en carpetas ni en namespaces—, así que actualizar sin mover nada deja el
+proyecto con dos formas dentro. Qué cambió exactamente, y en qué orden se mueve un módulo existente,
+está en el [CHANGELOG](CHANGELOG.md).
 
-👉 **[Guía de migración de la v3 a la v4](docs/migracion-v3-a-v4.md)** — diez pasos, y cada uno dice
-cómo se nota si te lo saltas.
-
-Si no quieres migrar todavía, la v3 sigue instalable: fija `"innodite/laravel-module-maker": "^3.6"`.
-
-Y en cualquier caso, el primer comando después de actualizar es el diagnóstico, que es el mapa de
-esa guía:
+El primer comando después de actualizar es el diagnóstico, que dice qué le falta al proyecto y con
+qué línea se arregla cada cosa:
 
 ```bash
 php artisan innodite:doctor
@@ -54,7 +49,7 @@ Versión mínima recomendada para uso nuevo:
 
 ## 📋 Tabla de Contenidos
 
-- [¿Vienes de la v3?](#-vienes-de-la-v3)
+- [La versión que se instala](#-la-versión-que-se-instala-es-la-500)
 - [Requisitos](#-requisitos)
 - [Instalación](#-instalación)
 - [Tabla comparativa de contextos](#-tabla-comparativa-de-contextos)
@@ -79,7 +74,6 @@ Versión mínima recomendada para uso nuevo:
 - [Licencia](#-licencia)
 
 **Nuevos en la v4:**
-- [Guía de migración desde la v3](docs/migracion-v3-a-v4.md) — el salto, paso a paso
 - [Cómo se ejecutan las migraciones](docs/como-se-ejecutan-las-migraciones.md) — quién decide el orden, y por qué son dos niveles
 - [Changelog](CHANGELOG.md) — qué cambió, y qué hay que tocar al actualizar
 - [`innodite:doctor`](#-innoditedoctor--diagnóstico-en-cascada) — el diagnóstico en cascada, que sustituye a `module-check` y `check-env`
