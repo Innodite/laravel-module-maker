@@ -59,7 +59,7 @@ por contexto**.
 Con este orden, una subfuncionalidad es **autocontenida**: se lee, se mueve y se borra de una pieza.
 Y añadir un contexto no duplica el árbol, solo añade una hoja.
 
-## Los contratos no llevan prefijo de contexto en el nombre
+## Los contratos también viven en su contexto
 
 ```
 Invoice/Services/Contracts/Central/CentralInvoiceServiceInterface.php

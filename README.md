@@ -1144,12 +1144,25 @@ con `extra.innodite-docs`:
 { "extra": { "innodite-docs": "docs/fichas.json" } }
 ```
 
-Ocho fichas: instalación, elegir el modo, los comandos, crear un módulo, desplegar, las pruebas,
+👉 **[Leerlo aquí](https://innodite.github.io/laravel-module-maker/)** — nueve fichas: instalación,
+elegir el modo, **la forma del árbol**, los comandos, crear un módulo, desplegar, las pruebas,
 personalizar lo generado y **cuándo NO usarlo**.
 
 ⭐ **Vive aquí a propósito**: quien cambia un comando actualiza su ficha **en el mismo commit**. Una
 documentación que se escribe en otro sitio se actualiza «después», y «después» es como se llega a un
 manual que anuncia comandos que ya no existen.
+
+### La página publicada se genera, no se edita
+
+`docs/index.html` sale de las fichas, así que **no se toca a mano**: se cambia el `.md` y se vuelve
+a armar.
+
+```bash
+python3 docs/armar.py
+```
+
+Así la fuente sigue siendo una sola —los `.md`, que son también lo que consume el portal por
+`extra.innodite-docs`— y la página publicada no puede decir algo distinto de lo que dice el manual.
 
 ---
 
