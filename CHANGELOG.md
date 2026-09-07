@@ -24,6 +24,24 @@ Todo cambio que afecte a quien usa el paquete. El formato sigue
   Inertia declara un layout persistente. Solo lo lleva el listado: las otras tres vistas son modales
   que viven dentro de él, y darles layout propio dibujaría la aplicación dentro de una ventana.
 
+- **Dos accesos de despliegue con nombre propio**, en `database/seeders/`:
+  `InnoditeStageSeeder` e `InnoditeProductionSeeder`.
+
+  ```bash
+  php artisan db:seed --class=InnoditeStageSeeder
+  ```
+
+  **Por qué.** El motor recibe la pieza por parámetro, lo cual está bien para el comando —que la
+  pide explícitamente— y mal para `db:seed` y para el `DatabaseSeeder`: hay que acordarse de
+  escribirla, y una llamada sin ella **despliega producción** creyendo que se pidió otra cosa. Con
+  dos archivos, el nombre es la respuesta.
+
+  ⛔ **No repiten la lista de módulos.** Cada uno declara su pieza y llama al motor; los módulos y su
+  orden siguen saliendo de `config/make-module.php`, que es el único sitio donde se declaran —y
+  donde `make-module` y `add-entity` registran cada subfuncionalidad al generarla. Escribir aquí las
+  llamadas a cada maestro daría el mismo resultado hoy y **dos listas mañana**, de las que el día del
+  módulo siguiente solo se actualizaría una.
+
 ### Cambiado
 
 > **Nota de versión.** La v4 **todavía no se ha publicado ni está en uso**, así que estos cambios

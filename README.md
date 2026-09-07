@@ -970,7 +970,7 @@ module-maker-config/
         ├── vue-create.stub
         ├── vue-edit.stub
         ├── vue-show.stub
-        ├── …                        ← 37 en total
+        ├── …                        ← 38 en total
         │
         └── Central/                 ← OPCIONAL: solo si un contexto necesita algo distinto
             └── controller.stub
@@ -991,7 +991,7 @@ Copia las plantillas a `module-maker-config/stubs/contextual/`. A partir de ahí
 paquete, y puedes borrar las que no vayas a tocar: lo que no esté ahí se sigue leyendo del paquete.
 
 ⚠️ **Publicarlas tiene un coste**: una plantilla copiada **no se actualiza** con el paquete. Si
-publicaste las 37 «por si acaso», borra las que no personalizaste — si no, seguirás generando con
+publicaste las 38 «por si acaso», borra las que no personalizaste — si no, seguirás generando con
 las de la versión en que las copiaste.
 
 ### Stubs aportados por otro paquete instalado

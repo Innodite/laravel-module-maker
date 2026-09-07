@@ -85,9 +85,67 @@ class ProjectSeederGenerator
             );
         }
 
+        $this->writeEntryPoints($destino, $escritos);
         $this->writeWebmaster($destino);
 
         return $escritos;
+    }
+
+    /**
+     * Los dos accesos con nombre propio: uno para stage y otro para producción.
+     *
+     * El motor recibe la pieza por parámetro, y eso está bien para el comando —que la pide de forma
+     * explícita— pero es incómodo desde `db:seed` y desde el `DatabaseSeeder`: hay que acordarse de
+     * escribirla, y una llamada sin ella despliega producción creyendo que se pidió otra cosa.
+     *
+     * Estos dos archivos ponen el nombre en el sitio donde se lee: `InnoditeStageSeeder` dice lo que
+     * hace sin leer sus parámetros.
+     *
+     * ⛔ **Y no repiten la lista.** Cada uno declara su pieza y llama al motor; los módulos y su
+     * orden siguen saliendo de `config/make-module.php`. Escribir aquí las llamadas a cada maestro
+     * daría el mismo resultado hoy y **dos listas mañana**, de las que el día del módulo siguiente
+     * solo se actualizaría una.
+     *
+     * ⛔ Solo se escriben para el despliegue **principal**. En multitenant el de tenant se ejecuta
+     * una vez por cliente y dentro de su contexto: un `db:seed` suelto lo lanzaría contra la base
+     * central, que es exactamente el fallo que no avisa.
+     *
+     * @param  array<int, string>  $motores  Los despliegues escritos, en orden
+     */
+    private function writeEntryPoints(string $destino, array $motores): void
+    {
+        if ($motores === []) {
+            return;
+        }
+
+        $motor = $motores[0];
+
+        $piezas = [
+            'Stage'      => 'Levanta el proyecto en STAGE — reconstruye desde cero lo que haga falta.',
+            'Production' => 'Levanta el proyecto en PRODUCCIÓN — solo repone lo que falta, nunca destruye.',
+        ];
+
+        foreach ($piezas as $pieza => $titulo) {
+            $className = 'Innodite' . $pieza . 'Seeder';
+            $archivo   = "{$destino}/{$className}.php";
+
+            if (File::exists($archivo)) {
+                $this->warn("   {$className} ya existe. No se sobreescribió.");
+
+                continue;
+            }
+
+            $this->putFile(
+                $archivo,
+                $this->getStubContent('project-entry-seeder.stub', false, [
+                    'seederName' => $className,
+                    'motorName'  => $motor,
+                    'piece'      => $pieza,
+                    'titulo'     => $titulo,
+                ]),
+                "Acceso de despliegue '{$className}' creado en database/seeders/."
+            );
+        }
     }
 
     /**

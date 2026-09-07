@@ -1,0 +1,33 @@
+<?php
+
+declare(strict_types=1);
+
+namespace Database\Seeders;
+
+use Illuminate\Database\Seeder;
+
+/**
+ * {{{ titulo }}}
+ *
+ *     php artisan db:seed --class={{{ seederName }}}
+ *
+ * Y desde el `DatabaseSeeder` del proyecto, como cualquier otro seeder:
+ *
+ *     $this->call({{{ seederName }}}::class);
+ *
+ * **Por qué existe teniendo ya {{{ motorName }}}.** Aquel hace el trabajo, pero recibe la pieza por
+ * parámetro: llamarlo a mano obliga a acordarse de escribirla, y una llamada sin ella despliega
+ * producción creyendo que se pidió otra cosa. Aquí el nombre del archivo **es** la respuesta.
+ *
+ * ⛔ **No repite la lista de módulos, y eso es lo importante.** Solo dice qué pieza quiere; los
+ * módulos y su orden siguen viniendo de `config/make-module.php`, que es el único sitio donde se
+ * declaran. Escribir aquí las llamadas a cada maestro daría el mismo resultado hoy y dos listas
+ * mañana — y el día que aparezca un módulo nuevo solo se actualizaría una de las dos.
+ */
+class {{{ seederName }}} extends Seeder
+{
+    public function run(): void
+    {
+        $this->call({{{ motorName }}}::class, false, ['piece' => '{{{ piece }}}']);
+    }
+}
