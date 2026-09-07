@@ -33,7 +33,7 @@ final class RouteMarkers
      * de rutas sirve a un contexto y solo a uno —`web.php` a la central, `tenant.php` al
      * inquilino—, así que dentro de un archivo hay una sección y un solo sitio donde crece.
      *
-     * ⛔ Hasta la 4.x la clave llevaba el **id del inquilino** (`TENANT_ACME_ROUTES_END`), porque el
+     * ⛔ Hasta la 4.x la clave llevó el **id del inquilino** (`TENANT_ACME_ROUTES_END`), porque el
      * catálogo declaraba inquilinos nombrados y cada uno pedía su bloque. Eso es lo que hacía que un
      * módulo escribiera en `tenant.php` un bloque por cliente, importando controladores que nadie
      * había generado. Con un inquilino que es un contexto y no una lista, el id sobra.

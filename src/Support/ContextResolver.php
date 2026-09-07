@@ -10,7 +10,7 @@ use Innodite\LaravelModuleMaker\Exceptions\ContextNotFoundException;
 /**
  * Resuelve la configuración de contextos del proyecto desde contexts.json.
  *
- * **Cada contexto es un objeto, y se accede por su clave.** Hasta la 4.x el catálogo era híbrido:
+ * **Cada contexto es un objeto, y se accede por su clave.** Hasta la 4.x el catálogo fue híbrido:
  * `central`, `shared` y `tenant_shared` eran objetos, y `tenant` una LISTA de inquilinos nombrados
  * que había que recorrer. Esa lista es la que hacía que el modo de inquilinos iguales generara
  * `Tenant/TenantOne/` —el nombre del primer cliente del catálogo, en un modo que existe para que no

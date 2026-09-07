@@ -41,7 +41,7 @@ final class ModeNotConfiguredException extends RuntimeException
     public static function retired(string $given, string $reemplazo): self
     {
         return new self(
-            "FALLA: el modo '{$given}' se retiró en la 4.x.\n"
+            "FALLA: el modo '{$given}' se retiró en la 5.0.\n"
             . "  · FIX: escribe '{$reemplazo}' en 'mode' de config/make-module.php "
             . "(o MODULE_MAKER_MODE en tu .env).\n"
             . "  Los dos modos multiinquilino se unieron en uno. Su única diferencia era nombrar a "

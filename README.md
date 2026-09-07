@@ -7,11 +7,19 @@
 [![Laravel](https://img.shields.io/badge/Laravel-11%20%7C%2012%20%7C%2013-FF2D20?logo=laravel&logoColor=white)](https://laravel.com/)
 [![License](https://img.shields.io/github/license/Innodite/laravel-module-maker?color=green)](LICENSE)
 
-**v4.0** — Generador de módulos Laravel con arquitectura de contextos dinámicos (Central, Shared, Tenant) para proyectos multi-tenant. Genera backend completo, inyecta rutas y crea vistas Vue 3 listas para usar — todo con un solo comando. Soporta múltiples entidades por módulo con subcarpeta aislada por entidad (`{Tipo}/{Contexto}/{Entidad}/`).
+**v5.0** — Generador de módulos Laravel para proyectos de una aplicación o multiinquilino. Genera el
+backend completo, sus rutas con el permiso de cada una y sus vistas Vue 3, con un solo comando. Un
+módulo agrupa varias subfuncionalidades, y cada una es autocontenida:
+`Modules/<Módulo>/<SubFuncionalidad>/<Capa>/<Contexto>/`.
 
 ## 🔀 ¿Vienes de la v3?
 
-**La v4 es una major y cambia lo que generan los comandos que ya usabas**: los nombres de varios de
+**La v5 cambia la FORMA de todo lo generado** —la subfuncionalidad manda, la capa va dentro y el
+contexto es la hoja—, y reduce a dos los modos y los contextos. Un módulo de la 4.x no coincide con
+lo que genera esta. La guía de abajo es la del salto v3 → v4; el cambio de la 5.0 está en el
+[CHANGELOG](CHANGELOG.md).
+
+**La v4 fue una major y cambió lo que generaban los comandos que ya usabas**: los nombres de varios de
 ellos, el juego de stubs, y añade una decisión —el modo del proyecto— que antes se adivinaba. Nada de
 eso ocurre solo al actualizar el paquete.
 
@@ -347,7 +355,7 @@ Consulta al proveedor de reglas configurado y lista sus hallazgos.
 
 ---
 
-### `innodite:publish-frontend` — ⛔ RETIRADO en la v4
+### `innodite:publish-frontend` — ⛔ RETIRADO
 
 El paquete **no configura el frontend de tu proyecto**: no publica composables ni componentes, y
 no toca `app.js` ni el middleware de Inertia. Solo **genera** las vistas de cada subfuncionalidad,
@@ -356,7 +364,7 @@ y lo hace sin depender de ninguna biblioteca — el `can()` va escrito en la pro
 Contra qué se generan lo decide `--frontend=default|innodite` en el instalador.
 
 ---
-### `innodite:migrate-plan` — ⛔ RETIRADO en la v4
+### `innodite:migrate-plan` — ⛔ RETIRADO
 
 Aplicaba las migraciones del proyecto recorriendo el árbol. **Usa `innodite:deploy`**, que aplica el
 esquema, los datos y los permisos juntos y en el orden que declaras tú:
@@ -366,7 +374,7 @@ php artisan innodite:deploy stage --context=central
 php artisan innodite:deploy stage --context=central --dry-run   # ver el plan sin tocar la base
 ```
 
-El comando sigue registrado durante la v4 para decir esto mismo si lo ejecutas, y devuelve error
+El comando sigue registrado para decir esto mismo si lo ejecutas, y devuelve error
 —no éxito—, de modo que un script que lo tuviera escrito no lo dé por hecho.
 
 **Por qué se retiró.** Ordenaba las subfuncionalidades por el **nombre de sus carpetas**, ignorando

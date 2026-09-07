@@ -4,9 +4,14 @@ Todo cambio que afecte a quien usa el paquete. El formato sigue
 [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y las versiones,
 [SemVer](https://semver.org/lang/es/).
 
-## [Sin publicar]
+## [5.0.0] — 07/09/2026
 
-### Cambiado — ⚠️ ROMPE lo generado con una 4.x anterior
+**Versión MAYOR**, y el motivo es uno solo: **cambia la forma de todo lo que el paquete escribe**.
+Un módulo generado con una 4.x no coincide con lo que genera esta, ni en carpetas ni en namespaces,
+así que actualizar sin mover nada deja el proyecto con dos formas dentro. La 4.2.0 sigue instalable
+para quien no quiera moverse todavía.
+
+### Cambiado — ⚠️ ROMPE lo generado con una 4.x
 
 - **El árbol cambia de orden: `Modules/<Módulo>/<SubFuncionalidad>/<Capa>/<Contexto>/<Archivo>`.**
 
