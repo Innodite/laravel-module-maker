@@ -4,8 +4,17 @@
 # lo primero que ve quien entra al subdominio) y sus imágenes, más un .zip al lado para paneles
 # que prefieren subir un solo archivo.
 #
+# ⭐ `docs/publicar/` SE VERSIONA a propósito (no está en .gitignore): es la única ubicación fija
+# en GitHub — https://github.com/Innodite/laravel-module-maker/tree/main/docs/publicar — donde ir
+# a buscar, sin ambigüedad ni pasos previos, los archivos que van SUELTOS a la raíz del hosting del
+# subdominio (nunca dentro de una carpeta `docs/` ni `publicar/` en el servidor). `docs/publicar.zip`
+# sí sigue sin versionarse (es binario derivado); se regenera con este mismo script.
+#
 # El sitio es autocontenido (CSS y JS inline, sin build, sin dependencias propias — solo
 # Google Fonts por CDN); lo único que no va inline son las imágenes de Nodite en la portada.
+#
+# ⚠️ Tras correr esto, comitear docs/publicar/ junto con el cambio que lo motivó — si no, la
+# copia versionada en GitHub queda desactualizada respecto al código fuente.
 #
 #   docs/publicar.sh
 #
