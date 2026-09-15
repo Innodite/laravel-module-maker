@@ -191,6 +191,38 @@ def a_html(md: str) -> str:
     return '\n'.join(fuera)
 
 
+def a_html_pestanas(md: str) -> str:
+    """Para una ficha de comando: cada `### Título` de primer nivel es una pestaña clicable, no
+    una subsección apilada. No es sintaxis nueva del `.md` —sigue siendo un encabezado normal—,
+    es una forma distinta de montarlo cuando la ficha lo pide (`"tabs": true` en fichas.json)."""
+    partes = re.split(r'^### (.+)$', md, flags=re.MULTILINE)
+    intro = a_html(partes[0]) if partes[0].strip() else ''
+
+    pestanas = list(zip(partes[1::2], partes[2::2]))
+    if not pestanas:
+        return intro  # la ficha no declaró pestañas: se comporta como cualquier otra
+
+    botones, paneles = [], []
+    for idx, (titulo, cuerpo) in enumerate(pestanas):
+        pid = f'tab-{slug_de(titulo)}'
+        clase_boton = ' is-active' if idx == 0 else ''
+        botones.append(
+            f'<button class="doc-tab{clase_boton}" data-tab="{pid}" type="button">'
+            f'{en_linea(titulo)}</button>'
+        )
+        paneles.append(
+            f'<div class="doc-tab-panel" id="{pid}"{"" if idx == 0 else " hidden"}>'
+            f'{a_html(cuerpo)}</div>'
+        )
+
+    return (
+        f'{intro}<div class="doc-tabs">'
+        f'<div class="doc-tabs__botones" role="tablist">{"".join(botones)}</div>'
+        f'<div class="doc-tabs__paneles">{"".join(paneles)}</div>'
+        f'</div>'
+    )
+
+
 # ─────────────────────────────────────────────────────────────────────────────
 # El montaje
 # ─────────────────────────────────────────────────────────────────────────────
@@ -202,14 +234,18 @@ def main() -> None:
     MAPA_ENLACES.clear()
     MAPA_ENLACES.update({Path(p['file']).name: p['slug'] for p in paginas})
 
-    indice = ['<a href="#/" class="doc-indice__seccion" data-ruta="">Portada</a>',
-              '<p class="doc-indice__familia">El manual</p>']
+    indice = ['<a href="#/" class="doc-indice__seccion" data-ruta="">Portada</a>']
     articulos = []
+    familia_anterior = None
 
     for idx, pagina in enumerate(paginas):
         md = (RAIZ / pagina['file']).read_text(encoding='utf-8')
         titulo = pagina['title']
         slug = pagina['slug']
+        familia = pagina.get('family', 'El manual')
+        if familia != familia_anterior:
+            indice.append(f'<p class="doc-indice__familia">{html.escape(familia)}</p>')
+            familia_anterior = familia
         # El número que abre el título es del índice, no del encabezado de la ficha.
         limpio = re.sub(r'^\d+\s*·\s*', '', titulo)
         indice.append(
@@ -229,10 +265,11 @@ def main() -> None:
             lado_der = f'<a class="doc-paginacion__siguiente" href="#/{siguiente["slug"]}">{t} →</a>'
         paginacion = f'<nav class="doc-paginacion">{lado_izq}{lado_der}</nav>'
 
+        cuerpo = a_html_pestanas(md) if pagina.get('tabs') else a_html(md)
         articulos.append(
             f'<article class="doc-pagina" data-ruta="{slug}" hidden>'
             f'<header class="doc-cabecera"><p class="doc-migas">Manual · Laravel Module Maker</p>'
-            f'<h1>{html.escape(limpio)}</h1></header>{a_html(md)}{paginacion}</article>'
+            f'<h1>{html.escape(limpio)}</h1></header>{cuerpo}{paginacion}</article>'
         )
 
     (RAIZ / 'index.html').write_text(
@@ -493,6 +530,23 @@ del code { color: var(--app-tinta-3); }
 .doc-paginacion a:hover { color: var(--app-tinta); border-color: var(--app-borde-vivo); }
 .doc-paginacion__siguiente { text-align: end; margin-inline-start: auto; }
 
+/* Pestañas de una ficha de comando: Qué hace / Parámetros / Qué genera / Ejemplos... */
+.doc-tabs { margin: 8px 0 16px; }
+.doc-tabs__botones {
+  display: flex; flex-wrap: wrap; gap: 4px;
+  border-block-end: 1px solid var(--app-borde); margin-block-end: 20px;
+}
+.doc-tab {
+  font: inherit; font-size: 13px; cursor: pointer; padding: 9px 14px;
+  color: var(--app-tinta-2); background: none; border: none;
+  border-block-end: 2px solid transparent; margin-block-end: -1px;
+  transition: color .12s ease, border-color .12s ease;
+}
+.doc-tab:hover { color: var(--app-tinta); }
+.doc-tab.is-active { color: var(--app-marca); border-block-end-color: var(--app-marca); font-weight: 600; }
+.doc-tab-panel[hidden] { display: none; }
+.doc-tab-panel > *:last-child { margin-block-end: 0; }
+
 footer.doc-pie {
   max-inline-size: 1320px; margin: 0 auto; padding: 32px 28px;
   border-block-start: 1px solid var(--app-borde);
@@ -535,10 +589,10 @@ footer.doc-pie {
 
       <h2>Por dónde empezar</h2>
       <div class="doc-cartas">
-        <a class="doc-carta" href="#/instalacion"><h3>Instalación</h3><p>Instalar, elegir el modo y comprobar que el proyecto trae lo que hace falta.</p></a>
-        <a class="doc-carta" href="#/elegir-el-modo"><h3>Elegir el modo</h3><p>Aplicación única o multiinquilino, y los dos contextos. Se elige una vez.</p></a>
-        <a class="doc-carta" href="#/la-forma-del-arbol"><h3>La forma del árbol</h3><p>Qué escribe el paquete y dónde, con un módulo real delante.</p></a>
-        <a class="doc-carta" href="#/los-comandos"><h3>Los comandos</h3><p>Los diez, y el orden en que se usan.</p></a>
+        <a class="doc-carta" href="#/instalacion"><h3>Instalación</h3><p>Composer y el primer comando.</p></a>
+        <a class="doc-carta" href="#/modificaciones-manuales"><h3>Modificaciones manuales</h3><p>Lo que el generador no escribe por su cuenta.</p></a>
+        <a class="doc-carta" href="#/comando-doctor"><h3>innodite:doctor</h3><p>Empieza por aquí para diagnosticar el proyecto.</p></a>
+        <a class="doc-carta" href="#/comando-make-module"><h3>innodite:make-module</h3><p>El generador principal, comando por comando.</p></a>
       </div>
 
       <h2 id="instalacion-en-dos-lineas">Instalación, en dos líneas</h2>
@@ -624,6 +678,18 @@ php artisan innodite:module-setup</code></pre></div>
       e.preventDefault();
       buscador.focus();
     }
+  });
+
+  /* Pestañas de una ficha de comando: un solo listener delegado por grupo, sin estado en el hash
+     — cambiar de pestaña no es navegar a otro sitio, así que no toca la URL. */
+  document.querySelectorAll('.doc-tabs').forEach(grupo => {
+    grupo.addEventListener('click', (e) => {
+      const boton = e.target.closest('.doc-tab');
+      if (!boton) return;
+      const activo = boton.dataset.tab;
+      grupo.querySelectorAll('.doc-tab').forEach(b => b.classList.toggle('is-active', b === boton));
+      grupo.querySelectorAll('.doc-tab-panel').forEach(p => { p.hidden = p.id !== activo; });
+    });
   });
 
   /* El tema se recuerda por visitante. Puede fallar —ventana privada, cookies bloqueadas—, así que
