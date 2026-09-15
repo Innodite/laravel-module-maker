@@ -12,3 +12,7 @@ docs/test-reports/*
 
 # Configuraciones temporales de PHPUnit
 storage/phpunit-*.xml
+
+# Salida de docs/publicar.sh — se regenera desde las fichas, no se versiona
+docs/publicar/
+docs/publicar.zip
