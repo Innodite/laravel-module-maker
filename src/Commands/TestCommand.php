@@ -12,6 +12,7 @@ use Illuminate\Support\Str;
 use Innodite\LaravelModuleMaker\Services\PhpunitRunner;
 use Innodite\LaravelModuleMaker\Support\ContextResolver;
 use Innodite\LaravelModuleMaker\Support\LegacyManifests;
+use Innodite\LaravelModuleMaker\Support\LegacySharedTests;
 use Innodite\LaravelModuleMaker\Support\TestDatabase;
 use Innodite\LaravelModuleMaker\Support\TestNames;
 use Throwable;
@@ -100,6 +101,10 @@ class TestCommand extends Command
         }
 
         if (! $this->grupoCompleto($grupo, $prefijo, $subFuncion)) {
+            return self::FAILURE;
+        }
+
+        if (! $this->sinEstructuraRetirada($grupo)) {
             return self::FAILURE;
         }
 
@@ -275,6 +280,35 @@ class TestCommand extends Command
             'No se ejecuta nada: sin el manifiesto las demás no pueden derivar rutas ni permisos, y '
             . 'lo que saldría serían fallos que describen el síntoma y esconden la causa.'
         );
+
+        return false;
+    }
+
+    /**
+     * El espejo de {@see grupoCompleto()}: comprueba que el grupo NO carga la forma de pruebas
+     * retirada desde v5.0.0 — un trait compartido en `Tests/Feature/Shared/`, incorporado con
+     * `use <Trait>` en cada contexto.
+     *
+     * Sin eje de contexto (aplicación única) esta forma nunca existió: no hay dos contextos que
+     * pudieran compartir un trait, así que no hay nada que comprobar.
+     */
+    protected function sinEstructuraRetirada(string $grupo): bool
+    {
+        if (basename($grupo) === 'Feature') {
+            return true;
+        }
+
+        $carpetaCompartida = LegacySharedTests::carpetaCompartida($grupo);
+        $tieneCarpeta      = LegacySharedTests::tieneCarpetaCompartida($grupo);
+        $incorporaciones   = LegacySharedTests::incorporacionesDeTrait($grupo);
+
+        if (! $tieneCarpeta && $incorporaciones === []) {
+            return true;
+        }
+
+        [$falla, $fix, $porque] = LegacySharedTests::mensajeDeFallo($tieneCarpeta, $carpetaCompartida, $incorporaciones);
+
+        $this->fallo($falla, $fix, $porque);
 
         return false;
     }
