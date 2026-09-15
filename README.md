@@ -7,15 +7,15 @@
 [![Laravel](https://img.shields.io/badge/Laravel-11%20%7C%2012%20%7C%2013-FF2D20?logo=laravel&logoColor=white)](https://laravel.com/)
 [![License](https://img.shields.io/github/license/Innodite/laravel-module-maker?color=green)](LICENSE)
 
-**v5.0** — Generador de módulos Laravel para proyectos de una aplicación o multiinquilino. Genera el
+**v5.1** — Generador de módulos Laravel para proyectos de una aplicación o multiinquilino. Genera el
 backend completo, sus rutas con el permiso de cada una y sus vistas Vue 3, con un solo comando. Un
 módulo agrupa varias subfuncionalidades, y cada una es autocontenida:
 `Modules/<Módulo>/<SubFuncionalidad>/<Capa>/<Contexto>/`.
 
-## 👉 La versión que se instala es la **5.0.0**
+## 👉 La versión que se instala es la **5.1.1**
 
 ```json
-"innodite/laravel-module-maker": "^5.0"
+"innodite/laravel-module-maker": "^5.1"
 ```
 
 **Y cambia la forma de todo lo que el paquete escribe.** Un módulo generado con una 4.x no coincide
@@ -35,13 +35,12 @@ php artisan innodite:doctor
 ## ⚠️ Versiones Deprecadas
 
 Se consideran **deprecados** los tags históricos con referencias heredadas a software/proyecto externo.
+Para uso nuevo, instala la **5.1** (arriba) — esto es solo un registro de qué tags antiguos evitar
+si tienes que instalar contra una versión previa a la reescritura de la v5.
 
 Tags deprecados:
 - `v2.5.0`
 - `v3.2.7` a `v3.4.0`
-
-Versión mínima recomendada para uso nuevo:
-- `v3.4.1+`
 
 > Nota: la deprecación es de soporte/uso recomendado. No se reescribe el historial Git publicado.
 
@@ -49,7 +48,7 @@ Versión mínima recomendada para uso nuevo:
 
 ## 📋 Tabla de Contenidos
 
-- [La versión que se instala](#-la-versión-que-se-instala-es-la-500)
+- [La versión que se instala](#-la-versión-que-se-instala-es-la-511)
 - [Requisitos](#-requisitos)
 - [Instalación](#-instalación)
 - [Tabla comparativa de contextos](#-tabla-comparativa-de-contextos)
@@ -350,6 +349,12 @@ Verifica el bridge Inertia y, si algo falta, imprime el **bloque de código exac
 
 Consulta al proveedor de reglas configurado y lista sus hallazgos.
 
+⭐ **Desde la 5.1.0, además recorre cada módulo buscando la estructura de pruebas compartida ya
+retirada** (`Tests/Feature/Shared/`, o una pieza de `Central`/`Tenant` que todavía incorpora un
+trait con `use <Trait>` en vez de llevar el código inline). Si encuentra un caso, lo lista con la
+ruta exacta y el arreglo: inlinear el cuerpo del trait en cada contexto y borrar la carpeta
+compartida. Es detección pura — ningún comando mueve el código por su cuenta.
+
 > **Viene de `innodite:module-check` y de `innodite:check-env`, que ya no existen.** Eran dos
 > comandos útiles cuyos nombres no decían lo que hacían, y que había que acordarse de lanzar por
 > separado: uno miraba el entorno y el otro el contrato, cuando lo que se quiere saber es una sola
@@ -491,6 +496,11 @@ falló, qué cubría y **qué queda sin ejecutar**.
 **Antes de lanzar nada comprueba que el grupo esté entero.** Faltar el manifiesto no es «una prueba
 menos»: sin él ninguna de las otras puede derivar rutas ni permisos, y lo que saldría serían fallos
 que describen el síntoma y esconden la causa.
+
+⭐ **Y desde la 5.1.0, comprueba también que la subfuncionalidad no tenga la estructura de pruebas
+compartida ya retirada** (`Tests/Feature/Shared/`, o un trait incorporado con `use <Trait>` en vez
+de inline). Si la encuentra, el comando se niega a correr y dice el arreglo — el mismo chequeo que
+hace `innodite:doctor` en cascada sobre todo el proyecto.
 
 **El tema 6 se nombra siempre**, también cuando todo pasa. Un contrato «en verde» que se saltó un
 tema sin decirlo es la peor clase de silencio.
@@ -1100,8 +1110,8 @@ El paquete incluye configuración de PHP CS Fixer compatible con PSR-12. Todos l
 ### Repositorio público (Packagist)
 
 ```bash
-git tag -a v4.2.0 -m "v4.2.0 — resumen de la versión"
-git push origin refs/tags/v4.2.0
+git tag -a v5.1.2 -m "v5.1.2 — resumen de la versión"
+git push origin refs/tags/v5.1.2
 ```
 
 Luego registrar el repositorio en [packagist.org](https://packagist.org) con la URL del repositorio.
@@ -1130,7 +1140,7 @@ Agregar en el `composer.json` del proyecto consumidor:
 ```
 
 ```bash
-composer require innodite/laravel-module-maker:^4.2
+composer require innodite/laravel-module-maker:^5.1
 ```
 
 ---
@@ -1144,9 +1154,9 @@ con `extra.innodite-docs`:
 { "extra": { "innodite-docs": "docs/fichas.json" } }
 ```
 
-👉 **[Leerlo aquí](https://innodite.github.io/laravel-module-maker/)** — nueve fichas: instalación,
-elegir el modo, **la forma del árbol**, los comandos, crear un módulo, desplegar, las pruebas,
-personalizar lo generado y **cuándo NO usarlo**.
+👉 **[Leerlo aquí](https://innodite.github.io/laravel-module-maker/)** — instalación, modificaciones
+manuales del proyecto anfitrión, y una ficha por comando con pestañas: qué hace, qué parámetros
+recibe, qué archivos o cambios genera, personalización de stubs (en los generadores) y ejemplos.
 
 ⭐ **Vive aquí a propósito**: quien cambia un comando actualiza su ficha **en el mismo commit**. Una
 documentación que se escribe en otro sitio se actualiza «después», y «después» es como se llega a un
