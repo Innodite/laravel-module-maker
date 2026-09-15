@@ -70,11 +70,13 @@ final class LegacySharedTests
      */
     private static function traitsIncorporadosEn(string $contenido): array
     {
-        if (preg_match_all(
-            '/^[ \t]+use\s+([A-Za-z_][A-Za-z0-9_\\\\]*(?:\s*,\s*[A-Za-z_][A-Za-z0-9_\\\\]*)*)\s*;/m',
-            $contenido,
-            $coincidencias
-        ) === false) {
+        if (
+            preg_match_all(
+                '/^[ \t]+use\s+([A-Za-z_][A-Za-z0-9_\\\\]*(?:\s*,\s*[A-Za-z_][A-Za-z0-9_\\\\]*)*)\s*;/m',
+                $contenido,
+                $coincidencias
+            ) === false
+        ) {
             return [];
         }
 
