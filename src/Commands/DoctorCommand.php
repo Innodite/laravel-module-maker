@@ -12,6 +12,7 @@ use Innodite\LaravelModuleMaker\Commands\Concerns\ReportsFailures;
 use Innodite\LaravelModuleMaker\Services\EventLog;
 use Innodite\LaravelModuleMaker\Support\ModuleMode;
 use Innodite\LaravelModuleMaker\Support\Frontend;
+use Innodite\LaravelModuleMaker\Support\LegacySharedTests;
 use Innodite\LaravelModuleMaker\Support\StubPlaceholder;
 use Innodite\LaravelModuleMaker\Support\Ziggy;
 use Throwable;
@@ -100,6 +101,8 @@ class DoctorCommand extends Command
         $ok = $this->comprobarPermisosDeEscritura() && $ok;
         $this->newLine();
         $ok = $this->comprobarColisiones() && $ok;
+        $this->newLine();
+        $ok = $this->comprobarEstructuraDePruebasRetirada() && $ok;
         $this->newLine();
         $ok = $this->comprobarConfigPublicada() && $ok;
         $this->newLine();
@@ -589,9 +592,119 @@ class DoctorCommand extends Command
      * the screen it generated opens for nobody. The generator says so as it writes, in one line among
      * forty, and that line is read once.
      */
+    /**
+     * El espejo de las colisiones: un grupo de pruebas que carga la forma retirada desde v5.0.0 —
+     * `Tests/Feature/Shared/` con un trait compartido, incorporado con `use <Trait>` en cada
+     * contexto.
+     *
+     * **Por qué en cascada de módulos y no por subfuncionalidad**, a diferencia de `innodite:test`:
+     * ese comando solo mira el grupo que se le pide; este diagnóstico existe justo para encontrar,
+     * de una sola pasada, los que nadie está probando activamente en este momento.
+     *
+     * Detección pura: nunca automigración — el motivo es el mismo que en `TestCommand`, y vive en
+     * {@see LegacySharedTests}.
+     */
+    private function comprobarEstructuraDePruebasRetirada(): bool
+    {
+        $this->line('  <fg=cyan;options=bold>5. Estructura de pruebas retirada</>');
+
+        $modulos = $this->rutaDeModulos();
+
+        if (! File::isDirectory($modulos)) {
+            $this->components->twoColumnDetail('Tests/Feature/', '<fg=yellow>No hay módulos aún</>');
+
+            return true;
+        }
+
+        $hallazgos = [];
+
+        foreach (File::directories($modulos) as $directorioModulo) {
+            foreach ($this->carpetasDeTestsFeature($directorioModulo) as $testsFeature) {
+                $hallazgos = array_merge(
+                    $hallazgos,
+                    $this->hallazgosDeEstructuraRetirada($testsFeature, basename($directorioModulo))
+                );
+            }
+        }
+
+        if ($hallazgos !== []) {
+            $this->fallo(
+                'hay ' . count($hallazgos) . " grupo(s) con la forma de pruebas retirada desde v5.0.0:\n    "
+                . implode("\n    ", $hallazgos),
+                'inlinea el cuerpo del trait, letra por letra, en cada contexto que lo usaba — leyendo '
+                . 'sus aserciones y comentarios, nunca concatenándolos — y borra Shared/. La forma '
+                . 'nueva la explica docs/es/las-pruebas.md.',
+                'Un trait compartido ata un contexto al otro justo donde tienen que poder divergir: el '
+                . 'día que uno necesite su propia lógica de negocio, tocar el trait cambia también al '
+                . 'que no debía cambiar.'
+            );
+
+            return false;
+        }
+
+        $this->components->twoColumnDetail(
+            'Tests/Feature/',
+            '<fg=green>OK — ninguna carpeta Shared/, ninguna incorporación use</>'
+        );
+
+        return true;
+    }
+
+    /**
+     * Cada `Tests/Feature` que exista dentro del módulo, una por subfuncionalidad.
+     *
+     * Mismo recorrido que {@see carpetasDeMigraciones()}: el módulo entero, porque las
+     * subfuncionalidades son sus subcarpetas y `Tests/Feature` vive dentro de cada una, no del
+     * módulo.
+     *
+     * @return array<int, string>
+     */
+    private function carpetasDeTestsFeature(string $directorioModulo): array
+    {
+        $carpetas = [];
+
+        foreach (array_merge([$directorioModulo], File::directories($directorioModulo)) as $candidata) {
+            $testsFeature = "{$candidata}/Tests/Feature";
+
+            if (File::isDirectory($testsFeature)) {
+                $carpetas[] = $testsFeature;
+            }
+        }
+
+        return $carpetas;
+    }
+
+    /**
+     * Lo que se encuentra en UN `Tests/Feature`: la carpeta `Shared/` si existe, y cualquier
+     * incorporación `use <Trait>` en cualquiera de sus contextos (todo lo que no se llame `Shared`).
+     *
+     * @return array<int, string>
+     */
+    private function hallazgosDeEstructuraRetirada(string $testsFeature, string $modulo): array
+    {
+        $hallazgos = [];
+
+        if (File::isDirectory("{$testsFeature}/Shared")) {
+            $hallazgos[] = "{$modulo}: {$testsFeature}/Shared";
+        }
+
+        foreach (File::directories($testsFeature) as $carpetaContexto) {
+            if (basename($carpetaContexto) === 'Shared') {
+                continue;
+            }
+
+            foreach (LegacySharedTests::incorporacionesDeTrait($carpetaContexto) as $archivo => $traits) {
+                $hallazgos[] = "{$modulo}: {$carpetaContexto}/{$archivo} incorpora con use: "
+                    . implode(', ', $traits);
+            }
+        }
+
+        return $hallazgos;
+    }
+
     private function comprobarConfigPublicada(): bool
     {
-        $this->line('  <fg=cyan;options=bold>5. Configuración publicada</>');
+        $this->line('  <fg=cyan;options=bold>6. Configuración publicada</>');
 
         if (File::exists(config_path('make-module.php'))) {
             $this->components->twoColumnDetail(
@@ -614,7 +727,7 @@ class DoctorCommand extends Command
 
     private function comprobarStubsPublicados(): bool
     {
-        $this->line('  <fg=cyan;options=bold>6. Stubs publicados</>');
+        $this->line('  <fg=cyan;options=bold>7. Stubs publicados</>');
 
         $carpeta = rtrim((string) config('make-module.config_path'), '/\\') . '/stubs/contextual';
 
@@ -677,7 +790,7 @@ class DoctorCommand extends Command
      */
     private function mostrarLogDeEventos(): void
     {
-        $this->line('  <fg=cyan;options=bold>7. Log de eventos</>');
+        $this->line('  <fg=cyan;options=bold>8. Log de eventos</>');
 
         $entradas = EventLog::readLog();
 

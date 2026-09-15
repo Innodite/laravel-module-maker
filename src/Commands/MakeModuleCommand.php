@@ -31,7 +31,7 @@ use Throwable;
  *        php artisan innodite:make-module User
  *
  *   3. Componentes individuales en módulo existente:
- *        php artisan innodite:make-module User --context=shared -S -R
+ *        php artisan innodite:make-module User --context=tenant -S -R
  *
  *   4. Desde JSON de configuración dinámica:
  *        php artisan innodite:make-module User --json

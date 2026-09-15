@@ -261,3 +261,83 @@ it('no pasa en verde si la configuración no está publicada', function () {
         "FALLA: no dice cómo publicarla, o dice un tag que no existe.\n{$salida}"
     );
 });
+
+/**
+ * El espejo de las colisiones: la estructura de pruebas retirada desde v5.0.0.
+ *
+ * `innodite:test` solo mira el grupo que se le pide; este diagnóstico existe para encontrar, de una
+ * sola pasada sobre TODOS los módulos, lo que nadie está probando activamente ahora mismo.
+ */
+it('encuentra Shared/ heredado en un módulo, sin necesidad de estar probándolo', function () {
+    $testsFeature = $this->tempPath('Modules/Invoice/Invoice/Tests/Feature');
+
+    File::ensureDirectoryExists("{$testsFeature}/Central");
+    File::ensureDirectoryExists("{$testsFeature}/Shared");
+    File::put(
+        "{$testsFeature}/Shared/CentralInvoiceHttpTests.php",
+        "<?php\n\ntrait CentralInvoiceHttpTests\n{\n}\n"
+    );
+
+    [$codigo, $salida] = diagnostico();
+
+    expect($codigo)->not->toBe(0, "FALLA: pasa en verde con Shared/ heredado.\n{$salida}");
+
+    expect(str_contains($salida, 'Invoice'))->toBeTrue("FALLA: no nombra el módulo afectado.\n{$salida}");
+    expect(str_contains($salida, 'Shared'))->toBeTrue("FALLA: no nombra la carpeta Shared/.\n{$salida}");
+    expect(str_contains($salida, 'v5.0.0'))->toBeTrue(
+        "FALLA: no dice desde cuándo está retirada la forma anterior.\n{$salida}"
+    );
+});
+
+it('encuentra una incorporación use <Trait> en cualquier módulo, en una sola pasada', function () {
+    $testsFeatureInvoice = $this->tempPath('Modules/Invoice/Invoice/Tests/Feature/Central');
+    $testsFeaturePayment = $this->tempPath('Modules/Payment/Payment/Tests/Feature/Tenant');
+
+    File::ensureDirectoryExists($testsFeatureInvoice);
+    File::ensureDirectoryExists($testsFeaturePayment);
+
+    File::put(
+        "{$testsFeatureInvoice}/CentralInvoiceScaffoldTest.php",
+        "<?php\n\nfinal class CentralInvoiceScaffoldTest extends CentralInvoiceTestCase\n{\n"
+        . "    use CentralInvoiceHttpTests;\n}\n"
+    );
+    File::put(
+        "{$testsFeaturePayment}/TenantPaymentScaffoldTest.php",
+        "<?php\n\nfinal class TenantPaymentScaffoldTest extends TenantPaymentTestCase\n{\n"
+        . "    use TenantPaymentHttpTests;\n}\n"
+    );
+
+    [$codigo, $salida] = diagnostico();
+
+    expect($codigo)->not->toBe(0, "FALLA: pasa en verde con un trait incorporado.\n{$salida}");
+
+    expect(str_contains($salida, 'Invoice'))->toBeTrue("FALLA: no reporta el módulo Invoice.\n{$salida}");
+    expect(str_contains($salida, 'Payment'))->toBeTrue(
+        "FALLA: no reporta el módulo Payment en la MISMA pasada.\n{$salida}"
+    );
+    expect(str_contains($salida, 'CentralInvoiceHttpTests'))->toBeTrue(
+        "FALLA: no nombra el trait incorporado en Invoice.\n{$salida}"
+    );
+    expect(str_contains($salida, 'TenantPaymentHttpTests'))->toBeTrue(
+        "FALLA: no nombra el trait incorporado en Payment.\n{$salida}"
+    );
+});
+
+it('un módulo sin Shared/ ni incorporaciones pasa esta comprobación', function () {
+    $testsFeature = $this->tempPath('Modules/Invoice/Invoice/Tests/Feature/Central');
+
+    File::ensureDirectoryExists($testsFeature);
+    File::put(
+        "{$testsFeature}/CentralInvoiceScaffoldTest.php",
+        "<?php\n\nfinal class CentralInvoiceScaffoldTest extends CentralInvoiceTestCase\n{\n}\n"
+    );
+
+    [, $salida] = diagnostico();
+
+    expect(str_contains($salida, 'Estructura de pruebas retirada'))->toBeTrue(
+        "FALLA: el paso ni siquiera corrió.\n{$salida}"
+    );
+    expect(str_contains($salida, 'ninguna carpeta Shared'))->toBeTrue(
+        "FALLA: no declara este módulo limpio.\n{$salida}"
+    );
+});

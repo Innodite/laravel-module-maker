@@ -115,7 +115,7 @@ class ContextResolver
     }
 
     /**
-     * Retorna un contexto por su CARPETA — 'Central', 'Tenant/Shared', 'Tenant/Acme'.
+     * Retorna un contexto por su CARPETA — 'Central', 'Tenant', 'Tenant/Acme'.
      *
      * Existe porque la carpeta es el dato que llevan encima las cosas del proyecto: una coordenada
      * de migración (`Invoice:Central/2026_…php`) nombra la carpeta, no el id. Buscar por id obligaba

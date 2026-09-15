@@ -4,6 +4,38 @@ Todo cambio que afecte a quien usa el paquete. El formato sigue
 [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y las versiones,
 [SemVer](https://semver.org/lang/es/).
 
+## [5.1.0] — 15/09/2026
+
+**Enforcement nuevo, no un fix interno.** A diferencia de la 5.0.1, esta versión SÍ puede hacer
+fallar un proyecto que hoy pasa: si todavía tiene `Tests/Feature/Shared/` —heredado de una versión
+anterior a la 5.0.0—, `innodite:test` e `innodite:doctor` lo van a rechazar donde antes lo dejaban
+pasar en silencio. **Es el propósito de esta versión, no un efecto secundario.**
+
+### Añadido
+
+- **`innodite:test` e `innodite:doctor` rechazan en duro la estructura de pruebas retirada desde la
+  5.0.0.** Un grupo con `Tests/Feature/Shared/` —el trait compartido por pieza, incorporado con
+  `use <Trait>` en cada contexto—, o con esa incorporación aunque la carpeta ya no exista, hace
+  fallar el comando con el fix exacto: inlinear el cuerpo del trait, letra por letra, en cada
+  contexto que lo usaba, y borrar `Shared/`. `innodite:doctor` lo detecta de una sola pasada, para
+  todos los módulos del proyecto.
+
+  **Los dos chequeos son detección pura: ninguno mueve ni fusiona código.** Un trait compartido no
+  se traslada con seguridad sin leer sus aserciones y sus comentarios uno por uno — hacerlo con un
+  script ciego puede perder una aserción o una nota que explica por qué existe.
+
+  **Cómo corregirlo:** por cada contexto (`Central`, `Tenant`) que incorporaba el trait, copia su
+  cuerpo completo dentro de la clase de ese contexto — leyendo cada método, no concatenando el
+  archivo —, y borra `Tests/Feature/Shared/` cuando ya ningún contexto lo use. `docs/es/las-pruebas.md`
+  describe la forma que debe quedar.
+
+### Corregido
+
+- Los últimos dos ejemplos vivos del contexto `shared`, que la 5.0.1 no alcanzó a corregir porque
+  vivían en el docblock de clase, no en una rama de código: `make-module` ofrecía
+  `--context=shared` como ejemplo de uso, y `migrate-one` mencionaba `Tenant/Shared` como si
+  existiera.
+
 ## [5.0.1] — 07/09/2026
 
 **Versión de corrección.** No cambia nada de lo que el paquete genera: quien esté en la `5.0.0`
