@@ -26,6 +26,11 @@ from pathlib import Path
 
 RAIZ = Path(__file__).resolve().parent
 
+# Enlace entre fichas escrito como `archivo.md` — correcto para leerlo en GitHub, donde el
+# navegador de repositorio SÍ resuelve `.md` relativos. `en_linea()` lo reescribe a `#/slug` para
+# el sitio generado, que enruta por hash, no por archivo. Se llena una vez en main().
+MAPA_ENLACES: dict[str, str] = {}
+
 
 def slug_de(texto: str) -> str:
     """id de ancla para un encabezado: sin acentos, sin signos, en minúsculas."""
@@ -57,7 +62,14 @@ def en_linea(texto: str) -> str:
     salida = re.sub(r'\*\*([^*]+)\*\*', r'<strong>\1</strong>', salida)
     # El tachado marca lo retirado, y sin esto salían las virgulillas literales en la tabla.
     salida = re.sub(r'~~([^~]+)~~', r'<del>\1</del>', salida)
-    salida = re.sub(r'\[([^\]]+)\]\(([^)]+)\)', r'<a href="\2">\1</a>', salida)
+
+    def enlace(m: re.Match[str]) -> str:
+        etiqueta, destino = m.group(1), m.group(2)
+        if destino in MAPA_ENLACES:
+            destino = f'#/{MAPA_ENLACES[destino]}'
+        return f'<a href="{destino}">{etiqueta}</a>'
+
+    salida = re.sub(r'\[([^\]]+)\]\(([^)]+)\)', enlace, salida)
     return salida
 
 
@@ -187,6 +199,9 @@ def main() -> None:
     catalogo = json.loads((RAIZ / 'fichas.json').read_text(encoding='utf-8'))
     paginas = sorted(catalogo['pages'], key=lambda p: p['position'])
 
+    MAPA_ENLACES.clear()
+    MAPA_ENLACES.update({Path(p['file']).name: p['slug'] for p in paginas})
+
     indice = ['<a href="#/" class="doc-indice__seccion" data-ruta="">Portada</a>',
               '<p class="doc-indice__familia">El manual</p>']
     articulos = []
@@ -234,6 +249,7 @@ PLANTILLA = r"""<!DOCTYPE html>
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Laravel Module Maker — Innodite</title>
 <meta name="description" content="Generador de módulos para Laravel: capas, seeders, migraciones, permisos, vistas y pruebas, con una sola estructura.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='16' fill='%2300b4e0'/%3E%3C/svg%3E">
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
