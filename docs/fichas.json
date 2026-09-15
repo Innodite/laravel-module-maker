@@ -1,13 +1,16 @@
 {
   "pages": [
-    { "slug": "instalacion",             "locale": "es", "title": "1 · Instalación",                  "file": "es/instalacion.md",             "position": 1 },
-    { "slug": "elegir-el-modo",          "locale": "es", "title": "2 · Elegir el modo del proyecto",   "file": "es/elegir-el-modo.md",          "position": 2 },
-    { "slug": "la-forma-del-arbol",      "locale": "es", "title": "3 · La forma del árbol",            "file": "es/la-forma-del-arbol.md",      "position": 3 },
-    { "slug": "los-comandos",            "locale": "es", "title": "4 · Los comandos",                  "file": "es/los-comandos.md",            "position": 4 },
-    { "slug": "crear-un-modulo",         "locale": "es", "title": "5 · Crear un módulo",               "file": "es/crear-un-modulo.md",         "position": 5 },
-    { "slug": "desplegar",               "locale": "es", "title": "6 · Desplegar",                     "file": "es/desplegar.md",               "position": 6 },
-    { "slug": "las-pruebas",             "locale": "es", "title": "7 · Las pruebas",                   "file": "es/las-pruebas.md",             "position": 7 },
-    { "slug": "personalizar-lo-generado","locale": "es", "title": "8 · Personalizar lo generado",      "file": "es/personalizar-lo-generado.md","position": 8 },
-    { "slug": "cuando-no-usarlo",        "locale": "es", "title": "9 · Cuándo NO usarlo",              "file": "es/cuando-no-usarlo.md",        "position": 9 }
+    { "slug": "instalacion",            "locale": "es", "title": "1 · Instalación",                        "file": "es/instalacion.md",            "position": 1,  "family": "El manual" },
+    { "slug": "modificaciones-manuales","locale": "es", "title": "2 · Modificaciones manuales",             "file": "es/modificaciones-manuales.md","position": 2,  "family": "El manual" },
+    { "slug": "comando-doctor",         "locale": "es", "title": "innodite:doctor",                         "file": "es/comando-doctor.md",         "position": 3,  "family": "Los comandos", "tabs": true },
+    { "slug": "comando-module-setup",   "locale": "es", "title": "innodite:module-setup",                   "file": "es/comando-module-setup.md",   "position": 4,  "family": "Los comandos", "tabs": true },
+    { "slug": "comando-make-module",    "locale": "es", "title": "innodite:make-module",                    "file": "es/comando-make-module.md",    "position": 5,  "family": "Los comandos", "tabs": true },
+    { "slug": "comando-add-entity",     "locale": "es", "title": "innodite:add-entity",                     "file": "es/comando-add-entity.md",     "position": 6,  "family": "Los comandos", "tabs": true },
+    { "slug": "comando-deploy",         "locale": "es", "title": "innodite:deploy",                         "file": "es/comando-deploy.md",         "position": 7,  "family": "Los comandos", "tabs": true },
+    { "slug": "comando-migrate-one",    "locale": "es", "title": "innodite:migrate-one",                    "file": "es/comando-migrate-one.md",    "position": 8,  "family": "Los comandos", "tabs": true },
+    { "slug": "comando-crear-bd-test",  "locale": "es", "title": "innodite:crear-bd-test",                  "file": "es/comando-crear-bd-test.md",  "position": 9,  "family": "Los comandos", "tabs": true },
+    { "slug": "comando-test",           "locale": "es", "title": "innodite:test",                           "file": "es/comando-test.md",           "position": 10, "family": "Los comandos", "tabs": true },
+    { "slug": "comando-publish-stubs",  "locale": "es", "title": "innodite:publish-stubs",                  "file": "es/comando-publish-stubs.md",  "position": 11, "family": "Los comandos", "tabs": true },
+    { "slug": "comando-migrate-plan",   "locale": "es", "title": "innodite:migrate-plan (retirado)",        "file": "es/comando-migrate-plan.md",   "position": 12, "family": "Los comandos" }
   ]
 }

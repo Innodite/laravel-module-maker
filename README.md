@@ -1154,9 +1154,9 @@ con `extra.innodite-docs`:
 { "extra": { "innodite-docs": "docs/fichas.json" } }
 ```
 
-👉 **[Leerlo aquí](https://innodite.github.io/laravel-module-maker/)** — nueve fichas: instalación,
-elegir el modo, **la forma del árbol**, los comandos, crear un módulo, desplegar, las pruebas,
-personalizar lo generado y **cuándo NO usarlo**.
+👉 **[Leerlo aquí](https://innodite.github.io/laravel-module-maker/)** — instalación, modificaciones
+manuales del proyecto anfitrión, y una ficha por comando con pestañas: qué hace, qué parámetros
+recibe, qué archivos o cambios genera, personalización de stubs (en los generadores) y ejemplos.
 
 ⭐ **Vive aquí a propósito**: quien cambia un comando actualiza su ficha **en el mismo commit**. Una
 documentación que se escribe en otro sitio se actualiza «después», y «después» es como se llega a un
