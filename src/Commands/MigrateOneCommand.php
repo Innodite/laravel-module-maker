@@ -21,7 +21,7 @@ use Throwable;
  * **La base de datos sale de la coordenada, no de un manifiesto.** Antes había que decir además
  * contra qué archivo JSON se registraba, y de ese nombre se derivaba la conexión: pasar otro
  * `--manifest` ejecutaba contra otra base sin advertirlo. La coordenada ya lleva encima su carpeta
- * de contexto —`Central`, `Tenant/Shared`, `Tenant/Acme`—, que es el dato de verdad; `--context`
+ * de contexto —`Central`, `Tenant`, `Tenant/Acme`—, que es el dato de verdad; `--context`
  * queda solo para forzarlo cuando haga falta.
  *
  * **Y ya no registra nada en ninguna parte.** El orden de las migraciones lo declara el trait
