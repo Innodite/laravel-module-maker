@@ -42,3 +42,24 @@ Las capas —que el controlador delegue, que solo el repositorio toque el modelo
 cada ruta, el esquema, el despliegue y las pantallas. En contexto de cliente, la prueba **aparta la
 identificación por dominio**: en una suite no hay dominio de cliente y cada petición moriría con un
 404 donde se espera un 403. Lo que se mide es la puerta del permiso.
+
+## La forma del grupo, en multitenant
+
+`Tests/Feature/` lleva una carpeta por contexto —`Central/`, `Tenant/`— y cada una trae el cuerpo
+completo de sus seis piezas, aunque hoy sea igual al del otro contexto:
+
+```
+Tests/Feature/
+├── Central/
+│   ├── CentralPaymentContract.php
+│   ├── CentralPaymentTestCase.php
+│   └── … las cinco piezas del contrato
+└── Tenant/
+    ├── TenantPaymentContract.php
+    ├── TenantPaymentTestCase.php
+    └── … las cinco piezas del contrato
+```
+
+Ninguna pieza incorpora nada de la otra: cada contexto puede crecer con su propia lógica de negocio
+sin arrastrar al otro. `innodite:test` e `innodite:doctor` rechazan un grupo que no tenga esta forma
+— dicen exactamente qué encontraron y cómo dejarlo así.
