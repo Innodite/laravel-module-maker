@@ -1,27 +1,28 @@
 #!/usr/bin/env bash
-# Arma una carpeta lista para subir al servidor por panel: regenera `index.html` desde las
-# fichas (`armar.py`) y lo copia a `docs/publicar/` junto con el landing gerencial y sus
-# imágenes, más un .zip al lado para paneles que prefieren subir un solo archivo.
+# Arma una carpeta lista para subir al servidor por panel: regenera `manual.html` desde las
+# fichas (`armar.py`) y lo copia a `docs/publicar/` junto con la portada gerencial (`index.html`,
+# lo primero que ve quien entra al subdominio) y sus imágenes, más un .zip al lado para paneles
+# que prefieren subir un solo archivo.
 #
 # El sitio es autocontenido (CSS y JS inline, sin build, sin dependencias propias — solo
-# Google Fonts por CDN); lo único que no va inline son las imágenes de Nodite en el landing.
+# Google Fonts por CDN); lo único que no va inline son las imágenes de Nodite en la portada.
 #
 #   docs/publicar.sh
 #
-# Deja: docs/publicar/ (index.html, landing-gerencial.html, assets/)  y  docs/publicar.zip
+# Deja: docs/publicar/ (index.html, manual.html, assets/)  y  docs/publicar.zip
 
 set -euo pipefail
 
 RAIZ="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 DESTINO="$RAIZ/publicar"
 
-echo "Regenerando index.html desde las fichas…"
+echo "Regenerando manual.html desde las fichas…"
 python3 "$RAIZ/armar.py"
 
 rm -rf "$DESTINO"
 mkdir -p "$DESTINO"
 cp "$RAIZ/index.html" "$DESTINO/index.html"
-cp "$RAIZ/landing-gerencial.html" "$DESTINO/landing-gerencial.html"
+cp "$RAIZ/manual.html" "$DESTINO/manual.html"
 cp -r "$RAIZ/assets" "$DESTINO/assets"
 
 ZIP="$RAIZ/publicar.zip"
