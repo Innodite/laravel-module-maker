@@ -95,27 +95,57 @@ body {
   padding: 6px 12px; color: var(--app-tinta-2); text-decoration: none;
   background: var(--app-fondo-2); border: 1px solid var(--app-borde);
   border-radius: 0 var(--app-radio-sm) var(--app-radio-sm) var(--app-radio-sm);
+  transition: color .12s ease, border-color .12s ease;
 }
 .doc-boton:hover { color: var(--app-tinta); border-color: var(--app-borde-vivo); }
 
 .doc {
-  display: grid; grid-template-columns: 264px minmax(0, 1fr); gap: 28px;
-  align-items: start; max-inline-size: 1200px; margin: 0 auto; padding: 28px;
+  display: grid; grid-template-columns: 264px minmax(0, 1fr) 200px; gap: 28px;
+  align-items: start; max-inline-size: 1320px; margin: 0 auto; padding: 28px;
 }
 .doc__indice {
   position: sticky; inset-block-start: 76px;
   max-block-size: calc(100vh - 100px); overflow-y: auto; padding-inline-end: 4px;
 }
 .doc__contenido { min-inline-size: 0; }
+.doc__esquema {
+  position: sticky; inset-block-start: 76px;
+  max-block-size: calc(100vh - 100px); overflow-y: auto;
+  display: grid; gap: 2px; align-content: start;
+}
+.doc__esquema[hidden] { display: none; }
+.doc-esquema__titulo {
+  margin: 0 0 6px; font-size: 11px; font-weight: 600; letter-spacing: .06em;
+  text-transform: uppercase; color: var(--app-tinta-3);
+}
+.doc__esquema a {
+  padding: 5px 10px; font-size: 12.5px; line-height: 1.5; color: var(--app-tinta-2);
+  text-decoration: none; border-inline-start: 2px solid transparent;
+}
+.doc__esquema a:hover { color: var(--app-tinta); border-inline-start-color: var(--app-borde-vivo); }
+@media (max-width: 1180px) {
+  .doc { grid-template-columns: 264px minmax(0, 1fr); }
+  .doc__esquema { display: none; }
+}
 @media (max-width: 900px) {
   .doc { grid-template-columns: 1fr; padding: 20px; }
   .doc__indice { position: static; max-block-size: none; }
 }
 
+.doc-buscar {
+  inline-size: 100%; margin-block-end: 10px; padding: 7px 10px;
+  font: inherit; font-size: 12.5px; color: var(--app-tinta);
+  background: var(--app-fondo-2); border: 1px solid var(--app-borde);
+  border-radius: 0 var(--app-radio-sm) var(--app-radio-sm) var(--app-radio-sm);
+}
+.doc-buscar:focus { outline: none; border-color: var(--app-marca); }
+.doc-buscar::placeholder { color: var(--app-tinta-3); }
+
 .doc-indice { display: grid; gap: 6px; }
 .doc-indice__seccion, .doc-indice__pieza {
   display: block; text-decoration: none; color: var(--app-tinta-2);
   border-radius: 0 var(--app-radio-sm) var(--app-radio-sm) var(--app-radio-sm);
+  transition: background-color .12s ease, color .12s ease;
 }
 .doc-indice__seccion { padding: 9px 12px; font-size: 14px; }
 .doc-indice__pieza { padding: 6px 12px; font-size: 13px; }
@@ -149,20 +179,32 @@ body {
 .doc-lista li { margin-block-end: 6px; line-height: 1.6; }
 .doc-lista li::marker { content: '·  '; color: var(--app-tinta-3); }
 
-blockquote {
+/* Nota: cita o párrafo que empieza con ⛔/⚠️/⭐/✅. Mismo molde, un solo color que cambia. */
+.doc-nota {
   margin: 0 0 16px; padding: 14px 18px;
   background: var(--app-fondo-2); color: var(--app-tinta-2);
-  border-inline-start: 2px solid var(--in-cian-claro);
+  border-inline-start: 3px solid var(--nota-color, var(--in-cian-claro));
   border-radius: 0 var(--app-radio) var(--app-radio) var(--app-radio);
 }
+.doc-nota p { margin: 0; }
+.doc-nota--peligro { --nota-color: #ef5a5a; background: rgba(239, 90, 90, .07); }
+.doc-nota--aviso   { --nota-color: #e0a030; background: rgba(224, 160, 48, .07); }
+.doc-nota--clave   { --nota-color: var(--in-cian); background: var(--app-marca-suave); }
+.doc-nota--ok      { --nota-color: #3fb872; background: rgba(63, 184, 114, .07); }
 
 code {
   font-family: var(--app-mono); font-size: .88em;
   padding: 1px 5px; background: var(--app-fondo-2); color: var(--in-cian-claro);
   border-radius: var(--app-radio-xs);
 }
+.doc-pre { position: relative; margin: 0 0 16px; }
+.doc-pre__lang {
+  position: absolute; inset-block-start: 10px; inset-inline-end: 14px;
+  font-family: var(--app-mono); font-size: 10.5px; color: var(--app-tinta-3);
+  text-transform: uppercase; letter-spacing: .06em; pointer-events: none;
+}
 pre {
-  margin: 0 0 16px; padding: 16px 18px; overflow-x: auto;
+  margin: 0; padding: 16px 18px; overflow-x: auto;
   background: var(--app-fondo-2); border: 1px solid var(--app-borde);
   border-radius: 0 var(--app-radio) var(--app-radio) var(--app-radio);
 }
@@ -185,13 +227,29 @@ del code { color: var(--app-tinta-3); }
   background: var(--app-fondo-2); border: 1px solid var(--app-borde);
   border-inline-start: 2px solid var(--in-cian-claro);
   border-radius: 0 var(--app-radio) var(--app-radio) var(--app-radio);
+  transition: border-color .12s ease;
 }
 .doc-carta:hover { border-color: var(--app-borde-vivo); border-inline-start-color: var(--app-marca); }
 .doc-carta h3 { margin: 0 0 4px; font-size: 14.5px; font-weight: 600; color: var(--app-tinta); }
 .doc-carta p { margin: 0; font-size: 13px; color: var(--app-tinta-2); }
 
+.doc-paginacion {
+  display: flex; justify-content: space-between; gap: 16px;
+  margin-block-start: 40px; padding-block-start: 20px;
+  border-block-start: 1px solid var(--app-borde);
+}
+.doc-paginacion a {
+  flex: 1; max-inline-size: 48%; padding: 12px 16px; text-decoration: none;
+  color: var(--app-tinta-2); font-size: 13px; line-height: 1.4;
+  background: var(--app-fondo-2); border: 1px solid var(--app-borde);
+  border-radius: 0 var(--app-radio) var(--app-radio) var(--app-radio);
+  transition: color .12s ease, border-color .12s ease;
+}
+.doc-paginacion a:hover { color: var(--app-tinta); border-color: var(--app-borde-vivo); }
+.doc-paginacion__siguiente { text-align: end; margin-inline-start: auto; }
+
 footer.doc-pie {
-  max-inline-size: 1200px; margin: 0 auto; padding: 32px 28px;
+  max-inline-size: 1320px; margin: 0 auto; padding: 32px 28px;
   border-block-start: 1px solid var(--app-borde);
   color: var(--app-tinta-3); font-size: 12.5px;
 }
@@ -200,7 +258,7 @@ footer.doc-pie {
 <body>
 
 <header class="doc-barra">
-  <div class="doc-marca">Innodite <b>Module Maker</b> <span class="doc-version">v5.0</span></div>
+  <div class="doc-marca">Innodite <b>Module Maker</b> <span class="doc-version">v5.1</span></div>
   <div class="doc-acciones">
     <a class="doc-boton" href="https://github.com/Innodite/laravel-module-maker">Repositorio</a>
     <button class="doc-boton" id="tema" type="button">Tema</button>
@@ -209,6 +267,7 @@ footer.doc-pie {
 
 <div class="doc">
   <aside class="doc__indice">
+    <input type="search" id="doc-buscar" class="doc-buscar" placeholder="Buscar… ( / )" autocomplete="off">
     <nav class="doc-indice">
 <a href="#/" class="doc-indice__seccion" data-ruta="">Portada</a>
 <p class="doc-indice__familia">El manual</p>
@@ -247,39 +306,39 @@ footer.doc-pie {
         <a class="doc-carta" href="#/los-comandos"><h3>Los comandos</h3><p>Los diez, y el orden en que se usan.</p></a>
       </div>
 
-      <h2>Instalación, en dos líneas</h2>
-      <pre><code>composer require innodite/laravel-module-maker:^5.0
-php artisan innodite:module-setup</code></pre>
+      <h2 id="instalacion-en-dos-lineas">Instalación, en dos líneas</h2>
+      <div class="doc-pre"><span class="doc-pre__lang">bash</span><pre><code>composer require innodite/laravel-module-maker:^5.1
+php artisan innodite:module-setup</code></pre></div>
       <p>Y cuando algo no salga como esperabas, <code>php artisan innodite:doctor</code>: diagnostica
         en cascada y cada fallo trae la línea que lo arregla.</p>
     </article>
 
 <article class="doc-pagina" data-ruta="instalacion" hidden><header class="doc-cabecera"><p class="doc-migas">Manual · Laravel Module Maker</p><h1>Instalación</h1></header><p>El paquete se instala con Composer y necesita <strong>un solo paso más</strong> antes de poder generar nada.</p>
-<pre><code class="lang-bash">composer require innodite/laravel-module-maker:^5.0
-php artisan innodite:module-setup</code></pre>
-<p><strong>La versión es la 5.0</strong>, y cambia la forma de todo lo que el paquete escribe: un módulo generado con una 4.x no coincide con lo que genera esta, ni en carpetas ni en namespaces.</p>
+<div class="doc-pre"><span class="doc-pre__lang">bash</span><pre><code class="lang-bash">composer require innodite/laravel-module-maker:^5.1
+php artisan innodite:module-setup</code></pre></div>
+<p><strong>La versión es la 5.1</strong>, y cambia la forma de todo lo que el paquete escribe: un módulo generado con una 4.x no coincide con lo que genera esta, ni en carpetas ni en namespaces.</p>
 <p><code>module-setup</code> es lo que elige el <strong>modo del proyecto</strong> y deja escrita la configuración. Sin modo elegido los comandos se niegan a generar y dicen cómo elegirlo — eso es deliberado, y el porqué está en la ficha del modo.</p>
-<h2>Comprobar que va a funcionar</h2>
-<pre><code class="lang-bash">php artisan innodite:doctor</code></pre>
-<p>⭐ <strong>Empieza siempre por aquí cuando algo no salga como esperabas.</strong> Es un diagnóstico en cascada: primero el entorno del generador —si puede escribir, si su configuración está publicada—, después el contrato de tu proyecto: que el modelo de usuario sepa resolver permisos, que el puente de contexto esté registrado y que estén las piezas de las que dependen las pantallas generadas.</p>
+<h2 id="comprobar-que-va-a-funcionar">Comprobar que va a funcionar</h2>
+<div class="doc-pre"><span class="doc-pre__lang">bash</span><pre><code class="lang-bash">php artisan innodite:doctor</code></pre></div>
+<div class="doc-nota doc-nota--clave"><p>⭐ <strong>Empieza siempre por aquí cuando algo no salga como esperabas.</strong> Es un diagnóstico en cascada: primero el entorno del generador —si puede escribir, si su configuración está publicada—, después el contrato de tu proyecto: que el modelo de usuario sepa resolver permisos, que el puente de contexto esté registrado y que estén las piezas de las que dependen las pantallas generadas.</p></div>
 <p>Cada fallo trae su línea de arreglo. Si el entorno falla, la segunda etapa no se ejecuta y el comando lo dice; para verlo todo de una vez, <code>--continuar</code>.</p>
-<h2>Lo que tu proyecto tiene que traer</h2>
+<h2 id="lo-que-tu-proyecto-tiene-que-traer">Lo que tu proyecto tiene que traer</h2>
 <p>El paquete se escribe <strong>contra</strong> las convenciones de tu proyecto, no las instala:</p>
 <div class="doc-tabla"><table><thead><tr><th>Necesitas</th><th>Para qué</th></tr></thead><tbody><tr><td>Las tablas de permisos y roles</td><td>El generador escribe los permisos de cada ruta; las tablas son tuyas</td></tr><tr><td>Ziggy, con <code>@routes</code> en el layout</td><td>Las pantallas generadas piden sus rutas <strong>por su nombre</strong></td></tr><tr><td>El namespace <code>Modules\</code> en tu <code>autoload.psr-4</code></td><td>Sin él, nada de lo generado resuelve</td></tr></tbody></table></div>
-<p>⚠️ <strong>Las tres fallan en silencio si faltan</strong>, y por eso el <code>doctor</code> las mira. La más traicionera es la segunda: sin ella la pantalla se genera perfecta y muere al abrirse, con un error de JavaScript que no menciona ni al módulo ni al paquete.</p></article>
+<div class="doc-nota doc-nota--aviso"><p>⚠️ <strong>Las tres fallan en silencio si faltan</strong>, y por eso el <code>doctor</code> las mira. La más traicionera es la segunda: sin ella la pantalla se genera perfecta y muere al abrirse, con un error de JavaScript que no menciona ni al módulo ni al paquete.</p></div><nav class="doc-paginacion"><span></span><a class="doc-paginacion__siguiente" href="#/elegir-el-modo">Elegir el modo del proyecto →</a></nav></article>
 <article class="doc-pagina" data-ruta="elegir-el-modo" hidden><header class="doc-cabecera"><p class="doc-migas">Manual · Laravel Module Maker</p><h1>Elegir el modo del proyecto</h1></header><p>El modo decide la <strong>forma</strong> de todo lo que se genera, y se elige una vez, al instalar.</p>
 <div class="doc-tabla"><table><thead><tr><th>Modo</th><th>Cuándo</th><th>Qué cambia en lo generado</th></tr></thead><tbody><tr><td><code>single-app</code></td><td>Una aplicación, una base de datos</td><td>Sin contextos: <code>--context</code> no se pasa</td></tr><tr><td><code>multitenant</code></td><td>Una aplicación central y varios inquilinos</td><td>Cada archivo vive bajo la carpeta de su contexto y lleva su prefijo</td></tr></tbody></table></div>
-<pre><code class="lang-bash">php artisan innodite:module-setup --mode=single-app
-php artisan innodite:module-setup --mode=multitenant --tenancy=stancl</code></pre>
-<h2>⛔ Ningún comando adivina el modo</h2>
+<div class="doc-pre"><span class="doc-pre__lang">bash</span><pre><code class="lang-bash">php artisan innodite:module-setup --mode=single-app
+php artisan innodite:module-setup --mode=multitenant --tenancy=stancl</code></pre></div>
+<h2 id="ningun-comando-adivina-el-modo">⛔ Ningún comando adivina el modo</h2>
 <p>Y ninguno asume uno por defecto: sin modo elegido se niegan a generar y dicen cómo elegirlo.</p>
 <p>Es la decisión de diseño más importante del paquete. Un valor por defecto puesto «para que nadie note nada» no produce un error: produce una <strong>estructura equivocada, multiplicada por cada módulo</strong> que se genere a partir de ahí, y descubierta mucho después.</p>
-<h2>En multiinquilino hay dos contextos, y solo dos</h2>
+<h2 id="en-multiinquilino-hay-dos-contextos-y-solo-dos">En multiinquilino hay dos contextos, y solo dos</h2>
 <div class="doc-tabla"><table><thead><tr><th>Contexto</th><th>Dónde vive</th><th>Archivo de rutas</th><th>Permiso</th><th>¿Declara conexión el modelo?</th></tr></thead><tbody><tr><td><code>central</code></td><td>La aplicación que administra a los demás</td><td><code>web.php</code></td><td><code>central-permission</code></td><td><strong>Sí</strong></td></tr><tr><td><code>tenant</code></td><td>Lo que corre dentro de cada inquilino</td><td><code>tenant.php</code></td><td><code>tenant-permission</code></td><td><strong>No</strong></td></tr></tbody></table></div>
-<p>⭐ <strong>Y esa última columna es la que más cara sale equivocar.</strong> El modelo del inquilino <strong>no</strong> nombra su conexión, porque quien la conmuta es el paquete de tenencia al identificar la petición. Escribirla ahí ata el modelo a una base concreta y rompe exactamente lo que protege.</p>
-<h2>Si tu proyecto necesita otro contexto, lo declara</h2>
+<div class="doc-nota doc-nota--clave"><p>⭐ <strong>Y esa última columna es la que más cara sale equivocar.</strong> El modelo del inquilino <strong>no</strong> nombra su conexión, porque quien la conmuta es el paquete de tenencia al identificar la petición. Escribirla ahí ata el modelo a una base concreta y rompe exactamente lo que protege.</p></div>
+<h2 id="si-tu-proyecto-necesita-otro-contexto-lo-declara">Si tu proyecto necesita otro contexto, lo declara</h2>
 <p>El paquete trae dos de fábrica y no inventa más. Un proyecto que necesite uno propio —un eje de informes, una consola de soporte— lo añade a su <code>module-maker-config/contexts.json</code> con lo que ese contexto es:</p>
-<pre><code class="lang-json">&quot;reporting&quot;: {
+<div class="doc-pre"><span class="doc-pre__lang">json</span><pre><code class="lang-json">&quot;reporting&quot;: {
     &quot;id&quot;: &quot;reporting&quot;,
     &quot;is_tenant&quot;: false,
     &quot;folder&quot;: &quot;Reporting&quot;,
@@ -287,18 +346,18 @@ php artisan innodite:module-setup --mode=multitenant --tenancy=stancl</code></pr
     &quot;connection_key&quot;: &quot;reporting&quot;,
     &quot;permission_prefix&quot;: &quot;reporting_&quot;,
     &quot;permission_middleware&quot;: &quot;reporting-permission&quot;
-}</code></pre>
+}</code></pre></div>
 <p>Y a partir de ahí <code>--context=reporting</code> genera como cualquier otro: la carpeta, el prefijo de las clases, el archivo de rutas, el permiso de cada una y la conexión salen <strong>de lo que declaraste</strong>, no de una lista escrita dentro del paquete.</p>
-<p>⚠️ Lo que no puedes es <strong>quitar</strong> <code>central</code> ni <code>tenant</code>: el diagnóstico los sigue reclamando. Un contexto propio se añade, no sustituye.</p>
-<h2>El paquete de tenencia también se declara</h2>
-<pre><code class="lang-bash">php artisan innodite:module-setup --mode=multitenant --tenancy=stancl</code></pre>
-<p>Los archivos de rutas de un proyecto multiinquilino necesitan una envoltura, y esa envoltura está escrita en el vocabulario del paquete de tenencia concreto. Si el tuyo no está soportado, declara <code>--tenancy=none</code>: el generador <strong>no inventa</strong> la envoltura y deja el archivo con una nota que dice dónde va y qué haría, en vez de escribir algo que parece correcto y no lo es.</p></article>
+<div class="doc-nota doc-nota--aviso"><p>⚠️ Lo que no puedes es <strong>quitar</strong> <code>central</code> ni <code>tenant</code>: el diagnóstico los sigue reclamando. Un contexto propio se añade, no sustituye.</p></div>
+<h2 id="el-paquete-de-tenencia-tambien-se-declara">El paquete de tenencia también se declara</h2>
+<div class="doc-pre"><span class="doc-pre__lang">bash</span><pre><code class="lang-bash">php artisan innodite:module-setup --mode=multitenant --tenancy=stancl</code></pre></div>
+<p>Los archivos de rutas de un proyecto multiinquilino necesitan una envoltura, y esa envoltura está escrita en el vocabulario del paquete de tenencia concreto. Si el tuyo no está soportado, declara <code>--tenancy=none</code>: el generador <strong>no inventa</strong> la envoltura y deja el archivo con una nota que dice dónde va y qué haría, en vez de escribir algo que parece correcto y no lo es.</p><nav class="doc-paginacion"><a class="doc-paginacion__anterior" href="#/instalacion">← Instalación</a><a class="doc-paginacion__siguiente" href="#/la-forma-del-arbol">La forma del árbol →</a></nav></article>
 <article class="doc-pagina" data-ruta="la-forma-del-arbol" hidden><header class="doc-cabecera"><p class="doc-migas">Manual · Laravel Module Maker</p><h1>La forma del árbol</h1></header><p>Lo que el paquete escribe tiene una sola forma, y conviene leerla una vez:</p>
-<pre><code>Modules/&lt;Módulo&gt;/&lt;SubFuncionalidad&gt;/&lt;Capa&gt;/&lt;Contexto&gt;/&lt;Archivo&gt;</code></pre>
+<div class="doc-pre"><pre><code>Modules/&lt;Módulo&gt;/&lt;SubFuncionalidad&gt;/&lt;Capa&gt;/&lt;Contexto&gt;/&lt;Archivo&gt;</code></pre></div>
 <p><strong>Manda la subfuncionalidad, la capa va dentro de ella y el contexto es la hoja.</strong> En aplicación única el último tramo no existe y el resto es idéntico, así que los dos modos <strong>comparten</strong> estructura en vez de parecerse.</p>
-<h2>Un módulo generado, de verdad</h2>
+<h2 id="un-modulo-generado-de-verdad">Un módulo generado, de verdad</h2>
 <p>Esto es lo que deja <code>innodite:make-module Invoice --context=central</code>, medido sobre la ejecución real:</p>
-<pre><code>Modules/Invoice/
+<div class="doc-pre"><pre><code>Modules/Invoice/
 ├── Docs/                                    ← architecture · history · schema
 ├── Routes/web.php
 ├── Providers/Central/CentralInvoiceServiceProvider.php
@@ -318,133 +377,150 @@ php artisan innodite:module-setup --mode=multitenant --tenancy=stancl</code></pr
     ├── Database/Factories/Central/CentralInvoiceFactory.php
     ├── resources/js/Pages/Central/          ← Index · Show · Create · Edit
     ├── resources/js/__tests__/Central/
-    └── Tests/Feature/Central/               ← las siete piezas del contrato</code></pre>
+    └── Tests/Feature/Central/               ← las siete piezas del contrato</code></pre></div>
 <p><strong>37 archivos.</strong> Y en aplicación única salen <strong>los mismos 37</strong>, sin el tramo <code>Central/</code> y sin el prefijo en los nombres: <code>Invoice/Services/InvoiceService.php</code>.</p>
-<h2>Qué queda al nivel del módulo, y por qué</h2>
+<h2 id="que-queda-al-nivel-del-modulo-y-por-que">Qué queda al nivel del módulo, y por qué</h2>
 <p>Cuatro cosas no pertenecen a ninguna subfuncionalidad concreta:</p>
 <div class="doc-tabla"><table><thead><tr><th></th><th></th></tr></thead><tbody><tr><td><code>Docs/</code></td><td>Documenta el módulo entero</td></tr><tr><td><code>Routes/</code></td><td>Un archivo por contexto — <code>web.php</code> para el central, <code>tenant.php</code> para el inquilino</td></tr><tr><td><code>Providers/&lt;Contexto&gt;/</code></td><td><strong>Uno por contexto.</strong> Con uno solo, ese archivo era el único sitio del módulo donde los contextos se mezclaban, justo el que decide qué implementación se inyecta</td></tr><tr><td><code>Database/Seeders/Application/&lt;Contexto&gt;/</code></td><td>Los tres maestros que levantan el módulo entero</td></tr></tbody></table></div>
-<h2>Por qué la subfuncionalidad va delante</h2>
+<h2 id="por-que-la-subfuncionalidad-va-delante">Por qué la subfuncionalidad va delante</h2>
 <p>Con la capa por delante —<code>Http/Controllers/Central/User/…</code>—, ver qué tiene una subfuncionalidad obligaba a abrir doce carpetas; y con el contexto por delante, <strong>cada capa duplicaba su rama entera por contexto</strong>.</p>
 <p>Con este orden, una subfuncionalidad es <strong>autocontenida</strong>: se lee, se mueve y se borra de una pieza. Y añadir un contexto no duplica el árbol, solo añade una hoja.</p>
-<h2>Los contratos también viven en su contexto</h2>
-<pre><code>Invoice/Services/Contracts/Central/CentralInvoiceServiceInterface.php</code></pre>
-<p>La carpeta del contexto está —es la hoja, aquí como en todas las capas—, y <code>Contracts/</code> se intercala antes. Cada implementación tiene su contrato en su contexto, que es lo que permite inyectar una u otra según dónde corra el código.</p></article>
+<h2 id="los-contratos-tambien-viven-en-su-contexto">Los contratos también viven en su contexto</h2>
+<div class="doc-pre"><pre><code>Invoice/Services/Contracts/Central/CentralInvoiceServiceInterface.php</code></pre></div>
+<p>La carpeta del contexto está —es la hoja, aquí como en todas las capas—, y <code>Contracts/</code> se intercala antes. Cada implementación tiene su contrato en su contexto, que es lo que permite inyectar una u otra según dónde corra el código.</p><nav class="doc-paginacion"><a class="doc-paginacion__anterior" href="#/elegir-el-modo">← Elegir el modo del proyecto</a><a class="doc-paginacion__siguiente" href="#/los-comandos">Los comandos →</a></nav></article>
 <article class="doc-pagina" data-ruta="los-comandos" hidden><header class="doc-cabecera"><p class="doc-migas">Manual · Laravel Module Maker</p><h1>Los comandos</h1></header><p>Diez comandos, y el orden en que se usan es casi siempre el mismo.</p>
 <div class="doc-tabla"><table><thead><tr><th>Comando</th><th>Para qué</th></tr></thead><tbody><tr><td><code>innodite:doctor</code></td><td><strong>Empieza por aquí.</strong> Diagnóstico en cascada, con la línea de arreglo de cada fallo</td></tr><tr><td><code>innodite:module-setup</code></td><td>Elige el modo del proyecto y deja escrita la configuración</td></tr><tr><td><code>innodite:make-module</code></td><td>Genera un módulo completo y lo declara en el orden de despliegue</td></tr><tr><td><code>innodite:add-entity</code></td><td>Añade una subfuncionalidad a un módulo que ya existe</td></tr><tr><td><code>innodite:deploy</code></td><td>Levanta el proyecto: esquema, datos canónicos y permisos, en el orden declarado</td></tr><tr><td><code>innodite:migrate-one</code></td><td>Aplica <strong>una</strong> migración concreta, contra la base de su contexto</td></tr><tr><td><code>innodite:crear-bd-test</code></td><td>Clona el esquema real en la base de pruebas, sin una sola fila</td></tr><tr><td><code>innodite:test</code></td><td>Ejecuta el contrato de pruebas de una subfuncionalidad</td></tr><tr><td><code>innodite:publish-stubs</code></td><td>Exporta al proyecto <strong>solo</strong> las plantillas que vayas a personalizar</td></tr><tr><td><del><code>innodite:migrate-plan</code></del></td><td><strong>Retirado.</strong> Sigue registrado solo para decirlo</td></tr></tbody></table></div>
-<h2>El contexto, en los que generan</h2>
+<h2 id="innodite-doctor-e-innodite-test-rechazan-la-estructura-de-pruebas-retirada"><code>innodite:doctor</code> e <code>innodite:test</code> rechazan la estructura de pruebas retirada</h2>
+<p>Desde la 5.1.0, los dos revisan que ninguna subfuncionalidad tenga la carpeta compartida <code>Tests/Feature/Shared/</code>, ni una pieza de <code>Central</code>/<code>Tenant</code> que incorpore un trait con <code>use &lt;Trait&gt;</code> en vez de llevar el código inline. Si encuentran un caso, se niegan a correr y dicen la ruta exacta y el arreglo: inlinear el cuerpo del trait, letra por letra, en cada contexto, y borrar <code>Shared/</code>. Ver <a href="las-pruebas.md">las pruebas</a> para la forma vigente.</p>
+<div class="doc-nota doc-nota--peligro"><p>⛔ Es detección pura — ningún comando mueve el código por su cuenta. Un módulo con esa deuda hay que migrarlo a mano antes de poder ejecutar sus pruebas.</p></div>
+<h2 id="el-contexto-en-los-que-generan">El contexto, en los que generan</h2>
 <p>En multiinquilino, <code>make-module</code>, <code>add-entity</code>, <code>test</code>, <code>deploy</code> y <code>migrate-one</code> piden <code>--context</code>. Se pasa <code>central</code>, <code>tenant</code> o el que tu proyecto haya declarado en su catálogo.</p>
 <p><strong>En aplicación única no se pasa</strong>: no hay eje que elegir, y el comando lo rechaza diciéndolo.</p>
-<pre><code class="lang-bash">php artisan innodite:make-module Invoice --context=central   # multiinquilino
-php artisan innodite:make-module Invoice                     # aplicación única</code></pre>
-<p>⛔ Y ninguno <strong>adivina</strong> el contexto cuando falta. Caer en el primero del catálogo acertaría a veces y el resto de las veces escribiría las rutas en el archivo que no es, protegidas con el permiso de otro contexto: un módulo perfectamente escrito y completamente mal.</p>
-<h2>El ensayo, en casi todos</h2>
-<pre><code class="lang-bash">php artisan innodite:make-module Invoice --dry-run
-php artisan innodite:deploy stage --dry-run</code></pre>
+<div class="doc-pre"><span class="doc-pre__lang">bash</span><pre><code class="lang-bash">php artisan innodite:make-module Invoice --context=central   # multiinquilino
+php artisan innodite:make-module Invoice                     # aplicación única</code></pre></div>
+<div class="doc-nota doc-nota--peligro"><p>⛔ Y ninguno <strong>adivina</strong> el contexto cuando falta. Caer en el primero del catálogo acertaría a veces y el resto de las veces escribiría las rutas en el archivo que no es, protegidas con el permiso de otro contexto: un módulo perfectamente escrito y completamente mal.</p></div>
+<h2 id="el-ensayo-en-casi-todos">El ensayo, en casi todos</h2>
+<div class="doc-pre"><span class="doc-pre__lang">bash</span><pre><code class="lang-bash">php artisan innodite:make-module Invoice --dry-run
+php artisan innodite:deploy stage --dry-run</code></pre></div>
 <p><code>--dry-run</code> enseña lo que haría <strong>sin escribir nada</strong>. En <code>deploy</code> dice además <strong>contra qué conexión</strong> iría, que es la pregunta que más caro sale equivocar.</p>
-<h2>⛔ <code>innodite:migrate-plan</code> está retirado</h2>
+<h2 id="innodite-migrate-plan-esta-retirado">⛔ <code>innodite:migrate-plan</code> está retirado</h2>
 <p>Sigue registrado, pero solo para decirlo: el esquema lo aplica <code>innodite:deploy</code>, a través de los seeders. Si tienes un guion que lo llama, cámbialo.</p>
 <p>Se retiró porque ordenaba las migraciones por el <strong>nombre de las carpetas</strong> en vez de por qué tabla depende de cuál, así que una tabla con clave foránea podía aplicarse antes que aquella a la que apunta. El orden bueno ya vivía en otro sitio —la lista que declara tu proyecto— y tener dos dueños del mismo orden era el defecto.</p>
-<h2>Un módulo no está listo porque sus archivos existan</h2>
+<h2 id="un-modulo-no-esta-listo-porque-sus-archivos-existan">Un módulo no está listo porque sus archivos existan</h2>
 <p>Está listo cuando <strong>se despliega</strong> y su contrato de pruebas pasa:</p>
-<pre><code class="lang-bash">php artisan innodite:doctor
+<div class="doc-pre"><span class="doc-pre__lang">bash</span><pre><code class="lang-bash">php artisan innodite:doctor
 php artisan innodite:deploy stage
-php artisan innodite:test Invoice Payment</code></pre>
-<p>⭐ Es la diferencia entre comprobar que se escribieron los archivos y comprobar que hacen efecto — y es donde aparecen los fallos que no se ven leyendo el código generado.</p></article>
-<article class="doc-pagina" data-ruta="crear-un-modulo" hidden><header class="doc-cabecera"><p class="doc-migas">Manual · Laravel Module Maker</p><h1>Crear un módulo</h1></header><pre><code class="lang-bash">php artisan innodite:make-module Invoice</code></pre>
+php artisan innodite:test Invoice Payment</code></pre></div>
+<div class="doc-nota doc-nota--clave"><p>⭐ Es la diferencia entre comprobar que se escribieron los archivos y comprobar que hacen efecto — y es donde aparecen los fallos que no se ven leyendo el código generado.</p></div><nav class="doc-paginacion"><a class="doc-paginacion__anterior" href="#/la-forma-del-arbol">← La forma del árbol</a><a class="doc-paginacion__siguiente" href="#/crear-un-modulo">Crear un módulo →</a></nav></article>
+<article class="doc-pagina" data-ruta="crear-un-modulo" hidden><header class="doc-cabecera"><p class="doc-migas">Manual · Laravel Module Maker</p><h1>Crear un módulo</h1></header><div class="doc-pre"><span class="doc-pre__lang">bash</span><pre><code class="lang-bash">php artisan innodite:make-module Invoice</code></pre></div>
 <p>Escribe el módulo entero —modelo, repositorio, servicio, controlador, form requests, migración, seeders, rutas, pantallas y pruebas— y lo <strong>declara en el orden de despliegue</strong>, que es lo que hace que un despliegue posterior lo levante.</p>
 <p>En multiinquilino hay que decir dónde vive:</p>
-<pre><code class="lang-bash">php artisan innodite:make-module Invoice --context=central
-php artisan innodite:make-module Invoice --context=tenant</code></pre>
-<p>⛔ <strong>Sin contexto, en un proyecto multiinquilino, no se genera nada</strong> y el comando dice por qué. Lo que escribiría sin saberlo sería plausible y equivocado: rutas en el archivo que no toca, protegidas por un permiso que no corresponde.</p>
+<div class="doc-pre"><span class="doc-pre__lang">bash</span><pre><code class="lang-bash">php artisan innodite:make-module Invoice --context=central
+php artisan innodite:make-module Invoice --context=tenant</code></pre></div>
+<div class="doc-nota doc-nota--peligro"><p>⛔ <strong>Sin contexto, en un proyecto multiinquilino, no se genera nada</strong> y el comando dice por qué. Lo que escribiría sin saberlo sería plausible y equivocado: rutas en el archivo que no toca, protegidas por un permiso que no corresponde.</p></div>
 <p>Y lo que sale es <strong>la misma estructura en los dos modos</strong>: 37 archivos, con la subfuncionalidad por delante y el contexto como hoja. La forma completa, con el árbol de un módulo real, está en <a href="la-forma-del-arbol.md">la ficha del árbol</a>.</p>
-<h2>Añadir una entidad a un módulo que ya existe</h2>
-<pre><code class="lang-bash">php artisan innodite:add-entity Invoice Payment</code></pre>
+<h2 id="anadir-una-entidad-a-un-modulo-que-ya-existe">Añadir una entidad a un módulo que ya existe</h2>
+<div class="doc-pre"><span class="doc-pre__lang">bash</span><pre><code class="lang-bash">php artisan innodite:add-entity Invoice Payment</code></pre></div>
 <p>Respeta lo que ya hay: inyecta lo nuevo en el proveedor del módulo sin sobrescribir sus enlaces, y las pantallas que ya existan no se tocan.</p>
-<h2>Generar solo una pieza</h2>
+<h2 id="generar-solo-una-pieza">Generar solo una pieza</h2>
 <p>Las banderas cortas añaden una sola capa, y sirven para reparar algo que falta:</p>
-<pre><code class="lang-bash">php artisan innodite:make-module Invoice -S        # solo el servicio y su interfaz
-php artisan innodite:make-module Invoice -R -G     # repositorio y migración</code></pre>
-<h2>Lo que el comando te dice al terminar</h2>
+<div class="doc-pre"><span class="doc-pre__lang">bash</span><pre><code class="lang-bash">php artisan innodite:make-module Invoice -S        # solo el servicio y su interfaz
+php artisan innodite:make-module Invoice -R -G     # repositorio y migración</code></pre></div>
+<h2 id="lo-que-el-comando-te-dice-al-terminar">Lo que el comando te dice al terminar</h2>
 <p>Además de lo generado, avisa de <strong>dos cosas que harían inútil todo lo anterior</strong>:</p>
 <ul class="doc-lista"><li>- Que el módulo <strong>no vaya a cargar</strong>, porque falta declarar el namespace en tu autoload o falta</li></ul>
 <p>recargarlo. Sin eso la aplicación arranca igual y sus rutas sencillamente no existen.</p>
 <ul class="doc-lista"><li>- Que su <strong>pantalla no vaya a abrir</strong>, porque falta el generador de rutas del navegador o su</li></ul>
 <p>directiva en el layout.</p>
-<p>⭐ Los dos fallan sin dejar rastro en el servidor: la petición responde 200. Por eso se avisan en el momento, y no se descubren horas después.</p></article>
+<div class="doc-nota doc-nota--clave"><p>⭐ Los dos fallan sin dejar rastro en el servidor: la petición responde 200. Por eso se avisan en el momento, y no se descubren horas después.</p></div><nav class="doc-paginacion"><a class="doc-paginacion__anterior" href="#/los-comandos">← Los comandos</a><a class="doc-paginacion__siguiente" href="#/desplegar">Desplegar →</a></nav></article>
 <article class="doc-pagina" data-ruta="desplegar" hidden><header class="doc-cabecera"><p class="doc-migas">Manual · Laravel Module Maker</p><h1>Desplegar</h1></header><p>Desplegar es lo que convierte los archivos generados en tablas, datos y permisos que existen.</p>
-<pre><code class="lang-bash">php artisan innodite:deploy stage
-php artisan innodite:deploy production</code></pre>
+<div class="doc-pre"><span class="doc-pre__lang">bash</span><pre><code class="lang-bash">php artisan innodite:deploy stage
+php artisan innodite:deploy production</code></pre></div>
 <p>Ejecuta los seeders <strong>en el orden que declara tu configuración</strong>: primero el esquema, después los datos canónicos, después los permisos y el usuario administrador.</p>
-<h2>En multiinquilino hay que decir a qué cliente</h2>
-<pre><code class="lang-bash">php artisan innodite:deploy stage --context=central
+<h2 id="en-multiinquilino-hay-que-decir-a-que-cliente">En multiinquilino hay que decir a qué cliente</h2>
+<div class="doc-pre"><span class="doc-pre__lang">bash</span><pre><code class="lang-bash">php artisan innodite:deploy stage --context=central
 php artisan innodite:deploy stage --context=tenant --tenant=acme
-php artisan innodite:deploy stage --context=tenant --all</code></pre>
-<p>⛔ <strong>Sin <code>--tenant</code> ni <code>--all</code> el comando no arranca.</strong> Con clientes que comparten funcionalidad, el despliegue tiene que <strong>entrar en el contexto de cada uno</strong>. En una petición web eso lo hace el middleware de identificación; en consola no hay middleware que lo haga.</p>
-<p>⚠️ Un despliegue que no entra escribe en la base <strong>central</strong> creyendo que escribe en la del cliente, y lo hace sin un solo aviso.</p>
-<h2>Un módulo suelto</h2>
-<pre><code class="lang-bash">php artisan innodite:deploy stage --module=Invoice</code></pre>
+php artisan innodite:deploy stage --context=tenant --all</code></pre></div>
+<div class="doc-nota doc-nota--peligro"><p>⛔ <strong>Sin <code>--tenant</code> ni <code>--all</code> el comando no arranca.</strong> Con clientes que comparten funcionalidad, el despliegue tiene que <strong>entrar en el contexto de cada uno</strong>. En una petición web eso lo hace el middleware de identificación; en consola no hay middleware que lo haga.</p></div>
+<div class="doc-nota doc-nota--aviso"><p>⚠️ Un despliegue que no entra escribe en la base <strong>central</strong> creyendo que escribe en la del cliente, y lo hace sin un solo aviso.</p></div>
+<h2 id="un-modulo-suelto">Un módulo suelto</h2>
+<div class="doc-pre"><span class="doc-pre__lang">bash</span><pre><code class="lang-bash">php artisan innodite:deploy stage --module=Invoice</code></pre></div>
 <p>Levanta solo ese módulo, por sus maestros, en vez del proyecto entero.</p>
-<h2>Una migración concreta</h2>
-<pre><code class="lang-bash">php artisan innodite:migrate-one Invoice:Central/2026_01_01_crear_invoices.php</code></pre>
+<h2 id="una-migracion-concreta">Una migración concreta</h2>
+<div class="doc-pre"><span class="doc-pre__lang">bash</span><pre><code class="lang-bash">php artisan innodite:migrate-one Invoice:Central/2026_01_01_crear_invoices.php</code></pre></div>
 <p>La coordenada dice el módulo, el contexto y el archivo, y de ahí sale contra qué base se aplica.</p>
-<h2>Antes de tocar nada</h2>
-<pre><code class="lang-bash">php artisan innodite:deploy production --dry-run</code></pre>
-<p>⭐ En producción, el ensayo es obligatorio en la práctica: dice qué se ejecutaría y <strong>contra qué conexión</strong>. Es la comprobación que separa un despliegue de un incidente.</p>
-<h2>Los datos canónicos no se destruyen</h2>
-<p>Los seeders generados son <strong>no destructivos por defecto</strong>: reponen lo que falta y respetan lo que hay. El modo que sí borra existe, pero hay que pedirlo a propósito y el comando avisa antes.</p></article>
+<h2 id="antes-de-tocar-nada">Antes de tocar nada</h2>
+<div class="doc-pre"><span class="doc-pre__lang">bash</span><pre><code class="lang-bash">php artisan innodite:deploy production --dry-run</code></pre></div>
+<div class="doc-nota doc-nota--clave"><p>⭐ En producción, el ensayo es obligatorio en la práctica: dice qué se ejecutaría y <strong>contra qué conexión</strong>. Es la comprobación que separa un despliegue de un incidente.</p></div>
+<h2 id="los-datos-canonicos-no-se-destruyen">Los datos canónicos no se destruyen</h2>
+<p>Los seeders generados son <strong>no destructivos por defecto</strong>: reponen lo que falta y respetan lo que hay. El modo que sí borra existe, pero hay que pedirlo a propósito y el comando avisa antes.</p><nav class="doc-paginacion"><a class="doc-paginacion__anterior" href="#/crear-un-modulo">← Crear un módulo</a><a class="doc-paginacion__siguiente" href="#/las-pruebas">Las pruebas →</a></nav></article>
 <article class="doc-pagina" data-ruta="las-pruebas" hidden><header class="doc-cabecera"><p class="doc-migas">Manual · Laravel Module Maker</p><h1>Las pruebas</h1></header><p>Cada subfuncionalidad generada trae su grupo de pruebas, y se ejecuta así:</p>
-<pre><code class="lang-bash">php artisan innodite:crear-bd-test
-php artisan innodite:test Invoice Payment</code></pre>
-<h2>La base de pruebas es un clon del esquema real, sin filas</h2>
+<div class="doc-pre"><span class="doc-pre__lang">bash</span><pre><code class="lang-bash">php artisan innodite:crear-bd-test
+php artisan innodite:test Invoice Payment</code></pre></div>
+<h2 id="la-base-de-pruebas-es-un-clon-del-esquema-real-sin-filas">La base de pruebas es un clon del esquema real, sin filas</h2>
 <p><code>crear-bd-test</code> copia el esquema de tu base real a la base de pruebas y <strong>no copia ni un dato</strong>.</p>
-<p>⛔ <strong>Re-clonarla es un paso del ciclo, no algo que ocurra en cada corrida.</strong> Rehacerla siempre esconde justo lo que hay que ver: una prueba que solo pasa con la base recién hecha está contando algo, y borrar la evidencia antes de leerla lo hace indiagnosticable.</p>
-<h2>Un rojo se clasifica antes de investigarse</h2>
+<div class="doc-nota doc-nota--peligro"><p>⛔ <strong>Re-clonarla es un paso del ciclo, no algo que ocurra en cada corrida.</strong> Rehacerla siempre esconde justo lo que hay que ver: una prueba que solo pasa con la base recién hecha está contando algo, y borrar la evidencia antes de leerla lo hace indiagnosticable.</p></div>
+<h2 id="un-rojo-se-clasifica-antes-de-investigarse">Un rojo se clasifica antes de investigarse</h2>
 <p>El orden importa, porque investigar un intermitente como si fuera un defecto cuesta horas:</p>
 <div class="doc-tabla"><table><thead><tr><th>Sospecha</th><th>Cómo se comprueba</th></tr></thead><tbody><tr><td>La base venía sucia</td><td><code>--reclonar</code> — rehace la base antes de empezar</td></tr><tr><td>Es intermitente</td><td><code>--repetir=3</code> — repite la pieza que falló</td></tr><tr><td>Es un defecto de verdad</td><td><code>--sin-reclonar</code> — conserva el estado para poder mirarlo</td></tr></tbody></table></div>
-<p>⭐ <strong>Y si pasa tras re-clonar, eso es lo que se reporta</strong>: «pasó tras re-clonar», no un verde limpio. Son cosas distintas y confundirlas oculta un problema de datos que va a volver.</p>
-<h2>Acotar y continuar</h2>
-<pre><code class="lang-bash">php artisan innodite:test Invoice Payment --filter=puede_crear
-php artisan innodite:test Invoice Payment --continuar</code></pre>
+<div class="doc-nota doc-nota--clave"><p>⭐ <strong>Y si pasa tras re-clonar, eso es lo que se reporta</strong>: «pasó tras re-clonar», no un verde limpio. Son cosas distintas y confundirlas oculta un problema de datos que va a volver.</p></div>
+<h2 id="acotar-y-continuar">Acotar y continuar</h2>
+<div class="doc-pre"><span class="doc-pre__lang">bash</span><pre><code class="lang-bash">php artisan innodite:test Invoice Payment --filter=puede_crear
+php artisan innodite:test Invoice Payment --continuar</code></pre></div>
 <p>Por defecto el grupo <strong>corta en la primera pieza que falla</strong>: las siguientes dependen de ella y sus rojos serían ruido. <code>--continuar</code> desactiva ese corte cuando lo que quieres es el panorama completo.</p>
-<h2>Qué se prueba</h2>
-<p>Las capas —que el controlador delegue, que solo el repositorio toque el modelo—, los permisos de cada ruta, el esquema, el despliegue y las pantallas. En contexto de cliente, la prueba <strong>aparta la identificación por dominio</strong>: en una suite no hay dominio de cliente y cada petición moriría con un 404 donde se espera un 403. Lo que se mide es la puerta del permiso.</p></article>
+<h2 id="que-se-prueba">Qué se prueba</h2>
+<p>Las capas —que el controlador delegue, que solo el repositorio toque el modelo—, los permisos de cada ruta, el esquema, el despliegue y las pantallas. En contexto de cliente, la prueba <strong>aparta la identificación por dominio</strong>: en una suite no hay dominio de cliente y cada petición moriría con un 404 donde se espera un 403. Lo que se mide es la puerta del permiso.</p>
+<h2 id="la-forma-del-grupo-en-multitenant">La forma del grupo, en multitenant</h2>
+<p><code>Tests/Feature/</code> lleva una carpeta por contexto —<code>Central/</code>, <code>Tenant/</code>— y cada una trae el cuerpo completo de sus seis piezas, aunque hoy sea igual al del otro contexto:</p>
+<div class="doc-pre"><pre><code>Tests/Feature/
+├── Central/
+│   ├── CentralPaymentContract.php
+│   ├── CentralPaymentTestCase.php
+│   └── … las cinco piezas del contrato
+└── Tenant/
+    ├── TenantPaymentContract.php
+    ├── TenantPaymentTestCase.php
+    └── … las cinco piezas del contrato</code></pre></div>
+<p>Ninguna pieza incorpora nada de la otra: cada contexto puede crecer con su propia lógica de negocio sin arrastrar al otro. <code>innodite:test</code> e <code>innodite:doctor</code> rechazan un grupo que no tenga esta forma — dicen exactamente qué encontraron y cómo dejarlo así.</p><nav class="doc-paginacion"><a class="doc-paginacion__anterior" href="#/desplegar">← Desplegar</a><a class="doc-paginacion__siguiente" href="#/personalizar-lo-generado">Personalizar lo generado →</a></nav></article>
 <article class="doc-pagina" data-ruta="personalizar-lo-generado" hidden><header class="doc-cabecera"><p class="doc-migas">Manual · Laravel Module Maker</p><h1>Personalizar lo generado</h1></header><p>Lo que el generador escribe sale de unas plantillas, y hay tres formas de cambiarlas.</p>
-<h2>1 · Los stubs de tu proyecto</h2>
-<pre><code class="lang-bash">php artisan vendor:publish --tag=module-maker-stubs</code></pre>
+<h2 id="1-los-stubs-de-tu-proyecto">1 · Los stubs de tu proyecto</h2>
+<div class="doc-pre"><span class="doc-pre__lang">bash</span><pre><code class="lang-bash">php artisan vendor:publish --tag=module-maker-stubs</code></pre></div>
 <p>Copia las plantillas a <code>module-maker-config/stubs/contextual/</code> y a partir de ahí ganan a las del paquete. Puedes cambiar solo las que te interesen: lo que no esté ahí se sigue leyendo del paquete.</p>
-<p>⚠️ <strong>Publicarlas tiene un coste que conviene saber</strong>: una plantilla copiada <strong>no se actualiza</strong> con el paquete. Si no vas a personalizarla, no la publiques — y si publicaste todas «por si acaso», borra las que no tocaste.</p>
-<h2>2 · Los stubs que aporta otro paquete instalado</h2>
+<div class="doc-nota doc-nota--aviso"><p>⚠️ <strong>Publicarlas tiene un coste que conviene saber</strong>: una plantilla copiada <strong>no se actualiza</strong> con el paquete. Si no vas a personalizarla, no la publiques — y si publicaste todas «por si acaso», borra las que no tocaste.</p></div>
+<h2 id="2-los-stubs-que-aporta-otro-paquete-instalado">2 · Los stubs que aporta otro paquete instalado</h2>
 <p>Cualquier paquete instalado que traiga</p>
-<pre><code>stubs/module-maker/contextual/&lt;nombre&gt;.stub</code></pre>
+<div class="doc-pre"><pre><code>stubs/module-maker/contextual/&lt;nombre&gt;.stub</code></pre></div>
 <p>participa automáticamente. Sirve para generar contra una biblioteca de interfaz concreta —su tabla, sus formularios— en vez de contra las plantillas genéricas.</p>
 <p><strong>Quién gana a quién</strong>, de lo más específico a lo más genérico:</p>
 <div class="doc-tabla"><table><thead><tr><th>#</th><th>Dónde</th><th>Manda</th></tr></thead><tbody><tr><td>1</td><td><code>module-maker-config/stubs/contextual/{Contexto}/</code></td><td>Tu proyecto, para un contexto</td></tr><tr><td>2</td><td><code>module-maker-config/stubs/contextual/</code></td><td>Tu proyecto</td></tr><tr><td>3</td><td><code>stubs/module-maker/contextual/</code> de un paquete instalado</td><td>Ese paquete</td></tr><tr><td>4</td><td>Las del generador</td><td>El paquete</td></tr></tbody></table></div>
-<p>⭐ <strong>Tu proyecto siempre gana.</strong> Es el único que puede tener la última palabra sobre su propio código. Y si dos paquetes aportan la misma plantilla, gana el primero por orden alfabético y <code>make-module</code> lo dice al terminar, junto con quién aportó qué.</p>
-<h2>3 · El punto de enganche del módulo</h2>
+<div class="doc-nota doc-nota--clave"><p>⭐ <strong>Tu proyecto siempre gana.</strong> Es el único que puede tener la última palabra sobre su propio código. Y si dos paquetes aportan la misma plantilla, gana el primero por orden alfabético y <code>make-module</code> lo dice al terminar, junto con quién aportó qué.</p></div>
+<h2 id="3-el-punto-de-enganche-del-modulo">3 · El punto de enganche del módulo</h2>
 <p><code>provider-boot.stub</code> es una plantilla <strong>opcional</strong>: no existe en el paquete y solo se usa si tu proyecto o un paquete instalado la aportan. Su contenido se escribe dentro del <code>boot()</code> del proveedor del módulo generado; si no la aporta nadie, ese <code>boot()</code> sale vacío.</p>
 <p>Está pensada para enganchar el módulo recién creado en el <strong>menú</strong> de tu aplicación, que es lo que el generador no puede escribir por su cuenta: esa línea depende de cómo declare su menú cada proyecto. Recibe dos variables:</p>
 <div class="doc-tabla"><table><thead><tr><th>Variable</th><th>Qué trae</th><th>Ejemplo</th></tr></thead><tbody><tr><td><code>{{{ moduleName }}}</code></td><td>El nombre del módulo</td><td><code>Invoice</code></td></tr><tr><td><code>{{{ functionality }}}</code></td><td>La funcionalidad, como la nombran sus rutas</td><td><code>invoices</code></td></tr></tbody></table></div>
-<p>⛔ <strong>Por qué no viene hecho.</strong> Escribir ese enganche «por si acaso» llamaría a una clase que puede no existir, y eso no deja un módulo invisible: deja la aplicación entera sin arrancar, incluido el <code>artisan</code> con el que se arreglaría.</p></article>
+<div class="doc-nota doc-nota--peligro"><p>⛔ <strong>Por qué no viene hecho.</strong> Escribir ese enganche «por si acaso» llamaría a una clase que puede no existir, y eso no deja un módulo invisible: deja la aplicación entera sin arrancar, incluido el <code>artisan</code> con el que se arreglaría.</p></div><nav class="doc-paginacion"><a class="doc-paginacion__anterior" href="#/las-pruebas">← Las pruebas</a><a class="doc-paginacion__siguiente" href="#/cuando-no-usarlo">Cuándo NO usarlo →</a></nav></article>
 <article class="doc-pagina" data-ruta="cuando-no-usarlo" hidden><header class="doc-cabecera"><p class="doc-migas">Manual · Laravel Module Maker</p><h1>Cuándo NO usarlo</h1></header><p>El paquete escribe una estructura concreta, con una opinión detrás. Cuando esa opinión no es la tuya, forzarlo cuesta más que no usarlo.</p>
-<h2>No lo uses si…</h2>
+<h2 id="no-lo-uses-si">No lo uses si…</h2>
 <p><strong>Tu proyecto no separa las capas.</strong> El generador escribe siempre la misma cadena: la validación en un form request, el controlador que delega en un servicio, el servicio que pregunta al repositorio y <strong>solo el repositorio tocando el modelo</strong>. Si tu proyecto consulta el modelo desde el controlador, lo generado va a chocar con lo que ya tienes en cada módulo.</p>
 <p><strong>Quieres un CRUD y nada más.</strong> Un módulo generado trae seis rutas con su permiso cada una, los seeders que crean esos permisos, la pantalla y su grupo de pruebas. Para una tabla auxiliar de tres campos que solo toca un administrador, es más andamiaje del que vas a mantener.</p>
 <p><strong>Tu aplicación no es Laravel con Inertia y Vue.</strong> Las pantallas generadas asumen esa combinación. El backend te serviría igual, pero tendrías que tirar las vistas en cada módulo.</p>
 <p><strong>Necesitas que un módulo tenga una forma distinta a los demás.</strong> El valor del paquete es que todos se parezcan. Si el tuyo es la excepción, escríbelo a mano: personalizar las plantillas para un solo caso convierte la excepción en la norma de todo lo que generes después.</p>
-<h2>Sí te compensa cuando…</h2>
+<h2 id="si-te-compensa-cuando">Sí te compensa cuando…</h2>
 <ul class="doc-lista"><li>- Vas a crear <strong>varios</strong> módulos con la misma forma, y quieres que sigan pareciéndose dentro de un</li></ul>
 <p>año.</p>
 <ul class="doc-lista"><li>- Te importa que cada ruta tenga su permiso y que ese permiso <strong>exista de verdad</strong>, creado por un</li></ul>
 <p>seeder, y no dependa de que alguien se acuerde.</p>
 <ul class="doc-lista"><li>- Trabajas con varios clientes y necesitas que el mismo módulo se despliegue en el contexto correcto</li></ul>
 <p>sin decidirlo a mano cada vez.</p>
-<h2>Y una advertencia sobre el punto intermedio</h2>
-<p>⚠️ <strong>Generar el módulo y después reescribirlo entero a mano es el peor de los dos mundos.</strong> Queda un módulo que parece generado pero ya no lo es: la próxima vez que ejecutes <code>add-entity</code> sobre él, lo que se inyecte no encajará con lo que hay. Si vas a reescribirlo, no lo generes.</p></article>
+<h2 id="y-una-advertencia-sobre-el-punto-intermedio">Y una advertencia sobre el punto intermedio</h2>
+<div class="doc-nota doc-nota--aviso"><p>⚠️ <strong>Generar el módulo y después reescribirlo entero a mano es el peor de los dos mundos.</strong> Queda un módulo que parece generado pero ya no lo es: la próxima vez que ejecutes <code>add-entity</code> sobre él, lo que se inyecte no encajará con lo que hay. Si vas a reescribirlo, no lo generes.</p></div><nav class="doc-paginacion"><a class="doc-paginacion__anterior" href="#/personalizar-lo-generado">← Personalizar lo generado</a><span></span></nav></article>
   </div>
+
+  <aside class="doc__esquema" id="doc-esquema" hidden></aside>
 </div>
 
 <footer class="doc-pie">
-  Innodite · Laravel Module Maker v5.0 — el manual se genera desde <code>docs/es/</code>, que es su
+  Innodite · Laravel Module Maker v5.1 — el manual se genera desde <code>docs/es/</code>, que es su
   fuente única.
 </footer>
 
@@ -458,15 +534,37 @@ php artisan innodite:test Invoice Payment --continuar</code></pre>
   const paginas = [...document.querySelectorAll('.doc-pagina')];
   const enlaces = [...document.querySelectorAll('[data-ruta]')].filter(e => e.tagName === 'A');
 
+  /* La tabla de contenido de la ficha activa: se arma leyendo el DOM, no en Python, porque solo
+     hace falta la de la página que se ve — las otras ~30 nunca se construyen. */
+  function pintarEsquema(activa) {
+    const esquema = document.getElementById('doc-esquema');
+    if (!esquema) return;
+    const articulo = paginas.find(p => p.dataset.ruta === activa);
+    const encabezados = articulo ? [...articulo.querySelectorAll('h2[id]')] : [];
+    if (!encabezados.length) { esquema.hidden = true; esquema.innerHTML = ''; return; }
+    esquema.hidden = false;
+    esquema.innerHTML = '<p class="doc-esquema__titulo">En esta página</p>' +
+      encabezados.map(h => `<a href="#/${activa}/${h.id}">${h.textContent}</a>`).join('');
+  }
+
   /* Enruta por `hash`: el contenido ya está en el navegador y no hay datos que traer, así que
-     cambiar de ficha no debe costar una petición. */
+     cambiar de ficha no debe costar una petición. Formato: #/ficha o #/ficha/seccion. */
   function pintar() {
-    const ruta = (location.hash.replace(/^#\/?/, '') || '');
+    const resto = (location.hash.replace(/^#\/?/, '') || '');
+    const barra = resto.indexOf('/');
+    const ruta = barra === -1 ? resto : resto.slice(0, barra);
+    const ancla = barra === -1 ? '' : resto.slice(barra + 1);
     const hay = paginas.some(p => p.dataset.ruta === ruta);
     const activa = hay ? ruta : '';
 
     paginas.forEach(p => { p.hidden = p.dataset.ruta !== activa; });
     enlaces.forEach(a => a.classList.toggle('is-active', a.dataset.ruta === activa));
+    pintarEsquema(activa);
+
+    if (ancla) {
+      const el = document.getElementById(ancla);
+      if (el) { el.scrollIntoView(); return; }
+    }
 
     /* Arriba del todo, no `scrollIntoView`: eso deja el contenido pegado al borde del viewport y
        la barra fija le tapa el título. Medido en el navegador — el h1 salía cortado. */
@@ -475,6 +573,23 @@ php artisan innodite:test Invoice Payment --continuar</code></pre>
 
   addEventListener('hashchange', pintar);
   pintar();
+
+  /* Buscador del índice: filtra por texto, sin pedir nada al servidor — todo ya está en el DOM.
+     `/` lo enfoca desde cualquier parte de la página, como en la documentación de la casa. */
+  const buscador = document.getElementById('doc-buscar');
+  const piezasIndice = [...document.querySelectorAll('.doc-indice__pieza')];
+  buscador.addEventListener('input', () => {
+    const q = buscador.value.trim().toLowerCase();
+    piezasIndice.forEach(a => {
+      a.style.display = !q || a.textContent.toLowerCase().includes(q) ? '' : 'none';
+    });
+  });
+  addEventListener('keydown', (e) => {
+    if (e.key === '/' && document.activeElement !== buscador) {
+      e.preventDefault();
+      buscador.focus();
+    }
+  });
 
   /* El tema se recuerda por visitante. Puede fallar —ventana privada, cookies bloqueadas—, así que
      va envuelto: sin valor guardado manda el sistema, que es el estado por defecto. */
