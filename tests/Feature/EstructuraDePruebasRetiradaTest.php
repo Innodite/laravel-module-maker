@@ -5,6 +5,7 @@ declare(strict_types=1);
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\File;
 use Innodite\LaravelModuleMaker\Services\PhpunitRunner;
+use Innodite\LaravelModuleMaker\Support\LegacySharedTests;
 use Innodite\LaravelModuleMaker\Support\ModuleMode;
 
 /**
@@ -149,4 +150,47 @@ it('en aplicación única (sin eje de contexto) no hay nada que comprobar', func
 
     $this->artisan('innodite:test', ['module' => 'Ledger', 'subfeature' => 'Ledger'])
         ->assertSuccessful();
+});
+
+/**
+ * TASK-004 de esta misma entrega: confirmación de regresión, no corrección. `TestGenerator` ya no
+ * produce `Shared/` desde v5.0.0 — esto lo comprueba de punta a punta, en los dos puntos de entrada
+ * (`make-module` y `add-entity`) y en los dos contextos, para poder afirmarlo en el CHANGELOG.
+ */
+it('make-module y add-entity generan sin Shared/ ni incorporación use, en central y en tenant', function () {
+    foreach (['central' => 'Central', 'tenant' => 'Tenant'] as $contexto => $prefijo) {
+        $nombreModulo = "Invoice{$prefijo}";
+
+        $modulo = $this->generateModule($nombreModulo, ModuleMode::Multitenant, $contexto);
+
+        $codigoEntidad = Artisan::call('innodite:add-entity', [
+            'module'           => $nombreModulo,
+            'entity'           => 'Payment',
+            '--context'        => $contexto,
+            '--no-interaction' => true,
+        ]);
+
+        expect($codigoEntidad)->toBe(
+            0,
+            "FALLA: add-entity falló en el contexto '{$contexto}'.\n" . Artisan::output()
+        );
+
+        $grupos = [
+            "make-module ({$contexto})" => "{$modulo->path}/{$nombreModulo}/Tests/Feature/{$prefijo}",
+            "add-entity ({$contexto})"  => "{$modulo->path}/Payment/Tests/Feature/{$prefijo}",
+        ];
+
+        foreach ($grupos as $etiqueta => $grupo) {
+            expect(File::isDirectory($grupo))->toBeTrue(
+                "FALLA: {$etiqueta} no escribió su grupo de pruebas en {$grupo}."
+            );
+            expect(LegacySharedTests::tieneCarpetaCompartida($grupo))->toBeFalse(
+                "FALLA: {$etiqueta} dejó una carpeta Shared/ junto a {$grupo}."
+            );
+            expect(LegacySharedTests::incorporacionesDeTrait($grupo))->toBe(
+                [],
+                "FALLA: {$etiqueta} incorporó un trait con use dentro de una pieza — {$grupo}."
+            );
+        }
+    }
 });
