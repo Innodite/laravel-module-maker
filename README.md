@@ -1164,9 +1164,10 @@ manual que anuncia comandos que ya no existen.
 
 ### La página publicada se genera, no se edita
 
-`docs/manual.html` sale de las fichas, así que **no se toca a mano**: se cambia el `.md` y se vuelve
-a armar. `docs/index.html` es la portada gerencial (aparte, no generada) — es lo primero que ve
-quien entra al sitio.
+`manual.html` sale de las fichas, así que **no se toca a mano**: se cambia el `.md` y se vuelve a
+armar. `index.html` es la portada gerencial (aparte, no generada) — es lo primero que ve quien
+entra al sitio. Los dos, junto con `assets/`, viven en la **raíz del repositorio** —no en
+`docs/`— a propósito: así el hosting del subdominio los sirve directo, sin ninguna subcarpeta.
 
 ```bash
 python3 docs/armar.py
