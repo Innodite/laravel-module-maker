@@ -1,0 +1,506 @@
+<!DOCTYPE html>
+<html lang="es" data-theme="">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Laravel Module Maker — Innodite</title>
+<meta name="description" content="El generador que hace que todo proyecto Laravel de la casa nazca con la misma estructura, el mismo contrato de pruebas y el mismo diagnóstico previo.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Ccircle cx='16' cy='16' r='16' fill='%2300b4e0'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --in-cian: #00b4e0;
+  --in-cian-claro: #7dd4f0;
+
+  --app-fondo: #0d1117;
+  --app-fondo-2: #131a22;
+  --app-fondo-3: #182028;
+  --app-borde: #23303d;
+  --app-borde-vivo: #2f4152;
+  --app-tinta: #e8eef4;
+  --app-tinta-2: #a3b4c4;
+  --app-tinta-3: #6b8296;
+
+  --app-marca: var(--in-cian);
+  --app-marca-suave: rgba(0, 180, 224, .12);
+
+  --app-radio: 14px;
+  --app-radio-sm: 8px;
+  --app-radio-xs: 4px;
+
+  --app-fuente: 'Inter', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --app-mono: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+  color-scheme: dark;
+}
+:root[data-theme='light'] {
+  --app-fondo: #ffffff;
+  --app-fondo-2: #f5f8fa;
+  --app-fondo-3: #eef3f6;
+  --app-borde: #e2e8ee;
+  --app-borde-vivo: #cbd6e0;
+  --app-tinta: #101820;
+  --app-tinta-2: #46586a;
+  --app-tinta-3: #74899c;
+  --app-marca-suave: rgba(0, 180, 224, .1);
+  color-scheme: light;
+}
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme='dark']) {
+    --app-fondo: #ffffff;
+    --app-fondo-2: #f5f8fa;
+    --app-fondo-3: #eef3f6;
+    --app-borde: #e2e8ee;
+    --app-borde-vivo: #cbd6e0;
+    --app-tinta: #101820;
+    --app-tinta-2: #46586a;
+    --app-tinta-3: #74899c;
+    --app-marca-suave: rgba(0, 180, 224, .1);
+    color-scheme: light;
+  }
+}
+
+* { box-sizing: border-box; }
+html { font-family: var(--app-fuente); scroll-behavior: smooth; }
+body {
+  margin: 0; background: var(--app-fondo); color: var(--app-tinta);
+  font-size: 15px; line-height: 1.65; -webkit-font-smoothing: antialiased;
+}
+a { color: inherit; }
+code {
+  font-family: var(--app-mono); font-size: .88em;
+  padding: 1px 6px; background: var(--app-fondo-2); color: var(--in-cian-claro);
+  border-radius: var(--app-radio-xs);
+}
+
+.barra {
+  position: sticky; top: 0; z-index: 10;
+  display: flex; align-items: center; justify-content: space-between; gap: 16px;
+  padding: 14px 28px; background: var(--app-fondo);
+  border-block-end: 1px solid var(--app-borde);
+}
+.marca { display: flex; align-items: baseline; gap: 10px; font-weight: 650; letter-spacing: -.01em; }
+.marca b { color: var(--app-marca); }
+.version {
+  font-family: var(--app-mono); font-size: 11px; padding: 2px 8px;
+  background: var(--app-marca-suave); color: var(--app-marca);
+  border-radius: 0 var(--app-radio-xs) var(--app-radio-xs) var(--app-radio-xs);
+}
+.acciones { display: flex; align-items: center; gap: 8px; }
+.boton {
+  font: inherit; font-size: 12.5px; cursor: pointer;
+  padding: 7px 14px; text-decoration: none;
+  border-radius: 0 var(--app-radio-sm) var(--app-radio-sm) var(--app-radio-sm);
+  transition: color .12s ease, border-color .12s ease, background-color .12s ease;
+}
+.boton--fantasma {
+  color: var(--app-tinta-2); background: var(--app-fondo-2); border: 1px solid var(--app-borde);
+}
+.boton--fantasma:hover { color: var(--app-tinta); border-color: var(--app-borde-vivo); }
+.boton--marca {
+  color: #04222e; background: var(--in-cian); border: 1px solid var(--in-cian); font-weight: 600;
+}
+.boton--marca:hover { background: var(--in-cian-claro); border-color: var(--in-cian-claro); }
+
+main { max-inline-size: 1080px; margin: 0 auto; padding: 0 28px; }
+
+.hero { padding: 72px 0 56px; text-align: center; }
+.hero-etiqueta {
+  display: inline-block; margin: 0 0 18px; padding: 5px 14px;
+  font-family: var(--app-mono); font-size: 11.5px; letter-spacing: .04em;
+  color: var(--app-marca); background: var(--app-marca-suave);
+  border-radius: 0 var(--app-radio-sm) var(--app-radio-sm) var(--app-radio-sm);
+}
+.hero h1 {
+  margin: 0 0 18px; font-size: 42px; font-weight: 800; letter-spacing: -.02em;
+  line-height: 1.15; color: var(--app-tinta);
+}
+.hero h1 span { color: var(--app-marca); }
+.hero p {
+  max-inline-size: 640px; margin: 0 auto; font-size: 17.5px; line-height: 1.6;
+  color: var(--app-tinta-2);
+}
+.hero-acciones { display: flex; justify-content: center; gap: 12px; margin-top: 30px; flex-wrap: wrap; }
+.hero-acciones .boton { padding: 11px 22px; font-size: 13.5px; }
+
+section { padding: 56px 0; border-block-start: 1px solid var(--app-borde); }
+.seccion-etiqueta {
+  margin: 0 0 8px; font-size: 11px; font-weight: 600; letter-spacing: .08em;
+  text-transform: uppercase; color: var(--app-marca);
+}
+.seccion-titulo { margin: 0 0 12px; font-size: 27px; font-weight: 700; letter-spacing: -.01em; }
+.seccion-resumen {
+  max-inline-size: 680px; margin: 0 0 34px; font-size: 15.5px; color: var(--app-tinta-2);
+}
+
+/* Antes / después — el problema de proceso, sin código */
+.comparar { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+.comparar-tarjeta {
+  padding: 22px 24px; border-radius: 0 var(--app-radio) var(--app-radio) var(--app-radio);
+  border: 1px solid var(--app-borde); background: var(--app-fondo-2);
+}
+.comparar-tarjeta h3 {
+  margin: 0 0 14px; font-size: 13px; font-weight: 700; letter-spacing: .04em; text-transform: uppercase;
+}
+.comparar-tarjeta--antes h3 { color: #e0a030; }
+.comparar-tarjeta--despues h3 { color: #3fb872; }
+.comparar-tarjeta ul { margin: 0; padding-inline-start: 18px; }
+.comparar-tarjeta li { margin-block-end: 10px; color: var(--app-tinta-2); font-size: 14px; line-height: 1.55; }
+.comparar-tarjeta li::marker { color: var(--app-tinta-3); }
+
+/* Tarjetas de ventaja, en rejilla */
+.rejilla { display: grid; grid-template-columns: repeat(3, 1fr); gap: 18px; }
+.tarjeta {
+  padding: 24px; border: 1px solid var(--app-borde); background: var(--app-fondo-2);
+  border-radius: 0 var(--app-radio) var(--app-radio) var(--app-radio);
+}
+.tarjeta__icono {
+  display: inline-flex; align-items: center; justify-content: center;
+  inline-size: 38px; block-size: 38px; margin-block-end: 14px;
+  background: var(--app-marca-suave); color: var(--app-marca);
+  border-radius: 0 var(--app-radio-sm) var(--app-radio-sm) var(--app-radio-sm);
+  font-size: 17px; font-weight: 700;
+}
+.tarjeta h3 { margin: 0 0 8px; font-size: 15.5px; font-weight: 650; color: var(--app-tinta); }
+.tarjeta p { margin: 0; font-size: 13.5px; line-height: 1.6; color: var(--app-tinta-2); }
+
+/* El proceso, en pasos horizontales */
+.pasos { display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px; counter-reset: paso; }
+.paso { position: relative; padding: 20px 18px 18px; border: 1px solid var(--app-borde); background: var(--app-fondo-2); }
+.paso:first-child { border-radius: 0 var(--app-radio) 0 0; }
+.paso:last-child { border-radius: 0 0 var(--app-radio) 0; }
+.paso::before {
+  counter-increment: paso; content: counter(paso);
+  display: inline-flex; align-items: center; justify-content: center;
+  inline-size: 26px; block-size: 26px; margin-block-end: 12px;
+  font-family: var(--app-mono); font-size: 12.5px; font-weight: 600;
+  color: var(--app-marca); background: var(--app-marca-suave);
+  border-radius: 0 var(--app-radio-xs) var(--app-radio-xs) var(--app-radio-xs);
+}
+.paso h3 { margin: 0 0 6px; font-size: 14px; font-weight: 650; }
+.paso p { margin: 0; font-size: 13px; color: var(--app-tinta-2); line-height: 1.55; }
+.paso code { font-size: .82em; }
+
+/* Los dos modos */
+.modos { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+.modo {
+  padding: 26px; border: 1px solid var(--app-borde); background: var(--app-fondo-2);
+  border-radius: 0 var(--app-radio) var(--app-radio) var(--app-radio);
+}
+.modo h3 { margin: 0 0 6px; font-size: 16px; font-weight: 700; color: var(--app-marca); }
+.modo p { margin: 0; font-size: 13.5px; color: var(--app-tinta-2); line-height: 1.6; }
+
+/* Franja de hechos verificables */
+.hechos {
+  display: grid; grid-template-columns: repeat(4, 1fr); gap: 4px;
+  border: 1px solid var(--app-borde); border-radius: 0 var(--app-radio) var(--app-radio) var(--app-radio);
+  overflow: hidden;
+}
+.hecho { padding: 24px 20px; background: var(--app-fondo-2); text-align: center; }
+.hecho b { display: block; font-size: 30px; font-weight: 800; color: var(--app-marca); font-family: var(--app-mono); }
+.hecho span { display: block; margin-block-start: 6px; font-size: 12.5px; color: var(--app-tinta-2); line-height: 1.5; }
+
+.cierre { text-align: center; padding: 64px 0 80px; }
+.cierre h2 { margin: 0 0 14px; font-size: 26px; font-weight: 700; }
+.cierre p { max-inline-size: 560px; margin: 0 auto 26px; color: var(--app-tinta-2); font-size: 15px; }
+
+footer {
+  max-inline-size: 1080px; margin: 0 auto; padding: 28px;
+  border-block-start: 1px solid var(--app-borde);
+  color: var(--app-tinta-3); font-size: 12.5px;
+  display: flex; justify-content: space-between; flex-wrap: wrap; gap: 8px;
+}
+
+@media (max-width: 860px) {
+  .comparar, .modos { grid-template-columns: 1fr; }
+  .rejilla { grid-template-columns: 1fr 1fr; }
+  .pasos { grid-template-columns: 1fr 1fr; }
+  .hechos { grid-template-columns: 1fr 1fr; }
+  .hero h1 { font-size: 32px; }
+}
+@media (max-width: 540px) {
+  .rejilla, .pasos, .hechos { grid-template-columns: 1fr; }
+  .paso:nth-child(2) { border-radius: 0; }
+  .paso:last-child { border-radius: 0 0 var(--app-radio) var(--app-radio); }
+}
+
+/* Nodite, el personaje de la casa — mismo rol que en las pantallas del producto: guía, no avisa. */
+.nodite-flotante {
+  position: fixed; inset-block-end: 22px; inset-inline-end: 22px; z-index: 20;
+  display: flex; align-items: flex-end; gap: 10px; max-inline-size: 320px;
+}
+.nodite-img {
+  inline-size: 76px; block-size: auto; flex-shrink: 0;
+  filter: drop-shadow(0 8px 18px rgba(0, 0, 0, .35));
+}
+.nodite-img--claro { display: none; }
+:root[data-theme='light'] .nodite-img--oscuro { display: none; }
+:root[data-theme='light'] .nodite-img--claro { display: block; }
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme='dark']) .nodite-img--oscuro { display: none; }
+  :root:not([data-theme='dark']) .nodite-img--claro { display: block; }
+}
+:root[data-theme='dark'] .nodite-img--claro { display: none; }
+:root[data-theme='dark'] .nodite-img--oscuro { display: block; }
+.nodite-globo {
+  position: relative; padding: 12px 16px; margin-block-end: 10px;
+  background: var(--app-fondo-2); border: 1px solid var(--app-borde);
+  border-radius: var(--app-radio) var(--app-radio) 0 var(--app-radio);
+  font-size: 12.5px; line-height: 1.55; color: var(--app-tinta-2);
+}
+.nodite-globo p { margin: 0; }
+.nodite-globo strong { color: var(--app-marca); }
+.nodite-cerrar {
+  position: absolute; inset-block-start: -8px; inset-inline-end: -8px;
+  inline-size: 20px; block-size: 20px; padding: 0; cursor: pointer;
+  font-size: 12px; line-height: 1; color: var(--app-tinta-3);
+  background: var(--app-fondo); border: 1px solid var(--app-borde); border-radius: 50%;
+}
+.nodite-cerrar:hover { color: var(--app-tinta); }
+.nodite-flotante[hidden] { display: none; }
+@media (max-width: 640px) { .nodite-flotante { display: none; } }
+</style>
+</head>
+<body>
+
+<header class="barra">
+  <div class="marca">Innodite <b>Module Maker</b> <span class="version">v5.1</span></div>
+  <div class="acciones">
+    <a class="boton boton--fantasma" href="manual.html">Manual técnico</a>
+    <a class="boton boton--fantasma" href="https://github.com/Innodite/laravel-module-maker">Repositorio</a>
+    <button class="boton boton--fantasma" id="tema" type="button">Tema</button>
+  </div>
+</header>
+
+<main>
+
+<section class="hero" style="border:none;">
+  <span class="hero-etiqueta">Generador interno · Laravel</span>
+  <h1>Que cada proyecto nazca<br>con <span>la misma estructura</span>.</h1>
+  <p>
+    <code>laravel-module-maker</code> genera la arquitectura completa de un módulo —capas,
+    permisos, migraciones, vistas y pruebas— siguiendo un único patrón, el mismo en todos los
+    proyectos de la casa. Lo que hoy depende de la memoria de cada desarrollador pasa a depender
+    de un comando.
+  </p>
+  <div class="hero-acciones">
+    <a class="boton boton--marca" href="#proceso">Cómo funciona el proceso</a>
+    <a class="boton boton--fantasma" href="#empresa">Ventajas para la empresa</a>
+  </div>
+</section>
+
+<section id="problema">
+  <p class="seccion-etiqueta">El problema que resuelve</p>
+  <h2 class="seccion-titulo">Sin un generador, cada módulo es una decisión nueva</h2>
+  <p class="seccion-resumen">
+    No es un problema de talento: es un problema de repetición. Un equipo que escribe la misma
+    estructura a mano, una y otra vez, en proyectos distintos, termina con variaciones — y esas
+    variaciones son las que cuestan tiempo seis meses después, cuando alguien tiene que entrar a
+    un módulo que no escribió.
+  </p>
+  <div class="comparar">
+    <div class="comparar-tarjeta comparar-tarjeta--antes">
+      <h3>Sin el generador</h3>
+      <ul>
+        <li>Cada desarrollador decide dónde va cada archivo — y decide distinto</li>
+        <li>Las pruebas se agregan si alcanza el tiempo, no porque el proyecto las exija</li>
+        <li>Un proyecto nuevo empieza copiando el anterior, con lo que ese anterior tenía de bueno y de malo</li>
+        <li>El error de permisos o de migración se descubre en el despliegue, no antes</li>
+      </ul>
+    </div>
+    <div class="comparar-tarjeta comparar-tarjeta--despues">
+      <h3>Con el generador</h3>
+      <ul>
+        <li>La estructura de capas la escribe el comando, siempre igual</li>
+        <li>El contrato de pruebas nace junto con el módulo, no aparte</li>
+        <li>Un proyecto nuevo arranca con la versión vigente del patrón, no con la costumbre de quien lo empezó</li>
+        <li>Un diagnóstico revisa el proyecto antes de generar o desplegar, y dice qué corregir</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<section id="proceso">
+  <p class="seccion-etiqueta">Cómo funciona, a nivel de proceso</p>
+  <h2 class="seccion-titulo">Cuatro pasos, sin que nadie tenga que recordarlos</h2>
+  <p class="seccion-resumen">
+    El generador no reemplaza el criterio del equipo de TI: fija el andamiaje para que ese criterio
+    se aplique siempre igual, sin depender de que alguien se acuerde del paso que hoy se salta.
+  </p>
+  <div class="pasos">
+    <div class="paso">
+      <h3>Diagnosticar</h3>
+      <p>Antes de generar nada, <code>innodite:doctor</code> revisa que el proyecto esté en condiciones. Si algo falta, lo dice — con la corrección, no solo el error.</p>
+    </div>
+    <div class="paso">
+      <h3>Generar</h3>
+      <p>Un comando escribe el módulo completo: capas, permisos, migraciones y vistas, y lo deja declarado en el orden en que se va a desplegar.</p>
+    </div>
+    <div class="paso">
+      <h3>Desplegar</h3>
+      <p>Un único comando levanta esquema, datos y permisos en el orden correcto, para el proyecto entero o para un cliente puntual si es multiempresa.</p>
+    </div>
+    <div class="paso">
+      <h3>Probar</h3>
+      <p>El contrato de pruebas corre sobre una copia real del esquema, nunca sobre la base de producción, y se detiene en el primer nivel que falla.</p>
+    </div>
+  </div>
+</section>
+
+<section id="empresa">
+  <p class="seccion-etiqueta">Ventajas para la empresa</p>
+  <h2 class="seccion-titulo">Lo que cambia en cómo se entregan los proyectos</h2>
+  <div class="rejilla">
+    <div class="tarjeta">
+      <div class="tarjeta__icono">1</div>
+      <h3>Un desarrollador que conoce un proyecto, conoce todos</h3>
+      <p>La estructura es la misma en cada proyecto de la casa. Mover a alguien de un cliente a otro no implica volver a aprender dónde vive cada cosa.</p>
+    </div>
+    <div class="tarjeta">
+      <div class="tarjeta__icono">2</div>
+      <h3>Menos tiempo entre pedir un módulo y tenerlo probado</h3>
+      <p>La estructura completa —capas, rutas, permisos, pruebas— sale generada de una vez, no se escribe pieza por pieza a mano.</p>
+    </div>
+    <div class="tarjeta">
+      <div class="tarjeta__icono">3</div>
+      <h3>Menor riesgo en el momento del despliegue</h3>
+      <p>El diagnóstico previo y el contrato de pruebas detectan lo que antes se descubría en producción — con su corrección, no solo la alarma.</p>
+    </div>
+    <div class="tarjeta">
+      <div class="tarjeta__icono">4</div>
+      <h3>Crecer a varios clientes no obliga a rehacer el proyecto</h3>
+      <p>El modo multiempresa se decide una vez, al instalar. Un proyecto que empieza con un solo cliente puede sumar más sin reescribir su base.</p>
+    </div>
+    <div class="tarjeta">
+      <div class="tarjeta__icono">5</div>
+      <h3>La calidad no depende de quién esté de turno</h3>
+      <p>El patrón lo aplica el generador, no la memoria de la persona que escribe el código ese día.</p>
+    </div>
+    <div class="tarjeta">
+      <div class="tarjeta__icono">6</div>
+      <h3>Un cambio al patrón llega a todos los proyectos por igual</h3>
+      <p>Mejorar el generador una vez mejora la próxima entrega en cualquier proyecto que lo use — sin tener que corregir cliente por cliente.</p>
+    </div>
+  </div>
+</section>
+
+<section id="ti">
+  <p class="seccion-etiqueta">Ventajas para el equipo de TI</p>
+  <h2 class="seccion-titulo">Lo que cambia en el trabajo del día a día</h2>
+  <div class="rejilla">
+    <div class="tarjeta">
+      <div class="tarjeta__icono">⛭</div>
+      <h3>La arquitectura en capas no es una recomendación, es lo que se genera</h3>
+      <p>Controlador, servicio, repositorio y modelo separados desde el primer momento — no un objetivo que se persigue a mitad del proyecto.</p>
+    </div>
+    <div class="tarjeta">
+      <div class="tarjeta__icono">✓</div>
+      <h3>El mismo criterio de pruebas en todos los módulos</h3>
+      <p>El contrato de pruebas cubre siempre los mismos temas, en el mismo orden, corta en el primer nivel que falla y corre sobre una base clonada, nunca la real.</p>
+    </div>
+    <div class="tarjeta">
+      <div class="tarjeta__icono">!</div>
+      <h3>Los errores traen la corrección, no solo el aviso</h3>
+      <p>El diagnóstico del proyecto (<code>innodite:doctor</code>) señala qué está mal y qué comando o archivo corregirlo — antes de que el fallo aparezca en el despliegue.</p>
+    </div>
+    <div class="tarjeta">
+      <div class="tarjeta__icono">⇄</div>
+      <h3>Migraciones organizadas, sin duplicados entre contextos</h3>
+      <p>Cada migración vive junto a la subfuncionalidad a la que pertenece, y el propio generador detecta si una tabla se declaró dos veces.</p>
+    </div>
+    <div class="tarjeta">
+      <div class="tarjeta__icono">⚙</div>
+      <h3>Personalizar el código generado es una decisión, no un accidente</h3>
+      <p>Las plantillas del generador se exportan solo cuando el equipo decide tocarlas — no quedan copias congeladas desde el día de la instalación.</p>
+    </div>
+    <div class="tarjeta">
+      <div class="tarjeta__icono">⬡</div>
+      <h3>Multiempresa sin lógica repetida por cliente</h3>
+      <p>Un único código de contexto (central o del cliente activo) resuelve la conexión de base de datos; ningún módulo necesita saber cuántos clientes hay.</p>
+    </div>
+  </div>
+</section>
+
+<section id="modos">
+  <p class="seccion-etiqueta">Se adapta al proyecto, no al revés</p>
+  <h2 class="seccion-titulo">Dos modos, elegidos una sola vez</h2>
+  <p class="seccion-resumen">
+    Ningún comando adivina el modo del proyecto ni asume uno por defecto: se elige al instalar, y
+    desde ahí el generador escribe en consecuencia.
+  </p>
+  <div class="modos">
+    <div class="modo">
+      <h3>Aplicación única</h3>
+      <p>Un solo cliente, una sola base de datos. El generador escribe la estructura sin ningún eje de contexto adicional — la forma más simple, para el proyecto que no necesita más.</p>
+    </div>
+    <div class="modo">
+      <h3>Multiempresa</h3>
+      <p>Varios clientes sobre el mismo código. El generador separa lo central de lo particular de cada cliente y despliega uno, varios o todos con el mismo comando.</p>
+    </div>
+  </div>
+</section>
+
+<section id="hechos" style="padding-block-end: 0;">
+  <p class="seccion-etiqueta">En una mirada</p>
+  <h2 class="seccion-titulo">Lo que el paquete ya demuestra hoy</h2>
+  <div class="hechos">
+    <div class="hecho"><b>9</b><span>comandos activos que generan, despliegan y prueban el proyecto</span></div>
+    <div class="hecho"><b>4</b><span>capas separadas en cada módulo: controlador, servicio, repositorio, modelo</span></div>
+    <div class="hecho"><b>9</b><span>temas de prueba obligatorios por cada subfuncionalidad generada</span></div>
+    <div class="hecho"><b>2</b><span>modos de proyecto: aplicación única o multiempresa, sin mezclarlos</span></div>
+  </div>
+</section>
+
+<section class="cierre" style="border:none;">
+  <h2>La estructura ya no depende de quién la escriba</h2>
+  <p>El manual técnico tiene el detalle de cada comando, con sus parámetros y lo que genera. Esta
+  página es el resumen para decidir adoptarlo o para explicárselo a quien todavía no lo usa.</p>
+  <div class="hero-acciones">
+    <a class="boton boton--marca" href="manual.html">Ver el manual técnico</a>
+    <a class="boton boton--fantasma" href="https://github.com/Innodite/laravel-module-maker">Repositorio en GitHub</a>
+  </div>
+</section>
+
+</main>
+
+<footer>
+  <span>Innodite Module Maker — generador interno del Patrón Innodite.</span>
+  <span>Producto propio, uso en proyectos de la casa.</span>
+</footer>
+
+<aside class="nodite-flotante" id="nodite">
+  <div class="nodite-globo">
+    <button class="nodite-cerrar" id="nodite-cerrar" type="button" aria-label="Cerrar">✕</button>
+    <p><strong>Nodite:</strong> cada módulo que generás nace con sus capas, sus permisos y sus
+    pruebas ya declaradas — nadie del equipo tiene que acordarse de agregarlas después.</p>
+  </div>
+  <img class="nodite-img nodite-img--oscuro" src="assets/nodite-fondo-oscuro.webp" alt="Nodite, el personaje de Innodite">
+  <img class="nodite-img nodite-img--claro" src="assets/nodite-fondo-claro.webp" alt="Nodite, el personaje de Innodite">
+</aside>
+
+<script>
+(function () {
+  const raiz = document.documentElement;
+  try {
+    const guardado = localStorage.getItem('tema');
+    if (guardado) raiz.dataset.theme = guardado;
+  } catch (e) { /* sin memoria: manda el sistema */ }
+
+  document.getElementById('tema').addEventListener('click', () => {
+    const oscuroAhora = raiz.dataset.theme
+      ? raiz.dataset.theme === 'dark'
+      : !matchMedia('(prefers-color-scheme: light)').matches;
+    const siguiente = oscuroAhora ? 'light' : 'dark';
+    raiz.dataset.theme = siguiente;
+    try { localStorage.setItem('tema', siguiente); } catch (e) { /* no se recuerda, y no pasa nada */ }
+  });
+
+  document.getElementById('nodite-cerrar').addEventListener('click', () => {
+    document.getElementById('nodite').hidden = true;
+  });
+})();
+</script>
+
+</body>
+</html>
