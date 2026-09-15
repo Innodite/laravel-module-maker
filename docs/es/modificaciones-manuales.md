@@ -22,6 +22,9 @@ composer dump-autoload
 
 ## 2 · Middleware `InnoditeContextBridge`
 
+**Solo obligatorio en `multitenant`** — en `single-app`, `innodite:doctor` no lo exige (no hay eje
+de contexto que resolver).
+
 En `bootstrap/app.php` (Laravel 11+):
 
 ```php

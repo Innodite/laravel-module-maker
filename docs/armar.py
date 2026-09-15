@@ -74,7 +74,10 @@ def en_linea(texto: str) -> str:
 
 
 def fila_de_tabla(linea: str) -> list[str]:
-    return [c.strip() for c in linea.strip().strip('|').split('|')]
+    # `\|` dentro de una celda (para listar valores tipo `a` \| `b`) no debe cortar la columna.
+    marcador = '\x00'
+    protegida = linea.strip().strip('|').replace('\\|', marcador)
+    return [c.strip().replace(marcador, '|') for c in protegida.split('|')]
 
 
 def a_html(md: str) -> str:
@@ -160,7 +163,7 @@ def a_html(md: str) -> str:
         if re.match(r'^\s*[-*] ', linea):
             elementos = []
             while i < len(lineas) and re.match(r'^\s*[-*] ', lineas[i]):
-                elementos.append(f'<li>{en_linea(re.sub(r"^\\s*[-*] ", "", lineas[i]))}</li>')
+                elementos.append(f'<li>{en_linea(re.sub(r"^\s*[-*] ", "", lineas[i]))}</li>')
                 i += 1
             fuera.append('<ul class="doc-lista">' + ''.join(elementos) + '</ul>')
             continue
