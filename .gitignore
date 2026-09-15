@@ -13,6 +13,6 @@ docs/test-reports/*
 # Configuraciones temporales de PHPUnit
 storage/phpunit-*.xml
 
-# Salida de docs/publicar.sh — se regenera desde las fichas, no se versiona
-docs/publicar/
+# docs/publicar/ SÍ se versiona a propósito (ver docs/publicar.sh): es la única ubicación fija
+# donde ir a buscar, sin ambigüedad, los archivos que van sueltos a la raíz del subdominio.
 docs/publicar.zip
