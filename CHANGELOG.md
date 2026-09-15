@@ -4,6 +4,14 @@ Todo cambio que afecte a quien usa el paquete. El formato sigue
 [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y las versiones,
 [SemVer](https://semver.org/lang/es/).
 
+## [5.1.1] — 15/09/2026
+
+### Corregido
+
+- Formato PSR-12 de `LegacySharedTests.php` (introducido en la 5.1.0): una estructura de control
+  multilínea mal indentada, sin efecto en el comportamiento del comando. Sin este cambio, no
+  afecta a quien ya instaló la 5.1.0.
+
 ## [5.1.0] — 15/09/2026
 
 **Enforcement nuevo, no un fix interno.** A diferencia de la 5.0.1, esta versión SÍ puede hacer
