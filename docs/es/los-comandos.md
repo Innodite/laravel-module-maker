@@ -13,6 +13,17 @@ Diez comandos, y el orden en que se usan es casi siempre el mismo.
 | `innodite:publish-stubs` | Exporta al proyecto **solo** las plantillas que vayas a personalizar |
 | ~~`innodite:migrate-plan`~~ | **Retirado.** Sigue registrado solo para decirlo |
 
+## `innodite:doctor` e `innodite:test` rechazan la estructura de pruebas retirada
+
+Desde la 5.1.0, los dos revisan que ninguna subfuncionalidad tenga la carpeta compartida
+`Tests/Feature/Shared/`, ni una pieza de `Central`/`Tenant` que incorpore un trait con
+`use <Trait>` en vez de llevar el código inline. Si encuentran un caso, se niegan a correr y dicen
+la ruta exacta y el arreglo: inlinear el cuerpo del trait, letra por letra, en cada contexto, y
+borrar `Shared/`. Ver [las pruebas](las-pruebas.md) para la forma vigente.
+
+⛔ Es detección pura — ningún comando mueve el código por su cuenta. Un módulo con esa deuda hay
+que migrarlo a mano antes de poder ejecutar sus pruebas.
+
 ## El contexto, en los que generan
 
 En multiinquilino, `make-module`, `add-entity`, `test`, `deploy` y `migrate-one` piden `--context`.

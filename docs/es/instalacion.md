@@ -1,11 +1,11 @@
 El paquete se instala con Composer y necesita **un solo paso más** antes de poder generar nada.
 
 ```bash
-composer require innodite/laravel-module-maker:^5.0
+composer require innodite/laravel-module-maker:^5.1
 php artisan innodite:module-setup
 ```
 
-**La versión es la 5.0**, y cambia la forma de todo lo que el paquete escribe: un módulo generado con
+**La versión es la 5.1**, y cambia la forma de todo lo que el paquete escribe: un módulo generado con
 una 4.x no coincide con lo que genera esta, ni en carpetas ni en namespaces.
 
 `module-setup` es lo que elige el **modo del proyecto** y deja escrita la configuración. Sin modo
