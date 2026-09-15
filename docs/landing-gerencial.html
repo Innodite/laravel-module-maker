@@ -224,6 +224,42 @@ footer {
   .paso:nth-child(2) { border-radius: 0; }
   .paso:last-child { border-radius: 0 0 var(--app-radio) var(--app-radio); }
 }
+
+/* Nodite, el personaje de la casa — mismo rol que en las pantallas del producto: guía, no avisa. */
+.nodite-flotante {
+  position: fixed; inset-block-end: 22px; inset-inline-end: 22px; z-index: 20;
+  display: flex; align-items: flex-end; gap: 10px; max-inline-size: 320px;
+}
+.nodite-img {
+  inline-size: 76px; block-size: auto; flex-shrink: 0;
+  filter: drop-shadow(0 8px 18px rgba(0, 0, 0, .35));
+}
+.nodite-img--claro { display: none; }
+:root[data-theme='light'] .nodite-img--oscuro { display: none; }
+:root[data-theme='light'] .nodite-img--claro { display: block; }
+@media (prefers-color-scheme: light) {
+  :root:not([data-theme='dark']) .nodite-img--oscuro { display: none; }
+  :root:not([data-theme='dark']) .nodite-img--claro { display: block; }
+}
+:root[data-theme='dark'] .nodite-img--claro { display: none; }
+:root[data-theme='dark'] .nodite-img--oscuro { display: block; }
+.nodite-globo {
+  position: relative; padding: 12px 16px; margin-block-end: 10px;
+  background: var(--app-fondo-2); border: 1px solid var(--app-borde);
+  border-radius: var(--app-radio) var(--app-radio) 0 var(--app-radio);
+  font-size: 12.5px; line-height: 1.55; color: var(--app-tinta-2);
+}
+.nodite-globo p { margin: 0; }
+.nodite-globo strong { color: var(--app-marca); }
+.nodite-cerrar {
+  position: absolute; inset-block-start: -8px; inset-inline-end: -8px;
+  inline-size: 20px; block-size: 20px; padding: 0; cursor: pointer;
+  font-size: 12px; line-height: 1; color: var(--app-tinta-3);
+  background: var(--app-fondo); border: 1px solid var(--app-borde); border-radius: 50%;
+}
+.nodite-cerrar:hover { color: var(--app-tinta); }
+.nodite-flotante[hidden] { display: none; }
+@media (max-width: 640px) { .nodite-flotante { display: none; } }
 </style>
 </head>
 <body>
@@ -433,6 +469,16 @@ footer {
   <span>Producto propio, uso en proyectos de la casa.</span>
 </footer>
 
+<aside class="nodite-flotante" id="nodite">
+  <div class="nodite-globo">
+    <button class="nodite-cerrar" id="nodite-cerrar" type="button" aria-label="Cerrar">✕</button>
+    <p><strong>Nodite:</strong> cada módulo que generás nace con sus capas, sus permisos y sus
+    pruebas ya declaradas — nadie del equipo tiene que acordarse de agregarlas después.</p>
+  </div>
+  <img class="nodite-img nodite-img--oscuro" src="assets/nodite-fondo-oscuro.webp" alt="Nodite, el personaje de Innodite">
+  <img class="nodite-img nodite-img--claro" src="assets/nodite-fondo-claro.webp" alt="Nodite, el personaje de Innodite">
+</aside>
+
 <script>
 (function () {
   const raiz = document.documentElement;
@@ -448,6 +494,10 @@ footer {
     const siguiente = oscuroAhora ? 'light' : 'dark';
     raiz.dataset.theme = siguiente;
     try { localStorage.setItem('tema', siguiente); } catch (e) { /* no se recuerda, y no pasa nada */ }
+  });
+
+  document.getElementById('nodite-cerrar').addEventListener('click', () => {
+    document.getElementById('nodite').hidden = true;
   });
 })();
 </script>
