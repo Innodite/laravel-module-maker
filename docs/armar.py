@@ -1,8 +1,8 @@
 #!/usr/bin/env python3
-"""Arma `docs/index.html` a partir de `docs/fichas.json` y las fichas de `docs/es/`.
+"""Arma `docs/manual.html` a partir de `docs/fichas.json` y las fichas de `docs/es/`.
 
 La fuente única del manual son los `.md`. Este script solo los monta en una página con la interfaz
-de la documentación de la casa; ⛔ no se edita `index.html` a mano, se vuelve a ejecutar esto:
+de la documentación de la casa; ⛔ no se edita `manual.html` a mano, se vuelve a ejecutar esto:
 
     python3 docs/armar.py
 
@@ -275,11 +275,11 @@ def main() -> None:
             f'<h1>{html.escape(limpio)}</h1></header>{cuerpo}{paginacion}</article>'
         )
 
-    (RAIZ / 'index.html').write_text(
+    (RAIZ / 'manual.html').write_text(
         PLANTILLA.replace('{{INDICE}}', '\n'.join(indice)).replace('{{ARTICULOS}}', '\n'.join(articulos)),
         encoding='utf-8',
     )
-    print(f'index.html armado con {len(paginas)} fichas.')
+    print(f'manual.html armado con {len(paginas)} fichas.')
 
 
 PLANTILLA = r"""<!DOCTYPE html>
@@ -562,7 +562,7 @@ footer.doc-pie {
 <header class="doc-barra">
   <div class="doc-marca">Innodite <b>Module Maker</b> <span class="doc-version">v5.1</span></div>
   <div class="doc-acciones">
-    <a class="doc-boton" href="landing-gerencial.html">Para gerencia</a>
+    <a class="doc-boton" href="index.html">Para gerencia</a>
     <a class="doc-boton" href="https://github.com/Innodite/laravel-module-maker">Repositorio</a>
     <button class="doc-boton" id="tema" type="button">Tema</button>
   </div>

@@ -1164,8 +1164,9 @@ manual que anuncia comandos que ya no existen.
 
 ### La página publicada se genera, no se edita
 
-`docs/index.html` sale de las fichas, así que **no se toca a mano**: se cambia el `.md` y se vuelve
-a armar.
+`docs/manual.html` sale de las fichas, así que **no se toca a mano**: se cambia el `.md` y se vuelve
+a armar. `docs/index.html` es la portada gerencial (aparte, no generada) — es lo primero que ve
+quien entra al sitio.
 
 ```bash
 python3 docs/armar.py
