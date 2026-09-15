@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-"""Arma `docs/manual.html` a partir de `docs/fichas.json` y las fichas de `docs/es/`.
+"""Arma `manual.html` (en la RAÍZ del repositorio) a partir de `docs/fichas.json` y las fichas de
+`docs/es/`.
 
 La fuente única del manual son los `.md`. Este script solo los monta en una página con la interfaz
 de la documentación de la casa; ⛔ no se edita `manual.html` a mano, se vuelve a ejecutar esto:
@@ -25,6 +26,9 @@ import unicodedata
 from pathlib import Path
 
 RAIZ = Path(__file__).resolve().parent
+# manual.html sale en la RAÍZ del repositorio, no en docs/ — así el hosting lo sirve directo,
+# sin ninguna subcarpeta. Las fuentes (fichas.json, es/*.md) sí se leen desde docs/.
+SALIDA = RAIZ.parent
 
 # Enlace entre fichas escrito como `archivo.md` — correcto para leerlo en GitHub, donde el
 # navegador de repositorio SÍ resuelve `.md` relativos. `en_linea()` lo reescribe a `#/slug` para
@@ -275,7 +279,7 @@ def main() -> None:
             f'<h1>{html.escape(limpio)}</h1></header>{cuerpo}{paginacion}</article>'
         )
 
-    (RAIZ / 'manual.html').write_text(
+    (SALIDA / 'manual.html').write_text(
         PLANTILLA.replace('{{INDICE}}', '\n'.join(indice)).replace('{{ARTICULOS}}', '\n'.join(articulos)),
         encoding='utf-8',
     )

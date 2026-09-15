@@ -13,6 +13,7 @@ docs/test-reports/*
 # Configuraciones temporales de PHPUnit
 storage/phpunit-*.xml
 
-# docs/publicar/ SÍ se versiona a propósito (ver docs/publicar.sh): es la única ubicación fija
-# donde ir a buscar, sin ambigüedad, los archivos que van sueltos a la raíz del subdominio.
-docs/publicar.zip
+# index.html, manual.html y assets/ (en la RAÍZ del repo) SÍ se versionan a propósito — son lo
+# que se sube al subdominio. Solo el .zip generado por docs/publicar.sh queda fuera (binario
+# derivado, se regenera).
+/publicar.zip

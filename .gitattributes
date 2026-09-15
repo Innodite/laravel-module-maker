@@ -9,3 +9,10 @@
 # Los .stub son el contenido que el paquete escribe en el proyecto de otro: si viajan con CRLF, el
 # módulo generado nace con finales de línea mezclados.
 *.stub text eol=lf
+
+# El sitio de documentación vive en la raíz (index.html, manual.html, assets/) para que el hosting
+# del subdominio lo sirva directo, pero este sigue siendo un paquete PHP: que GitHub no lo cuente
+# como el lenguaje del repositorio.
+index.html linguist-documentation
+manual.html linguist-documentation
+assets/* linguist-documentation
