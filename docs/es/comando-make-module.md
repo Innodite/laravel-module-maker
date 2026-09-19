@@ -58,6 +58,13 @@ namespace declarado no coincide con la ruta destino.
 `provider-boot.stub` es opcional: si ningún nivel lo aporta, el `boot()` del `ServiceProvider` sale
 vacío — es el punto de enganche al menú de la aplicación, y el paquete no lo trae de fábrica.
 
+`texts-trait.stub` también es opcional: si algún nivel lo aporta, cada subfuncionalidad nace con
+una séptima pieza de seeder, `{Prefijo}{Módulo}{SubFunc}Texts.php` —sus textos en cada idioma—,
+que los seeders de stage y de producción incorporan y llaman al final de `run()`, y el módulo con
+`resources/lang/.gitkeep`. El stub recibe `{{{ textsGroup }}}` ya compuesto (`invoice::invoice`),
+con el mismo `snake_case` con el que el paquete registra la carpeta de traducciones del módulo.
+Sin nadie que lo aporte, salen las seis piezas de siempre.
+
 ### Aplicación única
 
 `php artisan innodite:make-module Invoice` genera, bajo `Modules/Invoice/`:

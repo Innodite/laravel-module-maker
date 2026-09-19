@@ -37,6 +37,18 @@ final class SeederNames
     /** Los tres traits que la acompañan: lista de migraciones, deltas con guardia y datos canónicos. */
     public const TRAITS = ['MigrationsList', 'InlineAlters', 'Data'];
 
+    /**
+     * La pieza que existe solo si alguien la aporta: los textos de la subfuncionalidad en cada idioma.
+     *
+     * No entra en {@see self::TRAITS} a propósito. Las seis de arriba las escribe este paquete en
+     * cualquier proyecto; ésta la escribe solo cuando el proyecto o un paquete instalado aportan
+     * `texts-trait.stub`, porque el mecanismo que siembra un texto —la tabla, el archivo que se
+     * sirve— es de la biblioteca que lo lee, no de este generador. Listarla entre las seis haría
+     * que quien recorre las piezas de un módulo buscara un archivo que en un proyecto pelado no
+     * existe.
+     */
+    public const OPTIONAL = ['Texts'];
+
     /** Carpeta de los maestros del módulo, dentro de Database/Seeders/{Contexto}/. */
     public const MASTER_FOLDER = 'Application';
 
@@ -61,9 +73,9 @@ final class SeederNames
      * ejecutables terminan en `Seeder` y los tres traits no: quien lo recuerde por su cuenta acabará
      * escribiendo un archivo `…Data.php` que declara `…DataSeeder`, y PSR-4 no lo encontrará.
      *
-     * @param  string  $piece  Una de RUNNABLE o de TRAITS
+     * @param  string  $piece  Una de RUNNABLE, de TRAITS o de OPTIONAL
      *
-     * @throws InvalidArgumentException Si el nombre de pieza no es de los seis.
+     * @throws InvalidArgumentException Si el nombre de pieza no es de los seis ni la opcional.
      */
     public static function piece(string $prefix, string $module, string $subFeature, string $piece): string
     {
@@ -73,14 +85,15 @@ final class SeederNames
             return "{$base}{$piece}Seeder";
         }
 
-        if (in_array($piece, self::TRAITS, true)) {
+        if (in_array($piece, self::TRAITS, true) || in_array($piece, self::OPTIONAL, true)) {
             return "{$base}{$piece}";
         }
 
         throw new InvalidArgumentException(
             "'{$piece}' no es una de las seis piezas de una subfuncionalidad.\n"
             . 'Ejecutables: ' . implode(', ', self::RUNNABLE) . "\n"
-            . 'Traits: ' . implode(', ', self::TRAITS)
+            . 'Traits: ' . implode(', ', self::TRAITS) . "\n"
+            . 'Opcional, si alguien aporta su stub: ' . implode(', ', self::OPTIONAL)
         );
     }
 
