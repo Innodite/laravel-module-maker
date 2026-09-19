@@ -32,6 +32,10 @@ function renderizarStub(string $stub, array $extra = []): string
         'tables'             => "\n        'invoices',\n    ",
         'moduleLabel'        => 'Invoice - Invoice',
         'permissions'        => permisosComoArrayPhp(),
+        // Los dos huecos de la séptima pieza, vacíos: es lo que entrega el generador cuando nadie
+        // aporta `texts-trait.stub`, y lo que el stub tiene que seguir aceptando.
+        'textsTraitUse'      => '',
+        'textsStep'          => '',
     ], $extra);
 
     $contenido = File::get(dirname(__DIR__, 2) . "/stubs/contextual/{$stub}");

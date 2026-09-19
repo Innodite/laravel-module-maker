@@ -685,7 +685,7 @@ class MakeModuleCommand extends Command
 
         $empatados = [];
 
-        foreach (['vue-index.stub', 'vue-create.stub', 'vue-edit.stub', 'vue-show.stub', 'provider-boot.stub'] as $stub) {
+        foreach (['vue-index.stub', 'vue-create.stub', 'vue-edit.stub', 'vue-show.stub', 'provider-boot.stub', 'texts-trait.stub'] as $stub) {
             $quienes = StubsDeVendor::paquetesQueAportan($stub);
 
             if (count($quienes) > 1) {

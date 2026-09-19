@@ -36,7 +36,7 @@ class {{{ seederName }}} extends Seeder
 {
     use {{{ migrationsListTrait }}};
     use {{{ inlineAltersTrait }}};
-    use {{{ dataTrait }}};
+    use {{{ dataTrait }}};{{{ textsTraitUse }}}
     use ReportsSeederErrors;
     use ResolvesSeederDestructiveMode;
 
@@ -87,7 +87,7 @@ class {{{ seederName }}} extends Seeder
         $this->safe('seedPermissions', fn () => $this->callWith(
             {{{ permissionsSeeder }}}::class,
             ['destructive' => $this->isDestructive()],
-        ));
+        ));{{{ textsStep }}}
 
         $this->reportErrors();
 

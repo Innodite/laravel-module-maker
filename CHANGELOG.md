@@ -4,6 +4,43 @@ Todo cambio que afecte a quien usa el paquete. El formato sigue
 [Keep a Changelog](https://keepachangelog.com/es-ES/1.1.0/) y las versiones,
 [SemVer](https://semver.org/lang/es/).
 
+## [5.2.0] — 19/09/2026
+
+**Un hueco nuevo, y nada cambia para quien no lo ocupa.** Un proyecto pelado genera exactamente lo
+mismo que con la 5.1.1. Lo que se añade solo actúa si el proyecto o un paquete instalado aportan
+un stub que hasta hoy nadie leía.
+
+### Añadido
+
+- **`texts-trait.stub`, la séptima pieza opcional del seeder de una subfuncionalidad: sus textos
+  en cada idioma.** Igual que `provider-boot.stub` (4.2.0), es un stub que el paquete **no trae**:
+  si el proyecto —o una biblioteca de interfaz instalada, en
+  `vendor/*/*/stubs/module-maker/contextual/`— lo aporta, `make-module` y `add-entity` escriben
+  `{Prefijo}{Módulo}{SubFunc}Texts.php` junto a las otras seis piezas, los seeders de stage y de
+  producción la incorporan (`use …Texts;`) y la llaman al final de `run()`
+  (`$this->safe('seedTexts', …)`, después de los permisos y antes del reporte), y el módulo nace con
+  `resources/lang/.gitkeep`, que es lo que hace que el proveedor registre su espacio de nombres de
+  traducción al arrancar. Sin nadie que lo aporte, los dos seeders salen como hasta ahora.
+- El stub recibe `{{{ namespace }}}`, `{{{ traitName }}}`, `{{{ subFeature }}}`, `{{{ moduleName }}}`
+  y **`{{{ textsGroup }}}`**: el grupo de traducción ya compuesto (`facturas::facturas`,
+  `person_catalog::person_catalog`), con el mismo `snake_case` con el que el proveedor de este
+  paquete registra la carpeta `resources/lang` de cada módulo. Se entrega compuesto para que la
+  regla viva una sola vez — y **las cuatro vistas Vue lo reciben también**, por si una plantilla
+  aportada pide sus textos por clave en vez de escribirlos.
+- `SeederNames::OPTIONAL` (`['Texts']`): `piece()` la resuelve, `subFeaturePieces()` **no** la
+  lista — las seis de siempre siguen siendo las que se exigen a cualquier módulo.
+- `make-module` avisa del empate también sobre `texts-trait.stub` cuando lo aportan dos paquetes.
+
+### Cambiado
+
+- `stage-seeder.stub` y `production-seeder.stub` reciben dos placeholders nuevos,
+  `{{{ textsTraitUse }}}` y `{{{ textsStep }}}`, que el generador entrega **vacíos** cuando nadie
+  aporta la pieza. ⚠️ Un proyecto con esos dos stubs **publicados** de una versión anterior sigue
+  generando sin ellos: la pieza de textos se escribe, pero su seeder no la incorpora. Republica los
+  stubs (`innodite:publish-stubs`) o añade los dos placeholders a tu copia.
+- La pieza de textos, como las otras seis, **no se sobrescribe** si ya existe: dentro viven los
+  textos que alguien escribió a mano.
+
 ## [5.1.1] — 15/09/2026
 
 ### Corregido

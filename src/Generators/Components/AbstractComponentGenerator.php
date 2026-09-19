@@ -427,6 +427,21 @@ abstract class AbstractComponentGenerator
     // ─── Lo que más de un generador necesita saber, decidido UNA vez ──────────
 
     /**
+     * El grupo de traducción de la subfuncionalidad: `facturas::facturas`, `person_catalog::person_catalog`.
+     *
+     * Es la dirección que `__()` pide sin la clave —`módulo::archivo`—, compuesta **como el
+     * proveedor de este paquete registra la carpeta `resources/lang` de cada módulo**: con
+     * `Str::snake` del nombre. Vive aquí porque lo necesitan los dos lados: la pieza de textos del
+     * seeder, que declara las claves bajo ese grupo, y las vistas, que las piden. Compuesto en dos
+     * sitios, `PersonCatalog` acabaría como `personcatalog::…` en uno y `person_catalog::…` en otro,
+     * y el texto sembrado se serviría como su propia clave — sin un solo error.
+     */
+    protected function textsGroup(): string
+    {
+        return Str::snake($this->moduleName) . '::' . Str::snake($this->subFeatureName());
+    }
+
+    /**
      * El prefijo del permiso: lo dice **el modo**, y el contexto solo puede afinarlo.
      *
      * Vive aquí y no en el generador de rutas porque lo necesitan **los dos lados de la misma

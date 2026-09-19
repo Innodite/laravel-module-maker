@@ -1,5 +1,5 @@
 ```bash
-composer require innodite/laravel-module-maker:^5.1
+composer require innodite/laravel-module-maker:^5.2
 ```
 
 Instala el paquete vía Composer. El siguiente paso es `innodite:module-setup`, que elige el modo del

@@ -6,6 +6,7 @@ namespace Innodite\LaravelModuleMaker\Generators\Components;
 
 use Illuminate\Support\Facades\File;
 use Innodite\LaravelModuleMaker\Services\DeployOrderInjectionService;
+use Innodite\LaravelModuleMaker\Support\Disk;
 use Innodite\LaravelModuleMaker\Support\SeederNames;
 use Innodite\LaravelModuleMaker\Support\SubFeaturePermissions;
 
@@ -26,6 +27,13 @@ use Innodite\LaravelModuleMaker\Support\SubFeaturePermissions;
  * propio que alguien añadió a `run()`, las filas canónicas del negocio, el delta de la semana
  * pasada. Regenerar el módulo no puede llevárselo por delante. Cuando la pieza ya está, se avisa y
  * se sigue — igual que hacen la migración y el trait de deltas.
+ *
+ * **Y una séptima que existe solo si alguien la aporta: los textos de la subfuncionalidad.** Este
+ * paquete no sabe sembrar un texto —dónde se guarda, qué archivo se sirve— porque eso lo decide la
+ * biblioteca que lo lee, y no es pública. Así que abre el hueco, igual que el proveedor abre el
+ * suyo con `provider-boot.stub`: si el proyecto o un paquete instalado aportan `texts-trait.stub`,
+ * se escribe la pieza `{Prefijo}{Módulo}{SubFunc}Texts` y los dos seeders ejecutables la
+ * incorporan y la llaman al final de `run()`. Si no la aporta nadie, salen las seis de siempre.
  */
 class SubFeatureSeederGenerator extends AbstractComponentGenerator
 {
@@ -63,6 +71,10 @@ class SubFeatureSeederGenerator extends AbstractComponentGenerator
             'dataTrait'           => SeederNames::piece($prefijo, $this->moduleName, $subFeature, 'Data'),
             'permissionsSeeder'   => SeederNames::piece($prefijo, $this->moduleName, $subFeature, 'Permissions'),
         ];
+
+        // La séptima pieza va ANTES que los dos ejecutables: son ellos los que tienen que saber si
+        // existe, para incorporarla y llamarla. Sin nadie que la aporte, los dos huecos salen vacíos.
+        $comunes += $this->writeTextsTrait($seederDir, $comunes['namespace'], $subFeature, $prefijo);
 
         $this->writePiece($seederDir, 'stage-seeder.stub', SeederNames::piece($prefijo, $this->moduleName, $subFeature, 'Stage'), $comunes);
         $this->writePiece($seederDir, 'production-seeder.stub', SeederNames::piece($prefijo, $this->moduleName, $subFeature, 'Production'), $comunes);
@@ -147,6 +159,76 @@ class SubFeatureSeederGenerator extends AbstractComponentGenerator
         ]);
 
         $this->putFile($destino, $contenido, "Datos canónicos creados: {$traitName}.php");
+    }
+
+    /**
+     * Escribe la pieza de textos — **solo si alguien aporta su stub** — y devuelve lo que los dos
+     * seeders ejecutables necesitan para incorporarla.
+     *
+     * **Qué problema resuelve.** Un módulo tiene textos que alguien lee en pantalla —«Factura dada
+     * de alta», «No hay facturas»— y en un proyecto con varios idiomas esos textos se siembran
+     * como se siembran sus permisos: con el despliegue, en cada idioma. Pero el mecanismo que los
+     * guarda —la tabla, el archivo que después se sirve, cómo se regenera— es de la biblioteca que
+     * los lee, y ese paquete no es público. Escribirlo aquí publicaría su forma; suponerlo
+     * escribiría un `use` a un trait que en un proyecto pelado no existe, y eso no deja un módulo
+     * sin textos: deja un seeder que no carga.
+     *
+     * Así que el paquete no escribe nada y **abre el hueco**: si el proyecto —o una biblioteca
+     * instalada— aporta un `texts-trait.stub`, con él se escribe `{Prefijo}{Módulo}{SubFunc}Texts`
+     * junto a las otras piezas, y los seeders de stage y producción reciben la línea `use` y el
+     * paso que la llama. Si no lo aporta nadie, que es el caso normal, los dos huecos salen vacíos
+     * y el seeder es exactamente el de siempre.
+     *
+     * **El grupo de traducción se entrega ya compuesto** (`{{{ textsGroup }}}`, ver
+     * {@see self::textsGroup()}): las vistas reciben el mismo, así que la pieza declara las claves
+     * exactamente donde las pantallas las piden.
+     *
+     * **Y la carpeta `resources/lang` del módulo nace con la pieza.** El proveedor registra el
+     * espacio de nombres de traducción de un módulo solo si esa carpeta existe al arrancar; sin
+     * ella, el archivo que la biblioteca regenera a partir de la tabla no tendría dónde ir y el
+     * texto sembrado no llegaría a ninguna pantalla — sin un solo error.
+     *
+     * **No se sobrescribe si ya existe**, como las demás: dentro viven los textos que alguien
+     * escribió a mano.
+     *
+     * @return array<string, string>  `textsTraitUse` y `textsStep`, vacíos si nadie aporta el stub
+     */
+    protected function writeTextsTrait(string $seederDir, string $namespace, string $subFeature, string $prefijo): array
+    {
+        $traitName = SeederNames::piece($prefijo, $this->moduleName, $subFeature, 'Texts');
+
+        $contenido = $this->getOptionalStubContent('texts-trait.stub', [
+            'namespace'  => $namespace,
+            'traitName'  => $traitName,
+            'subFeature' => $subFeature,
+            'moduleName' => $this->moduleName,
+            'textsGroup' => $this->textsGroup(),
+        ], $this->componentConfig['context'] ?? null);
+
+        if ($contenido === null) {
+            return ['textsTraitUse' => '', 'textsStep' => ''];
+        }
+
+        $destino = "{$seederDir}/{$traitName}.php";
+
+        if (File::exists($destino)) {
+            $this->warn("Textos '{$traitName}' ya existen. Se omiten para no pisar lo que tengan dentro.");
+        } else {
+            $this->putFile($destino, $contenido, "Textos creados: {$traitName}.php");
+        }
+
+        $lang = "{$this->modulePath}/resources/lang";
+
+        if (! File::exists("{$lang}/.gitkeep")) {
+            $this->ensureDirectoryExists($lang);
+            Disk::put("{$lang}/.gitkeep", '');
+        }
+
+        return [
+            'textsTraitUse' => "\n    use {$traitName};",
+            'textsStep'     => "\n\n        // Los textos de la subfuncionalidad, en cada idioma — la pieza que aporta la biblioteca instalada.\n"
+                . "        \$this->safe('seedTexts', fn () => \$this->seedTexts());",
+        ];
     }
 
     // ─── Los valores que los stubs esperan escritos como PHP ──────────────────

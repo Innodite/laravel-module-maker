@@ -7,15 +7,15 @@
 [![Laravel](https://img.shields.io/badge/Laravel-11%20%7C%2012%20%7C%2013-FF2D20?logo=laravel&logoColor=white)](https://laravel.com/)
 [![License](https://img.shields.io/github/license/Innodite/laravel-module-maker?color=green)](LICENSE)
 
-**v5.1** — Generador de módulos Laravel para proyectos de una aplicación o multiinquilino. Genera el
+**v5.2** — Generador de módulos Laravel para proyectos de una aplicación o multiinquilino. Genera el
 backend completo, sus rutas con el permiso de cada una y sus vistas Vue 3, con un solo comando. Un
 módulo agrupa varias subfuncionalidades, y cada una es autocontenida:
 `Modules/<Módulo>/<SubFuncionalidad>/<Capa>/<Contexto>/`.
 
-## 👉 La versión que se instala es la **5.1.1**
+## 👉 La versión que se instala es la **5.2.0**
 
 ```json
-"innodite/laravel-module-maker": "^5.1"
+"innodite/laravel-module-maker": "^5.2"
 ```
 
 **Y cambia la forma de todo lo que el paquete escribe.** Un módulo generado con una 4.x no coincide
@@ -829,6 +829,31 @@ proyecto. Recibe dos variables:
 | `{{{ moduleName }}}` | El nombre del módulo | `Invoice` |
 | `{{{ functionality }}}` | La funcionalidad, como la nombran sus rutas | `invoices` |
 
+### `texts-trait.stub` — la séptima pieza del seeder: los textos de la subfuncionalidad
+
+También **opcional**, y por el mismo motivo: el paquete no sabe sembrar un texto —en qué tabla
+se guarda, qué archivo se sirve después— porque eso lo decide la biblioteca que lo lee. Si el
+proyecto o un paquete instalado lo aportan, `make-module` y `add-entity` escriben
+`{Prefijo}{Módulo}{SubFunc}Texts.php` junto a las otras seis piezas de `Database/Seeders/`, los
+seeders de stage y de producción la incorporan con `use …Texts;` y la llaman al final de `run()`
+—`$this->safe('seedTexts', fn () => $this->seedTexts())`, después de los permisos y antes del
+reporte—, y el módulo nace con `resources/lang/.gitkeep`: sin esa carpeta el proveedor no registra
+el espacio de nombres de traducción del módulo y el texto sembrado no llega a ninguna pantalla.
+
+Sin nadie que lo aporte, los seeders salen exactamente como siempre. Y como las otras seis, la
+pieza **no se sobrescribe** si ya existe. Recibe:
+
+| Variable | Qué trae | Ejemplo |
+|---|---|---|
+| `{{{ namespace }}}` | El de las piezas de seeder de esa subfuncionalidad y contexto | `Modules\Invoice\Invoice\Database\Seeders\Central` |
+| `{{{ traitName }}}` | El nombre de la pieza | `CentralInvoiceInvoiceTexts` |
+| `{{{ moduleName }}}` · `{{{ subFeature }}}` | El módulo y la subfuncionalidad | `Invoice` · `Invoice` |
+| `{{{ textsGroup }}}` | El grupo de traducción, compuesto como el proveedor registra `resources/lang`: `snake_case` del módulo y del archivo | `invoice::invoice` · `person_catalog::person_catalog` |
+
+⚠️ `stage-seeder.stub` y `production-seeder.stub` llevan desde la 5.2.0 los placeholders
+`{{{ textsTraitUse }}}` y `{{{ textsStep }}}`. Si los tienes **publicados** de una versión anterior,
+tu copia gana y el seeder generado no incorpora la pieza: republícalos o añádeselos.
+
 ### Variables disponibles en los stubs
 
 ⛔ **Se escriben con TRIPLE llave**: `{{{ nombre }}}`, no `{{ nombre }}`. No es capricho: los stubs
@@ -858,6 +883,7 @@ Y en las cuatro vistas Vue, además:
 | `{{{ vueComponentName }}}` | Componente de **esta** vista | `InvoiceIndex` |
 | `{{{ vueComponentBase }}}` | Nombre sin el sufijo de vista | `Invoice` |
 | `{{{ permViewStore }}}` · `{{{ permViewShow }}}` · `{{{ permViewUpdate }}}` · `{{{ permViewDestroy }}}` · `{{{ permViewRestore }}}` | El permiso que decide si se muestra cada elemento | |
+| `{{{ textsGroup }}}` | El grupo de traducción de la subfuncionalidad, el mismo que recibe `texts-trait.stub` | `invoice::invoice` |
 
 ⭐ **La lista completa la tiene cada stub**: abre el que vayas a personalizar y mira qué variables
 usa. Son las que su generador le entrega, y no todas están en todos.
