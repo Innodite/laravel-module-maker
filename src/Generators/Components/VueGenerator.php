@@ -123,6 +123,9 @@ class VueGenerator extends AbstractComponentGenerator
             'subFeaturePlural'   => Str::kebab(Str::plural(Str::snake($this->modelName))),
             'subFeatureSingular' => Str::kebab(Str::snake($this->modelName)),
             'subFeatureLabel'    => $this->modelName,
+            // El grupo bajo el que la pieza de textos del seeder declara sus claves, por si la
+            // plantilla de la vista las pide en vez de escribir el texto: el mismo que recibe ella.
+            'textsGroup'         => $this->textsGroup(),
             ...$this->buildViewPermissions(),
         ];
     }

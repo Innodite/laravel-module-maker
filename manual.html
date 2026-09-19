@@ -276,7 +276,7 @@ footer.doc-pie {
 <body>
 
 <header class="doc-barra">
-  <div class="doc-marca">Innodite <b>Module Maker</b> <span class="doc-version">v5.1</span></div>
+  <div class="doc-marca">Innodite <b>Module Maker</b> <span class="doc-version">v5.2</span></div>
   <div class="doc-acciones">
     <a class="doc-boton" href="index.html">Para gerencia</a>
     <a class="doc-boton" href="https://github.com/Innodite/laravel-module-maker">Repositorio</a>
@@ -330,13 +330,13 @@ footer.doc-pie {
       </div>
 
       <h2 id="instalacion-en-dos-lineas">Instalación, en dos líneas</h2>
-      <div class="doc-pre"><span class="doc-pre__lang">bash</span><pre><code>composer require innodite/laravel-module-maker:^5.1
+      <div class="doc-pre"><span class="doc-pre__lang">bash</span><pre><code>composer require innodite/laravel-module-maker:^5.2
 php artisan innodite:module-setup</code></pre></div>
       <p>Y cuando algo no salga como esperabas, <code>php artisan innodite:doctor</code>: diagnostica
         en cascada y cada fallo trae la línea que lo arregla.</p>
     </article>
 
-<article class="doc-pagina" data-ruta="instalacion" hidden><header class="doc-cabecera"><p class="doc-migas">Manual · Laravel Module Maker</p><h1>Instalación</h1></header><div class="doc-pre"><span class="doc-pre__lang">bash</span><pre><code class="lang-bash">composer require innodite/laravel-module-maker:^5.1</code></pre></div>
+<article class="doc-pagina" data-ruta="instalacion" hidden><header class="doc-cabecera"><p class="doc-migas">Manual · Laravel Module Maker</p><h1>Instalación</h1></header><div class="doc-pre"><span class="doc-pre__lang">bash</span><pre><code class="lang-bash">composer require innodite/laravel-module-maker:^5.2</code></pre></div>
 <p>Instala el paquete vía Composer. El siguiente paso es <code>innodite:module-setup</code>, que elige el modo del proyecto y deja escrita la configuración — ver su ficha en <strong>Los comandos</strong>.</p>
 <p>Después de configurar el proyecto, <code>innodite:doctor</code> confirma que quedó bien:</p>
 <div class="doc-pre"><span class="doc-pre__lang">bash</span><pre><code class="lang-bash">php artisan innodite:doctor</code></pre></div>
@@ -465,7 +465,8 @@ Esto es lo que haría (5). No se escribió nada.</code></pre></div></div></div><
 <p>Sin ningún flag de componente y con el módulo ya existente, ver punto 4 de arriba.</p></div><div class="doc-tab-panel" id="tab-personalizar-stubs" hidden><p>Orden real de resolución, de más específico a más genérico:</p>
 <div class="doc-tabla"><table><thead><tr><th>#</th><th>Ruta</th><th>Gana</th></tr></thead><tbody><tr><td>1</td><td><code>module-maker-config/stubs/contextual/{Contexto}/</code></td><td>El proyecto, para ese contexto</td></tr><tr><td>2</td><td><code>module-maker-config/stubs/contextual/</code></td><td>El proyecto</td></tr><tr><td>3</td><td><code>vendor/*/*/stubs/module-maker/contextual/</code></td><td>Un paquete instalado (empate: gana el primero por orden alfabético)</td></tr><tr><td>4</td><td><code>stubs/contextual/</code> del propio paquete</td><td>Fuente de última instancia</td></tr></tbody></table></div>
 <p>Cada placeholder se escribe con <strong>triple llave</strong> (<code>{{{ modelName }}}</code>); antes de escribir, el comando rechaza el archivo si queda algún placeholder sin resolver, si el PHP no parsea, o si el namespace declarado no coincide con la ruta destino.</p>
-<p><code>provider-boot.stub</code> es opcional: si ningún nivel lo aporta, el <code>boot()</code> del <code>ServiceProvider</code> sale vacío — es el punto de enganche al menú de la aplicación, y el paquete no lo trae de fábrica.</p></div><div class="doc-tab-panel" id="tab-aplicacion-unica" hidden><p><code>php artisan innodite:make-module Invoice</code> genera, bajo <code>Modules/Invoice/</code>:</p>
+<p><code>provider-boot.stub</code> es opcional: si ningún nivel lo aporta, el <code>boot()</code> del <code>ServiceProvider</code> sale vacío — es el punto de enganche al menú de la aplicación, y el paquete no lo trae de fábrica.</p>
+<p><code>texts-trait.stub</code> también es opcional: si algún nivel lo aporta, cada subfuncionalidad nace con una séptima pieza de seeder, <code>{Prefijo}{Módulo}{SubFunc}Texts.php</code> —sus textos en cada idioma—, que los seeders de stage y de producción incorporan y llaman al final de <code>run()</code>, y el módulo con <code>resources/lang/.gitkeep</code>. El stub recibe <code>{{{ textsGroup }}}</code> ya compuesto (<code>invoice::invoice</code>), con el mismo <code>snake_case</code> con el que el paquete registra la carpeta de traducciones del módulo. Sin nadie que lo aporte, salen las seis piezas de siempre.</p></div><div class="doc-tab-panel" id="tab-aplicacion-unica" hidden><p><code>php artisan innodite:make-module Invoice</code> genera, bajo <code>Modules/Invoice/</code>:</p>
 <div class="doc-pre"><pre><code>Docs/history.md
 Docs/architecture.md
 Docs/schema.md
@@ -793,7 +794,7 @@ FIX: despliega con innodite:deploy.
 </div>
 
 <footer class="doc-pie">
-  Innodite · Laravel Module Maker v5.1 — el manual se genera desde <code>docs/es/</code>, que es su
+  Innodite · Laravel Module Maker v5.2 — el manual se genera desde <code>docs/es/</code>, que es su
   fuente única.
 </footer>
 

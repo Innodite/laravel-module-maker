@@ -564,7 +564,7 @@ footer.doc-pie {
 <body>
 
 <header class="doc-barra">
-  <div class="doc-marca">Innodite <b>Module Maker</b> <span class="doc-version">v5.1</span></div>
+  <div class="doc-marca">Innodite <b>Module Maker</b> <span class="doc-version">v5.2</span></div>
   <div class="doc-acciones">
     <a class="doc-boton" href="index.html">Para gerencia</a>
     <a class="doc-boton" href="https://github.com/Innodite/laravel-module-maker">Repositorio</a>
@@ -604,7 +604,7 @@ footer.doc-pie {
       </div>
 
       <h2 id="instalacion-en-dos-lineas">Instalación, en dos líneas</h2>
-      <div class="doc-pre"><span class="doc-pre__lang">bash</span><pre><code>composer require innodite/laravel-module-maker:^5.1
+      <div class="doc-pre"><span class="doc-pre__lang">bash</span><pre><code>composer require innodite/laravel-module-maker:^5.2
 php artisan innodite:module-setup</code></pre></div>
       <p>Y cuando algo no salga como esperabas, <code>php artisan innodite:doctor</code>: diagnostica
         en cascada y cada fallo trae la línea que lo arregla.</p>
@@ -617,7 +617,7 @@ php artisan innodite:module-setup</code></pre></div>
 </div>
 
 <footer class="doc-pie">
-  Innodite · Laravel Module Maker v5.1 — el manual se genera desde <code>docs/es/</code>, que es su
+  Innodite · Laravel Module Maker v5.2 — el manual se genera desde <code>docs/es/</code>, que es su
   fuente única.
 </footer>
 
