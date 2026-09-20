@@ -59,6 +59,7 @@ class ProjectSeederGenerator
         Disk::ensureDirectory($destino);
 
         $escritos = [];
+        $yaEstabaMontado = false;
 
         foreach ($this->deployments() as $deployKey => $definicion) {
             $className = SeederNames::projectDeploySeeder($deployKey ?: null);
@@ -68,6 +69,7 @@ class ProjectSeederGenerator
 
             if (File::exists($archivo)) {
                 $this->warn("   {$className} ya existe. No se sobreescribió.");
+                $yaEstabaMontado = true;
 
                 continue;
             }
@@ -86,7 +88,7 @@ class ProjectSeederGenerator
         }
 
         $this->writeEntryPoints($destino, $escritos);
-        $this->writeWebmaster($destino);
+        $this->writeWebmaster($destino, $yaEstabaMontado);
 
         return $escritos;
     }
@@ -154,12 +156,29 @@ class ProjectSeederGenerator
      * Lo llama el despliegue justo después de los permisos, así que no se engancha al
      * `DatabaseSeeder` — enganchar los dos lo ejecutaría dos veces por despliegue.
      */
-    private function writeWebmaster(string $destino): void
+    private function writeWebmaster(string $destino, bool $yaEstabaMontado): void
     {
         $archivo = "{$destino}/WebmasterSeeder.php";
 
         if (File::exists($archivo)) {
             $this->warn('   WebmasterSeeder ya existe. No se sobreescribió.');
+
+            return;
+        }
+
+        /*
+         * ⛔⛔ **Un archivo que falta en un proyecto YA montado es una decisión, no un olvido**
+         * (20/09/2026, medido en kapitalizando): allí se retiró a propósito —su llamada estaba
+         * muerta y cada despliegue terminaba en rojo— y cada instalación de la Suite se lo devolvía,
+         * porque este método solo miraba si el archivo estaba.
+         *
+         * ⭐ El discriminador es el proyecto mismo: si sus seeders de despliegue ya existían, esto
+         * no es un montaje inicial. En un montaje inicial no existe ninguno y el webmaster se
+         * escribe como siempre.
+         */
+        if ($yaEstabaMontado) {
+            $this->warn('   WebmasterSeeder no está, y NO se repone: este proyecto ya tenía sus seeders de despliegue, así que su ausencia es una decisión suya.');
+            $this->warn('   Si lo quieres de vuelta: copia stubs/contextual/webmaster-seeder.stub del paquete a database/seeders/WebmasterSeeder.php.');
 
             return;
         }
