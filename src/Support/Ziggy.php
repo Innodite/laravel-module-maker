@@ -26,6 +26,12 @@ use Illuminate\Support\Facades\File;
  * Aquí no se genera nada distinto según lo que se encuentre: lo generado es siempre lo mismo y esta
  * clase solo **diagnostica** si va a funcionar, que es exactamente lo que ya hace el `doctor` con
  * el modelo `User` o con el registro del bridge.
+ *
+ * ⚠️ **Y se exige solo a quien de verdad lo usa.** Las vistas pueden salir de otra plantilla —una
+ * que el proyecto publicó o que aporta un paquete instalado— y esa plantilla puede resolver sus
+ * rutas con su propia función importada, sin Ziggy. Exigírselo igual dejaba el `doctor` en rojo
+ * sobre un proyecto cuyas pantallas abren, y el FIX mandaba instalar un paquete que nadie iba a
+ * llamar. Por eso lo primero es mirar las plantillas que van a ganar: {@see self::laUsanLasVistas()}.
  */
 final class Ziggy
 {
@@ -41,6 +47,48 @@ final class Ziggy
 
     /** Las clases que expone, una por versión. */
     private const CLASES = ['Tightenco\\Ziggy\\Ziggy', 'Tighten\\Ziggy\\Ziggy'];
+
+    /** Las cuatro plantillas de vista, que son las que piden rutas. */
+    private const VISTAS = ['vue-index.stub', 'vue-create.stub', 'vue-edit.stub', 'vue-show.stub'];
+
+    /**
+     * ¿Alguna de las plantillas de vista que se van a usar depende de Ziggy?
+     *
+     * Se miran **todas las que pueden ganar**, no solo la genérica: una plantilla del proyecto para
+     * un contexto concreto gana en ese contexto, y si ella usa Ziggy, Ziggy hace falta aunque la
+     * genérica no lo use.
+     */
+    public static function laUsanLasVistas(): bool
+    {
+        foreach (self::VISTAS as $stub) {
+            foreach (self::plantillasQuePuedenGanar($stub) as $ruta) {
+                if (self::dependeDeZiggy((string) File::get($ruta))) {
+                    return true;
+                }
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * ¿Este contenido llama a la `route()` que pone Ziggy?
+     *
+     * `window.route(` es Ziggy siempre. Un `route(` suelto también lo es, salvo que la plantilla la
+     * importe de algún sitio: entonces es otra función, y Ziggy no pinta nada.
+     */
+    public static function dependeDeZiggy(string $contenido): bool
+    {
+        if (preg_match('/\bwindow\.route\s*\(/', $contenido) === 1) {
+            return true;
+        }
+
+        if (preg_match('/(?<![\w.$])route\s*\(/', $contenido) !== 1) {
+            return false;
+        }
+
+        return preg_match('/import\s*\{[^}]*\broute\b[^}]*\}\s*from/', $contenido) !== 1;
+    }
 
     /**
      * ¿Está Ziggy instalado en el proyecto anfitrión?
@@ -102,11 +150,45 @@ final class Ziggy
      *
      * Las dos mitades cuentan: instalado sin `@routes` falla igual que no instalado, y con el mismo
      * error, así que un diagnóstico que solo mirase la primera diría «OK» sobre una pantalla que no
-     * abre.
+     * abre. Y ninguna cuenta si las vistas no lo usan.
      */
     public static function falta(): bool
     {
+        if (! self::laUsanLasVistas()) {
+            return false;
+        }
+
         return ! self::instalado() || self::layoutConDirectiva() === null;
+    }
+
+    /**
+     * Las plantillas que pueden llegar a usarse para una vista, en el orden de {@see HasStubs}.
+     *
+     * Las del proyecto por contexto cuentan todas, porque cada una gana en el suyo; de las demás
+     * gana solo la primera que exista: la genérica del proyecto, la que aporta un paquete o la de
+     * este paquete.
+     *
+     * @return array<int, string>
+     */
+    private static function plantillasQuePuedenGanar(string $stub): array
+    {
+        $delProyecto = config('make-module.stubs.path') . '/contextual';
+
+        $rutas = array_merge(
+            (array) glob("{$delProyecto}/*/{$stub}"),
+            (array) glob("{$delProyecto}/*/*/{$stub}"),
+        );
+
+        $generica = array_values(array_filter(
+            ["{$delProyecto}/{$stub}", StubsDeVendor::buscar($stub), __DIR__ . "/../../stubs/contextual/{$stub}"],
+            fn (?string $ruta) => $ruta !== null && File::exists($ruta),
+        ));
+
+        if ($generica !== []) {
+            $rutas[] = $generica[0];
+        }
+
+        return array_values(array_filter($rutas, fn ($ruta) => is_string($ruta) && File::exists($ruta)));
     }
 
     /** ¿Lo nombra el `composer.json` del proyecto, en cualquiera de sus dos secciones? */

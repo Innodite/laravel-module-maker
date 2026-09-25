@@ -1055,6 +1055,17 @@ class DoctorCommand extends Command
     {
         $this->line('  <fg=cyan;options=bold>4. Ziggy, que es quien resuelve las rutas de la vista</>');
 
+        // Las vistas que se van a generar pueden resolver sus rutas con su propia función: entonces
+        // Ziggy no hace falta, y exigirlo manda instalar un paquete que nadie va a llamar.
+        if (! Ziggy::laUsanLasVistas()) {
+            $this->components->twoColumnDetail(
+                'Ziggy',
+                '<fg=green>OK — no hace falta: las vistas que se generan no usan window.route()</>'
+            );
+
+            return true;
+        }
+
         if (! Ziggy::instalado()) {
             $this->fallo(
                 'Ziggy no está instalado, y las vistas generadas piden sus rutas por el nombre.',
