@@ -5,6 +5,7 @@ declare(strict_types=1);
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\File;
 use Innodite\LaravelModuleMaker\Support\ModuleMode;
+use Innodite\LaravelModuleMaker\Support\StubsDeVendor;
 use Innodite\LaravelModuleMaker\Support\Ziggy;
 
 /**
@@ -30,8 +31,11 @@ beforeEach(function () {
     // El proyecto de prueba, aislado: el skeleton de Testbench vive en `vendor/`, sobrevive a la
     // prueba y no aparece en el repositorio, así que escribirle un composer.json o un layout
     // contaminaría todas las corridas siguientes sin dejar rastro.
+    StubsDeVendor::olvidar();
     $this->app->setBasePath($this->tempPath());
 });
+
+afterEach(fn () => StubsDeVendor::olvidar());
 
 /** Lanza el diagnóstico saltándose el corte de la etapa 1, que aquí no es lo que se mide. */
 function diagnosticoDeZiggy(): string
@@ -47,6 +51,24 @@ function conZiggyInstalado(): void
     File::put(test()->tempPath('composer.json'), json_encode([
         'require' => ['laravel/framework' => '^11.0', 'tightenco/ziggy' => '^2.0'],
     ], JSON_PRETTY_PRINT));
+}
+
+/**
+ * Un paquete instalado que aporta las cuatro vistas, resolviendo sus rutas con una función propia.
+ *
+ * Es el caso que motivó la condición: las vistas no tocan Ziggy, y aun así el doctor lo exigía.
+ */
+function paqueteConVistasSinZiggy(): void
+{
+    $carpeta = test()->tempPath('vendor/acme/interfaz/stubs/module-maker/contextual');
+    File::ensureDirectoryExists($carpeta);
+
+    foreach (['index', 'create', 'edit', 'show'] as $vista) {
+        File::put("{$carpeta}/vue-{$vista}.stub", "<script setup>\nimport { route } from '@acme'\n"
+            . "axios.get(route('{{{ routeName }}}.list'))\n</script>");
+    }
+
+    StubsDeVendor::olvidar();
 }
 
 /** Escribe un layout Blade que publica —o no— el mapa de rutas. */
@@ -176,4 +198,41 @@ it('falta() cuenta las dos mitades, no solo la instalación', function () {
             'FALLA: con Ziggy instalado y sin @routes, falta() dice que no falta nada. · FIX: las '
             . 'dos mitades cuentan — el síntoma en pantalla es el mismo.'
         );
+});
+
+// ─── Solo se exige a quien lo usa ─────────────────────────────────────────────
+
+it('el doctor no exige Ziggy cuando las vistas que se generan resuelven sus rutas sin él', function () {
+    paqueteConVistasSinZiggy();
+
+    $salida = diagnosticoDeZiggy();
+
+    expect($salida)->toContain('no hace falta')
+        ->and($salida)->not->toContain('Ziggy no está instalado')
+        ->and(Ziggy::falta())->toBeFalse(
+            'FALLA: con vistas que importan su propia route(), falta() sigue pidiendo Ziggy. · FIX: '
+            . 'falta() solo cuenta si laUsanLasVistas() dice que alguna plantilla lo usa.'
+        );
+});
+
+it('una plantilla del proyecto para un contexto que usa window.route vuelve a exigirlo', function () {
+    // Gana en su contexto aunque la genérica no lo use, así que Ziggy hace falta para ese contexto.
+    paqueteConVistasSinZiggy();
+
+    $carpeta = config('make-module.stubs.path') . '/contextual/Tenant';
+    File::ensureDirectoryExists($carpeta);
+    File::put("{$carpeta}/vue-index.stub", "axios.get(window.route('x.list'))");
+
+    try {
+        expect(Ziggy::laUsanLasVistas())->toBeTrue();
+    } finally {
+        File::deleteDirectory($carpeta);
+    }
+});
+
+it('reconoce qué llamada es de Ziggy y cuál no', function () {
+    expect(Ziggy::dependeDeZiggy("window.route('a')"))->toBeTrue()
+        ->and(Ziggy::dependeDeZiggy("axios.get(route('a'))"))->toBeTrue()
+        ->and(Ziggy::dependeDeZiggy("import { InnModal, route } from '@suite'\naxios.get(route('a'))"))->toBeFalse()
+        ->and(Ziggy::dependeDeZiggy('<template>sin rutas</template>'))->toBeFalse();
 });
