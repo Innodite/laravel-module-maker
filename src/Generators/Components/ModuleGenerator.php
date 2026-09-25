@@ -10,7 +10,6 @@ use Illuminate\Support\Str;
 use Innodite\LaravelModuleMaker\Generators\Components\Factory\FactoryGenerator;
 use Innodite\LaravelModuleMaker\Support\ContextResolver;
 use Innodite\LaravelModuleMaker\Support\ModuleMode;
-use Innodite\LaravelModuleMaker\Support\SeederNames;
 
 /**
  * Orquesta la creación de un módulo completo según la arquitectura v3.0.0.
@@ -35,16 +34,6 @@ class ModuleGenerator
     protected ?array $config;
     protected $command;
 
-    /**
-     * Subcarpetas de contexto base que se crean en todas las capas.
-     * Las carpetas de tenant específico se crean on-demand por cada generator.
-     */
-    private const BASE_CONTEXT_FOLDERS = [
-        'Central',
-        'Shared',
-        'Tenant/Shared',
-    ];
-
     public function __construct(string $moduleName, bool $isClean = true, ?array $config = null, $command = null)
     {
         $this->moduleName = Str::studly($moduleName);
@@ -57,73 +46,28 @@ class ModuleGenerator
     // ─── Helpers de creación de estructura ───────────────────────────────────
 
     /**
-     * Crea la estructura de carpetas completa v3.0.0.
-     * Incluye subcarpetas de contexto base (Central, Shared, Tenant/Shared)
-     * en todas las capas que lo requieren.
+     * The MODULE-level folders of the v5 tree — and nothing else.
      *
-     * @return void
+     * ⛔⛔ Until 25/09/2026 this still created the 3.x/4.x skeleton at the module root: every layer
+     * (Http, Models, Repositories, Services, Jobs, Notifications, Console, Exceptions, resources,
+     * Tests) with its context subfolders, `Shared` included — all EMPTY, next to the correct v5 tree
+     * the generator writes inside each subfeature. `Tests/Feature/Shared` then made `innodite:doctor`
+     * stop on a module the generator had just written (retired test shape), and every project module
+     * carried those empty root folders (measured in innodite_microcredit, Branding).
+     *
+     * ⭐ In v5 the layers live in `Modules/<Module>/<SubFeature>/<Layer>/[<Context>/]`, created by the
+     * pieces themselves. Only what belongs to the module as a whole is created here: its docs, its
+     * routes, its providers and its application master seeders.
      */
     public function createFolders(): void
     {
-        // ── Docs (sin segregación de contexto) ───────────────────────────────
         Disk::ensureDirectory("{$this->modulePath}/Docs");
-
-        // ── Database ─────────────────────────────────────────────────────────
-        foreach (['Factories', 'Migrations', 'Seeders'] as $sub) {
-            $this->createContextSubfolders("Database/{$sub}");
-        }
-
-        // Los 3 maestros del módulo cuelgan de Database/Seeders/{Contexto}/Application/
-        $this->createMasterSeederFolders();
-
-        // ── Http ─────────────────────────────────────────────────────────────
-        foreach (['Controllers', 'Requests'] as $sub) {
-            $this->createContextSubfolders("Http/{$sub}");
-        }
-        Disk::ensureDirectory("{$this->modulePath}/Http/Middleware");
-
-        // ── Models ───────────────────────────────────────────────────────────
-        $this->createContextSubfolders('Models');
-
-        // ── Providers ────────────────────────────────────────────────────────
+        Disk::ensureDirectory("{$this->modulePath}/Routes");
         Disk::ensureDirectory("{$this->modulePath}/Providers");
 
-        // ── Repositories: implementaciones + Contracts ────────────────────────
-        $this->createContextSubfolders('Repositories');
-        $this->createContextSubfolders('Repositories/Contracts');
-
-        // ── resources/js/Pages ───────────────────────────────────────────────
-        $this->createContextSubfolders('resources/js/Pages');
-
-        // ── Routes (raíz del módulo, sin subcarpetas de contexto) ─────────────
-        Disk::ensureDirectory("{$this->modulePath}/Routes");
-
-        // ── Services: implementaciones + Contracts ────────────────────────────
-        $this->createContextSubfolders('Services');
-        $this->createContextSubfolders('Services/Contracts');
-
-        // ── Jobs ─────────────────────────────────────────────────────────────
-        $this->createContextSubfolders('Jobs');
-
-        // ── Notifications ─────────────────────────────────────────────────────
-        $this->createContextSubfolders('Notifications');
-
-        // ── Console/Commands ──────────────────────────────────────────────────
-        $this->createContextSubfolders('Console/Commands');
-
-        // ── Exceptions ───────────────────────────────────────────────────────
-        // Se saltaban el helper y escribian /Central a mano, asi que aparecian tambien en
-        // single-app, donde ese contexto no existe.
-        $this->createContextSubfolders('Exceptions');
-
-        // ── Tests ────────────────────────────────────────────────────────────
-        //
-        // `Tests/Support` ya no se siembra: el soporte del grupo es su `{SubFunc}TestCase`, que vive
-        // con las piezas que lo usan. Una carpeta vacía en el árbol no rompe nada, y por eso es peor
-        // que un error: sugiere un sitio donde poner cosas que el contrato no contempla, y alguien
-        // acaba poniéndolas.
-        $this->createContextSubfolders('Tests/Feature');
-        $this->createContextSubfolders('Tests/Unit');
+        // ⛔ No master seeder folders here: the masters live in Database/Seeders/Application/<Context>/
+        // and whoever writes them creates that folder. Creating Database/Seeders/<Context>/Application
+        // left three empty folders of the old layout, `Shared` among them.
 
         if ($this->command) {
             $this->command->info("✅ Estructura de carpetas creada para el módulo '{$this->moduleName}'.");
@@ -445,57 +389,6 @@ class ModuleGenerator
             return (string) (ContextResolver::resolve($contextKey)['folder'] ?? '');
         } catch (\Throwable) {
             return '';
-        }
-    }
-
-    /**
-     * Crea las subcarpetas de contexto base dentro de un tipo de componente — **si el modo las tiene**.
-     *
-     * En single-app no se crean: sembrar `Central/`, `Shared/` y `Tenant/Shared/` vacías en cada capa
-     * de un proyecto sin tenants deja doce carpetas que no significan nada, y sugieren una estructura
-     * que el modo dice que no existe. La capa se crea igual; lo que no se crea es el eje.
-     *
-     * @param  string  $componentType  Ruta relativa dentro del módulo (ej: 'Services', 'Http/Controllers')
-     * @return void
-     */
-    private function createContextSubfolders(string $componentType): void
-    {
-        $base = "{$this->modulePath}/{$componentType}";
-        Disk::ensureDirectory($base);
-
-        if (! ModuleMode::current()->hasContextAxis()) {
-            return;
-        }
-
-        foreach (self::BASE_CONTEXT_FOLDERS as $folder) {
-            Disk::ensureDirectory("{$base}/{$folder}");
-        }
-    }
-
-    /**
-     * Crea la carpeta de los tres maestros `Application` del módulo.
-     *
-     * Es el punto de entrada único del módulo en su contexto, y por eso tiene carpeta propia en vez
-     * de ser «una subfuncionalidad más»: `deploy-{contexto}` llama a estos tres, y estos hacen
-     * fan-out en orden a las seis piezas de cada subfuncionalidad. Existe **uno por contexto** — el
-     * central no arrastra al del tenant.
-     *
-     * Aquí se crea la carpeta y queda fijada la convención de nombres (ver SeederNames). El
-     * contenido —el fan-out en orden y la propagación de `destructive`— llegó después: emitir antes
-     * tres seeders con `run()` vacío sería repetir B3, que es el hallazgo que esa fase corrige.
-     */
-    private function createMasterSeederFolders(): void
-    {
-        $base = "{$this->modulePath}/Database/Seeders";
-
-        if (! ModuleMode::current()->hasContextAxis()) {
-            Disk::ensureDirectory("{$base}/" . SeederNames::MASTER_FOLDER);
-
-            return;
-        }
-
-        foreach (self::BASE_CONTEXT_FOLDERS as $folder) {
-            Disk::ensureDirectory("{$base}/{$folder}/" . SeederNames::MASTER_FOLDER);
         }
     }
 }
